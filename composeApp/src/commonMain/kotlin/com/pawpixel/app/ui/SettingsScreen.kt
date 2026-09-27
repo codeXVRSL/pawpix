@@ -64,7 +64,8 @@ fun SettingsScreen(app: AppScope, state: AppState) {
         Text("Privacy", fontWeight = FontWeight.Bold)
         Text(
             "Everything stays on this phone: no account, no uploads, no tracking. Your photo is turned into a sprite on the device, " +
-                "and only a small crop is kept for your before/after card. Deleting the app deletes everything.",
+                "and only a small crop is kept for your before/after card. Deleting the app deletes everything. " +
+                "On Android, Google's on-device pet detector (ML Kit) sends Google anonymous performance data, never your photos.",
         )
         OutlinedButton(onClick = { app.repo.platform.openUrl(PRIVACY_URL) }) { Text("Privacy policy") }
         OutlinedButton(onClick = { app.repo.platform.openUrl("mailto:$SUPPORT_EMAIL") }) { Text("Contact support") }

@@ -10,9 +10,10 @@ _Last updated: [date]. Replace the bracketed parts and publish this page before 
 - **Widget data:** a copy of your pet's mood and sprite, in storage shared only with PawPixel's own home-screen widget.
 
 ## What PawPixel does not do
-- No account, sign-in, analytics, ads or tracking.
+- No account, sign-in, ads or tracking. PawPixel has no servers and receives none of your data.
 - No location access.
-- Nothing is sent to our servers. Photos are processed on-device by your phone's built-in tools: Google ML Kit on Android, Apple Vision on iPhone.
+- Photos are processed on your device by your phone's built-in tools: Google ML Kit on Android, Apple Vision on iPhone. Your photo is not uploaded.
+- **On Android only:** Google ML Kit sends Google anonymous diagnostic data (device model, OS and app version, performance and error information, and a per-installation ID) so Google can maintain the feature. It does not include your photos. See Google's ML Kit terms and privacy information.
 
 ## Sharing
 When you tap **Share before/after**, PawPixel creates an image and opens your phone's share sheet. What happens next is up to you and the app you share to.

@@ -44,7 +44,12 @@ Made in Naga City, Philippines.
 
 **Category:** Lifestyle · **Tags:** Pets, Widgets
 **Content rating:** Everyone (no user-generated content, no ads, no purchases in v1)
-**Data safety form:** No data collected. No data shared. (All data stays on the device; photos are processed on-device by Google ML Kit, which Google documents as on-device.)
+**Data safety form:** PawPixel itself collects nothing, but the Android build uses Google ML Kit (pet cut-out), and Google says ML Kit collects diagnostic data. Per [Google's ML Kit disclosure guide](https://developers.google.com/ml-kit/android-data-disclosure), declare:
+- **Device or other IDs** (a per-installation ID): collected, not shared, for analytics.
+- **App info and performance: diagnostics** (device model, OS version, app version, latency, error codes): collected, not shared, for analytics.
+- Encrypted in transit: yes. Users can request deletion: no (not tied to an account).
+- Photos, pet data and care history: **not collected** (they never leave the device).
+Re-check the guide before submitting; it's Google's list and can change.
 
 ## Apple App Store
 
@@ -63,7 +68,7 @@ virtual pet,pet care,reminder,feed,walk,pixel art,dog,cat,puppy,kitten,sprite,8b
 **Description:** use the Google Play full description above (Apple doesn't render bullets specially; plain line breaks are fine).
 
 **Category:** Lifestyle (secondary: Entertainment) · **Age rating:** 4+
-**App Privacy:** Data Not Collected.
+**App Privacy:** Data Not Collected (the iOS build uses Apple's Vision framework on-device, with no third-party SDKs). Re-check if you add any SDK such as RevenueCat or analytics.
 
 ## Screenshots to capture (from the running app)
 Phone screenshots must show the real app, so capture these once it builds. Use 6.7" iPhone (1290×2796) and any 1080×1920+ Android phone:
