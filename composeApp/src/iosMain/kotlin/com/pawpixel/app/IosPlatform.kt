@@ -1,0 +1,169 @@
+package com.pawpixel.app
+
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.toComposeImageBitmap
+import androidx.compose.ui.window.ComposeUIViewController
+import com.pawpixel.app.ui.App
+import com.pawpixel.core.Json
+import com.pawpixel.core.Reminder
+import com.pawpixel.sprite.Mask
+import com.pawpixel.sprite.PixelImage
+import com.pawpixel.sprite.Png
+import com.pawpixel.sprite.RawImage
+import kotlinx.cinterop.ExperimentalForeignApi
+import kotlinx.cinterop.addressOf
+import kotlinx.cinterop.usePinned
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.MainScope
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlinx.coroutines.withContext
+import org.jetbrains.skia.Image
+import platform.Foundation.NSData
+import platform.Foundation.NSDate
+import platform.Foundation.NSFileManager
+import platform.Foundation.NSTimeZone
+import platform.Foundation.create
+import platform.Foundation.dataWithContentsOfFile
+import platform.Foundation.dateWithTimeIntervalSince1970
+import platform.Foundation.localTimeZone
+import platform.Foundation.timeIntervalSince1970
+import platform.Foundation.writeToFile
+import platform.UIKit.UIViewController
+import platform.posix.memcpy
+import kotlin.coroutines.resume
+
+/** Result callback for Swift. A plain interface avoids Kotlin-lambda/KotlinUnit bridging questions. */
+interface DataCallback {
+    fun onResult(data: NSData?)
+}
+
+/**
+ * Implemented in Swift (iosApp/iosApp/IosHost.swift). Apple-framework work (PhotosUI, Vision,
+ * UserNotifications, WidgetKit, share sheet) lives there, where Apple's APIs are native.
+ */
+interface IosHost {
+    /** Absolute path of the App Group folder shared with the widget extension. */
+    fun sharedContainerPath(): String
+    fun pickPhoto(completion: DataCallback)
+    /** Decodes and orientation-corrects a photo; returns [RawImage] bytes, longest side <= maxSide. */
+    fun decodePhoto(data: NSData, maxSide: Int): NSData?
+    /** Takes [RawImage] bytes, returns a Float32 little-endian mask (width*height), or null if Vision can't. */
+    fun segmentPet(rawImage: NSData, completion: DataCallback)
+    /** JSON array of {id, taskId, at (epoch seconds), title, body}. Replaces all pending reminders. */
+    fun scheduleReminders(json: String)
+    fun requestNotificationPermission()
+    fun reloadWidgets()
+    fun shareFile(data: NSData, fileName: String)
+    fun openUrl(url: String)
+}
+
+/** Entry points for Swift. */
+object IosGraph {
+    private lateinit var host: IosHost
+    val repo: PawRepository by lazy { PawRepository(IosPlatform(host)) }
+
+    fun start(host: IosHost) { this.host = host }
+
+    /** Call when the app comes to the foreground: applies widget taps and refreshes everything. */
+    fun onForeground() { MainScope().launch { repo.ingestWidgetTaps(); repo.publish() } }
+
+    /** "Done" tapped on a notification. */
+    fun completeTask(taskId: String) { MainScope().launch { repo.complete(taskId) } }
+
+    internal fun host() = host
+}
+
+fun MainViewController(): UIViewController = ComposeUIViewController { App(IosGraph.repo) }
+
+class IosPlatform(private val host: IosHost) : Platform {
+    override val files: FileStore = IosFileStore(host.sharedContainerPath())
+
+    override fun nowMs(): Long = (NSDate().timeIntervalSince1970 * 1000).toLong()
+
+    override fun utcOffsetMs(atMs: Long): Long =
+        NSTimeZone.localTimeZone.secondsFromGMTForDate(NSDate.dateWithTimeIntervalSince1970(atMs / 1000.0)) * 1000L
+
+    // Decoding a full-size photo is slow; keep it off the main thread.
+    override suspend fun decodePhoto(bytes: ByteArray, maxSide: Int): PixelImage? = withContext(Dispatchers.Default) {
+        host.decodePhoto(bytes.toNSData(), maxSide)?.toByteArray()?.let(RawImage::decode)
+    }
+
+    override suspend fun segmentPet(photo: PixelImage): Mask? = suspendCancellableCoroutine { cont ->
+        host.segmentPet(RawImage.encode(photo).toNSData(), callback { data ->
+            val bytes = data?.toByteArray()
+            val n = photo.width * photo.height
+            val mask = if (bytes == null || bytes.size != n * 4) null else {
+                val values = FloatArray(n) { i ->
+                    val o = i * 4
+                    Float.fromBits(
+                        (bytes[o].toInt() and 0xff) or ((bytes[o + 1].toInt() and 0xff) shl 8) or
+                            ((bytes[o + 2].toInt() and 0xff) shl 16) or ((bytes[o + 3].toInt() and 0xff) shl 24),
+                    )
+                }
+                Mask(photo.width, photo.height, values)
+            }
+            if (cont.isActive) cont.resume(mask)
+        })
+    }
+
+    override fun scheduleReminders(reminders: List<Reminder>) {
+        val json = Json.arr(reminders.map {
+            Json.obj("id" to it.id.toString(), "taskId" to it.taskId, "at" to it.atMs / 1000, "title" to it.title, "body" to it.body)
+        }).stringify()
+        host.scheduleReminders(json)
+    }
+
+    override fun requestNotificationPermission() = host.requestNotificationPermission()
+    // WidgetKit timelines already contain future mood changes, so only a reload is needed.
+    override fun refreshWidgets(nextChangeMs: Long?) = host.reloadWidgets()
+    override fun shareFile(bytes: ByteArray, fileName: String, mimeType: String) = host.shareFile(bytes.toNSData(), fileName)
+    override fun openUrl(url: String) = host.openUrl(url)
+}
+
+class IosFileStore(private val root: String) : FileStore {
+    private val fm = NSFileManager.defaultManager
+    private fun p(path: String) = "$root/$path"
+
+    override fun readBytes(path: String): ByteArray? = NSData.dataWithContentsOfFile(p(path))?.toByteArray()
+    override fun readText(path: String): String? = readBytes(path)?.decodeToString()
+    override fun writeText(path: String, text: String) = writeBytes(path, text.encodeToByteArray())
+
+    @OptIn(ExperimentalForeignApi::class)
+    override fun writeBytes(path: String, bytes: ByteArray) {
+        val full = p(path)
+        val dir = full.substringBeforeLast('/')
+        fm.createDirectoryAtPath(dir, withIntermediateDirectories = true, attributes = null, error = null)
+        bytes.toNSData().writeToFile(full, atomically = true)
+    }
+
+    @OptIn(ExperimentalForeignApi::class)
+    override fun delete(path: String) {
+        fm.removeItemAtPath(p(path), error = null)
+    }
+}
+
+actual fun PixelImage.toImageBitmap(): ImageBitmap = Image.makeFromEncoded(Png.encode(this)).toComposeImageBitmap()
+
+@Composable
+actual fun rememberPhotoPicker(onResult: (ByteArray?) -> Unit): () -> Unit = {
+    IosGraph.host().pickPhoto(callback { data -> onResult(data?.toByteArray()) })
+}
+
+private fun callback(block: (NSData?) -> Unit) = object : DataCallback {
+    override fun onResult(data: NSData?) = block(data)
+}
+
+@OptIn(ExperimentalForeignApi::class)
+fun ByteArray.toNSData(): NSData = if (isEmpty()) NSData() else usePinned {
+    NSData.create(bytes = it.addressOf(0), length = size.toULong())
+}
+
+@OptIn(ExperimentalForeignApi::class)
+fun NSData.toByteArray(): ByteArray {
+    val size = length.toInt()
+    val out = ByteArray(size)
+    if (size > 0) out.usePinned { memcpy(it.addressOf(0), bytes, length) }
+    return out
+}

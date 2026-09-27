@@ -1,0 +1,479 @@
+<title>PawPixel Pet Maker</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;800&family=Silkscreen:wght@400;700&display=swap">
+<style>
+:root {
+  --paper: #FFF4E0;
+  --sand: #FFE3B8;
+  --ink: #2B2135;
+  --ink-soft: #6B5C74;
+  --berry: #E8374E;
+  --berry-ink: #FFFFFF;
+  --leaf: #3A9D6A;
+  --card: #FFFBF3;
+  --line: #2B2135;
+  --stage-sky: #FFF4E0;
+  --focus: #3E8ED0;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --paper: #1A1423; --sand: #3A2E4A; --ink: #FFF4E0; --ink-soft: #CDBFD6;
+    --berry: #FF6B7F; --berry-ink: #1A1423; --leaf: #6FD39C; --card: #241C31; --line: #0E0A14; --stage-sky: #FFF4E0;
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --paper: #1A1423; --sand: #3A2E4A; --ink: #FFF4E0; --ink-soft: #CDBFD6;
+  --berry: #FF6B7F; --berry-ink: #1A1423; --leaf: #6FD39C; --card: #241C31; --line: #0E0A14; --stage-sky: #FFF4E0;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body {
+  background: var(--paper);
+  color: var(--ink);
+  font: 16px/1.55 "Nunito", system-ui, -apple-system, "Segoe UI", sans-serif;
+  padding-inline: 16px;
+  padding-block: 20px 48px;
+}
+.wrap { max-width: 560px; margin: 0 auto; display: flex; flex-direction: column; gap: 22px; }
+.pix { font-family: "Silkscreen", "Courier New", monospace; letter-spacing: .02em; }
+header { display: flex; flex-direction: column; gap: 6px; }
+.brand { display: flex; align-items: center; gap: 10px; font-size: 26px; font-weight: 700; line-height: 1; }
+.brand canvas { width: 28px; height: 28px; image-rendering: pixelated; }
+h1 { font-size: clamp(22px, 5.4vw, 30px); line-height: 1.2; margin: 0; text-wrap: balance; font-weight: 800; }
+h2 { font-size: 20px; margin: 0; text-wrap: balance; font-weight: 800; }
+p { margin: 0; }
+.muted { color: var(--ink-soft); }
+.small { font-size: 14px; }
+
+.card {
+  background: var(--card);
+  border: 3px solid var(--line);
+  border-radius: 6px;
+  box-shadow: 4px 4px 0 var(--line);
+  padding: 16px;
+  display: flex; flex-direction: column; gap: 14px;
+}
+.stage-box { background: var(--stage-sky); border-radius: 3px; overflow: hidden; display: flex; justify-content: center; cursor: pointer; touch-action: manipulation; }
+.stage-box canvas { image-rendering: pixelated; display: block; max-width: 100%; }
+.caption { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; align-items: baseline; }
+.caption .name { font-weight: 800; font-size: 18px; }
+
+.row { display: flex; flex-wrap: wrap; gap: 8px; }
+.btn {
+  font: 700 14px/1 "Silkscreen", "Courier New", monospace;
+  letter-spacing: .03em;
+  color: var(--ink);
+  background: var(--sand);
+  border: 3px solid var(--line);
+  border-radius: 4px;
+  box-shadow: 3px 3px 0 var(--line);
+  padding: 11px 14px 10px;
+  cursor: pointer;
+  transition: transform .06s, box-shadow .06s;
+}
+.btn:active { transform: translate(3px, 3px); box-shadow: 0 0 0 var(--line); }
+.btn:focus-visible, .chip:focus-visible, .upload:focus-within { outline: 3px solid var(--focus); outline-offset: 2px; }
+.btn.primary { background: var(--berry); color: var(--berry-ink); }
+.btn.good { background: var(--leaf); color: #fff; }
+.btn[disabled] { opacity: .55; cursor: default; }
+.chip {
+  font: 600 14px/1 "Nunito", system-ui, sans-serif;
+  color: var(--ink); background: transparent;
+  border: 2px solid var(--line); border-radius: 999px;
+  padding: 7px 12px; cursor: pointer;
+}
+.chip[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
+.label { font: 700 12px/1 "Silkscreen", monospace; letter-spacing: .08em; text-transform: uppercase; color: var(--ink-soft); }
+.group { display: flex; flex-direction: column; gap: 8px; }
+
+.upload {
+  display: flex; flex-direction: column; align-items: center; gap: 8px; text-align: center;
+  border: 3px dashed var(--line); border-radius: 6px; padding: 22px 14px; cursor: pointer; background: var(--paper);
+}
+.upload input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+.upload .big { font: 700 18px/1.2 "Silkscreen", monospace; }
+ul.tips { margin: 0; padding-left: 18px; display: grid; gap: 2px; }
+
+.status { display: flex; align-items: center; gap: 10px; font-weight: 600; }
+.bar { flex: 1; height: 10px; border: 2px solid var(--line); border-radius: 2px; background: var(--paper); overflow: hidden; }
+.bar > i { display: block; height: 100%; width: 0; background: var(--leaf); transition: width .2s; }
+
+.eyes { display: grid; grid-template-columns: minmax(0, 200px) 1fr; gap: 14px; align-items: start; }
+.eyes canvas { width: 100%; max-width: 200px; image-rendering: pixelated; border: 2px solid var(--line); border-radius: 3px; background: #FFE3B8; cursor: crosshair; touch-action: manipulation; }
+@media (max-width: 420px) { .eyes { grid-template-columns: 1fr; } }
+
+.vote { display: flex; flex-direction: column; gap: 10px; }
+.tally { font: 700 14px/1.3 "Silkscreen", monospace; font-variant-numeric: tabular-nums; }
+.linkish { background: none; border: 0; padding: 0; color: var(--ink-soft); text-decoration: underline; cursor: pointer; font: inherit; font-size: 13px; }
+.result img { display: block; width: 100%; image-rendering: pixelated; border: 2px solid var(--line); border-radius: 3px; }
+.note { border-left: 4px solid var(--leaf); padding: 6px 10px; background: var(--paper); border-radius: 2px; }
+footer { text-align: center; }
+@media (prefers-reduced-motion: reduce) { .btn { transition: none; } }
+</style>
+
+<div class="wrap">
+  <header>
+    <div class="brand pix"><canvas id="logo" width="16" height="16" aria-hidden="true"></canvas>PawPixel</div>
+    <h1>Your real pet, as a pixel pet that lives on your phone</h1>
+    <p class="muted">Upload a photo and watch them come alive. Tap them for pets. Everything runs on your device: your photo is never uploaded.</p>
+  </header>
+
+  <section class="card" aria-label="Live pixel pet">
+    <div class="stage-box" id="stageBox" title="Tap to pet">
+      <canvas id="stage" aria-label="Animated pixel pet. Tap to give pets." role="img"></canvas>
+    </div>
+    <div class="caption">
+      <span class="name" id="petName">Chelsea (sample)</span>
+      <span class="muted small" id="moodCaption">Tap to give pets</span>
+    </div>
+    <div class="group">
+      <span class="label">Do a care task</span>
+      <div class="row">
+        <button class="btn" data-care="FEED" type="button">Feed</button>
+        <button class="btn" data-care="WALK" type="button">Walk</button>
+        <button class="btn" data-care="GROOM" type="button">Groom</button>
+        <button class="btn" id="petBtn" type="button">Pet</button>
+      </div>
+    </div>
+    <div class="group">
+      <span class="label">Mood (in the app, this follows real care)</span>
+      <div class="row" id="moods"></div>
+    </div>
+  </section>
+
+  <section class="card" aria-labelledby="makeTitle">
+    <h2 id="makeTitle">Make yours</h2>
+    <label class="upload" for="photo">
+      <input id="photo" type="file" accept="image/*">
+      <span class="big">Choose a photo</span>
+      <span class="muted small">JPG, PNG or HEIC from your gallery</span>
+    </label>
+    <ul class="tips small">
+      <li>Whole pet in the frame, facing the camera</li>
+      <li>Good light; one pet per photo</li>
+      <li>The first photo downloads the pet detector (about 17 MB)</li>
+    </ul>
+    <div class="status" id="status" hidden><span id="statusText">Working</span><div class="bar"><i id="barFill"></i></div></div>
+    <p class="note small" id="fallbackNote" hidden>The pet detector couldn't run in this browser, so PawPixel used its simple cut-out. It works best on plain backgrounds that contrast with your pet.</p>
+
+    <div id="tweak" class="group" hidden>
+      <span class="label">Size</span>
+      <div class="row" id="sizes"></div>
+      <span class="label">Colours</span>
+      <div class="row" id="colors"></div>
+      <label class="group" for="nameInput">
+        <span class="label">Pet's name</span>
+        <input id="nameInput" type="text" maxlength="24" placeholder="e.g. Mochi" style="font:inherit;padding:10px 12px;border:2px solid var(--line);border-radius:4px;background:var(--paper);color:var(--ink);">
+      </label>
+    </div>
+  </section>
+
+  <section class="card" id="eyesCard" aria-labelledby="eyesTitle">
+    <h2 id="eyesTitle">Help them blink</h2>
+    <div class="eyes">
+      <canvas id="eyeCanvas" aria-label="Your pet's sprite. Tap each eye."></canvas>
+      <div class="group">
+        <p id="eyeHelp">Tap each of your pet's eyes on the sprite. They'll blink, and close their eyes when they sleep.</p>
+        <div class="row"><button class="btn" id="clearEyes" type="button">Clear eyes</button></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="card vote" aria-labelledby="voteTitle">
+    <h2 id="voteTitle">Is that your pet?</h2>
+    <p class="muted small">Honest answers help decide what gets built. Hand your phone to other owners and tally their answers here.</p>
+    <div class="row">
+      <button class="btn good" id="voteYes" type="button">Yes, that's them</button>
+      <button class="btn" id="voteNo" type="button">Not really</button>
+    </div>
+    <p class="tally" id="tally"></p>
+    <div class="row" id="resetRow"><button class="linkish" id="resetTally" type="button">Reset tally</button><span id="resetConfirm" hidden> Sure? <button class="linkish" id="resetYes" type="button">Yes, reset</button> · <button class="linkish" id="resetNo" type="button">Keep</button></span></div>
+  </section>
+
+  <section class="card" aria-labelledby="shareTitle">
+    <h2 id="shareTitle">Share them</h2>
+    <div class="row">
+      <button class="btn primary" id="makeGif" type="button">Make a GIF</button>
+      <button class="btn" id="makeCard" type="button">Before/after card</button>
+    </div>
+    <div class="result group" id="result" hidden>
+      <img id="resultImg" alt="">
+      <p class="small muted">Long-press the image to save or share it (on a computer, right-click and save).</p>
+    </div>
+  </section>
+
+  <section class="card" id="waitlist" aria-labelledby="waitTitle" hidden>
+    <h2 id="waitTitle">Get PawPixel when it launches</h2>
+    <p>The app puts your pixel pet on your home screen and reminds you to feed, walk and give medicine. Your pet's mood follows the real care you give.</p>
+    <div class="row"><a class="btn primary" id="waitLink" href="#" target="_blank" rel="noopener" style="text-decoration:none">Join the waitlist</a></div>
+  </section>
+
+  <footer class="muted small">Made in Naga City &middot; PawPixel &middot; Photos stay on your device</footer>
+</div>
+
+<script>/*PAWCORE*/</script>
+<script>
+"use strict";
+// ---- Settings you can change ----
+const WAITLIST_URL = "";            // e.g. your Google Form link; the waitlist card shows when this is set
+const ORT_VERSION = "1.20.1";
+// ---------------------------------
+
+const P = pawcore.com.pawpixel.web.PawWebPet;
+const SAMPLE_JPEG = "data:image/jpeg;base64,/*SAMPLE_JPEG*/";
+const SAMPLE_MASK = "/*SAMPLE_MASK*/";   // 80x80 8-bit
+const SAMPLE_EYES = [[0.42, 0.42], [0.74, 0.44]];
+
+const $ = (id) => document.getElementById(id);
+const MOODS = [["happy","Happy"],["content","Content"],["hungry","Hungry"],["restless","Restless"],["meds","Needs meds"],["sleepy","Sleepy"],["sad","Sad"]];
+const CAPTIONS = { happy: "is happy!", content: "is doing fine", hungry: "is hungry", restless: "wants a walk", meds: "needs medicine", sleepy: "is sleeping", sad: "misses you" };
+
+let pet = null, src = null, eyes = [], mood = "happy", size = 48, colors = 12, petName = "Chelsea", isSample = true;
+let startT = performance.now();
+
+// ---------- tiny logo ----------
+(function logo() {
+  const c = $("logo").getContext("2d"), g = [
+    "................","..##........##..",".####......####.",".####......####.","..##..####..##..","......####......",
+    "....########....","...##########...","...##########...","...##########...","....########....","................"];
+  c.fillStyle = "#E8374E"; g.forEach((r, y) => [...r].forEach((ch, x) => { if (ch === "#") c.fillRect(x, y + 2, 1, 1); }));
+})();
+
+// ---------- chips ----------
+function chips(el, items, current, onPick) {
+  el.innerHTML = "";
+  for (const [v, label] of items) {
+    const b = document.createElement("button");
+    b.type = "button"; b.className = "chip"; b.textContent = label;
+    b.setAttribute("aria-pressed", String(v === current));
+    b.onclick = () => { [...el.children].forEach((c) => c.setAttribute("aria-pressed", "false")); b.setAttribute("aria-pressed", "true"); onPick(v); };
+    el.appendChild(b);
+  }
+}
+chips($("moods"), MOODS, mood, (m) => { mood = m; pet && pet.setMood(m); updateCaption(); });
+chips($("sizes"), [[32,"Small"],[40,"Medium"],[48,"Large"],[64,"Detailed"]], size, (v) => { size = v; rebuild(); });
+chips($("colors"), [[8,"8"],[12,"12"],[16,"16"]], colors, (v) => { colors = v; rebuild(); });
+
+function updateCaption() {
+  $("petName").textContent = isSample ? petName + " (sample)" : (petName || "Your pet");
+  $("moodCaption").textContent = (petName || "Your pet") + " " + CAPTIONS[mood];
+}
+
+// ---------- building a pet ----------
+function makePet() {
+  const p = new P(src.argb, src.w, src.h, size, colors, src.mask, src.mw, src.mh);
+  p.setMood(mood);
+  for (const [x, y] of eyes) p.tapEye(x, y);
+  return p;
+}
+function rebuild() { if (!src) return; pet = makePet(); fitStage(); drawEyes(); }
+
+function toArgb(imageData) {
+  const d = imageData.data, n = d.length / 4, out = new Int32Array(n);
+  for (let i = 0; i < n; i++) out[i] = (255 << 24) | (d[i*4] << 16) | (d[i*4+1] << 8) | d[i*4+2];
+  return out;
+}
+
+async function loadImage(blobOrUrl) {
+  const img = new Image();
+  img.decoding = "async";
+  const url = typeof blobOrUrl === "string" ? blobOrUrl : URL.createObjectURL(blobOrUrl);
+  img.src = url;
+  await img.decode();
+  return img;
+}
+function drawScaled(img, maxSide) {
+  const s = Math.min(1, maxSide / Math.max(img.naturalWidth, img.naturalHeight));
+  const w = Math.max(1, Math.round(img.naturalWidth * s)), h = Math.max(1, Math.round(img.naturalHeight * s));
+  const c = document.createElement("canvas"); c.width = w; c.height = h;
+  const x = c.getContext("2d", { willReadFrequently: true }); x.drawImage(img, 0, 0, w, h);
+  return { canvas: c, w, h, data: x.getImageData(0, 0, w, h) };
+}
+
+// ---------- the pet detector (U2-Net-p, runs in the browser) ----------
+let sessionPromise = null;
+function loadScript(url) {
+  return new Promise((res, rej) => { const s = document.createElement("script"); s.src = url; s.onload = res; s.onerror = () => rej(new Error("script")); document.head.appendChild(s); });
+}
+async function fetchWithProgress(url, onProgress) {
+  const r = await fetch(url);
+  if (!r.ok) throw new Error("fetch " + r.status);
+  const total = Number(r.headers.get("content-length")) || 0;
+  if (!r.body || !total) return new Uint8Array(await r.arrayBuffer());
+  const reader = r.body.getReader(), parts = []; let got = 0;
+  for (;;) { const { done, value } = await reader.read(); if (done) break; parts.push(value); got += value.length; onProgress(got / total); }
+  const out = new Uint8Array(got); let o = 0; for (const p of parts) { out.set(p, o); o += p.length; }
+  return out;
+}
+function getSession(onProgress) {
+  if (!sessionPromise) sessionPromise = (async () => {
+    await loadScript(`https://cdn.jsdelivr.net/npm/onnxruntime-web@${ORT_VERSION}/dist/ort.wasm.min.js`);
+    ort.env.wasm.numThreads = 1;
+    ort.env.wasm.wasmPaths = {
+      mjs: `https://cdn.jsdelivr.net/npm/onnxruntime-web@${ORT_VERSION}/dist/ort-wasm-simd-threaded.mjs`,
+      wasm: new URL("ort-wasm-simd-threaded.wasm", location.href).href,
+    };
+    // The model ships as base64 text (artifacts serve text, not .onnx files).
+    const b64 = new TextDecoder().decode(await fetchWithProgress("u2netp.onnx.b64.txt", (f) => onProgress(0.1 + f * 0.75)));
+    const bin = atob(b64.trim()), model = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) model[i] = bin.charCodeAt(i);
+    return ort.InferenceSession.create(model, { executionProviders: ["wasm"] });
+  })();
+  sessionPromise.catch(() => { sessionPromise = null; });
+  return sessionPromise;
+}
+/*U2JS*/
+async function detectPet(img, onProgress) {
+  const session = await getSession(onProgress);
+  const c = document.createElement("canvas"); c.width = 320; c.height = 320;
+  const x = c.getContext("2d", { willReadFrequently: true }); x.drawImage(img, 0, 0, 320, 320);
+  const input = new ort.Tensor("float32", u2Input(x.getImageData(0, 0, 320, 320).data), [1, 3, 320, 320]);
+  onProgress(0.92);
+  const out = await session.run({ [session.inputNames[0]]: input });
+  return u2Mask(out[session.outputNames[0]].data);
+}
+
+// ---------- upload flow ----------
+function setStatus(text, frac) {
+  $("status").hidden = text == null;
+  if (text != null) { $("statusText").textContent = text; $("barFill").style.width = Math.round((frac || 0) * 100) + "%"; }
+}
+$("photo").addEventListener("change", async (e) => {
+  const file = e.target.files && e.target.files[0];
+  if (!file) return;
+  $("fallbackNote").hidden = true;
+  try {
+    setStatus("Opening photo", 0.05);
+    const img = await loadImage(file);
+    const scaled = drawScaled(img, 768);
+    let mask = null;
+    try {
+      setStatus("Finding your pet", 0.1);
+      mask = await detectPet(scaled.canvas, (f) => setStatus(f < 0.9 ? "Loading pet detector" : "Finding your pet", f));
+    } catch (err) {
+      $("fallbackNote").hidden = false;
+    }
+    setStatus("Pixelating", 0.97);
+    await new Promise((r) => setTimeout(r, 20));
+    src = { argb: toArgb(scaled.data), w: scaled.w, h: scaled.h, mask, mw: mask ? 320 : 0, mh: mask ? 320 : 0 };
+    eyes = []; isSample = false; petName = $("nameInput").value.trim(); mood = "happy";
+    chips($("moods"), MOODS, mood, (m) => { mood = m; pet && pet.setMood(m); updateCaption(); });
+    rebuild(); updateCaption();
+    $("tweak").hidden = false; $("result").hidden = true;
+    $("eyeHelp").textContent = "Tap each of your pet's eyes on the sprite. They'll blink, and close their eyes when they sleep.";
+    setStatus(null);
+    $("stageBox").scrollIntoView({ behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth", block: "center" });
+    pet.pet();
+  } catch (err) {
+    setStatus("Couldn't open that photo. Try a JPG or PNG.", 0);
+  }
+  e.target.value = "";
+});
+$("nameInput").addEventListener("input", (e) => { petName = e.target.value.trim(); updateCaption(); });
+
+// ---------- stage rendering ----------
+const stage = $("stage"), sctx = stage.getContext("2d");
+let frame = null;
+function fitStage() {
+  stage.width = pet.stageWidth; stage.height = pet.stageHeight;
+  frame = sctx.createImageData(stage.width, stage.height);
+  // Whole-number scale in physical pixels keeps every sprite pixel the same size on screen.
+  const dpr = window.devicePixelRatio || 1;
+  const boxW = $("stageBox").clientWidth || 360;
+  const scale = Math.max(1, Math.floor(boxW * dpr / stage.width)) / dpr;
+  stage.style.width = stage.width * scale + "px";
+  stage.style.height = stage.height * scale + "px";
+}
+function paint(argb, img) {
+  const d = new Uint32Array(img.data.buffer);
+  for (let i = 0; i < argb.length; i++) { const p = argb[i]; d[i] = (p & 0xFF00FF00) | ((p >> 16) & 0xFF) | ((p & 0xFF) << 16); }
+}
+function loop(now) {
+  if (pet && frame) { paint(pet.renderStage(now - startT), frame); sctx.putImageData(frame, 0, 0); }
+  requestAnimationFrame(loop);
+}
+addEventListener("resize", () => pet && fitStage());
+$("stageBox").addEventListener("click", (e) => {
+  if (!pet) return;
+  const r = stage.getBoundingClientRect();
+  const x = (e.clientX - r.left) / r.width * stage.width, y = (e.clientY - r.top) / r.height * stage.height;
+  if (pet.hitTest(x, y)) pet.pet();
+});
+$("petBtn").onclick = () => pet && pet.pet();
+document.querySelectorAll("[data-care]").forEach((b) => b.onclick = () => pet && pet.care(b.dataset.care));
+
+// ---------- eyes ----------
+const eyeCanvas = $("eyeCanvas"), ectx = eyeCanvas.getContext("2d");
+function drawEyes() {
+  if (!pet) return;
+  const w = pet.spriteWidth, h = pet.spriteHeight, k = 8;
+  eyeCanvas.width = w * k; eyeCanvas.height = h * k;
+  const tmp = document.createElement("canvas"); tmp.width = w; tmp.height = h;
+  const t = tmp.getContext("2d"), img = t.createImageData(w, h); paint(pet.spritePixels(), img); t.putImageData(img, 0, 0);
+  ectx.imageSmoothingEnabled = false; ectx.clearRect(0, 0, eyeCanvas.width, eyeCanvas.height); ectx.drawImage(tmp, 0, 0, w * k, h * k);
+  for (const [fx, fy] of eyes) {
+    ectx.lineWidth = 5; ectx.strokeStyle = "#FFFFFF"; ectx.beginPath(); ectx.arc(fx * w * k, fy * h * k, 2.4 * k, 0, 7); ectx.stroke();
+    ectx.lineWidth = 3; ectx.strokeStyle = "#E8374E"; ectx.beginPath(); ectx.arc(fx * w * k, fy * h * k, 2.4 * k, 0, 7); ectx.stroke();
+  }
+}
+eyeCanvas.addEventListener("click", (e) => {
+  if (!pet) return;
+  const r = eyeCanvas.getBoundingClientRect();
+  const fx = Math.min(0.999, Math.max(0, (e.clientX - r.left) / r.width)), fy = Math.min(0.999, Math.max(0, (e.clientY - r.top) / r.height));
+  eyes = eyes.length >= 2 ? [[fx, fy]] : eyes.concat([[fx, fy]]);
+  pet.tapEye(fx, fy); drawEyes();
+  $("eyeHelp").textContent = eyes.length === 1 ? "Now the other eye (skip it if only one shows)." : "Eyes marked. Watch them blink!";
+});
+$("clearEyes").onclick = () => { eyes = []; pet && pet.clearEyes(); drawEyes(); $("eyeHelp").textContent = "Tap each of your pet's eyes on the sprite."; };
+
+// ---------- likeness tally (kept on this device) ----------
+function readTally() { try { return JSON.parse(localStorage.getItem("pp.tally") || "") || { yes: 0, no: 0 }; } catch { return { yes: 0, no: 0 }; } }
+function writeTally(t) { try { localStorage.setItem("pp.tally", JSON.stringify(t)); } catch {} }
+let tally = readTally();
+function showTally() {
+  const n = tally.yes + tally.no;
+  $("tally").textContent = n === 0 ? "No answers yet on this device." : `This device: ${tally.yes} of ${n} said yes (${Math.round(tally.yes / n * 100)}%)`;
+  $("resetRow").hidden = n === 0;
+}
+function vote(yes) { tally = { yes: tally.yes + (yes ? 1 : 0), no: tally.no + (yes ? 0 : 1) }; writeTally(tally); showTally(); if (yes && pet) pet.pet(); }
+$("voteYes").onclick = () => vote(true);
+$("voteNo").onclick = () => vote(false);
+$("resetTally").onclick = () => { $("resetConfirm").hidden = false; };
+$("resetNo").onclick = () => { $("resetConfirm").hidden = true; };
+$("resetYes").onclick = () => { tally = { yes: 0, no: 0 }; writeTally(tally); $("resetConfirm").hidden = true; showTally(); };
+showTally();
+
+// ---------- sharing ----------
+function showResult(bytes, type, alt) {
+  const blob = new Blob([new Uint8Array(bytes.buffer, bytes.byteOffset, bytes.length)], { type });
+  const img = $("resultImg"); if (img.dataset.url) URL.revokeObjectURL(img.dataset.url);
+  img.dataset.url = URL.createObjectURL(blob); img.src = img.dataset.url; img.alt = alt;
+  $("result").hidden = false;
+}
+$("makeGif").onclick = () => {
+  if (!pet) return;
+  const b = $("makeGif"); b.disabled = true; b.textContent = "Making…";
+  setTimeout(() => {
+    try { showResult(pet.gif(petName || "My pet"), "image/gif", "Animated GIF of your pixel pet"); }
+    finally { b.disabled = false; b.textContent = "Make a GIF"; }
+  }, 30);
+};
+$("makeCard").onclick = () => { if (pet) showResult(pet.revealPng(petName || "My pet"), "image/png", "Before and after: your photo and your pixel pet"); };
+
+if (WAITLIST_URL) { $("waitlist").hidden = false; $("waitLink").href = WAITLIST_URL; }
+
+// ---------- start with the sample pet ----------
+(async function start() {
+  const img = await loadImage(SAMPLE_JPEG);
+  const scaled = drawScaled(img, 768);
+  const raw = atob(SAMPLE_MASK), mask = new Float32Array(raw.length);
+  for (let i = 0; i < raw.length; i++) mask[i] = raw.charCodeAt(i) / 255;
+  src = { argb: toArgb(scaled.data), w: scaled.w, h: scaled.h, mask, mw: 80, mh: 80 };
+  eyes = SAMPLE_EYES.slice();
+  rebuild(); updateCaption();
+  requestAnimationFrame(loop);
+})();
+</script>

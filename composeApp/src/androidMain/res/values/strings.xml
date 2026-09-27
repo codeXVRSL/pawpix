@@ -1,0 +1,5 @@
+<resources>
+    <string name="app_name">PawPixel</string>
+    <string name="widget_description">Your pixel pet and how they feel right now</string>
+    <string name="channel_care">Care reminders</string>
+</resources>

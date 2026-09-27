@@ -1,0 +1,149 @@
+package com.pawpixel.core
+
+import kotlin.math.PI
+import kotlin.math.abs
+import kotlin.math.atan2
+import kotlin.math.cos
+import kotlin.math.pow
+import kotlin.math.roundToInt
+import kotlin.math.sin
+
+const val MINUTE_MS = 60_000L
+const val HOUR_MS = 60 * MINUTE_MS
+const val DAY_MS = 24 * HOUR_MS
+const val MINUTES_PER_DAY = 1440
+
+/**
+ * Converts between epoch millis and the owner's local calendar. The offset function lets the
+ * platform supply DST-aware offsets; tests and the Philippines (no DST) can use [fixed].
+ */
+class LocalClock(private val offsetAt: (Long) -> Long) {
+    fun dayIndex(ms: Long): Long = (ms + offsetAt(ms)).floorDiv(DAY_MS)
+    fun minuteOfDay(ms: Long): Int = ((ms + offsetAt(ms)).mod(DAY_MS) / MINUTE_MS).toInt()
+    fun startOfDay(day: Long): Long {
+        val guess = day * DAY_MS
+        return guess - offsetAt(guess)
+    }
+    fun at(day: Long, minute: Int): Long = startOfDay(day) + minute * MINUTE_MS
+
+    companion object {
+        fun fixed(offsetMs: Long) = LocalClock { offsetMs }
+        /** Philippine Standard Time, UTC+8, no daylight saving. */
+        val MANILA = fixed(8 * HOUR_MS)
+    }
+}
+
+/** Where a task stands right now within its current cycle (a day, or N days for every-N-days tasks). */
+data class TaskStatus(
+    val task: CareTask,
+    val cycleStartDay: Long,
+    /** Planned times in the current cycle (epoch ms). */
+    val slotTimes: List<Long>,
+    /** Planned times already passed. */
+    val passed: Int,
+    /** Completions in this cycle, capped at the number of slots. */
+    val done: Int,
+    /** Planned time of the first slot that has passed without being done, or null if nothing is overdue. */
+    val overdueSinceMs: Long?,
+    /** Next planned time that is still open and in the future (may be in a later cycle). */
+    val nextDueMs: Long?,
+    val lastDoneMs: Long?,
+) {
+    val isOverdue: Boolean get() = overdueSinceMs != null
+    val allDoneThisCycle: Boolean get() = done >= slotTimes.size
+}
+
+object CareEngine {
+
+    fun cycleStart(task: CareTask, day: Long): Long {
+        val n = task.everyDays.coerceAtLeast(1).toLong()
+        return task.anchorDay + (day - task.anchorDay).floorDiv(n) * n
+    }
+
+    fun status(
+        task: CareTask,
+        completions: List<Completion>,
+        nowMs: Long,
+        clock: LocalClock,
+        slots: List<Int> = task.slots,
+    ): TaskStatus {
+        val n = task.everyDays.coerceAtLeast(1)
+        val today = clock.dayIndex(nowMs)
+        val cycleStart = cycleStart(task, today)
+        val cycleEnd = cycleStart + n
+        val slotTimes = slots.sorted().map { clock.at(cycleStart, it) }.filter { it >= task.createdAtMs }
+        val passed = slotTimes.count { it <= nowMs }
+        val mine = completions.filter { it.taskId == task.id }
+        val doneCount = mine.count { it.localDay in cycleStart until cycleEnd && it.atMs <= nowMs }
+        val done = doneCount.coerceAtMost(slotTimes.size)
+        val overdueSince = if (done < passed) slotTimes[done] else null
+
+        var nextDue: Long? = null
+        for (i in done until slotTimes.size) {
+            if (slotTimes[i] > nowMs) { nextDue = slotTimes[i]; break }
+        }
+        if (nextDue == null && slots.isNotEmpty()) {
+            nextDue = clock.at(cycleEnd, slots.min())
+        }
+        val lastDone = mine.filter { it.atMs <= nowMs }.maxOfOrNull { it.atMs }
+        return TaskStatus(task, cycleStart, slotTimes, passed, done, overdueSince, nextDue, lastDone)
+    }
+}
+
+/**
+ * Learns when the owner actually does each task and nudges reminder times toward it.
+ *
+ * Each completion is matched to its nearest planned slot. Per slot we take a recency-weighted
+ * circular mean of the owner's actual times (half-life 7 days, last 28 days). Once a slot has at
+ * least [MIN_SAMPLES] samples, the reminder moves to that mean, capped at ±[MAX_SHIFT_MIN] minutes
+ * from what the owner originally planned and rounded to 5 minutes.
+ */
+object AdaptiveTiming {
+    const val MIN_SAMPLES = 3
+    const val MAX_SHIFT_MIN = 120
+    const val WINDOW_DAYS = 28
+    const val HALF_LIFE_DAYS = 7.0
+
+    fun effectiveSlots(task: CareTask, completions: List<Completion>, nowMs: Long, clock: LocalClock): List<Int> {
+        val base = task.slots.sorted()
+        if (!task.adaptive || base.isEmpty()) return base
+        val today = clock.dayIndex(nowMs)
+        val recent = completions.filter {
+            it.taskId == task.id && it.atMs <= nowMs && today - it.localDay in 0 until WINDOW_DAYS
+        }
+        if (recent.isEmpty()) return base
+
+        val sumSin = DoubleArray(base.size)
+        val sumCos = DoubleArray(base.size)
+        val count = IntArray(base.size)
+        for (c in recent) {
+            val idx = base.indices.minBy { circularDistance(base[it], c.localMinute) }
+            val w = 0.5.pow((today - c.localDay) / HALF_LIFE_DAYS)
+            val angle = 2 * PI * c.localMinute / MINUTES_PER_DAY
+            sumSin[idx] += w * sin(angle)
+            sumCos[idx] += w * cos(angle)
+            count[idx]++
+        }
+        return base.indices.map { i ->
+            if (count[i] < MIN_SAMPLES) base[i] else {
+                var mean = atan2(sumSin[i], sumCos[i]) / (2 * PI) * MINUTES_PER_DAY
+                if (mean < 0) mean += MINUTES_PER_DAY
+                val shift = signedCircularDiff(base[i], mean.roundToInt()).coerceIn(-MAX_SHIFT_MIN, MAX_SHIFT_MIN)
+                val rounded = ((base[i] + shift) / 5.0).roundToInt() * 5
+                rounded.mod(MINUTES_PER_DAY)
+            }
+        }.sorted()
+    }
+
+    fun circularDistance(a: Int, b: Int): Int {
+        val d = abs(a - b) % MINUTES_PER_DAY
+        return minOf(d, MINUTES_PER_DAY - d)
+    }
+
+    /** Signed minutes to go from [from] to [to] the short way round the clock. */
+    fun signedCircularDiff(from: Int, to: Int): Int {
+        var d = (to - from).mod(MINUTES_PER_DAY)
+        if (d > MINUTES_PER_DAY / 2) d -= MINUTES_PER_DAY
+        return d
+    }
+}

@@ -1,0 +1,131 @@
+package com.pawpixel.core
+
+/**
+ * Core data model. Everything is plain data so it can be persisted with [StateCodec]
+ * (a tiny JSON codec with no dependencies) and read by the native widgets.
+ *
+ * Time is always epoch milliseconds (UTC). Anything "local" (time of day, calendar day)
+ * is derived with a timezone offset supplied by the platform — see [LocalClock].
+ */
+
+enum class Species(val label: String) { DOG("Dog"), CAT("Cat"), OTHER("Other") }
+
+enum class TaskKind(val label: String, val emoji: String, val verb: String) {
+    FEED("Feed", "🍖", "Fed"),
+    WATER("Fresh water", "💧", "Refilled water"),
+    WALK("Walk", "🦮", "Walked"),
+    PLAY("Play", "🎾", "Played"),
+    MEDS("Medicine", "💊", "Gave medicine"),
+    GROOM("Groom", "🪮", "Groomed"),
+    LITTER("Clean litter", "🧹", "Cleaned litter"),
+}
+
+data class Pet(
+    val id: String,
+    val name: String,
+    val species: Species,
+    val createdAtMs: Long,
+    /** Settings the sprite was generated with, so it can be regenerated the same way. */
+    val sprite: SpriteSettings = SpriteSettings(),
+    /** Bumped every time the sprite is regenerated, so caches/widgets reload. */
+    val spriteVersion: Int = 1,
+    /** Eye positions tapped by the owner, as fractions (0..1) of the sprite's width/height, for blinking. */
+    val eyes: List<Pair<Double, Double>> = emptyList(),
+)
+
+data class SpriteSettings(
+    /** Width/height of the pet sprite in pixels before outline and effects. */
+    val size: Int = 48,
+    /** Number of colours in the palette. */
+    val colors: Int = 12,
+    val outline: Boolean = true,
+    /** Colour boost applied before quantising; 1.0 = none. */
+    val vibrance: Double = 1.15,
+)
+
+data class CareTask(
+    val id: String,
+    val petId: String,
+    val kind: TaskKind,
+    val title: String,
+    /** Planned times of day in minutes after local midnight, sorted, 1..4 entries. */
+    val slots: List<Int>,
+    /** 1 = every day, 7 = weekly, etc. */
+    val everyDays: Int = 1,
+    /** Local day index (see [LocalClock.dayIndex]) the every-N-days cycle is anchored to. */
+    val anchorDay: Long = 0,
+    /** Let PawPixel shift reminder times toward when the owner actually does the task. */
+    val adaptive: Boolean = true,
+    /** Ask the OS for an exact alarm (Android needs a user permission for this). Useful for meds. */
+    val exactAlarm: Boolean = false,
+    val remindersOn: Boolean = true,
+    /** Slots planned before this moment never count as missed (a pet added at 9am isn't "hungry" for 7am). */
+    val createdAtMs: Long = 0,
+)
+
+data class Completion(
+    val taskId: String,
+    val atMs: Long,
+    /** Minute of local day when it happened (0..1439), stored so learning ignores later timezone changes. */
+    val localMinute: Int,
+    /** Local day index when it happened. */
+    val localDay: Long,
+)
+
+data class Settings(
+    val remindersEnabled: Boolean = true,
+    val pro: Boolean = false,
+    /** Local minute to start "sleepy" night mode. */
+    val nightStart: Int = 22 * 60,
+    /** Local minute to end night mode. */
+    val nightEnd: Int = 6 * 60,
+)
+
+data class AppState(
+    val pets: List<Pet> = emptyList(),
+    val tasks: List<CareTask> = emptyList(),
+    val completions: List<Completion> = emptyList(),
+    val settings: Settings = Settings(),
+) {
+    fun pet(id: String): Pet? = pets.firstOrNull { it.id == id }
+    fun task(id: String): CareTask? = tasks.firstOrNull { it.id == id }
+    fun tasksFor(petId: String): List<CareTask> = tasks.filter { it.petId == petId }
+    fun completionsFor(taskId: String): List<Completion> = completions.filter { it.taskId == taskId }
+
+    companion object {
+        const val SCHEMA_VERSION = 1
+        /** Completions kept per task; enough for ~5 weeks of 4x/day learning. */
+        const val MAX_COMPLETIONS_PER_TASK = 140
+        const val FREE_PET_LIMIT = 1
+    }
+}
+
+/** Suggested defaults when a user adds a task, per kind and species. */
+object TaskDefaults {
+    fun slotsFor(kind: TaskKind, species: Species): List<Int> = when (kind) {
+        TaskKind.FEED -> if (species == Species.CAT) listOf(7 * 60, 18 * 60) else listOf(7 * 60, 17 * 60 + 30)
+        TaskKind.WATER -> listOf(8 * 60)
+        TaskKind.WALK -> listOf(6 * 60 + 30, 17 * 60)
+        TaskKind.PLAY -> listOf(19 * 60)
+        TaskKind.MEDS -> listOf(8 * 60)
+        TaskKind.GROOM -> listOf(10 * 60)
+        TaskKind.LITTER -> listOf(9 * 60)
+    }
+
+    fun everyDaysFor(kind: TaskKind): Int = when (kind) {
+        TaskKind.GROOM -> 7
+        else -> 1
+    }
+
+    fun kindsFor(species: Species): List<TaskKind> = when (species) {
+        Species.DOG -> listOf(TaskKind.FEED, TaskKind.WALK, TaskKind.WATER)
+        Species.CAT -> listOf(TaskKind.FEED, TaskKind.WATER, TaskKind.LITTER)
+        Species.OTHER -> listOf(TaskKind.FEED, TaskKind.WATER)
+    }
+}
+
+object Ids {
+    private const val ALPHABET = "abcdefghijklmnopqrstuvwxyz0123456789"
+    fun newId(random: kotlin.random.Random = kotlin.random.Random.Default, length: Int = 12): String =
+        buildString { repeat(length) { append(ALPHABET[random.nextInt(ALPHABET.length)]) } }
+}

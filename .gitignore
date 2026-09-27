@@ -1,0 +1,14 @@
+.gradle/
+build/
+local.properties
+.idea/
+*.iml
+.DS_Store
+.kotlin/
+captures/
+iosApp/*.xcodeproj
+iosApp/build/
+xcuserdata/
+web/dist/
+web/u2netp.onnx
+web/ort-wasm-simd-threaded.wasm
