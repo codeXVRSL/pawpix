@@ -43,7 +43,7 @@ import kotlinx.coroutines.withContext
 @Composable
 fun PetScreen(app: AppScope, state: AppState, pet: Pet) {
     val reading = MoodEngine.read(state, pet.id, app.now, app.repo.clock)
-    val sprite = remember(pet.id, pet.spriteVersion) { app.repo.sprite(pet.id) }
+    val art = remember(pet.id, pet.spriteVersion, pet.species) { app.repo.art(pet) }
     val statuses = statusesFor(app, state, pet.id)
     var confirmDelete by remember { mutableStateOf(false) }
     var renaming by remember { mutableStateOf(false) }
@@ -63,12 +63,12 @@ fun PetScreen(app: AppScope, state: AppState, pet: Pet) {
         }
         PixelCard(Modifier.fillMaxWidth()) {
             Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
-                LivePet(sprite, pet.eyes, reading.mood, seed = pet.id.hashCode(), modifier = Modifier.fillMaxWidth(), reaction = reaction)
+                LivePet(art, pet.eyes, reading.mood, seed = pet.id.hashCode(), modifier = Modifier.fillMaxWidth(), reaction = reaction)
                 Text(pet.name, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Black)
                 Text(reading.caption, textAlign = TextAlign.Center)
                 Text(hearts(reading.score), style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.primary)
                 Text(
-                    if (pet.eyes.isEmpty()) "Tap ${pet.name} to give pets · mark the eyes in Remake sprite so they can blink" else "Tap ${pet.name} to give pets",
+                    if (pet.eyes.isEmpty()) "Tap ${pet.name} to give pets · mark the eyes in Edit look so they can blink" else "Tap ${pet.name} to give pets",
                     style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center,
                 )
             }
@@ -83,9 +83,9 @@ fun PetScreen(app: AppScope, state: AppState, pet: Pet) {
         Text("Share & sprite", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             Button(
-                enabled = !makingGif && sprite != null,
+                enabled = !makingGif && art != null,
                 onClick = {
-                    val s = sprite ?: return@Button
+                    val s = art ?: return@Button
                     makingGif = true
                     app.launch {
                         try {
@@ -99,7 +99,7 @@ fun PetScreen(app: AppScope, state: AppState, pet: Pet) {
             ) { Text(if (makingGif) "Making GIF…" else "Share animation") }
             OutlinedButton(onClick = { app.repo.shareReveal(pet) }) { Text("Before/after") }
         }
-        OutlinedButton(onClick = { app.navigate(Screen.RemakeSprite(pet.id)) }) { Text("Remake sprite or mark eyes") }
+        OutlinedButton(onClick = { app.navigate(Screen.RemakeSprite(pet.id)) }) { Text("Edit look: photo, face, eyes") }
         TextButton(onClick = { confirmDelete = true }) { Text("Delete ${pet.name}", color = MaterialTheme.colorScheme.error) }
     }
 

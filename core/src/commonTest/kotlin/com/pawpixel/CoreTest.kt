@@ -196,20 +196,37 @@ class SpriteTest {
         assertTrue(mask[5, 5] < 0.5f)
     }
 
-    @Test fun pipelineMakesOutlinedSpriteWithEyes() {
+    @Test fun pipelineMakesFaceWithEyes() {
         val r = SpritePipeline.generate(fakePhoto(), SpriteSettings(size = 32, colors = 6))
         assertTrue(r.backgroundRemoved)
-        assertEquals(34, r.sprite.width)
+        assertEquals(SpritePipeline.headPixels(32), r.head.width)
         assertTrue(r.palette.size <= 6)
-        assertEquals(0, Argb.alpha(r.sprite[0, 0]))
-        val colours = r.sprite.pixels.filter { Argb.alpha(it) > 0 }.map { Lab.fromArgb(it).l }
-        assertTrue(colours.any { it < 0.3 }, "dark eyes or outline survive")
+        assertEquals(0, Argb.alpha(r.head[0, 0]), "rounded head corners are transparent")
+        val colours = r.head.pixels.filter { Argb.alpha(it) > 0 }.map { Lab.fromArgb(it).l }
+        assertTrue(colours.any { it < 0.3 }, "dark eyes survive")
+    }
+
+    @Test fun fullBodyHasLegsBelowTheHead() {
+        val r = SpritePipeline.generate(fakePhoto(), SpriteSettings(size = 40))
+        for (species in listOf(Species.DOG, Species.CAT)) {
+            val still = r.art(species).still
+            val box = Animator.opaqueBounds(still)!!
+            assertTrue(box[3] - box[1] > r.head.height * 1.3, "$species body extends well below the face")
+        }
+        // Fur colours come from the face, not the dark eyes.
+        val fur = r.art(Species.DOG).fur
+        assertTrue(Lab.fromArgb(fur.base).l > 0.3)
+    }
+
+    @Test fun guessedFaceIsTopOfPet() {
+        val r = SpritePipeline.generate(fakePhoto(), SpriteSettings())
+        assertTrue(r.face.cy < 0.6 && r.face.side in 0.2..1.0, "face ${r.face}")
     }
 
     @Test fun pipelineIsDeterministic() {
         val a = SpritePipeline.generate(fakePhoto(), SpriteSettings())
         val b = SpritePipeline.generate(fakePhoto(), SpriteSettings())
-        assertTrue(a.sprite.pixels.contentEquals(b.sprite.pixels))
+        assertTrue(a.head.pixels.contentEquals(b.head.pixels))
     }
 
     @Test fun busyPhotoFallsBackToCentreCrop() {
@@ -222,7 +239,7 @@ class SpriteTest {
 
     @Test fun posesShareCanvasSize() {
         val r = SpritePipeline.generate(fakePhoto(), SpriteSettings(size = 40))
-        val sizes = Poses.renderAll(r.sprite).values.map { it.width to it.height }.distinct()
+        val sizes = Poses.renderAll(r.art(Species.CAT).still).values.map { it.width to it.height }.distinct()
         assertEquals(1, sizes.size)
     }
 
@@ -248,7 +265,7 @@ class SpriteTest {
 
     @Test fun revealCardRenders() {
         val r = SpritePipeline.generate(fakePhoto(), SpriteSettings(size = 32))
-        val card = RevealCard.render(r.photoCrop, r.sprite, "Piña")
+        val card = RevealCard.render(r.photoCrop, r.art(Species.DOG).still, "Piña")
         assertTrue(card.width > 600 && card.height > 300)
     }
 }
@@ -275,11 +292,12 @@ class AnimationTest {
             if (dx * dx + dy * dy < 1) img[x, y] = Argb.rgb(0x9A6B3F)
         }
         for ((cx, cy) in listOf(80 to 70, 120 to 70)) for (y in cy - 5..cy + 5) for (x in cx - 5..cx + 5) img[x, y] = Argb.rgb(0x151010)
-        return SpritePipeline.generate(img, SpriteSettings(size = 40)).sprite
+        return SpritePipeline.generate(img, SpriteSettings(size = 40)).head
     }
+    private fun art() = PetArt(sprite(), Species.DOG)
 
     @Test fun allFramesShareOneCanvas() {
-        val set = Animator.build(sprite())
+        val set = Chibi.build(art(), emptyList())
         assertEquals(1, Frame.entries.map { set[it].width to set[it].height }.distinct().size)
         assertTrue(!set.hasEyes, "no taps, no guessing")
     }
@@ -295,22 +313,23 @@ class AnimationTest {
             }
         val left = dark.filter { it.first < s.width / 2 }.minBy { it.second }
         val right = dark.filter { it.first > s.width / 2 }.minBy { it.second }
-        val set = Animator.build(s, listOf(left, right))
+        val set = Chibi.build(PetArt(s, Species.CAT), listOf(left, right))
         assertEquals(2, set.eyes.size)
         assertFalse(set[Frame.BLINK].pixels.contentEquals(set[Frame.BASE].pixels), "blink changes the eyes")
         val changed = set[Frame.BLINK].pixels.indices.count { set[Frame.BLINK].pixels[it] != set[Frame.BASE].pixels[it] }
         assertTrue(changed < 40, "blink only touches the eyes ($changed px)")
+        assertFalse(set[Frame.SLEEP].pixels.contentEquals(set[Frame.BASE].pixels), "sleeping pose differs")
     }
 
     @Test fun breatheAndWalkMovePixels() {
-        val set = Animator.build(sprite())
+        val set = Chibi.build(art(), emptyList())
         for (f in listOf(Frame.BREATHE, Frame.WALK_2, Frame.LOOK_LEFT, Frame.SQUASH, Frame.STRETCH, Frame.EAT_DOWN, Frame.SHAKE_1)) {
             assertFalse(set[f].pixels.contentEquals(set[Frame.BASE].pixels), "$f differs from base")
         }
     }
 
     @Test fun brainIsDeterministicAndStaysOnStage() {
-        val set = Animator.build(sprite())
+        val set = Chibi.build(art(), emptyList())
         val layout = StageLayout(set)
         fun run(): List<PetPose> { val b = layout.brain(42); return (0 until 3000).map { b.pose(it * 33L, Mood.RESTLESS) } }
         val a = run(); val b = run()
@@ -320,7 +339,7 @@ class AnimationTest {
     }
 
     @Test fun moodsChangeBehaviour() {
-        val layout = StageLayout(Animator.build(sprite()))
+        val layout = StageLayout(Chibi.build(art(), emptyList()))
         fun behaviours(m: Mood) = layout.brain(1).let { b -> (0 until 2000).map { b.pose(it * 50L, m).behavior }.toSet() }
         assertEquals(setOf(Behavior.SLEEP), behaviours(Mood.SLEEPY))
         assertTrue(Behavior.BEG in behaviours(Mood.HUNGRY))
@@ -328,7 +347,7 @@ class AnimationTest {
     }
 
     @Test fun reactionsPlayThenReturnToNormal() {
-        val layout = StageLayout(Animator.build(sprite()))
+        val layout = StageLayout(Chibi.build(art(), emptyList()))
         val b = layout.brain(9)
         b.pose(0, Mood.CONTENT)
         b.react(PetEvent.Cared(TaskKind.FEED), 1000)
@@ -341,7 +360,7 @@ class AnimationTest {
     }
 
     @Test fun reactionBeforeFirstFrameStillPlays() {
-        val b = StageLayout(Animator.build(sprite())).brain(4)
+        val b = StageLayout(Chibi.build(art(), emptyList())).brain(4)
         b.react(PetEvent.Petted, 0)
         val first = b.pose(100, Mood.CONTENT)
         assertEquals(Behavior.PETTED, first.behavior)
@@ -349,7 +368,7 @@ class AnimationTest {
     }
 
     @Test fun gifIsValidAndLoops() {
-        val gif = AnimatedExport.clip(sprite(), emptyList(), "Mochi", durationMs = 800)
+        val gif = AnimatedExport.clip(art(), emptyList(), "Mochi", durationMs = 800)
         assertEquals("GIF89a", gif.copyOfRange(0, 6).decodeToString())
         assertEquals(0x3B, gif.last().toInt())
         assertTrue(gif.decodeToString().contains("NETSCAPE2.0"))

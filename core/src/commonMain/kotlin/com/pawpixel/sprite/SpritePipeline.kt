@@ -5,33 +5,46 @@ import kotlin.math.max
 import kotlin.math.sqrt
 
 data class SpriteResult(
-    /** Outlined pet sprite on a transparent background, (size + 2) square. */
-    val sprite: PixelImage,
+    /** The pet's face, pixelated, on a transparent background (no outline; the full body adds one). */
+    val head: PixelImage,
     val palette: List<Int>,
-    /** The square region of the photo the sprite was made from, for the before/after reveal card. */
+    /** The square region of the photo around the whole pet, for the before/after reveal card. */
     val photoCrop: PixelImage,
     /** True when the pet was separated from the background; false = centre crop fallback. */
     val backgroundRemoved: Boolean,
-)
+    /** Where the face was taken from (fractions of the photo), so the UI can show and adjust it. */
+    val face: FaceBox,
+) {
+    fun art(species: com.pawpixel.core.Species) = PetArt(head, species)
+}
 
 /**
- * Photo → pixel-art sprite, fully on device and deterministic.
+ * Photo → pixel-art pet face, fully on device and deterministic. [Chibi] then puts it on a drawn
+ * full body in the pet's fur colours.
  *
  * 1. Shrink the photo to a working size.
  * 2. Separate the pet from the background (native segmenter mask, or [FallbackSegmenter]).
- * 3. Crop a square around the pet.
- * 4. Area-average down to the sprite size, treating mostly-background pixels as transparent.
- * 5. Boost colour a little and sharpen, as pixel artists do, so features survive the downscale.
- * 6. Reduce to a small palette (k-means in OKLab) and remove stray single pixels.
- * 7. Add a 1px "selective" outline: each outline pixel is a darker shade of the colour it borders.
+ * 3. Take the face square (given by the owner, or guessed from the pet's outline) and round off
+ *    its bottom so the head reads as a head.
+ * 4. Area-average down to the head size, keeping small dark features like eyes and nose.
+ * 5. Boost colour a little and sharpen, as pixel artists do.
+ * 6. Reduce to a small palette (k-means in OKLab) and remove stray pixels.
  */
 object SpritePipeline {
     const val WORKING_SIZE = 384
     private const val MIN_COVERAGE = 0.03
     private const val MAX_COVERAGE = 0.97
 
-    fun generate(photo: PixelImage, settings: SpriteSettings, nativeMask: Mask? = null): SpriteResult {
-        val size = settings.size.coerceIn(16, 96)
+    /** Head size in pixels for each "size" setting (Small, Medium, Large, Detailed). */
+    fun headPixels(size: Int): Int = when {
+        size <= 32 -> 18
+        size <= 40 -> 22
+        size <= 48 -> 26
+        else -> 32
+    }
+
+    fun generate(photo: PixelImage, settings: SpriteSettings, nativeMask: Mask? = null, face: FaceBox? = null): SpriteResult {
+        val headPx = headPixels(settings.size)
         val colors = settings.colors.coerceIn(3, 32)
         val work = photo.fitWithin(WORKING_SIZE)
 
@@ -39,12 +52,26 @@ object SpritePipeline {
         val cov = mask0.coverage()
         val removed = cov in MIN_COVERAGE..MAX_COVERAGE
         val mask = if (removed) mask0 else Mask.full(work.width, work.height)
-        val box = if (removed) MaskOps.squareBox(mask) else MaskOps.centerSquare(work.width, work.height)
+        val petBox = if (removed) MaskOps.squareBox(mask) else MaskOps.centerSquare(work.width, work.height)
+        val faceBox = face ?: guessFace(mask, work.width, work.height, removed)
+        val sq = faceBox.inPixels(work.width, work.height)
 
-        val cut = MaskOps.applyTo(work, mask)
-        val small = downscaleKeepingFeatures(cut, box, size)
+        // Round the bottom of the face square so the neck/chest below the face doesn't come along.
+        val headMask = Mask(work.width, work.height)
+        val scx = sq[0] + sq[2] / 2; val scy = sq[1] + sq[3] / 2; val r = sq[2] / 2
+        for (y in 0 until work.height) for (x in 0 until work.width) {
+            val px = x + 0.5; val py = y + 0.5
+            if (px < sq[0] || px > sq[0] + sq[2] || py < sq[1] || py > sq[1] + sq[3]) continue
+            val dx = (px - scx) / r; val dy = (py - scy) / (r * 0.98)
+            // Rounded head: a soft squircle on top (keeps ears), a round chin below.
+            val inside = if (py <= scy) dx * dx * dx * dx + dy * dy * dy * dy <= 1.0 else dx * dx + dy * dy <= 1.0
+            if (inside) headMask[x, y] = mask[x, y]
+        }
+
+        val cut = MaskOps.applyTo(work, headMask)
+        val small = downscaleKeepingFeatures(cut, sq, headPx)
         val photoCrop = PixelImage(256, 256).fill(PHOTO_BACKDROP)
-            .also { it.draw(work.resampleArea(box[0], box[1], box[2], box[3], 256, 256), 0, 0) }
+            .also { it.draw(work.resampleArea(petBox[0], petBox[1], petBox[2], petBox[3], 256, 256), 0, 0) }
 
         // Hard alpha: pixel art has no half-transparent edges.
         for (i in small.pixels.indices) {
@@ -58,8 +85,25 @@ object SpritePipeline {
         val (quantized, palette) = quantize(enhanced, colors)
         despeckle(quantized)
         removeOrphans(quantized)
-        val sprite = if (settings.outline) outline(quantized) else pad(quantized, 1)
-        return SpriteResult(sprite, palette, photoCrop, removed)
+        return SpriteResult(quantized, palette, photoCrop, removed, faceBox)
+    }
+
+    /**
+     * Best guess at the face: near the top of the pet, about as wide as the pet is a quarter of the
+     * way down (a sitting cat's head, a face close-up, a standing dog's head end). The owner can move it.
+     */
+    fun guessFace(mask: Mask, w: Int, h: Int, removed: Boolean): FaceBox {
+        val b = mask.bounds()
+        if (!removed || b == null) return FaceBox(0.5, 0.45, 0.8)
+        val bw = (b[2] - b[0]).toDouble(); val bh = (b[3] - b[1]).toDouble()
+        val row = (b[1] + bh * 0.25).toInt().coerceIn(0, h - 1)
+        var l = -1; var rgt = -1
+        for (x in 0 until w) if (mask[x, row] >= 0.5f) { if (l < 0) l = x; rgt = x }
+        val rowW = if (l < 0) bw else (rgt - l + 1).toDouble()
+        val side = minOf(bw, bh, maxOf(bh * 0.45, rowW * 1.15))
+        val cx = if (l < 0) (b[0] + b[2]) / 2.0 else (l + rgt + 1) / 2.0
+        val top = b[1] - side * 0.04
+        return FaceBox(cx / w, (top + side / 2) / h, side / minOf(w, h))
     }
 
     private val PHOTO_BACKDROP = 0xFFFFE3B8.toInt()

@@ -3,12 +3,16 @@
 package com.pawpixel.web
 
 import com.pawpixel.core.Mood
+import com.pawpixel.core.Species
 import com.pawpixel.core.SpriteSettings
 import com.pawpixel.core.TaskKind
 import com.pawpixel.sprite.AnimatedExport
 import com.pawpixel.sprite.AnimationSet
 import com.pawpixel.sprite.Animator
+import com.pawpixel.sprite.Chibi
+import com.pawpixel.sprite.FaceBox
 import com.pawpixel.sprite.Mask
+import com.pawpixel.sprite.PetArt
 import com.pawpixel.sprite.PetBrain
 import com.pawpixel.sprite.PetEvent
 import com.pawpixel.sprite.PixelImage
@@ -20,40 +24,49 @@ import com.pawpixel.sprite.StageLayout
 import com.pawpixel.sprite.StageRenderer
 
 /**
- * Browser entry point for the Phase 0 likeness test page. It runs the very same sprite generator
- * and animation engine as the apps, so what people see on the web is what the app will make.
- * Everything happens in the browser: photos are never uploaded.
+ * Browser entry point for the web Pet Maker. It runs the very same generator and animation engine
+ * as the apps, so what people see on the web is what the app will make. Everything happens in the
+ * browser: photos are never uploaded. Images cross the boundary as ARGB IntArrays (Int32Array in JS).
  *
- * Images cross the boundary as ARGB IntArrays (Int32Array in JS).
+ * @param species "DOG", "CAT" or "OTHER"
+ * @param faceCx,faceCy,faceSide the face square as fractions of the photo (side: of its shorter
+ *   edge); pass a negative faceSide to let PawPixel guess, then read the guess back from [faceCx] etc.
  */
 @JsExport
 class PawWebPet(
     argb: IntArray, width: Int, height: Int, size: Int, colors: Int,
-    /** Optional pet cut-out from the in-browser model (0..1 per pixel, maskWidth x maskHeight). */
     mask: FloatArray?, maskWidth: Int, maskHeight: Int,
+    species: String, faceCx: Double, faceCy: Double, faceSide: Double,
 ) {
     private val result: SpriteResult = SpritePipeline.generate(
         PixelImage(width, height, argb),
         SpriteSettings(size = size, colors = colors),
         mask?.let { Mask(maskWidth, maskHeight, it) },
+        if (faceSide > 0) FaceBox(faceCx, faceCy, faceSide) else null,
     )
+    private val art = PetArt(result.head, Species.entries.firstOrNull { it.name == species } ?: Species.DOG)
     private var eyes: List<Pair<Double, Double>> = emptyList()
-    private var set: AnimationSet = Animator.build(result.sprite)
+    private var set: AnimationSet = Chibi.build(art, emptyList())
     private var moodSet: AnimationSet = set
     private var layout = StageLayout(set)
     private var brain: PetBrain = layout.brain(7)
     private var mood: Mood = Mood.HAPPY
+    private var lastT = 0L
 
     val backgroundRemoved: Boolean get() = result.backgroundRemoved
-    val spriteWidth: Int get() = result.sprite.width
-    val spriteHeight: Int get() = result.sprite.height
+    val faceCx: Double get() = result.face.cx
+    val faceCy: Double get() = result.face.cy
+    val faceSide: Double get() = result.face.side
+    /** The pixelated face, where the owner taps the eyes. */
+    val headWidth: Int get() = result.head.width
+    val headHeight: Int get() = result.head.height
     val stageWidth: Int get() = layout.stageWidth
     val stageHeight: Int get() = layout.stageHeight
     val eyeCount: Int get() = eyes.size
 
-    fun spritePixels(): IntArray = result.sprite.pixels.copyOf()
+    fun headPixels(): IntArray = result.head.pixels.copyOf()
 
-    /** Adds an eye tap (fractions of the sprite size). A third tap starts over. */
+    /** Adds an eye tap (fractions of the face image). A third tap starts over. */
     fun tapEye(fx: Double, fy: Double) {
         eyes = if (eyes.size >= 2) listOf(fx to fy) else eyes + (fx to fy)
         rebuild()
@@ -73,9 +86,7 @@ class PawWebPet(
         brain.react(PetEvent.Cared(k), lastT)
     }
 
-    private var lastT = 0.0.toLong()
-
-    /** The whole stage (floor, shadow, pet, effects) at time [tMs], as ARGB pixels of stageWidth x stageHeight. */
+    /** The whole stage (floor, shadow, pet, effects) at [tMs], as ARGB pixels of stageWidth x stageHeight. */
     fun renderStage(tMs: Double): IntArray {
         lastT = tMs.toLong()
         return StageRenderer.render(layout, moodSet, brain.pose(lastT, mood)).pixels
@@ -88,16 +99,17 @@ class PawWebPet(
             y >= layout.petTop + layout.body[1] - 8 && y <= layout.floorY + 2
     }
 
-    fun gif(name: String): ByteArray = AnimatedExport.clip(result.sprite, Animator.eyePixels(result.sprite, eyes), name, mood = if (mood == Mood.SLEEPY) Mood.SLEEPY else Mood.HAPPY)
+    fun gif(name: String): ByteArray = AnimatedExport.clip(art, eyePx(), name, mood = if (mood == Mood.SLEEPY) Mood.SLEEPY else Mood.HAPPY)
 
-    fun revealPng(name: String): ByteArray = Png.encode(RevealCard.render(result.photoCrop, result.sprite, name))
+    fun revealPng(name: String): ByteArray = Png.encode(RevealCard.render(result.photoCrop, art.still, name))
+
+    private fun eyePx() = Animator.eyePixels(art.head, eyes)
 
     private fun rebuild() {
-        set = Animator.build(result.sprite, Animator.eyePixels(result.sprite, eyes))
+        set = Chibi.build(art, eyePx())
         moodSet = set.forMood(mood)
         layout = StageLayout(set)
-        val x = brain.x
         brain = layout.brain(7)
-        if (x > 0) brain.pose(lastT, mood)
+        brain.pose(lastT, mood)
     }
 }

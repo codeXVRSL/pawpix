@@ -1,7 +1,10 @@
 package com.pawpixel.tools
 
 import com.pawpixel.core.Mood
+import com.pawpixel.core.Species
 import com.pawpixel.core.SpriteSettings
+import com.pawpixel.sprite.AnimatedExport
+import com.pawpixel.sprite.Chibi
 import com.pawpixel.sprite.Mask
 import com.pawpixel.sprite.PixelImage
 import com.pawpixel.sprite.Png
@@ -21,18 +24,19 @@ import javax.imageio.ImageIO
  *
  * Optional: put a cut-out mask next to a photo as `<name>.mask.png` (white = pet, from any
  * background remover) to preview what the phone's native segmentation will produce.
- * Flags: --size=48 --colors=12 --no-outline
+ * Flags: --species=dog|cat --size=48 --colors=12
  */
 fun main(args: Array<String>) {
     val positional = args.filterNot { it.startsWith("--") }
     if (positional.size < 2) {
-        println("usage: spriteLab <photo file or folder> <output folder> [--size=48] [--colors=12] [--no-outline]")
+        println("usage: spriteLab <photo file or folder> <output folder> [--species=dog|cat] [--size=48] [--colors=12]")
         return
     }
     val flags = args.filter { it.startsWith("--") }.associate {
         val kv = it.removePrefix("--").split("=", limit = 2)
         kv[0] to kv.getOrElse(1) { "true" }
     }
+    val species = if (flags["species"] == "cat") Species.CAT else Species.DOG
     val settings = SpriteSettings(
         size = flags["size"]?.toInt() ?: 48,
         colors = flags["colors"]?.toInt() ?: 12,
@@ -53,18 +57,20 @@ fun main(args: Array<String>) {
         } else null
 
         val result = SpritePipeline.generate(photo, settings, mask)
+        val art = result.art(species)
         val base = file.nameWithoutExtension
-        File(outDir, "$base.sprite.png").writeBytes(Png.encode(result.sprite.scaled(8)))
+        File(outDir, "$base.sprite.png").writeBytes(Png.encode(art.still.scaled(8)))
+        File(outDir, "$base.gif").writeBytes(AnimatedExport.clip(art, emptyList(), base))
 
-        val poses = Mood.entries.map { Poses.render(result.sprite, it) }
+        val poses = Mood.entries.map { Poses.render(if (it == Mood.SLEEPY) Chibi.sleeping(art, emptyList()) else art.still, it) }
         val sheet = PixelImage(poses.sumOf { it.width + 2 }, poses.maxOf { it.height }).fill(0xFFFFF4E0.toInt())
         var x = 0
         for (p in poses) { sheet.draw(p, x, 0); x += p.width + 2 }
         File(outDir, "$base.poses.png").writeBytes(Png.encode(sheet.scaled(6)))
 
-        val card = RevealCard.render(result.photoCrop, result.sprite, base.replace('_', ' ').replace('-', ' '))
+        val card = RevealCard.render(result.photoCrop, art.still, base.replace('_', ' ').replace('-', ' '))
         File(outDir, "$base.reveal.png").writeBytes(Png.encode(card))
-        println("${file.name}: ${result.sprite.width}px, ${result.palette.size} colours, background " +
+        println("${file.name}: ${result.head.width}px face, ${result.palette.size} colours, background " +
             (if (result.backgroundRemoved) "removed" + (if (mask != null) " (mask file)" else " (fallback)") else "kept (centre crop)") +
             ", ${System.currentTimeMillis() - t0} ms")
     }

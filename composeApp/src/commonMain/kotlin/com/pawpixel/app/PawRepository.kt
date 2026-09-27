@@ -16,6 +16,9 @@ import com.pawpixel.core.WidgetSnapshot
 import com.pawpixel.sprite.AnimatedExport
 import com.pawpixel.sprite.Animator
 import com.pawpixel.sprite.Argb
+import com.pawpixel.sprite.Chibi
+import com.pawpixel.sprite.FaceBox
+import com.pawpixel.sprite.PetArt
 import com.pawpixel.sprite.PixelImage
 import com.pawpixel.sprite.Png
 import com.pawpixel.sprite.Poses
@@ -41,7 +44,7 @@ class PawRepository(val platform: Platform) {
     private val mutex = Mutex()
     private val _state = MutableStateFlow(load())
     val state: StateFlow<AppState> = _state.asStateFlow()
-    private val spriteCache = HashMap<String, PixelImage>()
+    private val headCache = HashMap<String, PixelImage>()
 
     /** Bumped after every widget.json write, so a live widget session re-reads it. */
     private val _widgetRevision = MutableStateFlow(0L)
@@ -88,22 +91,32 @@ class PawRepository(val platform: Platform) {
 
     suspend fun addPet(name: String, species: Species, settings: SpriteSettings, result: SpriteResult, eyes: List<Pair<Double, Double>>): Pet {
         val pet = Pet(Ids.newId(), name.trim().ifEmpty { "My pet" }, species, now(), settings, eyes = eyes)
-        saveSprite(pet.id, result, eyes)
+        saveHead(pet.id, result.head, result.photoCrop)
+        writeWidgetPoses(pet)
         update { StateOps.addPet(it, pet, now(), clock) }
         return pet
     }
 
     suspend fun updateSprite(pet: Pet, settings: SpriteSettings, result: SpriteResult, eyes: List<Pair<Double, Double>>) {
-        saveSprite(pet.id, result, eyes)
-        update { StateOps.updatePet(it, pet.copy(sprite = settings, eyes = eyes, spriteVersion = pet.spriteVersion + 1)) }
+        val updated = pet.copy(sprite = settings, eyes = eyes, spriteVersion = pet.spriteVersion + 1)
+        saveHead(pet.id, result.head, result.photoCrop)
+        writeWidgetPoses(updated)
+        update { StateOps.updatePet(it, updated) }
     }
 
-    suspend fun renamePet(pet: Pet, name: String, species: Species) =
-        update { StateOps.updatePet(it, pet.copy(name = name.trim().ifEmpty { pet.name }, species = species)) }
+    /** Species decides the body shape (dog or cat), so changing it redraws the widget poses. */
+    suspend fun renamePet(pet: Pet, name: String, species: Species) {
+        val updated = pet.copy(
+            name = name.trim().ifEmpty { pet.name }, species = species,
+            spriteVersion = if (species != pet.species) pet.spriteVersion + 1 else pet.spriteVersion,
+        )
+        if (species != pet.species) writeWidgetPoses(updated)
+        update { StateOps.updatePet(it, updated) }
+    }
 
     suspend fun deletePet(petId: String) {
         update { StateOps.removePet(it, petId) }
-        spriteCache.remove(petId)
+        headCache.remove(petId)
         files.delete("sprites/$petId")
     }
 
@@ -116,52 +129,63 @@ class PawRepository(val platform: Platform) {
             files.delete("sprites")
             files.delete(STATE_FILE)
             files.delete(WidgetSnapshot.PENDING_FILE_NAME)
-            spriteCache.clear()
+            headCache.clear()
             _state.value = AppState()
             publishLocked(_state.value)
         }
     }
 
     // ---- Sprite files ----
+    // Each pet keeps its pixelated face (head.bin) and a small photo crop (photo.bin). The full body
+    // is drawn from the face and species whenever needed (see Chibi), so nothing else is stored.
 
-    private fun saveSprite(petId: String, result: SpriteResult, eyes: List<Pair<Double, Double>>) {
-        files.writeBytes("sprites/$petId/sprite.bin", RawImage.encode(result.sprite))
-        files.writeBytes("sprites/$petId/photo.bin", RawImage.encode(result.photoCrop))
-        val closed = if (eyes.isEmpty()) null else Animator.closedEyes(result.sprite, Animator.eyePixels(result.sprite, eyes))
-        // Pre-scaled PNGs so widgets (which may smooth when scaling) still look crisp.
-        for ((mood, img) in Poses.renderAll(result.sprite, closed)) {
-            files.writeBytes(WidgetSnapshot.spritePath(petId, mood), Png.encode(img.scaled(WIDGET_SCALE)))
-        }
-        spriteCache[petId] = result.sprite
+    private fun saveHead(petId: String, head: PixelImage, photoCrop: PixelImage) {
+        files.writeBytes("sprites/$petId/head.bin", RawImage.encode(head))
+        files.writeBytes("sprites/$petId/photo.bin", RawImage.encode(photoCrop))
+        headCache[petId] = head
     }
 
-    fun sprite(petId: String): PixelImage? = spriteCache[petId]
-        ?: files.readBytes("sprites/$petId/sprite.bin")?.let(RawImage::decode)?.also { spriteCache[petId] = it }
+    /** Pre-rendered mood poses for the widgets, pre-scaled so widgets that smooth when scaling stay crisp. */
+    private fun writeWidgetPoses(pet: Pet) {
+        val art = art(pet) ?: return
+        val sleeping = Chibi.sleeping(art, Animator.eyePixels(art.head, pet.eyes))
+        for ((mood, img) in Poses.renderAll(art.still, sleeping)) {
+            files.writeBytes(WidgetSnapshot.spritePath(pet.id, mood), Png.encode(img.scaled(WIDGET_SCALE)))
+        }
+    }
+
+    fun head(petId: String): PixelImage? = headCache[petId]
+        ?: files.readBytes("sprites/$petId/head.bin")?.let(RawImage::decode)?.also { headCache[petId] = it }
+
+    /** The pet's face plus its species: everything needed to draw and animate it. */
+    fun art(pet: Pet): PetArt? = head(pet.id)?.let { PetArt(it, pet.species) }
 
     fun photoCrop(petId: String): PixelImage? = files.readBytes("sprites/$petId/photo.bin")?.let(RawImage::decode)
 
-    fun pose(petId: String, mood: Mood): PixelImage? = sprite(petId)?.let { Poses.render(it, mood) }
+    fun pose(pet: Pet, mood: Mood): PixelImage? = art(pet)?.let { a ->
+        if (mood == Mood.SLEEPY) Poses.render(Chibi.sleeping(a, Animator.eyePixels(a.head, pet.eyes)), mood) else Poses.render(a.still, mood)
+    }
 
-    /** The stored sprite and crop as a [SpriteResult], for editing eyes without a new photo. */
-    fun storedResult(petId: String): SpriteResult? {
-        val sprite = sprite(petId) ?: return null
-        val photo = photoCrop(petId) ?: return null
-        return SpriteResult(sprite, sprite.pixels.filter { Argb.alpha(it) > 0 }.distinct(), photo, backgroundRemoved = true)
+    /** The stored face and crop as a [SpriteResult], for marking eyes or switching species without a new photo. */
+    fun storedResult(pet: Pet): SpriteResult? {
+        val head = head(pet.id) ?: return null
+        val photo = photoCrop(pet.id) ?: return null
+        return SpriteResult(head, head.pixels.filter { Argb.alpha(it) > 0 }.distinct(), photo, backgroundRemoved = true, face = FaceBox(0.5, 0.5, 1.0))
     }
 
     fun shareReveal(pet: Pet) {
-        val sprite = sprite(pet.id) ?: return
+        val art = art(pet) ?: return
         val photo = photoCrop(pet.id) ?: return
-        val card = RevealCard.render(photo, sprite, pet.name)
+        val card = RevealCard.render(photo, art.still, pet.name)
         platform.shareFile(Png.encode(card), "${fileStem(pet)}.png", "image/png")
     }
 
     /**
      * A 5-second looping GIF of the pet being itself. Pure (no repository state), so it's safe to run
-     * on a background thread: get [sprite] on the main thread first.
+     * on a background thread: get [art] on the main thread first.
      */
-    fun animationGif(pet: Pet, sprite: PixelImage): ByteArray =
-        AnimatedExport.clip(sprite, Animator.eyePixels(sprite, pet.eyes), pet.name)
+    fun animationGif(pet: Pet, art: PetArt): ByteArray =
+        AnimatedExport.clip(art, Animator.eyePixels(art.head, pet.eyes), pet.name)
 
     fun shareGif(pet: Pet, gif: ByteArray) = platform.shareFile(gif, "${fileStem(pet)}.gif", "image/gif")
 

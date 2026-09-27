@@ -10,7 +10,7 @@ import kotlin.math.roundToInt
 class StageLayout(val set: AnimationSet) {
     /** Body bounds inside the pet canvas (left, top, right, bottom). */
     val body: IntArray = Animator.opaqueBounds(set[Frame.BASE]) ?: intArrayOf(0, 0, set.width, set.height)
-    val stageWidth: Int = set.width * 3
+    val stageWidth: Int = (set.width * 2.2).toInt()
     val iconScale: Int = if (body[2] - body[0] >= 36) 2 else 1
     /** Room above the pet for hops and floating icons. */
     val headroom: Int = 20 + 8 * iconScale + (body[3] - body[1]) / 6
@@ -67,8 +67,9 @@ object StageRenderer {
 object AnimatedExport {
     const val FRAME_MS = 80
 
-    fun clip(sprite: PixelImage, eyes: List<Pair<Int, Int>>, petName: String, mood: Mood = Mood.HAPPY, durationMs: Int = 4800, scale: Int = 3): ByteArray {
-        val set = Animator.build(sprite, eyes).forMood(mood)
+    /** [eyes] are in head pixels. */
+    fun clip(art: PetArt, eyes: List<Pair<Int, Int>>, petName: String, mood: Mood = Mood.HAPPY, durationMs: Int = 4800, scale: Int = 3): ByteArray {
+        val set = Chibi.build(art, eyes).forMood(mood)
         val layout = StageLayout(set)
         val brain = layout.brain(seed = petName.hashCode())
         brain.react(PetEvent.Petted, 0)

@@ -1,6 +1,6 @@
 # PawPixel
 
-Turn a photo of your real pet into a pixel-art sprite that lives on your home screen, and whose mood follows the real care you give: fed, walked, medicine given.
+Turn a photo of your real pet into a full-body pixel pet: your pet's real face, pixelated from the photo, on a little drawn body in its own fur colours. It lives on your home screen, and its mood follows the real care you give: fed, walked, medicine given.
 
 Android and iOS, with one Kotlin codebase (Compose Multiplatform) plus a native widget on each platform.
 
@@ -8,7 +8,8 @@ Android and iOS, with one Kotlin codebase (Compose Multiplatform) plus a native 
 
 | Feature | Where |
 |---|---|
-| Photo to pixel sprite, fully on device (cut-out, crop, feature-keeping downscale, OKLab palette, clean-up, selective outline) | `core/.../sprite/SpritePipeline.kt` |
+| Photo to pixel face, fully on device (cut-out, face square guessed and adjustable, feature-keeping downscale, OKLab palette, clean-up) | `core/.../sprite/SpritePipeline.kt` |
+| **Full-body pets**: the face goes on a procedurally drawn dog or cat body painted in the pet's own fur colours (sampled from the face), with walking legs, a wagging tail and a curled-up sleeping pose. Works from face close-ups and full-body photos alike | `core/.../sprite/Chibi.kt` |
 | 7 mood poses (happy, content, hungry, restless, needs meds, sleepy, sad) drawn with posture, lighting and original pixel icons, never by redrawing the pet's face | `core/.../sprite/Poses.kt` |
 | **Living pet animation**: breathing, blinking, looking around, wandering the floor, hopping, wet-dog shakes, begging when hungry, pacing when restless, drooping when sad, curling up asleep at night. Tap the pet for hearts. Logging care plays a reaction: eating from a bowl after feeding, zoomies after a walk, a shake after grooming | `core/.../sprite/Animator.kt` (frames), `PetBrain.kt` (behaviour), `composeApp/.../ui/LivePet.kt` |
 | Tap-to-mark eyes in the sprite maker, so the pet blinks and closes its eyes to sleep (also used for the sleeping widget pose) | `Animator.eyeAt`, `SpriteMakerScreen.kt` |
@@ -66,8 +67,8 @@ The Xcode build step runs `./gradlew :composeApp:embedAndSignAppleFrameworkForXc
 
 ### Tests and the likeness test tool
 ```
-./gradlew :core:jvmTest                                     # 40 tests: care, mood, reminders, sprite, animation, GIF, PNG, JSON, grid
-./gradlew :core:spriteLab --args="path/to/photos out"       # sprites + poses + reveal cards for a folder of photos
+./gradlew :core:jvmTest                                     # 42 tests: care, mood, reminders, sprite, animation, GIF, PNG, JSON, grid
+./gradlew :core:spriteLab --args="path/to/photos out --species=cat"   # full-body pets, poses, GIFs and reveal cards for a folder of photos
 ```
 **Do the likeness test before building further:** put 5 real pet photos in a folder, run `spriteLab`, and show each owner the result. Ask "Is that your pet?" If ~4 of 5 say yes, go. If not, tune `SpritePipeline` first. Tip: add `<name>.mask.png` (white = pet, from any background remover) next to a photo to preview what the phone's native cut-out will do. Flags: `--size=40 --colors=8 --no-outline`.
 
@@ -94,7 +95,7 @@ Widgets never run the mood engine. The app precomputes a 24-hour mood timeline (
 
 ## Known limits (by design, for the MVP)
 - Widgets show still mood poses, not animation. iOS doesn't allow animated widgets, and it keeps battery use low. The app itself animates.
-- The animation is made from one photo, so it moves the pet the way pixel artists animate a single sprite: whole-pixel shifts of head, body and legs, squash and stretch, and redrawn eyes. It never invents legs, a tail or a different angle the photo doesn't show. Real walk cycles or tail wags would need a hand-drawn or AI-generated sprite sheet (a good Pro upgrade, and a fit for your pixel art commissions).
+- The face is the real pet; the body is a stylised pixel body (dog or cat shape) in the pet's colours, so markings on the body (spots, socks) aren't copied yet. A hand-drawn body from the owner's photos is a natural Pro upgrade, and a fit for your pixel art commissions.
 - Blinking needs the owner to tap the eyes once. Automatic eye-finding was tried and dropped: fur stripes and shadows fooled it, and a blink in the wrong place looks worse than none.
 - One widget pet: with several pets, the widget shows whichever needs attention most.
 - Adaptive timing learns from the last 4 weeks and needs 3 completions near a time before moving it.

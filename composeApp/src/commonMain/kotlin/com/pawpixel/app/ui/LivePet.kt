@@ -30,7 +30,8 @@ import com.pawpixel.sprite.Frame
 import com.pawpixel.sprite.Icons
 import com.pawpixel.sprite.PetEvent
 import com.pawpixel.sprite.PetPose
-import com.pawpixel.sprite.PixelImage
+import com.pawpixel.sprite.Chibi
+import com.pawpixel.sprite.PetArt
 import com.pawpixel.sprite.StageLayout
 import kotlin.math.floor
 import kotlin.math.roundToInt
@@ -44,7 +45,7 @@ data class Reaction(val event: PetEvent, val nonce: Long)
  */
 @Composable
 fun LivePet(
-    sprite: PixelImage?,
+    art: PetArt?,
     eyes: List<Pair<Double, Double>>,
     mood: Mood,
     seed: Int,
@@ -52,8 +53,8 @@ fun LivePet(
     reaction: Reaction? = null,
     onPetted: () -> Unit = {},
 ) {
-    if (sprite == null) return
-    val set = remember(sprite, eyes) { Animator.build(sprite, Animator.eyePixels(sprite, eyes)) }
+    if (art == null) return
+    val set = remember(art, eyes) { Chibi.build(art, Animator.eyePixels(art.head, eyes)) }
     val layout = remember(set) { StageLayout(set) }
     val moodSet = remember(set, mood) { set.forMood(mood) }
     val frames: Map<Frame, ImageBitmap> = remember(moodSet) { Frame.entries.associateWith { moodSet[it].toImageBitmap() } }

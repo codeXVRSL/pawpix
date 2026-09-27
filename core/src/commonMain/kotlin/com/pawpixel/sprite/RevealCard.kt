@@ -118,10 +118,16 @@ object RevealCard {
         // Right: sprite (happy pose), integer-scaled for crisp pixels
         val rightX = leftX + PANEL + GAP
         val panel = PixelImage(PANEL, PANEL).fill(PANEL_BG)
-        val pose = Poses.render(sprite, Mood.HAPPY)
-        val f = maxOf(1, minOf(PANEL / pose.width, PANEL / pose.height))
+        val full = Poses.render(sprite, Mood.CONTENT)
+        // Crop to the pet itself so it fills the panel; hearts are added on top below.
+        val bb = Animator.opaqueBounds(full) ?: intArrayOf(0, 0, full.width, full.height)
+        val pose = PixelImage(bb[2] - bb[0] + 4, bb[3] - bb[1] + 4).also { it.draw(full, 2 - bb[0], 2 - bb[1]) }
+        val f = maxOf(1, minOf((PANEL - 24) / pose.width, (PANEL - 24) / pose.height))
         val big = pose.scaled(f)
         panel.draw(big, (PANEL - big.width) / 2, (PANEL - big.height) / 2)
+        val heart = Icons.HEART.scaled(maxOf(3, f - 1))
+        panel.draw(heart, PANEL - heart.width - 16, 16)
+        panel.draw(Icons.HEART_SMALL.scaled(maxOf(3, f - 1)), PANEL - heart.width - 16 - Icons.HEART_SMALL.width * maxOf(3, f - 1) - 8, 16 + heart.height / 2)
         card.draw(panel, rightX, top)
         border(card, rightX, top, PANEL, PANEL)
 

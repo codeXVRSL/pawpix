@@ -118,7 +118,7 @@ footer { text-align: center; }
   <header>
     <div class="brand pix"><canvas id="logo" width="16" height="16" aria-hidden="true"></canvas>PawPixel</div>
     <h1>Your real pet, as a pixel pet that lives on your phone</h1>
-    <p class="muted">Upload a photo and watch them come alive. Tap them for pets. Everything runs on your device: your photo is never uploaded.</p>
+    <p class="muted">Upload a photo: your pet's real face goes on a little pixel body in their own fur colours, and they come alive. Tap them for pets. Everything runs on your device: your photo is never uploaded.</p>
   </header>
 
   <section class="card" aria-label="Live pixel pet">
@@ -152,15 +152,25 @@ footer { text-align: center; }
       <span class="muted small">JPG, PNG or HEIC from your gallery</span>
     </label>
     <ul class="tips small">
-      <li>Whole pet in the frame, facing the camera</li>
+      <li>Your pet's face clearly visible, looking at the camera (a close-up works)</li>
       <li>Good light; one pet per photo</li>
       <li>The first photo downloads the pet detector (about 17 MB)</li>
     </ul>
     <div class="status" id="status" hidden><span id="statusText">Working</span><div class="bar"><i id="barFill"></i></div></div>
     <p class="note small" id="fallbackNote" hidden>The pet detector couldn't run in this browser, so PawPixel used its simple cut-out. It works best on plain backgrounds that contrast with your pet.</p>
 
+    <div class="group">
+      <span class="label">Body</span>
+      <div class="row" id="species"></div>
+    </div>
+    <div class="group" id="faceGroup">
+      <span class="label">Face</span>
+      <p class="small muted">Drag the square over your pet's face, ears included.</p>
+      <canvas id="faceCanvas" aria-label="Your photo. Drag the square onto your pet's face." style="width:100%;max-width:360px;border:2px solid var(--line);border-radius:3px;touch-action:none;cursor:grab;"></canvas>
+      <div class="row"><button class="btn" id="faceSmaller" type="button">Smaller</button><button class="btn" id="faceBigger" type="button">Bigger</button></div>
+    </div>
     <div id="tweak" class="group" hidden>
-      <span class="label">Size</span>
+      <span class="label">Detail</span>
       <div class="row" id="sizes"></div>
       <span class="label">Colours</span>
       <div class="row" id="colors"></div>
@@ -173,10 +183,11 @@ footer { text-align: center; }
 
   <section class="card" id="eyesCard" aria-labelledby="eyesTitle">
     <h2 id="eyesTitle">Help them blink</h2>
+    <p class="small muted">This is your pet's face in pixels.</p>
     <div class="eyes">
-      <canvas id="eyeCanvas" aria-label="Your pet's sprite. Tap each eye."></canvas>
+      <canvas id="eyeCanvas" aria-label="Your pet's pixel face. Tap each eye."></canvas>
       <div class="group">
-        <p id="eyeHelp">Tap each of your pet's eyes on the sprite. They'll blink, and close their eyes when they sleep.</p>
+        <p id="eyeHelp">Tap each of your pet's eyes. They'll blink, and close their eyes when they sleep.</p>
         <div class="row"><button class="btn" id="clearEyes" type="button">Clear eyes</button></div>
       </div>
     </div>
@@ -225,13 +236,14 @@ const ORT_VERSION = "1.20.1";
 const P = pawcore.com.pawpixel.web.PawWebPet;
 const SAMPLE_JPEG = "data:image/jpeg;base64,/*SAMPLE_JPEG*/";
 const SAMPLE_MASK = "/*SAMPLE_MASK*/";   // 80x80 8-bit
-const SAMPLE_EYES = [[0.42, 0.42], [0.74, 0.44]];
+const SAMPLE_EYES = [[0.42, 0.41], [0.89, 0.47]];
 
 const $ = (id) => document.getElementById(id);
 const MOODS = [["happy","Happy"],["content","Content"],["hungry","Hungry"],["restless","Restless"],["meds","Needs meds"],["sleepy","Sleepy"],["sad","Sad"]];
 const CAPTIONS = { happy: "is happy!", content: "is doing fine", hungry: "is hungry", restless: "wants a walk", meds: "needs medicine", sleepy: "is sleeping", sad: "misses you" };
 
 let pet = null, src = null, eyes = [], mood = "happy", size = 48, colors = 12, petName = "Chelsea", isSample = true;
+let species = "CAT", face = null, shownFace = null;
 let startT = performance.now();
 
 // ---------- tiny logo ----------
@@ -254,7 +266,9 @@ function chips(el, items, current, onPick) {
   }
 }
 chips($("moods"), MOODS, mood, (m) => { mood = m; pet && pet.setMood(m); updateCaption(); });
-chips($("sizes"), [[32,"Small"],[40,"Medium"],[48,"Large"],[64,"Detailed"]], size, (v) => { size = v; rebuild(); });
+chips($("sizes"), [[32,"Small"],[40,"Medium"],[48,"Large"],[64,"Detailed"]], size, (v) => { size = v; eyes = []; rebuild(); });
+function speciesChips() { chips($("species"), [["DOG","Dog body"],["CAT","Cat body"]], species, (v) => { species = v; rebuild(); }); }
+speciesChips();
 chips($("colors"), [[8,"8"],[12,"12"],[16,"16"]], colors, (v) => { colors = v; rebuild(); });
 
 function updateCaption() {
@@ -264,12 +278,16 @@ function updateCaption() {
 
 // ---------- building a pet ----------
 function makePet() {
-  const p = new P(src.argb, src.w, src.h, size, colors, src.mask, src.mw, src.mh);
+  const p = new P(src.argb, src.w, src.h, size, colors, src.mask, src.mw, src.mh, species,
+                  face ? face.cx : 0, face ? face.cy : 0, face ? face.side : -1);
+  shownFace = { cx: p.faceCx, cy: p.faceCy, side: p.faceSide };
   p.setMood(mood);
   for (const [x, y] of eyes) p.tapEye(x, y);
   return p;
 }
-function rebuild() { if (!src) return; pet = makePet(); fitStage(); drawEyes(); }
+function rebuild() { if (!src) return; pet = makePet(); fitStage(); drawEyes(); drawFace(); }
+let faceTimer = 0;
+function rebuildSoon() { clearTimeout(faceTimer); drawFace(); faceTimer = setTimeout(rebuild, 120); }
 
 function toArgb(imageData) {
   const d = imageData.data, n = d.length / 4, out = new Int32Array(n);
@@ -358,8 +376,8 @@ $("photo").addEventListener("change", async (e) => {
     }
     setStatus("Pixelating", 0.97);
     await new Promise((r) => setTimeout(r, 20));
-    src = { argb: toArgb(scaled.data), w: scaled.w, h: scaled.h, mask, mw: mask ? 320 : 0, mh: mask ? 320 : 0 };
-    eyes = []; isSample = false; petName = $("nameInput").value.trim(); mood = "happy";
+    src = { argb: toArgb(scaled.data), w: scaled.w, h: scaled.h, mask, mw: mask ? 320 : 0, mh: mask ? 320 : 0, canvas: scaled.canvas };
+    eyes = []; face = null; isSample = false; species = "DOG"; speciesChips(); petName = $("nameInput").value.trim(); mood = "happy";
     chips($("moods"), MOODS, mood, (m) => { mood = m; pet && pet.setMood(m); updateCaption(); });
     rebuild(); updateCaption();
     $("tweak").hidden = false; $("result").hidden = true;
@@ -409,10 +427,10 @@ document.querySelectorAll("[data-care]").forEach((b) => b.onclick = () => pet &&
 const eyeCanvas = $("eyeCanvas"), ectx = eyeCanvas.getContext("2d");
 function drawEyes() {
   if (!pet) return;
-  const w = pet.spriteWidth, h = pet.spriteHeight, k = 8;
+  const w = pet.headWidth, h = pet.headHeight, k = 8;
   eyeCanvas.width = w * k; eyeCanvas.height = h * k;
   const tmp = document.createElement("canvas"); tmp.width = w; tmp.height = h;
-  const t = tmp.getContext("2d"), img = t.createImageData(w, h); paint(pet.spritePixels(), img); t.putImageData(img, 0, 0);
+  const t = tmp.getContext("2d"), img = t.createImageData(w, h); paint(pet.headPixels(), img); t.putImageData(img, 0, 0);
   ectx.imageSmoothingEnabled = false; ectx.clearRect(0, 0, eyeCanvas.width, eyeCanvas.height); ectx.drawImage(tmp, 0, 0, w * k, h * k);
   for (const [fx, fy] of eyes) {
     ectx.lineWidth = 5; ectx.strokeStyle = "#FFFFFF"; ectx.beginPath(); ectx.arc(fx * w * k, fy * h * k, 2.4 * k, 0, 7); ectx.stroke();
@@ -427,7 +445,33 @@ eyeCanvas.addEventListener("click", (e) => {
   pet.tapEye(fx, fy); drawEyes();
   $("eyeHelp").textContent = eyes.length === 1 ? "Now the other eye (skip it if only one shows)." : "Eyes marked. Watch them blink!";
 });
-$("clearEyes").onclick = () => { eyes = []; pet && pet.clearEyes(); drawEyes(); $("eyeHelp").textContent = "Tap each of your pet's eyes on the sprite."; };
+$("clearEyes").onclick = () => { eyes = []; pet && pet.clearEyes(); drawEyes(); $("eyeHelp").textContent = "Tap each of your pet's eyes."; };
+
+// ---------- face framing ----------
+const faceCanvas = $("faceCanvas"), fctx = faceCanvas.getContext("2d");
+function drawFace() {
+  if (!src || !src.canvas || !shownFace) return;
+  const f = face || shownFace;
+  faceCanvas.width = src.w; faceCanvas.height = src.h;
+  fctx.drawImage(src.canvas, 0, 0);
+  const side = f.side * Math.min(src.w, src.h), x = f.cx * src.w - side / 2, y = f.cy * src.h - side / 2;
+  const lw = Math.max(2, Math.round(src.w / 120));
+  fctx.lineWidth = lw * 2; fctx.strokeStyle = "#FFFFFF"; fctx.strokeRect(x, y, side, side);
+  fctx.lineWidth = lw; fctx.strokeStyle = "#E8374E"; fctx.strokeRect(x, y, side, side);
+}
+let dragging = null;
+faceCanvas.addEventListener("pointerdown", (e) => { if (!shownFace) return; dragging = { x: e.clientX, y: e.clientY, f: Object.assign({}, face || shownFace) }; faceCanvas.setPointerCapture(e.pointerId); });
+faceCanvas.addEventListener("pointermove", (e) => {
+  if (!dragging) return;
+  const r = faceCanvas.getBoundingClientRect();
+  face = { cx: Math.min(1, Math.max(0, dragging.f.cx + (e.clientX - dragging.x) / r.width)),
+           cy: Math.min(1, Math.max(0, dragging.f.cy + (e.clientY - dragging.y) / r.height)), side: dragging.f.side };
+  eyes = []; rebuildSoon();
+});
+faceCanvas.addEventListener("pointerup", () => { dragging = null; });
+function resizeFace(by) { const f = face || shownFace; if (!f) return; face = { cx: f.cx, cy: f.cy, side: Math.min(1, Math.max(0.15, f.side * by)) }; eyes = []; rebuildSoon(); }
+$("faceSmaller").onclick = () => resizeFace(0.88);
+$("faceBigger").onclick = () => resizeFace(1.12);
 
 // ---------- likeness tally (kept on this device) ----------
 function readTally() { try { return JSON.parse(localStorage.getItem("pp.tally") || "") || { yes: 0, no: 0 }; } catch { return { yes: 0, no: 0 }; } }
@@ -471,7 +515,7 @@ if (WAITLIST_URL) { $("waitlist").hidden = false; $("waitLink").href = WAITLIST_
   const scaled = drawScaled(img, 768);
   const raw = atob(SAMPLE_MASK), mask = new Float32Array(raw.length);
   for (let i = 0; i < raw.length; i++) mask[i] = raw.charCodeAt(i) / 255;
-  src = { argb: toArgb(scaled.data), w: scaled.w, h: scaled.h, mask, mw: 80, mh: 80 };
+  src = { argb: toArgb(scaled.data), w: scaled.w, h: scaled.h, mask, mw: 80, mh: 80, canvas: scaled.canvas };
   eyes = SAMPLE_EYES.slice();
   rebuild(); updateCaption();
   requestAnimationFrame(loop);
