@@ -36,6 +36,17 @@ targets:
     dependencies:
       - target: PetWidget
         embed: true
+  PawPixelUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources: [PawPixelUITests]
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.pawpixel.app.uitests
+        GENERATE_INFOPLIST_FILE: YES
+        TEST_TARGET_NAME: PawPixel
+    dependencies:
+      - target: PawPixel
   PetWidget:
     type: app-extension
     platform: iOS
@@ -48,3 +59,13 @@ targets:
     dependencies:
       - sdk: WidgetKit.framework
       - sdk: SwiftUI.framework
+schemes:
+  PawPixel:
+    build:
+      targets:
+        PawPixel: all
+    run:
+      config: Debug
+    test:
+      config: Debug
+      targets: [PawPixelUITests]

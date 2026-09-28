@@ -21,7 +21,6 @@ import androidx.test.uiautomator.Configurator
 import androidx.test.uiautomator.Direction
 import androidx.test.uiautomator.UiDevice
 import androidx.test.uiautomator.UiObject2
-import androidx.test.uiautomator.Until
 import com.pawpixel.app.widget.PetWidgetReceiver
 import kotlinx.coroutines.runBlocking
 import org.hamcrest.CoreMatchers.not
@@ -81,6 +80,8 @@ class EndToEndTest {
     @Test
     fun ownerJourney() {
         scenario = ActivityScenario.launch(MainActivity::class.java)
+        // Nothing else matters if these fail: stop early with a clear message.
+        fun petId() = repo.state.value.pets.singleOrNull()?.id
 
         step("first open goes straight to making a pet") {
             find(By.text("Make your pixel pet"))
@@ -121,7 +122,10 @@ class EndToEndTest {
             shot("05-pet-screen")
         }
 
-        val petId = repo.state.value.pets.single().id
+        val petId = petId() ?: run {
+            File(out, "steps.txt").writeText(log.toString())
+            throw AssertionError("No pet was created, so the rest of the journey can't run:\n$log")
+        }
         fun completions() = repo.state.value.completions.size
 
         step("Done on a care task counts and cheers the pet up") {
@@ -247,12 +251,28 @@ class EndToEndTest {
         device.takeScreenshot(File(out, "%02d-%s.png".format(++shotCount, name.substringAfter('-'))))
     }
 
-    private fun find(selector: BySelector, timeoutMs: Long = 15_000): UiObject2 =
-        device.wait(Until.findObject(selector), timeoutMs) ?: throw AssertionError("not on screen: $selector")
+    private fun find(selector: BySelector, timeoutMs: Long = 15_000): UiObject2 {
+        val end = System.currentTimeMillis() + timeoutMs
+        while (true) {
+            dismissSystemDialogs()
+            device.findObject(selector)?.let { return it }
+            if (System.currentTimeMillis() > end) throw AssertionError("not on screen: $selector")
+            Thread.sleep(300)
+        }
+    }
+
+    /** CI emulators sometimes show "<some system app> isn't responding" over the app: wait it out. */
+    private fun dismissSystemDialogs() {
+        if (device.findObject(By.textContains("isn't responding")) != null) {
+            device.findObject(By.text("Wait"))?.click()
+            note("dismissed a system 'isn't responding' dialog")
+            Thread.sleep(500)
+        }
+    }
 
     /** Finds [selector], scrolling the screen's scrollable list down (then up) to reach it. */
     private fun scrollTo(selector: BySelector): UiObject2 {
-        device.wait(Until.findObject(selector), 3_000)?.let { return it }
+        runCatching { find(selector, 3_000) }.getOrNull()?.let { return it }
         val scroller = device.findObject(By.scrollable(true)) ?: throw AssertionError("not on screen and nothing scrolls: $selector")
         for (dir in listOf(Direction.DOWN, Direction.UP)) {
             repeat(12) {

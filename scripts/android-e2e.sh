@@ -14,6 +14,10 @@ adb install -r -g "$APK" > "$OUT/install.txt" 2>&1
 adb install -r -g "$TAPK" >> "$OUT/install.txt" 2>&1
 adb shell getprop ro.build.version.release > "$OUT/device.txt"
 adb shell getprop ro.product.model >> "$OUT/device.txt"
+# Let the freshly booted emulator settle (its launcher is often busy for a while), then unlock.
+adb shell input keyevent 82 || true
+sleep 30
+adb shell settings put global window_animation_scale 0 || true
 adb logcat -c
 adb shell am instrument -w -r -e class com.pawpixel.app.EndToEndTest \
   $APP.test/androidx.test.runner.AndroidJUnitRunner > "$OUT/instrument.txt" 2>&1

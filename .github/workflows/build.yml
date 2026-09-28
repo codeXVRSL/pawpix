@@ -109,8 +109,11 @@ jobs:
         with: { name: android-e2e, path: e2e-out }
 
   ios:
-    name: iOS simulator build (Kotlin framework + SwiftUI app + widget)
+    name: iOS simulator build and end-to-end UI test
     runs-on: macos-15
+    timeout-minutes: 60
+    permissions:
+      contents: write   # pushes screenshots and logs to the ci-results/ios branch
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4
@@ -127,3 +130,22 @@ jobs:
             -sdk iphonesimulator -configuration Debug -arch arm64 \
             CODE_SIGNING_ALLOWED=NO build | tail -80
           test "${PIPESTATUS[0]}" -eq 0
+      - name: End-to-end UI test in the Simulator (photo to pet, care, share, relaunch)
+        run: |
+          mkdir -p ios-out
+          cd iosApp
+          xcodebuild test -project PawPixel.xcodeproj -scheme PawPixel \
+            -destination 'platform=iOS Simulator,name=iPhone 16,OS=latest' \
+            -resultBundlePath "$RUNNER_TEMP/PawPixel.xcresult" \
+            CODE_SIGNING_ALLOWED=NO > "$RUNNER_TEMP/xcode-test.log" 2>&1 || code=$?
+          code=${code:-0}
+          cd ..
+          grep -E "error:|warning: .*PawPixel|Test Case|Test Suite|XCTAssert|failed|passed|\*\* TEST" "$RUNNER_TEMP/xcode-test.log" | tail -n 300 > ios-out/test-summary.txt || true
+          tail -n 200 "$RUNNER_TEMP/xcode-test.log" > ios-out/xcode-tail.txt
+          cp -R ~/pawpixel-e2e/. ios-out/ 2>/dev/null || true
+          xcrun simctl spawn booted log show --last 15m --style compact --predicate 'process == "PawPixel"' 2>/dev/null | tail -n 2000 > ios-out/app-log.txt || true
+          cat ios-out/steps.txt 2>/dev/null; tail -n 30 ios-out/test-summary.txt
+          exit $code
+      - name: Publish screenshots and logs to the ci-results/ios branch
+        if: always()
+        run: bash scripts/publish-results.sh ios-out ci-results/ios "${{ github.token }}"

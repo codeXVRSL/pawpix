@@ -31,6 +31,11 @@ final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCent
         _ application: UIApplication,
         didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil
     ) -> Bool {
+        #if DEBUG
+        if ProcessInfo.processInfo.environment["PAWPIXEL_TEST_RESET"] == "1" {
+            try? FileManager.default.removeItem(atPath: SwiftHost.shared.sharedContainerPath())
+        }
+        #endif
         IosGraph.shared.start(host: SwiftHost.shared)
         let center = UNUserNotificationCenter.current()
         center.delegate = self

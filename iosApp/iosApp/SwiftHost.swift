@@ -29,6 +29,13 @@ final class SwiftHost: NSObject, IosHost {
     // MARK: Photos
 
     func pickPhoto(completion: DataCallback) {
+        #if DEBUG
+        // UI tests (PawPixelUITests) hand in a photo instead of driving the system picker.
+        if let b64 = ProcessInfo.processInfo.environment["PAWPIXEL_TEST_PHOTO_B64"], let data = Data(base64Encoded: b64) {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { completion.onResult(data: data) }
+            return
+        }
+        #endif
         var config = PHPickerConfiguration()
         config.filter = .images
         config.selectionLimit = 1
