@@ -69,13 +69,20 @@ final class OwnerJourneyTests: XCTestCase {
             if tipContinue.waitForExistence(timeout: 2) { tipContinue.tap(); sleep(1) }
             shot("name-keyboard-open")
             // Type like a person: tap the keys (lowercase, the field doesn't auto-capitalise).
-            for ch in petName {
-                let key = app.keys[String(ch)]
-                guard key.waitForExistence(timeout: 3) else { throw Failure("no key \(ch) on the keyboard") }
-                key.tap()
+            // If the text input session wasn't ready yet, nothing lands: wait and type again.
+            let saveButton = element("Save \(petName)")
+            for attempt in 1...3 {
+                for ch in petName {
+                    let key = app.keys[String(ch)]
+                    guard key.waitForExistence(timeout: 3) else { throw Failure("no key \(ch) on the keyboard") }
+                    key.tap()
+                }
+                if saveButton.waitForExistence(timeout: 2) { log.append("      typed on attempt \(attempt)"); break }
+                log.append("      attempt \(attempt): typing didn't land yet")
+                field.tap()
+                sleep(2)
             }
             shot("name-typed")
-            log.append("      field after typing: \(field.exists ? String(describing: field.value ?? "nil") + " frame \(field.frame)" : "gone")")
             let ret = app.keyboards.buttons["Return"].exists ? app.keyboards.buttons["Return"] : app.keyboards.buttons["return"]
             if ret.exists { ret.tap() }
             try scrollTo("Save \(petName)").tap()
