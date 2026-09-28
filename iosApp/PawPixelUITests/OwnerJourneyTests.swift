@@ -8,6 +8,7 @@ import XCTest
 /// a failed step is recorded with a screenshot and the journey carries on, then the test fails.
 final class OwnerJourneyTests: XCTestCase {
     private let app = XCUIApplication()
+    private let petName = "mochi"
     private var log: [String] = []
     private var shotCount = 0
     private lazy var outDir: URL = {
@@ -62,8 +63,19 @@ final class OwnerJourneyTests: XCTestCase {
             field.tap()
             if !app.keyboards.firstMatch.waitForExistence(timeout: 5) { field.tap() }
             guard app.keyboards.firstMatch.waitForExistence(timeout: 5) else { throw Failure("keyboard didn't open") }
-            app.typeText("Chelsea\n") // the newline closes the keyboard
-            try scrollTo("Save Chelsea").tap()
+            sleep(1)
+            shot("name-keyboard-open")
+            // Type like a person: tap the keys (lowercase, the field doesn't auto-capitalise).
+            for ch in petName {
+                let key = app.keys[String(ch)]
+                guard key.waitForExistence(timeout: 3) else { throw Failure("no key \(ch) on the keyboard") }
+                key.tap()
+            }
+            shot("name-typed")
+            log.append("      field after typing: \(field.exists ? String(describing: field.value ?? "nil") + " frame \(field.frame)" : "gone")")
+            let ret = app.keyboards.buttons["Return"].exists ? app.keyboards.buttons["Return"] : app.keyboards.buttons["return"]
+            if ret.exists { ret.tap() }
+            try scrollTo("Save \(petName)").tap()
             allowNotificationsIfAsked()
             try find("Care", timeout: 30)
             sleep(2)
@@ -111,7 +123,7 @@ final class OwnerJourneyTests: XCTestCase {
         step("home lists the pet, settings open") {
             try scrollTo("‹ Back").tap()
             try find("PawPixel")
-            try find("Chelsea")
+            try find(petName)
             sleep(1)
             shot("home")
             try find("Settings").tap()
@@ -124,7 +136,7 @@ final class OwnerJourneyTests: XCTestCase {
             app.terminate()
             app.launchEnvironment["PAWPIXEL_TEST_RESET"] = "0"
             app.launch()
-            try find("Chelsea", timeout: 30)
+            try find(petName, timeout: 30)
             shot("after-relaunch")
         }
 
