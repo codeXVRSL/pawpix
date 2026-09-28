@@ -121,7 +121,8 @@ class EndToEndTest {
             Thread.sleep(300)
             device.pressBack() // closes the keyboard
             Thread.sleep(500)
-            retrying { scrollTo(By.text("Save Chelsea")).click() }
+            // The header's Save (the bottom one says "Save Chelsea").
+            retrying { scrollTo(By.text("Save")).click() }
             find(By.text("Care"), 30_000)
             check(repo.state.value.pets.singleOrNull()?.name == "Chelsea") { "pet not saved: ${repo.state.value.pets}" }
             Thread.sleep(1_500)

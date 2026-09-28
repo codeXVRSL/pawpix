@@ -131,18 +131,41 @@ fun SpriteMakerScreen(app: AppScope, state: AppState, existingPetId: String?) {
     val art = remember(r, species, ears) { r?.let { PetArt(it.head, species, ears) } }
     val upToDate = source == null || madeFor == Triple(source, settings, face)
 
+    val canSave = r != null && art != null && upToDate && !saving && !loading && (existing != null || name.isNotBlank())
+    val save: () -> Unit = save@{
+        val made = r ?: return@save
+        saving = true
+        app.launch {
+            if (existing != null) {
+                val latest = app.repo.state.value.pet(existing.id) ?: existing
+                app.repo.updateSprite(latest.copy(species = species), settings, made, ears)
+                app.back()
+            } else if (StateOps.canAddPet(app.repo.state.value)) {
+                val pet = app.repo.addPet(name, species, settings, made, ears)
+                app.repo.platform.requestNotificationPermission()
+                app.back()
+                app.navigate(Screen.PetDetail(pet.id))
+            } else {
+                error = "Your first pet is free. More pets come with PawPixel Pro (coming soon)."
+            }
+            saving = false
+        }
+    }
+
     Column(
         Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding()
             .imePadding() // keeps the focused field and buttons above the keyboard
             .verticalScroll(rememberScrollState()).padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
+        // Save lives in the header too, so naming and saving never need scrolling past the keyboard.
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             if (state.pets.isNotEmpty() || existing != null) TextButton(onClick = app.back) { Text("‹ Back") }
             Text(
                 if (existing != null) "Edit ${existing.name}'s look" else "Make your pixel pet",
-                style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold,
+                style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f),
             )
+            if (r != null) Button(enabled = canSave, onClick = save) { Text("Save") }
         }
 
         if (r == null || art == null) {
@@ -182,6 +205,10 @@ fun SpriteMakerScreen(app: AppScope, state: AppState, existingPetId: String?) {
                 }
             }
 
+            if (existing == null) {
+                OutlinedTextField(name, { name = it.take(24) }, label = { Text("Pet's name") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+            }
+
             Text("Body", fontWeight = FontWeight.Bold)
             Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 listOf(Species.DOG to "Dog body", Species.CAT to "Cat body").forEach { (sp, label) ->
@@ -205,32 +232,10 @@ fun SpriteMakerScreen(app: AppScope, state: AppState, existingPetId: String?) {
 
             OutlinedButton(onClick = pick) { Text(if (existing != null && source == null) "Use a new photo" else "Use a different photo") }
 
-            if (existing == null) {
-                OutlinedTextField(name, { name = it.take(24) }, label = { Text("Pet's name") }, singleLine = true, modifier = Modifier.fillMaxWidth())
-            }
             error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
-            Button(
-                enabled = upToDate && !saving && !loading && (existing != null || name.isNotBlank()),
-                onClick = {
-                    saving = true
-                    app.launch {
-                        if (existing != null) {
-                            val latest = app.repo.state.value.pet(existing.id) ?: existing
-                            app.repo.updateSprite(latest.copy(species = species), settings, r, ears)
-                            app.back()
-                        } else if (StateOps.canAddPet(app.repo.state.value)) {
-                            val pet = app.repo.addPet(name, species, settings, r, ears)
-                            app.repo.platform.requestNotificationPermission()
-                            app.back()
-                            app.navigate(Screen.PetDetail(pet.id))
-                        } else {
-                            error = "Your first pet is free. More pets come with PawPixel Pro (coming soon)."
-                        }
-                        saving = false
-                    }
-                },
-                modifier = Modifier.fillMaxWidth(),
-            ) { Text(if (existing != null) "Save" else "Save ${name.ifBlank { "pet" }}") }
+            Button(enabled = canSave, onClick = save, modifier = Modifier.fillMaxWidth()) {
+                Text(if (existing != null) "Save" else "Save ${name.ifBlank { "pet" }}")
+            }
         }
         error?.takeIf { r == null }?.let { Text(it, color = MaterialTheme.colorScheme.error) }
         Spacer(Modifier.height(24.dp))

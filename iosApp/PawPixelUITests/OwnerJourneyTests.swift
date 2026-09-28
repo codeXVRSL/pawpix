@@ -85,7 +85,7 @@ final class OwnerJourneyTests: XCTestCase {
             shot("name-typed")
             let ret = app.keyboards.buttons["Return"].exists ? app.keyboards.buttons["Return"] : app.keyboards.buttons["return"]
             if ret.exists { ret.tap() }
-            try scrollTo("Save \(petName)").tap()
+            try scrollTo("Save").tap() // the header's Save
             allowNotificationsIfAsked()
             try find("Care", timeout: 30)
             sleep(2)
