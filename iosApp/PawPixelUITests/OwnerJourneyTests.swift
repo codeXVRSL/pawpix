@@ -55,7 +55,10 @@ final class OwnerJourneyTests: XCTestCase {
         }
 
         step("name and save") {
-            let field = try scrollTo(query: app.textFields.firstMatch, "name field")
+            // Compose text fields show up as text views to iOS accessibility.
+            let candidates = app.descendants(matching: .any).matching(NSPredicate(format: "elementType == %d OR elementType == %d",
+                XCUIElement.ElementType.textView.rawValue, XCUIElement.ElementType.textField.rawValue))
+            let field = try scrollTo(query: candidates.firstMatch, "name field")
             field.tap()
             field.typeText("Chelsea")
             dismissKeyboard()
@@ -171,9 +174,10 @@ final class OwnerJourneyTests: XCTestCase {
         for up in [true, false] {
             for _ in 0..<10 {
                 if e.exists && e.isHittable { return e }
-                let start = app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: up ? 0.75 : 0.3))
-                let end = app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: up ? 0.3 : 0.75))
-                start.press(forDuration: 0.05, thenDragTo: end)
+                // Drag along the right-hand margin, so we never grab the face square's photo.
+                let start = app.coordinate(withNormalizedOffset: CGVector(dx: 0.985, dy: up ? 0.8 : 0.3))
+                let end = app.coordinate(withNormalizedOffset: CGVector(dx: 0.985, dy: up ? 0.3 : 0.8))
+                start.press(forDuration: 0.1, thenDragTo: end, withVelocity: .slow, thenHoldForDuration: 0.1)
             }
         }
         guard e.exists && e.isHittable else { throw Failure("not found after scrolling: \(what)") }

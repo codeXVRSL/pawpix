@@ -106,15 +106,15 @@ class EndToEndTest {
         step("face square is shown and can be resized") {
             scrollTo(By.text("Bigger")).click()
             Thread.sleep(1_500)
-            find(By.text("Smaller")).click()
+            scrollTo(By.text("Smaller")).click()
             Thread.sleep(1_500)
             shot("04-face-framing")
         }
 
         step("name and save") {
-            val field = scrollTo(By.clazz("android.widget.EditText"))
-            field.click()
-            field.text = "Chelsea"
+            scrollTo(By.clazz("android.widget.EditText")).click()
+            Thread.sleep(500)
+            find(By.clazz("android.widget.EditText")).text = "Chelsea"
             scrollTo(By.text("Save Chelsea")).click()
             find(By.text("+ Add care task"), 30_000)
             check(repo.state.value.pets.singleOrNull()?.name == "Chelsea") { "pet not saved: ${repo.state.value.pets}" }

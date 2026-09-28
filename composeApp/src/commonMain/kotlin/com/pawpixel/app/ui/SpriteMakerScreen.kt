@@ -33,6 +33,7 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
@@ -169,9 +170,10 @@ fun SpriteMakerScreen(app: AppScope, state: AppState, existingPetId: String?) {
                         }
                     }
                     if (!r.backgroundRemoved) {
+                        // Also happens with close-ups, where the pet fills the photo: a tip, not an error.
                         Text(
-                            "Couldn't separate your pet from the background. A photo with a plainer background will look better.",
-                            style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary,
+                            "Colours look off? Move the face square below, or try a photo with a plainer background.",
+                            style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
                     if (loading) CircularProgressIndicator(Modifier.padding(top = 8.dp))
@@ -192,10 +194,10 @@ fun SpriteMakerScreen(app: AppScope, state: AppState, existingPetId: String?) {
             source?.takeIf { upToDate }?.let { src ->
                 Text("Face", fontWeight = FontWeight.Bold)
                 Text("Drag the square over your pet's face. Its colours and markings go on your pixel pet.", style = MaterialTheme.typography.bodySmall)
-                FaceFramer(src.preview, face ?: r.face, Modifier.fillMaxWidth()) { moved -> face = moved }
+                FaceFramer(src.preview, face ?: r.face, Modifier.fillMaxWidth()) { moved -> face = moved.fitIn(src.preview.width, src.preview.height) }
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    OutlinedButton(onClick = { face = resize(face ?: r.face, 0.88) }) { Text("Smaller") }
-                    OutlinedButton(onClick = { face = resize(face ?: r.face, 1.12) }) { Text("Bigger") }
+                    OutlinedButton(onClick = { face = resize(face ?: r.face, 0.88).fitIn(src.preview.width, src.preview.height) }) { Text("Smaller") }
+                    OutlinedButton(onClick = { face = resize(face ?: r.face, 1.12).fitIn(src.preview.width, src.preview.height) }) { Text("Bigger") }
                 }
             }
 
@@ -244,6 +246,7 @@ private fun FaceFramer(photo: PixelImage, face: FaceBox, modifier: Modifier, onM
     val accent = MaterialTheme.colorScheme.primary
     Canvas(
         modifier.aspectRatio(photo.width.toFloat() / photo.height)
+            .clipToBounds()
             .pointerInput(photo) {
                 // Accumulate within a gesture so fast moves between redraws aren't lost.
                 var f = current

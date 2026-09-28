@@ -414,17 +414,23 @@ function drawFace() {
   fctx.lineWidth = lw * 2; fctx.strokeStyle = "#FFFFFF"; fctx.strokeRect(x, y, side, side);
   fctx.lineWidth = lw; fctx.strokeStyle = "#E8374E"; fctx.strokeRect(x, y, side, side);
 }
+// Keep the square wholly inside the photo (side is a fraction of the shorter edge).
+function fitFace(f) {
+  const side = Math.min(1, Math.max(0.1, f.side)), short = Math.min(src.w, src.h);
+  const hx = side * short / 2 / src.w, hy = side * short / 2 / src.h;
+  return { cx: Math.min(1 - hx, Math.max(hx, f.cx)), cy: Math.min(1 - hy, Math.max(hy, f.cy)), side };
+}
 let dragging = null;
 faceCanvas.addEventListener("pointerdown", (e) => { if (!shownFace) return; dragging = { x: e.clientX, y: e.clientY, f: Object.assign({}, face || shownFace) }; faceCanvas.setPointerCapture(e.pointerId); });
 faceCanvas.addEventListener("pointermove", (e) => {
   if (!dragging) return;
   const r = faceCanvas.getBoundingClientRect();
-  face = { cx: Math.min(1, Math.max(0, dragging.f.cx + (e.clientX - dragging.x) / r.width)),
-           cy: Math.min(1, Math.max(0, dragging.f.cy + (e.clientY - dragging.y) / r.height)), side: dragging.f.side };
+  face = fitFace({ cx: dragging.f.cx + (e.clientX - dragging.x) / r.width,
+                   cy: dragging.f.cy + (e.clientY - dragging.y) / r.height, side: dragging.f.side });
   rebuildSoon();
 });
 faceCanvas.addEventListener("pointerup", () => { dragging = null; });
-function resizeFace(by) { const f = face || shownFace; if (!f) return; face = { cx: f.cx, cy: f.cy, side: Math.min(1, Math.max(0.15, f.side * by)) }; rebuildSoon(); }
+function resizeFace(by) { const f = face || shownFace; if (!f) return; face = fitFace({ cx: f.cx, cy: f.cy, side: Math.max(0.15, f.side * by) }); rebuildSoon(); }
 $("faceSmaller").onclick = () => resizeFace(0.88);
 $("faceBigger").onclick = () => resizeFace(1.12);
 

@@ -219,6 +219,15 @@ class SpriteTest {
         assertTrue(Lab.fromArgb(fur.base).l > 0.3)
     }
 
+    @Test fun faceSquareStaysInsideThePhoto() {
+        val f = FaceBox(0.95, 0.02, 1.4).fitIn(300, 200)
+        val px = f.inPixels(300, 200)
+        assertTrue(px[0] >= -1e-9 && px[1] >= -1e-9 && px[0] + px[2] <= 300 + 1e-9 && px[1] + px[3] <= 200 + 1e-9, "inside: ${px.toList()}")
+        assertEquals(1.0, f.side)
+        val centred = FaceBox(0.5, 0.5, 0.4)
+        assertEquals(centred, centred.fitIn(300, 200), "an inside square doesn't move")
+    }
+
     @Test fun guessedFaceIsTopOfPet() {
         val r = SpritePipeline.generate(fakePhoto(), SpriteSettings())
         assertTrue(r.face.cy < 0.6 && r.face.side in 0.2..1.0, "face ${r.face}")

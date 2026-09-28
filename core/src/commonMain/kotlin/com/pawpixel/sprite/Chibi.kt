@@ -15,6 +15,15 @@ data class FaceBox(val cx: Double, val cy: Double, val side: Double) {
         val s = side * minOf(w, h)
         return doubleArrayOf(cx * w - s / 2, cy * h - s / 2, s, s)
     }
+
+    /** The same square moved (and shrunk if needed) so it lies wholly inside an image of [w] x [h]. */
+    fun fitIn(w: Int, h: Int): FaceBox {
+        val s = side.coerceIn(0.1, 1.0)
+        val short = minOf(w, h).toDouble()
+        val hx = s * short / 2 / w
+        val hy = s * short / 2 / h
+        return FaceBox(cx.coerceIn(hx, 1 - hx), cy.coerceIn(hy, 1 - hy), s)
+    }
 }
 
 /** The three main fur colours: the most common one, a lighter one (chest, paws) and its shadow. */
@@ -177,7 +186,8 @@ object Chibi {
         val p = Lab.fromArgb(c)
         // Shadows shift cooler, highlights warmer: the classic pixel-art ramp.
         val hi = Lab(min(0.97, p.l + 0.075), p.a * 0.95, p.b * 0.95 + 0.012)
-        val sh = Lab(max(0.1, p.l * 0.8 - 0.03), p.a * 1.05, p.b * 1.05 - 0.02)
+        // Light fur (white, cream) gets a softer shadow so it doesn't turn grey.
+        val sh = Lab(max(0.1, max(p.l * 0.8 - 0.03, p.l - 0.13)), p.a * 1.05, p.b * 1.05 - 0.02)
         val dp = Lab(max(0.07, p.l * 0.6 - 0.05), p.a * 1.05, p.b * 1.05 - 0.035)
         return Ramp(hi.toArgb(), c, sh.toArgb(), dp.toArgb())
     }
@@ -214,8 +224,9 @@ object Chibi {
                 if (abs(nx).pow(e) + abs(ny).pow(e) <= 1.0) put(x, y, paint(x, y, nx, ny), p)
             }
         }
-        fun shaded(r: Ramp, nx: Double, ny: Double, hiAt: Double = 0.7, shAt: Double = 0.55): Int = when {
-            nx * 0.45 + ny * 0.9 > shAt -> r.shade
+        /** Light from the top-left. [rim]: shadow only this far out from the centre (0 = anywhere). */
+        fun shaded(r: Ramp, nx: Double, ny: Double, hiAt: Double = 0.7, shAt: Double = 0.55, rim: Double = 0.0): Int = when {
+            nx * 0.45 + ny * 0.9 > shAt && nx * nx + ny * ny > rim -> r.shade
             -nx * 0.55 - ny * 0.85 > hiAt -> r.hi
             else -> r.mid
         }
@@ -295,7 +306,7 @@ object Chibi {
         }
 
         // ---------- Head ----------
-        blob(hcx, hcy, hrx, hry, HEAD, e = 2.4) { x, y, nx, ny -> shaded(ramps[faceTone(x, y)], nx, ny, hiAt = 0.8, shAt = 0.62) }
+        blob(hcx, hcy, hrx, hry, HEAD, e = 2.4) { x, y, nx, ny -> shaded(ramps[faceTone(x, y)], nx, ny, hiAt = 0.8, shAt = 0.62, rim = 0.6) }
 
         // Muzzle: a lighter, rounder snout for dogs; a small soft one for cats.
         val mcy = hcy + 3.7
