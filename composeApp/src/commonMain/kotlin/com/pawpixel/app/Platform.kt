@@ -42,6 +42,8 @@ interface Platform {
     /** Opens the system share sheet for an image (PNG or GIF). */
     fun shareFile(bytes: ByteArray, fileName: String, mimeType: String)
     fun openUrl(url: String)
+    /** Diagnostic line in the system log (logcat / Console), never shown to the user. */
+    fun log(message: String) {}
 }
 
 expect fun PixelImage.toImageBitmap(): ImageBitmap

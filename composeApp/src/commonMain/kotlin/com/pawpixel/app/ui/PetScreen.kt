@@ -49,6 +49,7 @@ fun PetScreen(app: AppScope, state: AppState, pet: Pet) {
     var renaming by remember { mutableStateOf(false) }
     var reaction by remember { mutableStateOf<Reaction?>(null) }
     var makingGif by remember { mutableStateOf(false) }
+    var shareError by remember { mutableStateOf<String?>(null) }
     fun react(event: PetEvent) { reaction = Reaction(event, (reaction?.nonce ?: 0) + 1) }
 
     Column(
@@ -87,10 +88,20 @@ fun PetScreen(app: AppScope, state: AppState, pet: Pet) {
                 onClick = {
                     val s = art ?: return@Button
                     makingGif = true
+                    shareError = null
                     app.launch {
                         try {
-                            val gif = withContext(Dispatchers.Default) { runCatching { app.repo.animationGif(pet, s) }.getOrNull() }
-                            gif?.let { app.repo.shareGif(pet, it) }
+                            val gif = withContext(Dispatchers.Default) {
+                                runCatching { app.repo.animationGif(pet, s) }
+                                    .onFailure { app.repo.platform.log("GIF failed: ${it.stackTraceToString()}") }
+                                    .getOrNull()
+                            }
+                            if (gif != null) {
+                                app.repo.platform.log("GIF ready: ${gif.size} bytes")
+                                app.repo.shareGif(pet, gif)
+                            } else {
+                                shareError = "Couldn't make the animation. Please try again."
+                            }
                         } finally {
                             makingGif = false
                         }
@@ -99,6 +110,7 @@ fun PetScreen(app: AppScope, state: AppState, pet: Pet) {
             ) { Text(if (makingGif) "Making GIF…" else "Share animation") }
             OutlinedButton(onClick = { app.repo.shareReveal(pet) }) { Text("Before/after") }
         }
+        shareError?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
         OutlinedButton(onClick = { app.navigate(Screen.RemakeSprite(pet.id)) }) { Text("Edit look: photo, face, ears") }
         TextButton(onClick = { confirmDelete = true }) { Text("Delete ${pet.name}", color = MaterialTheme.colorScheme.error) }
     }

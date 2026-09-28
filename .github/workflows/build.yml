@@ -154,7 +154,9 @@ jobs:
           grep -E "error:|warning: .*PawPixel|Test Case|Test Suite|XCTAssert|failed|passed|\*\* TEST" "$RUNNER_TEMP/xcode-test.log" | tail -n 300 > ios-out/test-summary.txt || true
           tail -n 200 "$RUNNER_TEMP/xcode-test.log" > ios-out/xcode-tail.txt
           cp -R ~/pawpixel-e2e/. ios-out/ 2>/dev/null || true
-          xcrun simctl spawn booted log show --last 15m --style compact --predicate 'process == "PawPixel"' 2>/dev/null | tail -n 2000 > ios-out/app-log.txt || true
+          xcrun simctl spawn booted log show --last 20m --style compact \
+            --predicate 'process == "PawPixel" AND (eventMessage CONTAINS "PawPixel" OR messageType == error OR messageType == fault) AND NOT (subsystem CONTAINS "xctest")' \
+            2>/dev/null | tail -n 3000 > ios-out/app-log.txt || true
           cat ios-out/steps.txt 2>/dev/null; tail -n 30 ios-out/test-summary.txt
           exit $code
       - name: Publish screenshots and logs to the ci-results/ios branch

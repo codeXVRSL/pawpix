@@ -145,7 +145,8 @@ final class SwiftHost: NSObject, IosHost {
         let url = FileManager.default.temporaryDirectory.appendingPathComponent(fileName)
         try? data.write(to: url)
         let sheet = UIActivityViewController(activityItems: [url, "Meet my pet in pixels! Made with PawPixel"], applicationActivities: nil)
-        guard let top = Self.topViewController() else { return }
+        guard let top = Self.topViewController() else { NSLog("PawPixel: share failed, no view controller to present from"); return }
+        NSLog("PawPixel: sharing %@ (%d bytes) from %@", fileName, data.count, String(describing: type(of: top)))
         sheet.popoverPresentationController?.sourceView = top.view
         sheet.popoverPresentationController?.sourceRect = CGRect(x: top.view.bounds.midX, y: top.view.bounds.midY, width: 0, height: 0)
         sheet.popoverPresentationController?.permittedArrowDirections = []

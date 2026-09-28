@@ -87,6 +87,16 @@ final class OwnerJourneyTests: XCTestCase {
             try scrollTo(query: element(containing: "Medicine"), "medicine task in the list")
         }
 
+        step("before/after card opens the share sheet") {
+            try scrollTo("Before/after").tap()
+            let close = app.buttons["Close"]
+            let appeared = app.otherElements["ActivityListView"].waitForExistence(timeout: 20) || close.waitForExistence(timeout: 1)
+            shot("share-card")
+            guard appeared else { throw Failure("share sheet didn't appear for the card") }
+            if close.exists { close.tap() } else { app.swipeDown(velocity: .fast) }
+            sleep(1)
+        }
+
         step("share animation opens the share sheet") {
             try scrollTo("Share animation").tap()
             let sheet = app.otherElements["ActivityListView"]
@@ -99,7 +109,7 @@ final class OwnerJourneyTests: XCTestCase {
         }
 
         step("home lists the pet, settings open") {
-            try find("‹ Back").tap()
+            try scrollTo("‹ Back").tap()
             try find("PawPixel")
             try find("Chelsea")
             sleep(1)

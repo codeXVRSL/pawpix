@@ -142,6 +142,8 @@ class AndroidPlatform(private val context: Context) : Platform {
         context.startActivity(Intent.createChooser(send, "Share").addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
     }
 
+    override fun log(message: String) { android.util.Log.w("PawPixel", message) }
+
     override fun openUrl(url: String) {
         runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }
     }

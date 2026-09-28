@@ -57,14 +57,21 @@ fun TaskEditorScreen(app: AppScope, state: AppState, pet: Pet, taskId: String?) 
         )
     }
 
+    val save: () -> Unit = { app.launch { app.repo.update { StateOps.upsertTask(it, task) }; app.back() } }
+
     Column(
         Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding()
             .verticalScroll(rememberScrollState()).padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
+        // Save sits in the top bar, always visible; the form below can be long.
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             TextButton(onClick = app.back) { Text("‹ Back") }
-            Text(if (original == null) "New care task" else "Edit care task", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+            Text(
+                if (original == null) "New care task" else "Edit care task",
+                style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f),
+            )
+            Button(onClick = save) { Text("Save") }
         }
 
         // All kinds visible at once (wrapping), so Medicine or Litter aren't hidden off-screen.
@@ -106,9 +113,7 @@ fun TaskEditorScreen(app: AppScope, state: AppState, pet: Pet, taskId: String?) 
         SwitchRow("Learn my routine", "Moves reminders toward when you actually do this (up to 2 hours).", task.adaptive) { task = task.copy(adaptive = it) }
         SwitchRow("Exact time", "Remind at the exact minute. Good for medicine. Android may ask for permission.", task.exactAlarm) { task = task.copy(exactAlarm = it) }
 
-        Button(onClick = { app.launch { app.repo.update { StateOps.upsertTask(it, task) }; app.back() } }, modifier = Modifier.fillMaxWidth()) {
-            Text("Save")
-        }
+        Button(onClick = save, modifier = Modifier.fillMaxWidth()) { Text("Save") }
         if (original != null) {
             TextButton(onClick = { app.launch { app.repo.update { StateOps.removeTask(it, original.id) }; app.back() } }) {
                 Text("Delete task", color = MaterialTheme.colorScheme.error)
