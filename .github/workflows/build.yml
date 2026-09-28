@@ -157,6 +157,7 @@ jobs:
           grep -E "error:|warning: .*PawPixel|Test Case|Test Suite|XCTAssert|failed|passed|\*\* TEST" "$RUNNER_TEMP/xcode-test.log" | tail -n 300 > ios-out/test-summary.txt || true
           tail -n 200 "$RUNNER_TEMP/xcode-test.log" > ios-out/xcode-tail.txt
           cp -R ~/pawpixel-e2e/. ios-out/ 2>/dev/null || true
+          cp ~/Library/Logs/DiagnosticReports/*PawPixel* ios-out/ 2>/dev/null || true   # crash reports, if any
           xcrun simctl spawn booted log show --last 20m --style compact \
             --predicate 'process == "PawPixel" AND (eventMessage CONTAINS "PawPixel" OR messageType == error OR messageType == fault) AND NOT (subsystem CONTAINS "xctest")' \
             2>/dev/null | tail -n 3000 > ios-out/app-log.txt || true

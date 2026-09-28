@@ -119,6 +119,7 @@ object Gif {
         out.byte(0x21); out.byte(0xFF); out.byte(11); out.add("NETSCAPE2.0".encodeToByteArray())
         out.byte(3); out.byte(1); le16(out, 0); out.byte(0)
 
+        val table = LzwTable()
         for (f in frames) {
             out.byte(0x21); out.byte(0xF9); out.byte(4); out.byte(0x04); le16(out, delayCs); out.byte(0); out.byte(0)
             out.byte(0x2C); le16(out, 0); le16(out, 0); le16(out, w); le16(out, h); out.byte(0)
@@ -128,7 +129,7 @@ object Gif {
             }
             val px = if (scale == 1) small else ByteArray(w * h) { i -> small[(i / w / scale) * fw + (i % w) / scale] }
             out.byte(8)
-            val data = lzw(px, 8)
+            val data = lzw(px, 8, table)
             var o = 0
             while (o < data.size) {
                 val n = minOf(255, data.size - o)
@@ -142,13 +143,26 @@ object Gif {
 
     private fun le16(out: Png.Bytes, v: Int) { out.byte(v and 0xff); out.byte((v shr 8) and 0xff) }
 
+    /**
+     * LZW dictionary as flat arrays indexed by (prefix code shl 8 or next byte): no boxing and no
+     * allocation per pixel (a HashMap<Int, Int> here ran iOS debug builds out of memory). An entry
+     * counts only if its stamp is the current generation, so clearing the table is O(1).
+     */
+    private class LzwTable {
+        val code = IntArray(4096 * 256)
+        val stamp = IntArray(4096 * 256)
+        var generation = 0
+    }
+
     /** Variable-width LZW as GIF expects (codes up to 12 bits, clear when the table fills). */
-    fun lzw(indices: ByteArray, minCodeSize: Int): ByteArray {
+    fun lzw(indices: ByteArray, minCodeSize: Int): ByteArray = lzw(indices, minCodeSize, LzwTable())
+
+    private fun lzw(indices: ByteArray, minCodeSize: Int, table: LzwTable): ByteArray {
         val clear = 1 shl minCodeSize
         val eoi = clear + 1
         var codeSize = minCodeSize + 1
         var next = eoi + 1
-        val dict = HashMap<Int, Int>()
+        table.generation++
         val bytes = Png.Bytes()
         var acc = 0L; var nbits = 0
         fun write(code: Int) {
@@ -161,15 +175,15 @@ object Gif {
         for (i in 1 until indices.size) {
             val k = indices[i].toInt() and 0xff
             val key = (prefix shl 8) or k
-            val found = dict[key]
-            if (found != null) { prefix = found; continue }
+            if (table.stamp[key] == table.generation) { prefix = table.code[key]; continue }
             write(prefix)
             if (next < 4096) {
-                dict[key] = next++
+                table.stamp[key] = table.generation
+                table.code[key] = next++
                 if (next > (1 shl codeSize) && codeSize < 12) codeSize++
             } else {
                 write(clear)
-                dict.clear(); next = eoi + 1; codeSize = minCodeSize + 1
+                table.generation++; next = eoi + 1; codeSize = minCodeSize + 1
             }
             prefix = k
         }
