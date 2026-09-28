@@ -48,9 +48,15 @@ data class TaskStatus(
     /** Next planned time that is still open and in the future (may be in a later cycle). */
     val nextDueMs: Long?,
     val lastDoneMs: Long?,
+    /** Every completion logged this cycle, even beyond the planned slots (e.g. a new pet's first evening). */
+    val logged: Int = done,
 ) {
     val isOverdue: Boolean get() = overdueSinceMs != null
-    val allDoneThisCycle: Boolean get() = done >= slotTimes.size
+    /**
+     * Nothing left to do this cycle. A cycle with no slots left to count (a pet added after
+     * today's last slot) is only "done" once the owner logs it, so they can still tap Done.
+     */
+    val allDoneThisCycle: Boolean get() = done >= slotTimes.size && (slotTimes.isNotEmpty() || logged > 0)
 }
 
 object CareEngine {
@@ -86,7 +92,7 @@ object CareEngine {
             nextDue = clock.at(cycleEnd, slots.min())
         }
         val lastDone = mine.filter { it.atMs <= nowMs }.maxOfOrNull { it.atMs }
-        return TaskStatus(task, cycleStart, slotTimes, passed, done, overdueSince, nextDue, lastDone)
+        return TaskStatus(task, cycleStart, slotTimes, passed, done, overdueSince, nextDue, lastDone, logged = doneCount)
     }
 }
 

@@ -1,7 +1,8 @@
 package com.pawpixel.app.ui
 
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -36,6 +37,7 @@ import com.pawpixel.core.StateOps
 import com.pawpixel.core.TaskDefaults
 import com.pawpixel.core.TaskKind
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun TaskEditorScreen(app: AppScope, state: AppState, pet: Pet, taskId: String?) {
     val original = taskId?.let { state.task(it) }
@@ -65,7 +67,8 @@ fun TaskEditorScreen(app: AppScope, state: AppState, pet: Pet, taskId: String?) 
             Text(if (original == null) "New care task" else "Edit care task", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
         }
 
-        Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+        // All kinds visible at once (wrapping), so Medicine or Litter aren't hidden off-screen.
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             TaskKind.entries.forEach { k ->
                 FilterChip(task.kind == k, { setKind(k) }, label = { Text("${k.emoji} ${k.label}") })
             }
@@ -91,7 +94,7 @@ fun TaskEditorScreen(app: AppScope, state: AppState, pet: Pet, taskId: String?) 
         }
 
         Text("Repeat", fontWeight = FontWeight.Bold)
-        Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             listOf(1 to "Daily", 2 to "Every 2 days", 7 to "Weekly", 14 to "Every 2 weeks", 30 to "Monthly").forEach { (d, label) ->
                 FilterChip(task.everyDays == d, {
                     task = task.copy(everyDays = d, anchorDay = today, slots = if (d > 1) task.slots.take(1) else task.slots)

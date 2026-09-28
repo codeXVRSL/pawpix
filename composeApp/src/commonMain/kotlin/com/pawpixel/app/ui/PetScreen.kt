@@ -151,7 +151,7 @@ private fun TaskRow(app: AppScope, pet: Pet, s: TaskStatus, onDone: () -> Unit) 
                     Button(onClick = { onDone(); app.launch { app.repo.complete(t.id) } }) { Text("Done") }
                 }
                 Row {
-                    if (s.done > 0) TextButton(onClick = { app.launch { app.repo.undo(t.id) } }) { Text("Undo") }
+                    if (s.logged > 0) TextButton(onClick = { app.launch { app.repo.undo(t.id) } }) { Text("Undo") }
                     TextButton(onClick = { app.navigate(Screen.EditTask(pet.id, t.id)) }) { Text("Edit") }
                 }
             }

@@ -292,6 +292,20 @@ class NewPetTest {
         // Next morning, missed breakfast + walk + water do count.
         assertTrue(MoodEngine.read(st, "p", clock.at(20001, 9 * 60), clock).mood in setOf(Mood.HUNGRY, Mood.SAD))
     }
+
+    @Test fun petAddedAfterTodaysSlotsCanStillLogCare() {
+        val clock = LocalClock.MANILA
+        val now = clock.at(20000, 21 * 60) // 9 pm: every default slot has passed
+        val st = StateOps.addPet(AppState(), Pet("p", "Mochi", Species.CAT, now), now, clock)
+        val feed = st.tasks.first { it.kind == TaskKind.FEED }
+        val before = CareEngine.status(feed, st.completions, now + 60_000, clock)
+        assertFalse(before.allDoneThisCycle, "nothing was done, so don't claim it was")
+        assertFalse(before.isOverdue)
+        val after = StateOps.complete(st, feed.id, now + 60_000, clock)
+        val s = CareEngine.status(feed, after.completions, now + 120_000, clock)
+        assertTrue(s.allDoneThisCycle && s.logged == 1, "logging it counts as done today")
+        assertTrue(MoodEngine.read(after, "p", now + 120_000, clock).mood in setOf(Mood.CONTENT, Mood.HAPPY))
+    }
 }
 
 class AnimationTest {

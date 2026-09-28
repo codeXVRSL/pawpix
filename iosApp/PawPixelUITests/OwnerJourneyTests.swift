@@ -166,20 +166,17 @@ final class OwnerJourneyTests: XCTestCase {
     @discardableResult
     private func scrollTo(_ label: String) throws -> XCUIElement { try scrollTo(query: element(label), label) }
 
-    /// Swipes up (then down) until [e] is on screen and tappable.
+    /// Returns [e] once it exists. Compose exposes the whole (non-lazy) screen to accessibility, and
+    /// tapping an off-screen element makes iOS scroll it into view first; swipes are a fallback.
     @discardableResult
     private func scrollTo(query e: XCUIElement, _ what: String) throws -> XCUIElement {
-        if e.waitForExistence(timeout: 3), e.isHittable { return e }
-        for up in [true, false] {
-            for _ in 0..<10 {
-                if e.exists && e.isHittable { return e }
-                // Drag along the right-hand margin, so we never grab the face square's photo.
-                let start = app.coordinate(withNormalizedOffset: CGVector(dx: 0.985, dy: up ? 0.8 : 0.3))
-                let end = app.coordinate(withNormalizedOffset: CGVector(dx: 0.985, dy: up ? 0.3 : 0.8))
-                start.press(forDuration: 0.1, thenDragTo: end, withVelocity: .slow, thenHoldForDuration: 0.1)
-            }
+        if e.waitForExistence(timeout: 5) { return e }
+        let scroller = app.scrollViews.firstMatch
+        for _ in 0..<8 {
+            if e.exists { return e }
+            if scroller.exists { scroller.swipeUp(velocity: .slow) } else { app.swipeUp(velocity: .slow) }
         }
-        guard e.exists && e.isHittable else { throw Failure("not found after scrolling: \(what)") }
+        guard e.exists else { throw Failure("not found after scrolling: \(what)") }
         return e
     }
 

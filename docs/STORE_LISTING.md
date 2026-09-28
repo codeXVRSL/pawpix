@@ -17,7 +17,7 @@ Gawing pixel pet ang alaga mo sa home screen. Sumusunod ang mood sa pag-aalaga.
 
 Meet your pet's pixel twin.
 
-Take a photo of your dog, cat or any pet, and PawPixel turns it into a pixel-art sprite that looks like *your* pet: same colours, same markings, same face. Then it moves in. Your pixel pet lives on your home screen, breathes, blinks, wanders around, and reacts to the real care you give.
+Take a photo of your dog, cat or any pet, and PawPixel turns it into a pixel-art sprite that looks like *your* pet: its fur colours and face markings on a cute pixel character, dog or cat, pointy or floppy ears. Then it moves in. Your pixel pet lives on your home screen, breathes, blinks, wanders around, and reacts to the real care you give.
 
 HOW IT WORKS
 • Snap or pick a photo. PawPixel cuts your pet out and draws it in pixels, right on your phone.
