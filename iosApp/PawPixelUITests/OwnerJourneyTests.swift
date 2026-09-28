@@ -64,6 +64,9 @@ final class OwnerJourneyTests: XCTestCase {
             if !app.keyboards.firstMatch.waitForExistence(timeout: 5) { field.tap() }
             guard app.keyboards.firstMatch.waitForExistence(timeout: 5) else { throw Failure("keyboard didn't open") }
             sleep(1)
+            // A fresh simulator shows a one-time "slide to type" tip over the keyboard.
+            let tipContinue = app.buttons["Continue"]
+            if tipContinue.waitForExistence(timeout: 2) { tipContinue.tap(); sleep(1) }
             shot("name-keyboard-open")
             // Type like a person: tap the keys (lowercase, the field doesn't auto-capitalise).
             for ch in petName {

@@ -1,6 +1,9 @@
 package com.pawpixel.app.ui
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.defaultMinSize
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Column
@@ -86,13 +89,23 @@ fun TaskEditorScreen(app: AppScope, state: AppState, pet: Pet, taskId: String?) 
 
         Text("Times", fontWeight = FontWeight.Bold)
         task.slots.forEachIndexed { i, minute ->
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                OutlinedButton(onClick = { task = task.copy(slots = task.slots.shift(i, -60)) }) { Text("−1h") }
-                OutlinedButton(onClick = { task = task.copy(slots = task.slots.shift(i, -15)) }) { Text("−15") }
-                Text(formatMinute(minute), fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
-                OutlinedButton(onClick = { task = task.copy(slots = task.slots.shift(i, 15)) }) { Text("+15") }
-                OutlinedButton(onClick = { task = task.copy(slots = task.slots.shift(i, 60)) }) { Text("+1h") }
-                if (task.slots.size > 1) TextButton(onClick = { task = task.copy(slots = task.slots.filterIndexed { j, _ -> j != i }) }) { Text("✕") }
+            // Time first, never wrapped; compact steppers so a row fits a small phone with the ✕.
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text(
+                    formatMinute(minute), fontWeight = FontWeight.Bold, maxLines = 1, softWrap = false,
+                    modifier = Modifier.weight(1f),
+                )
+                StepButton("−1h") { task = task.copy(slots = task.slots.shift(i, -60)) }
+                StepButton("−15") { task = task.copy(slots = task.slots.shift(i, -15)) }
+                StepButton("+15") { task = task.copy(slots = task.slots.shift(i, 15)) }
+                StepButton("+1h") { task = task.copy(slots = task.slots.shift(i, 60)) }
+                if (task.slots.size > 1) {
+                    TextButton(
+                        onClick = { task = task.copy(slots = task.slots.filterIndexed { j, _ -> j != i }) },
+                        contentPadding = PaddingValues(horizontal = 6.dp),
+                        modifier = Modifier.defaultMinSize(minWidth = 1.dp),
+                    ) { Text("✕") }
+                }
             }
         }
         if (task.slots.size < 4 && task.everyDays == 1) {
@@ -136,4 +149,13 @@ fun SwitchRow(title: String, subtitle: String, checked: Boolean, onChange: (Bool
         }
         Switch(checked, onChange)
     }
+}
+
+@Composable
+private fun StepButton(label: String, onClick: () -> Unit) {
+    OutlinedButton(
+        onClick = onClick,
+        contentPadding = PaddingValues(horizontal = 8.dp),
+        modifier = Modifier.defaultMinSize(minWidth = 1.dp).height(36.dp),
+    ) { Text(label, maxLines = 1, softWrap = false) }
 }
