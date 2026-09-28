@@ -166,17 +166,24 @@ final class OwnerJourneyTests: XCTestCase {
     @discardableResult
     private func scrollTo(_ label: String) throws -> XCUIElement { try scrollTo(query: element(label), label) }
 
-    /// Returns [e] once it exists. Compose exposes the whole (non-lazy) screen to accessibility, and
-    /// tapping an off-screen element makes iOS scroll it into view first; swipes are a fallback.
+    /// Brings [e] on screen: swipes up (then down) along the right-hand margin, away from the
+    /// face-square photo, until iOS reports it hittable. Logs positions so a stuck scroll is visible.
     @discardableResult
     private func scrollTo(query e: XCUIElement, _ what: String) throws -> XCUIElement {
-        if e.waitForExistence(timeout: 5) { return e }
-        let scroller = app.scrollViews.firstMatch
-        for _ in 0..<8 {
-            if e.exists { return e }
-            if scroller.exists { scroller.swipeUp(velocity: .slow) } else { app.swipeUp(velocity: .slow) }
+        _ = e.waitForExistence(timeout: 5)
+        if e.exists && e.isHittable { return e }
+        for up in [true, false] {
+            for i in 0..<8 {
+                if e.exists && e.isHittable { return e }
+                let from = app.coordinate(withNormalizedOffset: CGVector(dx: 0.985, dy: up ? 0.7 : 0.3))
+                let to = app.coordinate(withNormalizedOffset: CGVector(dx: 0.985, dy: up ? 0.3 : 0.7))
+                if i % 2 == 0 { from.press(forDuration: 0.05, thenDragTo: to) }
+                else { from.press(forDuration: 0.05, thenDragTo: to, withVelocity: .default, thenHoldForDuration: 0.3) }
+                usleep(400_000)
+                if i < 3 { log.append("      scroll \(up ? "down" : "up") #\(i) for \(what): exists=\(e.exists) frame=\(e.exists ? "\(e.frame)" : "-") hittable=\(e.exists && e.isHittable)") }
+            }
         }
-        guard e.exists else { throw Failure("not found after scrolling: \(what)") }
+        guard e.exists && e.isHittable else { throw Failure("not found after scrolling: \(what)") }
         return e
     }
 

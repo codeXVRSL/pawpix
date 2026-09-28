@@ -96,9 +96,11 @@ jobs:
         uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: 34
-          target: google_apis
+          target: default     # plain Android: its launcher doesn't freeze on CI like the Google one
           arch: x86_64
           profile: pixel_6
+          cores: 3
+          ram-size: 4096M
           disable-animations: true
           script: bash scripts/android-e2e.sh e2e-out
       - name: Publish screenshots and logs to the ci-results/android branch
