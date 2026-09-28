@@ -67,10 +67,12 @@ The Xcode build step runs `./gradlew :composeApp:embedAndSignAppleFrameworkForXc
 
 ### Tests and the likeness test tool
 ```
-./gradlew :core:jvmTest                                     # 42 tests: care, mood, reminders, sprite, animation, GIF, PNG, JSON, grid
+./gradlew :core:jvmTest                                     # 45 tests: care, mood, reminders, sprite, animation, GIF, PNG, JSON, grid
+# End-to-end on your own emulator/phone:
+./gradlew :composeApp:assembleDebug :composeApp:assembleDebugAndroidTest && scripts/android-e2e.sh
 ./gradlew :core:spriteLab --args="path/to/photos out --species=cat"   # full-body pets, poses, GIFs and reveal cards for a folder of photos
 ```
-**Do the likeness test before building further:** put 5 real pet photos in a folder, run `spriteLab`, and show each owner the result. Ask "Is that your pet?" If ~4 of 5 say yes, go. If not, tune `SpritePipeline` first. Tip: add `<name>.mask.png` (white = pet, from any background remover) next to a photo to preview what the phone's native cut-out will do. Flags: `--size=40 --colors=8 --no-outline`.
+**Do the likeness test before building further:** put 5 real pet photos in a folder, run `spriteLab`, and show each owner the result. Ask "Is that your pet?" If ~4 of 5 say yes, go. If not, tune `SpritePipeline` first. Tip: add `<name>.mask.png` (white = pet, from any background remover) next to a photo to preview what the phone's native cut-out will do. 
 
 ## How the pieces talk
 
@@ -83,14 +85,25 @@ Android widget "Done" → ActionCallback → PawRepository.complete()
 ```
 Widgets never run the mood engine. The app precomputes a 24-hour mood timeline (plus an "if done now" timeline for the Done button) into `widget.json`, and each widget just shows the right entry for the current time.
 
+## Automatic checks (every push)
+
+| CI job | What it proves |
+|---|---|
+| Core tests | 45 unit tests: care, mood, reminders, sprite style, animation, GIF, PNG, JSON, map grid |
+| Android debug APK / release bundle | The app builds; the release bundle (R8) builds and is signed if the secrets below are set; native libraries are 16 KB aligned |
+| **Android end-to-end** | On an Android 14 emulator, the real app goes photo → pixel pet → ears → face square → name and save → Done → add medicine → share GIF and card → notification **Done** → home-screen **widget** → relaunch. Screenshots, step log and logcat are pushed to the `ci-results/android` branch |
+| **iOS build and end-to-end** | App, widget and UI tests build; in the iPhone 16 Simulator the app goes photo → pet → save → Done → medicine → share sheet → settings → relaunch. Screenshots and logs are pushed to `ci-results/ios` |
+
+Only the system photo picker is stubbed in these tests; everything else is the real app.
+
 ## Before you release
 
-- [ ] **Likeness test** with 5 real pets (see above)
-- [ ] Verify library versions sync. I pinned a known-compatible set (Kotlin 2.2.20, Compose Multiplatform 1.9.0, AGP 8.11.1) because I couldn't reach Maven from where I built this. If sync fails, update them together using JetBrains' compatibility table.
-- [ ] Replace the placeholder launcher icon (`res/drawable/ic_launcher.xml`) with your own pixel art. Add an iOS AppIcon set.
-- [ ] Set `SUPPORT_EMAIL` and `PRIVACY_URL` in `SettingsScreen.kt`, and publish `docs/PRIVACY.md`
-- [ ] Wire in-app purchases (RevenueCat's KMP SDK suggested) and remove the "Beta: unlock Pro" switch
-- [ ] Google Play: new personal developer accounts must run a closed test with testers for 14 days before production. Start early.
+- [ ] **Likeness test** with 5 real pets (see above) or with the web Pet Maker
+- [ ] Set `SUPPORT_EMAIL` and `PRIVACY_URL` in `SettingsScreen.kt`, and publish `docs/PRIVACY.md` (GitHub Pages works)
+- [ ] **Android signing:** create an upload key (`keytool -genkeypair -v -keystore upload.jks -alias upload -keyalg RSA -keysize 2048 -validity 10000`), then add repo secrets `PAWPIXEL_KEYSTORE_B64` (`base64 -w0 upload.jks`), `PAWPIXEL_KEYSTORE_PASSWORD`, `PAWPIXEL_KEY_ALIAS`, `PAWPIXEL_KEY_PASSWORD`. The "Android release bundle" job then produces a signed `.aab` for Play; its versionCode is the CI run number.
+- [ ] Google Play: new personal developer accounts must run a closed test with 12+ testers for 14 days before production. Start early. Use `docs/STORE_LISTING.md`, `docs/brand/` and the screenshots in `ci-results/android`.
+- [ ] **iOS:** set your Team, register the App Group (see above), archive in Xcode and upload. The privacy manifests (`PrivacyInfo.xcprivacy`) are included.
+- [ ] Pro: extra pets are locked in release builds ("coming soon"); the unlock switch only shows in debug builds. Wire in-app purchases (RevenueCat's KMP SDK suggested) when you're ready to charge.
 - [ ] Android 14+: "Exact time" reminders need the user to allow alarms (Settings, Apps, PawPixel, Alarms & reminders). Without it they arrive a few minutes late.
 
 ## Known limits (by design, for the MVP)

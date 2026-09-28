@@ -133,12 +133,21 @@ jobs:
       - name: End-to-end UI test in the Simulator (photo to pet, care, share, relaunch)
         run: |
           mkdir -p ios-out
+          # A cold simulator sometimes kills the test runner while it boots: boot it first,
+          # and retry once if the runner died before any test started.
+          xcrun simctl boot "iPhone 16" || true
+          xcrun simctl bootstatus "iPhone 16" -b || true
           cd iosApp
-          xcodebuild test -project PawPixel.xcodeproj -scheme PawPixel \
-            -destination 'platform=iOS Simulator,name=iPhone 16,OS=latest' \
-            -resultBundlePath "$RUNNER_TEMP/PawPixel.xcresult" \
-            CODE_SIGNING_ALLOWED=NO > "$RUNNER_TEMP/xcode-test.log" 2>&1 || code=$?
-          code=${code:-0}
+          for attempt in 1 2; do
+            code=0
+            rm -rf "$RUNNER_TEMP/PawPixel.xcresult"
+            xcodebuild test -project PawPixel.xcodeproj -scheme PawPixel \
+              -destination 'platform=iOS Simulator,name=iPhone 16,OS=latest' \
+              -resultBundlePath "$RUNNER_TEMP/PawPixel.xcresult" \
+              CODE_SIGNING_ALLOWED=NO > "$RUNNER_TEMP/xcode-test.log" 2>&1 || code=$?
+            grep -q "before starting test execution" "$RUNNER_TEMP/xcode-test.log" || break
+            echo "Test runner died while starting (attempt $attempt); retrying."
+          done
           cd ..
           grep -E "error:|warning: .*PawPixel|Test Case|Test Suite|XCTAssert|failed|passed|\*\* TEST" "$RUNNER_TEMP/xcode-test.log" | tail -n 300 > ios-out/test-summary.txt || true
           tail -n 200 "$RUNNER_TEMP/xcode-test.log" > ios-out/xcode-tail.txt

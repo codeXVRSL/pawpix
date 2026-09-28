@@ -18,7 +18,6 @@ import androidx.test.platform.app.InstrumentationRegistry
 import androidx.test.uiautomator.By
 import androidx.test.uiautomator.BySelector
 import androidx.test.uiautomator.Configurator
-import androidx.test.uiautomator.Direction
 import androidx.test.uiautomator.UiDevice
 import androidx.test.uiautomator.UiObject2
 import com.pawpixel.app.widget.PetWidgetReceiver
@@ -270,14 +269,20 @@ class EndToEndTest {
         }
     }
 
-    /** Finds [selector], scrolling the screen's scrollable list down (then up) to reach it. */
+    /**
+     * Finds [selector], scrolling the screen down (then up) to reach it. Swipes run along the
+     * right-hand margin: a swipe over the photo would move the face square instead of scrolling.
+     */
     private fun scrollTo(selector: BySelector): UiObject2 {
         runCatching { find(selector, 3_000) }.getOrNull()?.let { return it }
-        val scroller = device.findObject(By.scrollable(true)) ?: throw AssertionError("not on screen and nothing scrolls: $selector")
-        for (dir in listOf(Direction.DOWN, Direction.UP)) {
+        val x = device.displayWidth - 12
+        val h = device.displayHeight
+        for (down in listOf(true, false)) {
             repeat(12) {
                 device.findObject(selector)?.let { return it }
-                if (!scroller.scroll(dir, 0.7f)) return@repeat
+                if (down) device.swipe(x, (h * 0.75).toInt(), x, (h * 0.35).toInt(), 25)
+                else device.swipe(x, (h * 0.35).toInt(), x, (h * 0.75).toInt(), 25)
+                Thread.sleep(300)
             }
         }
         return device.findObject(selector) ?: throw AssertionError("not found after scrolling: $selector")
