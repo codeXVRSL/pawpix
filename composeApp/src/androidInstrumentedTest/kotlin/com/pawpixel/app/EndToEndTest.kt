@@ -114,6 +114,9 @@ class EndToEndTest {
             scrollTo(By.clazz("android.widget.EditText")).click()
             Thread.sleep(500)
             find(By.clazz("android.widget.EditText")).text = "Chelsea"
+            Thread.sleep(300)
+            device.pressBack() // closes the keyboard
+            Thread.sleep(500)
             scrollTo(By.text("Save Chelsea")).click()
             find(By.text("+ Add care task"), 30_000)
             check(repo.state.value.pets.singleOrNull()?.name == "Chelsea") { "pet not saved: ${repo.state.value.pets}" }
@@ -280,8 +283,8 @@ class EndToEndTest {
         for (down in listOf(true, false)) {
             repeat(12) {
                 device.findObject(selector)?.let { return it }
-                if (down) device.swipe(x, (h * 0.75).toInt(), x, (h * 0.35).toInt(), 25)
-                else device.swipe(x, (h * 0.35).toInt(), x, (h * 0.75).toInt(), 25)
+                if (down) device.swipe(x, (h * 0.65).toInt(), x, (h * 0.25).toInt(), 25)
+                else device.swipe(x, (h * 0.25).toInt(), x, (h * 0.65).toInt(), 25)
                 Thread.sleep(300)
             }
         }

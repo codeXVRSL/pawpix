@@ -60,8 +60,7 @@ final class OwnerJourneyTests: XCTestCase {
                 XCUIElement.ElementType.textView.rawValue, XCUIElement.ElementType.textField.rawValue))
             let field = try scrollTo(query: candidates.firstMatch, "name field")
             field.tap()
-            field.typeText("Chelsea")
-            dismissKeyboard()
+            field.typeText("Chelsea\n") // the newline closes the keyboard
             try scrollTo("Save Chelsea").tap()
             allowNotificationsIfAsked()
             try find("+ Add care task", timeout: 30)
