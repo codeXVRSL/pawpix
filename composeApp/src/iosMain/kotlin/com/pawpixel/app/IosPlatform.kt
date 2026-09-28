@@ -125,7 +125,9 @@ class IosPlatform(private val host: IosHost) : Platform {
     override fun refreshWidgets(nextChangeMs: Long?) = host.reloadWidgets()
     override fun shareFile(bytes: ByteArray, fileName: String, mimeType: String) = host.shareFile(bytes.toNSData(), fileName)
     override fun openUrl(url: String) = host.openUrl(url)
-    override fun log(message: String) = platform.Foundation.NSLog("%@", "PawPixel: $message")
+    // Only the format argument is bridged to NSString: passing a Kotlin String through NSLog's
+    // variadic "%@" crashes (EXC_BAD_ACCESS). So the message is the format, with % escaped.
+    override fun log(message: String) = platform.Foundation.NSLog("PawPixel: " + message.replace("%", "%%"))
 }
 
 class IosFileStore(private val root: String) : FileStore {
