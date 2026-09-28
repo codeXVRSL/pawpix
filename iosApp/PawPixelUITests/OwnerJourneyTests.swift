@@ -115,8 +115,7 @@ final class OwnerJourneyTests: XCTestCase {
             let appeared = app.otherElements["ActivityListView"].waitForExistence(timeout: 20) || close.waitForExistence(timeout: 1)
             shot("share-card")
             guard appeared else { throw Failure("share sheet didn't appear for the card") }
-            if close.exists { close.tap() } else { app.swipeDown(velocity: .fast) }
-            sleep(1)
+            dismissShareSheet()
         }
 
         step("share animation opens the share sheet") {
@@ -126,8 +125,7 @@ final class OwnerJourneyTests: XCTestCase {
             let appeared = sheet.waitForExistence(timeout: 60) || close.waitForExistence(timeout: 1)
             shot("share-sheet")
             guard appeared else { throw Failure("share sheet didn't appear") }
-            if close.exists { close.tap() } else { app.swipeDown(velocity: .fast) }
-            sleep(1)
+            dismissShareSheet()
         }
 
         step("home lists the pet, settings open") {
@@ -219,6 +217,20 @@ final class OwnerJourneyTests: XCTestCase {
         }
         guard e.exists && e.isHittable else { throw Failure("not found after scrolling: \(what)") }
         return e
+    }
+
+    /// Closes the share sheet and waits until it (and its dimming layer) is really gone.
+    private func dismissShareSheet() {
+        let dim = app.otherElements["PopoverDismissRegion"]
+        for _ in 0..<4 {
+            if app.buttons["Close"].exists { app.buttons["Close"].tap() }
+            else if dim.exists { app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.08)).tap() }
+            else { break }
+            let gone = NSPredicate(format: "exists == false")
+            let wait = XCTNSPredicateExpectation(predicate: gone, object: dim)
+            _ = XCTWaiter.wait(for: [wait], timeout: 4)
+        }
+        sleep(1)
     }
 
     private func dismissKeyboard() {
