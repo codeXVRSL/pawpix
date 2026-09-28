@@ -19,6 +19,7 @@ import androidx.test.platform.app.InstrumentationRegistry
 import androidx.test.uiautomator.By
 import androidx.test.uiautomator.BySelector
 import androidx.test.uiautomator.Configurator
+import androidx.test.uiautomator.StaleObjectException
 import androidx.test.uiautomator.UiDevice
 import androidx.test.uiautomator.UiObject2
 import com.pawpixel.app.widget.PetWidgetReceiver
@@ -89,36 +90,38 @@ class EndToEndTest {
         }
 
         step("photo becomes a pixel pet") {
-            find(By.text("Choose a photo")).click()
+            retrying { find(By.text("Choose a photo")).click() }
             find(By.text("Is that your pet? Tap to give pets."), 90_000)
             Thread.sleep(2_000) // let it walk around a bit for the screenshot
             shot("02-your-pixel-pet")
         }
 
         step("cat body, floppy ears, then back to pointy") {
-            scrollTo(By.text("Cat body")).click()
-            scrollTo(By.text("Floppy ears")).click()
+            retrying { scrollTo(By.text("Cat body")).click() }
+            retrying { scrollTo(By.text("Floppy ears")).click() }
             Thread.sleep(800)
             shot("03-floppy-ears")
-            find(By.text("Pointy ears")).click()
+            retrying { find(By.text("Pointy ears")).click() }
         }
 
         step("face square is shown and can be resized") {
-            scrollTo(By.text("Bigger")).click()
+            retrying { scrollTo(By.text("Bigger")).click() }
             Thread.sleep(1_500)
-            scrollTo(By.text("Smaller")).click()
+            retrying { scrollTo(By.text("Smaller")).click() }
             Thread.sleep(1_500)
             shot("04-face-framing")
         }
 
         step("name and save") {
-            scrollTo(By.clazz("android.widget.EditText")).click()
+            val field = By.clazz("android.widget.EditText")
+            retrying { scrollTo(field).click() }
             Thread.sleep(500)
-            find(By.clazz("android.widget.EditText")).text = "Chelsea"
+            retrying { find(field).text = "Chelsea" }
+            waitFor("name typed") { device.findObject(By.text("Chelsea")) != null }
             Thread.sleep(300)
             device.pressBack() // closes the keyboard
             Thread.sleep(500)
-            scrollTo(By.text("Save Chelsea")).click()
+            retrying { scrollTo(By.text("Save Chelsea")).click() }
             find(By.text("Care"), 30_000)
             check(repo.state.value.pets.singleOrNull()?.name == "Chelsea") { "pet not saved: ${repo.state.value.pets}" }
             Thread.sleep(1_500)
@@ -133,7 +136,7 @@ class EndToEndTest {
 
         step("Done on a care task counts and cheers the pet up") {
             val before = completions()
-            scrollTo(By.text("Done")).click()
+            retrying { scrollTo(By.text("Done")).click() }
             waitFor("completion recorded") { completions() == before + 1 }
             find(By.text("Undo"))
             Thread.sleep(1_200) // the eating reaction
@@ -141,20 +144,20 @@ class EndToEndTest {
         }
 
         step("add a medicine task") {
-            scrollTo(By.text("+ Add care task")).click()
+            retrying { scrollTo(By.text("+ Add care task")).click() }
             find(By.text("Times"))
-            scrollTo(By.textContains("Medicine")).click()
+            retrying { scrollTo(By.textContains("Medicine")).click() }
             shot("07-task-editor")
-            scrollTo(By.text("Save")).click()
+            retrying { scrollTo(By.text("Save")).click() }
             waitFor("medicine task saved") { repo.state.value.tasksFor(petId).any { it.kind.name == "MEDS" } }
             find(By.text("Care"))
         }
 
         step("share animation and before/after card open the share sheet") {
             val before = choosers()
-            scrollTo(By.text("Share animation")).click()
+            retrying { scrollTo(By.text("Share animation")).click() }
             waitFor("GIF share sheet", 60_000) { choosers() == before + 1 }
-            scrollTo(By.text("Before/after")).click()
+            retrying { scrollTo(By.text("Before/after")).click() }
             waitFor("card share sheet") { choosers() == before + 2 }
             shot("08-share-section")
         }
@@ -168,7 +171,7 @@ class EndToEndTest {
         }
 
         step("settings open and close") {
-            find(By.text("Settings")).click()
+            retrying { find(By.text("Settings")).click() }
             find(By.text("Bedtime"))
             shot("10-settings")
             device.pressBack()
@@ -245,6 +248,16 @@ class EndToEndTest {
             runCatching { device.dumpWindowHierarchy(File(out, "$tag.xml")) }
             log.appendLine("FAIL  $name: ${e::class.simpleName}: ${e.message}")
             log.appendLine(e.stackTraceToString().lines().take(12).joinToString("\n") { "      $it" })
+        }
+    }
+
+    /** Compose redraws can swap the node under us between finding and using it: find it again. */
+    private fun retrying(block: () -> Unit) {
+        repeat(3) { attempt ->
+            try { block(); return } catch (e: StaleObjectException) {
+                if (attempt == 2) throw e
+                Thread.sleep(500)
+            }
         }
     }
 

@@ -3,6 +3,7 @@ package com.pawpixel.app
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.toComposeImageBitmap
+import androidx.compose.ui.uikit.OnFocusBehavior
 import androidx.compose.ui.window.ComposeUIViewController
 import com.pawpixel.app.ui.App
 import com.pawpixel.core.Json
@@ -75,7 +76,9 @@ object IosGraph {
     internal fun host() = host
 }
 
-fun MainViewController(): UIViewController = ComposeUIViewController { App(IosGraph.repo) }
+// Screens pad themselves above the keyboard (imePadding), so don't also pan the whole view.
+fun MainViewController(): UIViewController =
+    ComposeUIViewController(configure = { onFocusBehavior = OnFocusBehavior.DoNothing }) { App(IosGraph.repo) }
 
 class IosPlatform(private val host: IosHost) : Platform {
     override val files: FileStore = IosFileStore(host.sharedContainerPath())

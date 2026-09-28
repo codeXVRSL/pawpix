@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -132,6 +133,7 @@ fun SpriteMakerScreen(app: AppScope, state: AppState, existingPetId: String?) {
 
     Column(
         Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding()
+            .imePadding() // keeps the focused field and buttons above the keyboard
             .verticalScroll(rememberScrollState()).padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
