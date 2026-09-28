@@ -1,0 +1,276 @@
+package com.pawpixel.app
+
+import android.Manifest
+import android.app.Activity
+import android.app.Instrumentation
+import android.appwidget.AppWidgetManager
+import android.content.ComponentName
+import android.content.Context
+import android.content.Intent
+import android.net.Uri
+import android.os.Build
+import androidx.test.core.app.ActivityScenario
+import androidx.test.espresso.intent.Intents
+import androidx.test.espresso.intent.Intents.intending
+import androidx.test.espresso.intent.matcher.IntentMatchers.isInternal
+import androidx.test.ext.junit.runners.AndroidJUnit4
+import androidx.test.platform.app.InstrumentationRegistry
+import androidx.test.uiautomator.By
+import androidx.test.uiautomator.BySelector
+import androidx.test.uiautomator.Configurator
+import androidx.test.uiautomator.Direction
+import androidx.test.uiautomator.UiDevice
+import androidx.test.uiautomator.UiObject2
+import androidx.test.uiautomator.Until
+import com.pawpixel.app.widget.PetWidgetReceiver
+import kotlinx.coroutines.runBlocking
+import org.hamcrest.CoreMatchers.not
+import org.junit.After
+import org.junit.Before
+import org.junit.Test
+import org.junit.runner.RunWith
+import java.io.File
+import java.util.regex.Pattern
+
+/**
+ * The whole app, the way an owner uses it, on a real Android system:
+ * photo → pixel pet → name and save → care tasks → Done → add a task → reminder notification and
+ * its Done button → home-screen widget → share GIF and before/after card.
+ *
+ * Only the system photo picker is stubbed (it returns a bundled cat photo). Everything else is
+ * real: ML Kit, the sprite engine, storage, alarms, notifications, Glance widget, share intents.
+ * Screenshots and a step log go to files/e2e (pulled by scripts/android-e2e.sh).
+ *
+ * UiAutomator rather than the Compose test rule: the living pet animates forever, which would
+ * keep a Compose rule from ever going idle.
+ */
+@RunWith(AndroidJUnit4::class)
+class EndToEndTest {
+    private val instr = InstrumentationRegistry.getInstrumentation()
+    private val ctx: Context = instr.targetContext
+    private val device = UiDevice.getInstance(instr)
+    private val out = File(ctx.filesDir, "e2e")
+    private val log = StringBuilder()
+    private val repo get() = PawPixelApplication.repo(ctx)
+    private var scenario: ActivityScenario<MainActivity>? = null
+
+    @Before
+    fun setUp() {
+        out.deleteRecursively(); out.mkdirs()
+        Configurator.getInstance().waitForIdleTimeout = 1_000
+        if (Build.VERSION.SDK_INT >= 33) {
+            instr.uiAutomation.grantRuntimePermission(ctx.packageName, Manifest.permission.POST_NOTIFICATIONS)
+        }
+        runBlocking { repo.deleteAllData() }
+        val photo = File(ctx.cacheDir, "e2e-pet.jpg")
+        instr.context.assets.open("pet.jpg").use { input -> photo.outputStream().use { input.copyTo(it) } }
+        Intents.init()
+        // Anything that leaves the app (photo picker, share sheet, browser) is answered by the stub.
+        intending(not(isInternal())).respondWith(
+            Instrumentation.ActivityResult(Activity.RESULT_OK, Intent().setData(Uri.fromFile(photo))),
+        )
+    }
+
+    @After
+    fun tearDown() {
+        Intents.release()
+        scenario?.close()
+        File(out, "steps.txt").writeText(log.toString())
+    }
+
+    @Test
+    fun ownerJourney() {
+        scenario = ActivityScenario.launch(MainActivity::class.java)
+
+        step("first open goes straight to making a pet") {
+            find(By.text("Make your pixel pet"))
+            shot("01-first-open")
+        }
+
+        step("photo becomes a pixel pet") {
+            find(By.text("Choose a photo")).click()
+            find(By.text("Is that your pet? Tap to give pets."), 90_000)
+            Thread.sleep(2_000) // let it walk around a bit for the screenshot
+            shot("02-your-pixel-pet")
+        }
+
+        step("cat body, floppy ears, then back to pointy") {
+            scrollTo(By.text("Cat body")).click()
+            scrollTo(By.text("Floppy ears")).click()
+            Thread.sleep(800)
+            shot("03-floppy-ears")
+            find(By.text("Pointy ears")).click()
+        }
+
+        step("face square is shown and can be resized") {
+            scrollTo(By.text("Bigger")).click()
+            Thread.sleep(1_500)
+            find(By.text("Smaller")).click()
+            Thread.sleep(1_500)
+            shot("04-face-framing")
+        }
+
+        step("name and save") {
+            val field = scrollTo(By.clazz("android.widget.EditText"))
+            field.click()
+            field.text = "Chelsea"
+            scrollTo(By.text("Save Chelsea")).click()
+            find(By.text("+ Add care task"), 30_000)
+            check(repo.state.value.pets.singleOrNull()?.name == "Chelsea") { "pet not saved: ${repo.state.value.pets}" }
+            Thread.sleep(1_500)
+            shot("05-pet-screen")
+        }
+
+        val petId = repo.state.value.pets.single().id
+        fun completions() = repo.state.value.completions.size
+
+        step("Done on a care task counts and cheers the pet up") {
+            val before = completions()
+            scrollTo(By.text("Done")).click()
+            waitFor("completion recorded") { completions() == before + 1 }
+            find(By.text("Undo"))
+            Thread.sleep(1_200) // the eating reaction
+            shot("06-after-done")
+        }
+
+        step("add a medicine task") {
+            scrollTo(By.text("+ Add care task")).click()
+            find(By.text("Times"))
+            scrollTo(By.textContains("Medicine")).click()
+            shot("07-task-editor")
+            scrollTo(By.text("Save")).click()
+            waitFor("medicine task saved") { repo.state.value.tasksFor(petId).any { it.kind.name == "MEDS" } }
+            find(By.text("+ Add care task"))
+        }
+
+        step("share animation and before/after card open the share sheet") {
+            val before = choosers()
+            scrollTo(By.text("Share animation")).click()
+            waitFor("GIF share sheet", 60_000) { choosers() == before + 1 }
+            scrollTo(By.text("Before/after")).click()
+            waitFor("card share sheet") { choosers() == before + 2 }
+            shot("08-share-section")
+        }
+
+        step("home screen lists the pet") {
+            device.pressBack()
+            find(By.text("PawPixel"))
+            find(By.text("Chelsea"))
+            Thread.sleep(800)
+            shot("09-home")
+        }
+
+        step("settings open and close") {
+            find(By.text("Settings")).click()
+            find(By.text("Bedtime"))
+            shot("10-settings")
+            device.pressBack()
+            find(By.text("Chelsea"))
+        }
+
+        step("reminder notification with a working Done button") {
+            val task = repo.state.value.tasksFor(petId).first { it.kind.name == "WATER" }
+            val before = completions()
+            ctx.sendBroadcast(
+                Intent(ctx, ReminderReceiver::class.java).setAction(ReminderReceiver.ACTION_SHOW)
+                    .putExtra(ReminderReceiver.EXTRA_TASK, task.id)
+                    .putExtra(ReminderReceiver.EXTRA_ID, 4242)
+                    .putExtra(ReminderReceiver.EXTRA_TITLE, "${task.kind.emoji} ${task.title} · Chelsea")
+                    .putExtra(ReminderReceiver.EXTRA_BODY, "Time to ${task.title.lowercase()} for Chelsea."),
+            )
+            device.openNotification()
+            val title = find(By.textContains("Chelsea."), 15_000)
+            Thread.sleep(800)
+            shot("11-notification")
+            val done = device.findObject(By.text(Pattern.compile("(?i)done")))
+                ?: run { title.click(); null } // not expanded: some shades hide actions until tapped
+            if (done != null) {
+                done.click()
+                waitFor("Done from the notification") { completions() == before + 1 }
+                note("pressed Done on the notification")
+            } else {
+                note("notification actions hidden; opened the app from it instead")
+            }
+            device.pressBack()
+            if (!device.hasObject(By.pkg(ctx.packageName))) scenario = ActivityScenario.launch(MainActivity::class.java)
+        }
+
+        step("home-screen widget can be added and draws the pet") {
+            val awm = AppWidgetManager.getInstance(ctx)
+            val provider = ComponentName(ctx, PetWidgetReceiver::class.java)
+            check(awm.isRequestPinAppWidgetSupported) { "this launcher can't pin widgets" }
+            find(By.text("Chelsea"))
+            awm.requestPinAppWidget(provider, null, null)
+            val add = find(By.text(Pattern.compile("(?i)add( to home screen)?|add automatically")), 15_000)
+            shot("12-widget-dialog")
+            add.click()
+            waitFor("widget placed", 15_000) { awm.getAppWidgetIds(provider).isNotEmpty() }
+            device.pressHome()
+            Thread.sleep(4_000) // Glance renders asynchronously
+            shot("13-home-screen-widget")
+            check(!device.hasObject(By.textContains("Can't load widget"))) { "the widget failed to load" }
+            check(!device.hasObject(By.textContains("Problem loading widget"))) { "the widget failed to load" }
+        }
+
+        step("reopening the app keeps the pet") {
+            scenario?.close()
+            scenario = ActivityScenario.launch(MainActivity::class.java)
+            find(By.text("Chelsea"))
+        }
+
+        val failed = log.lines().filter { it.startsWith("FAIL") }
+        check(failed.isEmpty()) { "Some steps failed:\n" + failed.joinToString("\n") }
+    }
+
+    // ---- helpers ----
+
+    private var shotCount = 0
+
+    /** Runs one step; a failure is recorded (with a screenshot and the screen's structure) and the journey continues. */
+    private fun step(name: String, block: () -> Unit) {
+        val t0 = System.currentTimeMillis()
+        try {
+            block()
+            log.appendLine("PASS  $name  (${System.currentTimeMillis() - t0} ms)")
+        } catch (e: Throwable) {
+            val tag = "FAILED-" + name.take(40).replace(Regex("[^A-Za-z0-9]+"), "-")
+            runCatching { device.takeScreenshot(File(out, "$tag.png")) }
+            runCatching { device.dumpWindowHierarchy(File(out, "$tag.xml")) }
+            log.appendLine("FAIL  $name: ${e::class.simpleName}: ${e.message}")
+            log.appendLine(e.stackTraceToString().lines().take(12).joinToString("\n") { "      $it" })
+        }
+    }
+
+    private fun note(msg: String) { log.appendLine("      note: $msg") }
+
+    private fun shot(name: String) {
+        device.takeScreenshot(File(out, "%02d-%s.png".format(++shotCount, name.substringAfter('-'))))
+    }
+
+    private fun find(selector: BySelector, timeoutMs: Long = 15_000): UiObject2 =
+        device.wait(Until.findObject(selector), timeoutMs) ?: throw AssertionError("not on screen: $selector")
+
+    /** Finds [selector], scrolling the screen's scrollable list down (then up) to reach it. */
+    private fun scrollTo(selector: BySelector): UiObject2 {
+        device.wait(Until.findObject(selector), 3_000)?.let { return it }
+        val scroller = device.findObject(By.scrollable(true)) ?: throw AssertionError("not on screen and nothing scrolls: $selector")
+        for (dir in listOf(Direction.DOWN, Direction.UP)) {
+            repeat(12) {
+                device.findObject(selector)?.let { return it }
+                if (!scroller.scroll(dir, 0.7f)) return@repeat
+            }
+        }
+        return device.findObject(selector) ?: throw AssertionError("not found after scrolling: $selector")
+    }
+
+    private fun waitFor(what: String, timeoutMs: Long = 15_000, condition: () -> Boolean) {
+        val end = System.currentTimeMillis() + timeoutMs
+        while (System.currentTimeMillis() < end) {
+            if (condition()) return
+            Thread.sleep(250)
+        }
+        throw AssertionError("timed out waiting for: $what")
+    }
+
+    private fun choosers() = Intents.getIntents().count { it.action == Intent.ACTION_CHOOSER }
+}

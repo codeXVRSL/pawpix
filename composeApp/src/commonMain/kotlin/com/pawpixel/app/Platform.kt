@@ -23,6 +23,8 @@ interface FileStore {
 /** Everything the shared app needs from Android or iOS. */
 interface Platform {
     val files: FileStore
+    /** Debug/test builds: shows testing switches (like the Pro beta unlock) that release builds hide. */
+    val isDebugBuild: Boolean
     fun nowMs(): Long
     /** Offset from UTC for the device's time zone at [atMs] (DST-aware). */
     fun utcOffsetMs(atMs: Long): Long

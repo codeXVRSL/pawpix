@@ -61,6 +61,7 @@ import com.pawpixel.sprite.SpritePipeline
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 import kotlin.math.min
 import kotlin.math.roundToInt
 
@@ -99,7 +100,8 @@ fun SpriteMakerScreen(app: AppScope, state: AppState, existingPetId: String?) {
             if (decoded == null) {
                 error = "Couldn't open that photo. Try another one."
             } else {
-                val mask = runCatching { app.repo.platform.segmentPet(decoded) }.getOrNull()
+                // The native cut-out can stall (e.g. its model still downloading): fall back after a while.
+                val mask = runCatching { withTimeoutOrNull(12_000) { app.repo.platform.segmentPet(decoded) } }.getOrNull()
                 face = null        // let PawPixel find the face first
                 source = Source(decoded, mask)
             }

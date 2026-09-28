@@ -99,7 +99,7 @@ fun PetScreen(app: AppScope, state: AppState, pet: Pet) {
             ) { Text(if (makingGif) "Making GIF…" else "Share animation") }
             OutlinedButton(onClick = { app.repo.shareReveal(pet) }) { Text("Before/after") }
         }
-        OutlinedButton(onClick = { app.navigate(Screen.RemakeSprite(pet.id)) }) { Text("Edit look: photo, face, eyes") }
+        OutlinedButton(onClick = { app.navigate(Screen.RemakeSprite(pet.id)) }) { Text("Edit look: photo, face, ears") }
         TextButton(onClick = { confirmDelete = true }) { Text("Delete ${pet.name}", color = MaterialTheme.colorScheme.error) }
     }
 

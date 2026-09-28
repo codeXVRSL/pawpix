@@ -79,6 +79,8 @@ fun MainViewController(): UIViewController = ComposeUIViewController { App(IosGr
 
 class IosPlatform(private val host: IosHost) : Platform {
     override val files: FileStore = IosFileStore(host.sharedContainerPath())
+    @OptIn(kotlin.experimental.ExperimentalNativeApi::class)
+    override val isDebugBuild: Boolean = kotlin.native.Platform.isDebugBinary
 
     override fun nowMs(): Long = (NSDate().timeIntervalSince1970 * 1000).toLong()
 

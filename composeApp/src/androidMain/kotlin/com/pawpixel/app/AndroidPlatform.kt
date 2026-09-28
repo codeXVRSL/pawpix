@@ -7,6 +7,7 @@ import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
+import android.content.pm.ApplicationInfo
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.ImageDecoder
@@ -37,6 +38,7 @@ import kotlin.math.max
 class AndroidPlatform(private val context: Context) : Platform {
     private val appScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     override val files: FileStore = AndroidFileStore(File(context.filesDir, "pawpixel"))
+    override val isDebugBuild: Boolean = (context.applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE) != 0
 
     /** Set by [MainActivity] so the shared UI can ask for notification permission. */
     var permissionRequester: (() -> Unit)? = null

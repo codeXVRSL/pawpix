@@ -28,6 +28,7 @@ import com.pawpixel.core.AppState
 import com.pawpixel.core.MINUTES_PER_DAY
 
 const val SUPPORT_EMAIL = "support@pawpixel.app" // TODO: replace with your real support address before release
+const val APP_VERSION = "1.0.0"
 const val PRIVACY_URL = "https://pawpixel.app/privacy" // TODO: publish docs/PRIVACY.md here
 
 @Composable
@@ -57,8 +58,10 @@ fun SettingsScreen(app: AppScope, state: AppState) {
 
         Text("PawPixel Pro", fontWeight = FontWeight.Bold)
         Text("Your first pet is free forever. Pro (coming soon) adds more pets, AI-enhanced sprites and hand-finished sprites by a pixel artist.")
-        SwitchRow("Beta: unlock Pro features", "For testing only, until in-app purchases are connected.", s.pro) {
-            app.launch { app.repo.setSettings(s.copy(pro = it)) }
+        if (app.repo.platform.isDebugBuild) {
+            SwitchRow("Test build: unlock Pro features", "Only in test builds, until in-app purchases are connected.", s.pro) {
+                app.launch { app.repo.setSettings(s.copy(pro = it)) }
+            }
         }
 
         Text("Privacy", fontWeight = FontWeight.Bold)
@@ -71,7 +74,7 @@ fun SettingsScreen(app: AppScope, state: AppState) {
         OutlinedButton(onClick = { app.repo.platform.openUrl("mailto:$SUPPORT_EMAIL") }) { Text("Contact support") }
         TextButton(onClick = { confirmWipe = true }) { Text("Delete all my data", color = MaterialTheme.colorScheme.error) }
 
-        Text("PawPixel 0.1.0", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text("PawPixel $APP_VERSION", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 
     if (confirmWipe) {
