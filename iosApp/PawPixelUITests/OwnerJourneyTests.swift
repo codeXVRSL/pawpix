@@ -131,7 +131,7 @@ final class OwnerJourneyTests: XCTestCase {
         step("home lists the pet, settings open") {
             try scrollTo("‹ Back").tap()
             try find("PawPixel")
-            try find(petName)
+            guard element(containing: petName).waitForExistence(timeout: 15) else { throw Failure("pet not listed") }
             sleep(1)
             shot("home")
             try find("Settings").tap()
@@ -144,7 +144,7 @@ final class OwnerJourneyTests: XCTestCase {
             app.terminate()
             app.launchEnvironment["PAWPIXEL_TEST_RESET"] = "0"
             app.launch()
-            try find(petName, timeout: 30)
+            guard element(containing: petName).waitForExistence(timeout: 30) else { throw Failure("pet not listed after relaunch") }
             shot("after-relaunch")
         }
 
