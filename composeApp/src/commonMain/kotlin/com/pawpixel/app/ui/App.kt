@@ -51,6 +51,9 @@ fun App(repo: PawRepository, registerBack: ((() -> Boolean) -> (() -> Unit))? = 
         var stack by remember { mutableStateOf(listOf<Screen>(Screen.Home)) }
         var now by remember { mutableLongStateOf(repo.now()) }
 
+        // Anything just logged (Done, Undo) happened "now": refresh the clock with every change,
+        // or a completion would look like it's in the future until the next tick.
+        LaunchedEffect(state) { now = repo.now() }
         // Keep moods and "overdue since" labels current while the app is open.
         LaunchedEffect(Unit) {
             while (true) {

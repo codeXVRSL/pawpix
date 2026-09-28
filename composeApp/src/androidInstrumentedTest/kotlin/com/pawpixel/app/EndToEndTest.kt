@@ -9,6 +9,7 @@ import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.os.Build
+import android.view.accessibility.AccessibilityNodeInfo
 import androidx.test.core.app.ActivityScenario
 import androidx.test.espresso.intent.Intents
 import androidx.test.espresso.intent.Intents.intending
@@ -118,7 +119,7 @@ class EndToEndTest {
             device.pressBack() // closes the keyboard
             Thread.sleep(500)
             scrollTo(By.text("Save Chelsea")).click()
-            find(By.text("+ Add care task"), 30_000)
+            find(By.text("Care"), 30_000)
             check(repo.state.value.pets.singleOrNull()?.name == "Chelsea") { "pet not saved: ${repo.state.value.pets}" }
             Thread.sleep(1_500)
             shot("05-pet-screen")
@@ -146,7 +147,7 @@ class EndToEndTest {
             shot("07-task-editor")
             scrollTo(By.text("Save")).click()
             waitFor("medicine task saved") { repo.state.value.tasksFor(petId).any { it.kind.name == "MEDS" } }
-            find(By.text("+ Add care task"))
+            find(By.text("Care"))
         }
 
         step("share animation and before/after card open the share sheet") {
@@ -273,22 +274,35 @@ class EndToEndTest {
     }
 
     /**
-     * Finds [selector], scrolling the screen down (then up) to reach it. Swipes run along the
-     * right-hand margin: a swipe over the photo would move the face square instead of scrolling.
+     * Finds [selector], scrolling the screen down (then back up) to reach it. Scrolls the way a
+     * screen reader does (the accessibility scroll action), so it never drags the face-square photo.
      */
     private fun scrollTo(selector: BySelector): UiObject2 {
         runCatching { find(selector, 3_000) }.getOrNull()?.let { return it }
-        val x = device.displayWidth - 12
-        val h = device.displayHeight
-        for (down in listOf(true, false)) {
-            repeat(12) {
+        for (forward in listOf(true, false)) {
+            repeat(15) {
                 device.findObject(selector)?.let { return it }
-                if (down) device.swipe(x, (h * 0.65).toInt(), x, (h * 0.25).toInt(), 25)
-                else device.swipe(x, (h * 0.25).toInt(), x, (h * 0.65).toInt(), 25)
-                Thread.sleep(300)
+                if (!accessibilityScroll(forward)) return@repeat
+                Thread.sleep(400)
             }
         }
         return device.findObject(selector) ?: throw AssertionError("not found after scrolling: $selector")
+    }
+
+    /** Scrolls the first scrollable container of the app one page. False when it can't move. */
+    private fun accessibilityScroll(forward: Boolean): Boolean {
+        val root = instr.uiAutomation.rootInActiveWindow ?: return false
+        val queue = ArrayDeque(listOf(root))
+        while (queue.isNotEmpty()) {
+            val node = queue.removeFirst()
+            if (node.isScrollable) {
+                return node.performAction(
+                    if (forward) AccessibilityNodeInfo.ACTION_SCROLL_FORWARD else AccessibilityNodeInfo.ACTION_SCROLL_BACKWARD,
+                )
+            }
+            for (i in 0 until node.childCount) node.getChild(i)?.let { queue.addLast(it) }
+        }
+        return false
     }
 
     private fun waitFor(what: String, timeoutMs: Long = 15_000, condition: () -> Boolean) {

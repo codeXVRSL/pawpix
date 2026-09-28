@@ -60,10 +60,12 @@ final class OwnerJourneyTests: XCTestCase {
                 XCUIElement.ElementType.textView.rawValue, XCUIElement.ElementType.textField.rawValue))
             let field = try scrollTo(query: candidates.firstMatch, "name field")
             field.tap()
-            field.typeText("Chelsea\n") // the newline closes the keyboard
+            if !app.keyboards.firstMatch.waitForExistence(timeout: 5) { field.tap() }
+            guard app.keyboards.firstMatch.waitForExistence(timeout: 5) else { throw Failure("keyboard didn't open") }
+            app.typeText("Chelsea\n") // the newline closes the keyboard
             try scrollTo("Save Chelsea").tap()
             allowNotificationsIfAsked()
-            try find("+ Add care task", timeout: 30)
+            try find("Care", timeout: 30)
             sleep(2)
             shot("pet-screen")
         }
@@ -81,7 +83,7 @@ final class OwnerJourneyTests: XCTestCase {
             try scrollTo(query: element(containing: "Medicine"), "Medicine chip").tap()
             shot("task-editor")
             try scrollTo("Save").tap()
-            try find("+ Add care task")
+            try find("Care")
             try scrollTo(query: element(containing: "Medicine"), "medicine task in the list")
         }
 
