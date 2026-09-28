@@ -31,6 +31,8 @@ data class Pet(
     val spriteVersion: Int = 1,
     /** Eye positions tapped by the owner, as fractions (0..1) of the sprite's width/height, for blinking. */
     val eyes: List<Pair<Double, Double>> = emptyList(),
+    /** Ear shape chosen by the owner ("POINTY" / "FLOPPY"); null = the species' usual ears. */
+    val ears: String? = null,
 )
 
 data class SpriteSettings(

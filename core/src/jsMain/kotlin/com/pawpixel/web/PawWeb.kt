@@ -8,8 +8,8 @@ import com.pawpixel.core.SpriteSettings
 import com.pawpixel.core.TaskKind
 import com.pawpixel.sprite.AnimatedExport
 import com.pawpixel.sprite.AnimationSet
-import com.pawpixel.sprite.Animator
 import com.pawpixel.sprite.Chibi
+import com.pawpixel.sprite.Ears
 import com.pawpixel.sprite.FaceBox
 import com.pawpixel.sprite.Mask
 import com.pawpixel.sprite.PetArt
@@ -29,6 +29,7 @@ import com.pawpixel.sprite.StageRenderer
  * browser: photos are never uploaded. Images cross the boundary as ARGB IntArrays (Int32Array in JS).
  *
  * @param species "DOG", "CAT" or "OTHER"
+ * @param ears "POINTY", "FLOPPY", or "" for the species' usual ears
  * @param faceCx,faceCy,faceSide the face square as fractions of the photo (side: of its shorter
  *   edge); pass a negative faceSide to let PawPixel guess, then read the guess back from [faceCx] etc.
  */
@@ -36,7 +37,7 @@ import com.pawpixel.sprite.StageRenderer
 class PawWebPet(
     argb: IntArray, width: Int, height: Int, size: Int, colors: Int,
     mask: FloatArray?, maskWidth: Int, maskHeight: Int,
-    species: String, faceCx: Double, faceCy: Double, faceSide: Double,
+    species: String, faceCx: Double, faceCy: Double, faceSide: Double, ears: String,
 ) {
     private val result: SpriteResult = SpritePipeline.generate(
         PixelImage(width, height, argb),
@@ -44,8 +45,7 @@ class PawWebPet(
         mask?.let { Mask(maskWidth, maskHeight, it) },
         if (faceSide > 0) FaceBox(faceCx, faceCy, faceSide) else null,
     )
-    private val art = PetArt(result.head, Species.entries.firstOrNull { it.name == species } ?: Species.DOG)
-    private var eyes: List<Pair<Double, Double>> = emptyList()
+    private val art = PetArt(result.head, Species.entries.firstOrNull { it.name == species } ?: Species.DOG, Ears.of(ears))
     private var set: AnimationSet = Chibi.build(art, emptyList())
     private var moodSet: AnimationSet = set
     private var layout = StageLayout(set)
@@ -57,23 +57,10 @@ class PawWebPet(
     val faceCx: Double get() = result.face.cx
     val faceCy: Double get() = result.face.cy
     val faceSide: Double get() = result.face.side
-    /** The pixelated face, where the owner taps the eyes. */
-    val headWidth: Int get() = result.head.width
-    val headHeight: Int get() = result.head.height
+    /** The ear shape actually used ("POINTY" / "FLOPPY"). */
+    val ears: String get() = art.ears.name
     val stageWidth: Int get() = layout.stageWidth
     val stageHeight: Int get() = layout.stageHeight
-    val eyeCount: Int get() = eyes.size
-
-    fun headPixels(): IntArray = result.head.pixels.copyOf()
-
-    /** Adds an eye tap (fractions of the face image). A third tap starts over. */
-    fun tapEye(fx: Double, fy: Double) {
-        eyes = if (eyes.size >= 2) listOf(fx to fy) else eyes + (fx to fy)
-        rebuild()
-        brain.react(PetEvent.Petted, lastT)
-    }
-
-    fun clearEyes() { eyes = emptyList(); rebuild() }
 
     /** "happy", "content", "hungry", "restless", "meds", "sleepy", "sad" */
     fun setMood(key: String) { mood = Mood.fromKey(key); moodSet = set.forMood(mood) }
@@ -99,17 +86,7 @@ class PawWebPet(
             y >= layout.petTop + layout.body[1] - 8 && y <= layout.floorY + 2
     }
 
-    fun gif(name: String): ByteArray = AnimatedExport.clip(art, eyePx(), name, mood = if (mood == Mood.SLEEPY) Mood.SLEEPY else Mood.HAPPY)
+    fun gif(name: String): ByteArray = AnimatedExport.clip(art, emptyList(), name, mood = if (mood == Mood.SLEEPY) Mood.SLEEPY else Mood.HAPPY)
 
     fun revealPng(name: String): ByteArray = Png.encode(RevealCard.render(result.photoCrop, art.still, name))
-
-    private fun eyePx() = Animator.eyePixels(art.head, eyes)
-
-    private fun rebuild() {
-        set = Chibi.build(art, eyePx())
-        moodSet = set.forMood(mood)
-        layout = StageLayout(set)
-        brain = layout.brain(7)
-        brain.pose(lastT, mood)
-    }
 }

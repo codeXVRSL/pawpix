@@ -68,7 +68,7 @@ object AnimatedExport {
     const val FRAME_MS = 80
 
     /** [eyes] are in head pixels. */
-    fun clip(art: PetArt, eyes: List<Pair<Int, Int>>, petName: String, mood: Mood = Mood.HAPPY, durationMs: Int = 4800, scale: Int = 3): ByteArray {
+    fun clip(art: PetArt, eyes: List<Pair<Int, Int>>, petName: String, mood: Mood = Mood.HAPPY, durationMs: Int = 4800, scale: Int = 5): ByteArray {
         val set = Chibi.build(art, eyes).forMood(mood)
         val layout = StageLayout(set)
         val brain = layout.brain(seed = petName.hashCode())

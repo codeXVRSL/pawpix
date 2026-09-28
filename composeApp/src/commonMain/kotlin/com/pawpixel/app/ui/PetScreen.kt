@@ -68,7 +68,7 @@ fun PetScreen(app: AppScope, state: AppState, pet: Pet) {
                 Text(reading.caption, textAlign = TextAlign.Center)
                 Text(hearts(reading.score), style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.primary)
                 Text(
-                    if (pet.eyes.isEmpty()) "Tap ${pet.name} to give pets · mark the eyes in Edit look so they can blink" else "Tap ${pet.name} to give pets",
+                    "Tap ${pet.name} to give pets",
                     style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center,
                 )
             }

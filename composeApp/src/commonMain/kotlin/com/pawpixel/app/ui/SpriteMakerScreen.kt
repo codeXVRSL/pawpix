@@ -2,7 +2,6 @@ package com.pawpixel.app.ui
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.gestures.detectDragGestures
-import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -15,7 +14,6 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
@@ -52,12 +50,11 @@ import com.pawpixel.core.Mood
 import com.pawpixel.core.Species
 import com.pawpixel.core.SpriteSettings
 import com.pawpixel.core.StateOps
-import com.pawpixel.sprite.Animator
 import com.pawpixel.sprite.Chibi
+import com.pawpixel.sprite.Ears
 import com.pawpixel.sprite.FaceBox
 import com.pawpixel.sprite.Mask
 import com.pawpixel.sprite.PetArt
-import com.pawpixel.sprite.PetEvent
 import com.pawpixel.sprite.PixelImage
 import com.pawpixel.sprite.Poses
 import com.pawpixel.sprite.SpritePipeline
@@ -73,8 +70,9 @@ private class Source(val photo: PixelImage, val mask: Mask?) {
 }
 
 /**
- * Photo → full-body pixel pet. The owner picks a photo, checks the face square, chooses dog or cat
- * body, taps the eyes, and sees the pet come alive. Also used to edit an existing pet's look.
+ * Photo → full-body pixel pet. The owner picks a photo, checks the face square (its colours and
+ * markings go on the pet), chooses dog or cat body and ear shape, and sees the pet come alive.
+ * Also used to edit an existing pet's look.
  */
 @Composable
 fun SpriteMakerScreen(app: AppScope, state: AppState, existingPetId: String?) {
@@ -85,7 +83,7 @@ fun SpriteMakerScreen(app: AppScope, state: AppState, existingPetId: String?) {
     var settings by remember { mutableStateOf(existing?.sprite ?: SpriteSettings()) }
     var face by remember { mutableStateOf<FaceBox?>(null) }
     var result by remember { mutableStateOf(existing?.let { app.repo.storedResult(it) }) }
-    var eyes by remember { mutableStateOf(existing?.eyes ?: emptyList()) }
+    var ears by remember { mutableStateOf(Ears.of(existing?.ears)) }
     var name by remember { mutableStateOf(existing?.name ?: "") }
     var species by remember { mutableStateOf(existing?.species ?: Species.DOG) }
     var saving by remember { mutableStateOf(false) }
@@ -102,7 +100,6 @@ fun SpriteMakerScreen(app: AppScope, state: AppState, existingPetId: String?) {
                 error = "Couldn't open that photo. Try another one."
             } else {
                 val mask = runCatching { app.repo.platform.segmentPet(decoded) }.getOrNull()
-                eyes = emptyList() // new photo, new face
                 face = null        // let PawPixel find the face first
                 source = Source(decoded, mask)
             }
@@ -127,7 +124,7 @@ fun SpriteMakerScreen(app: AppScope, state: AppState, existingPetId: String?) {
     }
 
     val r = result
-    val art = remember(r, species) { r?.let { PetArt(it.head, species) } }
+    val art = remember(r, species, ears) { r?.let { PetArt(it.head, species, ears) } }
     val upToDate = source == null || madeFor == Triple(source, settings, face)
 
     Column(
@@ -158,12 +155,12 @@ fun SpriteMakerScreen(app: AppScope, state: AppState, existingPetId: String?) {
         } else {
             PixelCard(Modifier.fillMaxWidth()) {
                 Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    LivePet(art, eyes, Mood.HAPPY, seed = 7, modifier = Modifier.fillMaxWidth(), reaction = reaction)
+                    LivePet(art, emptyList(), Mood.HAPPY, seed = 7, modifier = Modifier.fillMaxWidth(), reaction = reaction)
                     Text("Is that your pet? Tap to give pets.", fontWeight = FontWeight.Bold)
                     Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                         for (m in listOf(Mood.HUNGRY, Mood.RESTLESS, Mood.SLEEPY, Mood.SAD)) {
-                            val img = remember(art, m, eyes) {
-                                if (m == Mood.SLEEPY) Poses.render(Chibi.sleeping(art, Animator.eyePixels(art.head, eyes)), m)
+                            val img = remember(art, m) {
+                                if (m == Mood.SLEEPY) Poses.render(Chibi.sleeping(art), m)
                                 else Poses.render(art.still, m)
                             }
                             SpriteView(img, Modifier.size(64.dp), animate = false)
@@ -185,44 +182,21 @@ fun SpriteMakerScreen(app: AppScope, state: AppState, existingPetId: String?) {
                     FilterChip(species == sp || (sp == Species.DOG && species == Species.OTHER), { species = sp }, label = { Text(label) })
                 }
             }
+            Text("Ears", fontWeight = FontWeight.Bold)
+            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                Ears.entries.forEach { e -> FilterChip(art.ears == e, { ears = e }, label = { Text(e.label) }) }
+            }
 
             source?.takeIf { upToDate }?.let { src ->
                 Text("Face", fontWeight = FontWeight.Bold)
-                Text("Drag the square over your pet's face, ears included.", style = MaterialTheme.typography.bodySmall)
-                FaceFramer(src.preview, face ?: r.face, Modifier.fillMaxWidth()) { moved ->
-                    face = moved
-                    eyes = emptyList()
-                }
+                Text("Drag the square over your pet's face. Its colours and markings go on your pixel pet.", style = MaterialTheme.typography.bodySmall)
+                FaceFramer(src.preview, face ?: r.face, Modifier.fillMaxWidth()) { moved -> face = moved }
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    OutlinedButton(onClick = { face = resize(face ?: r.face, 0.88); eyes = emptyList() }) { Text("Smaller") }
-                    OutlinedButton(onClick = { face = resize(face ?: r.face, 1.12); eyes = emptyList() }) { Text("Bigger") }
+                    OutlinedButton(onClick = { face = resize(face ?: r.face, 0.88) }) { Text("Smaller") }
+                    OutlinedButton(onClick = { face = resize(face ?: r.face, 1.12) }) { Text("Bigger") }
                 }
             }
 
-            Text("Eyes", fontWeight = FontWeight.Bold)
-            Text(
-                when (eyes.size) {
-                    0 -> "Tap each of your pet's eyes so they can blink and close them to sleep."
-                    1 -> "Now the other eye (skip it if only one shows)."
-                    else -> "Eyes marked. Watch them blink above!"
-                },
-                style = MaterialTheme.typography.bodySmall,
-            )
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                EyeTapper(r.head, eyes, Modifier.width(180.dp)) { tap ->
-                    if (!upToDate) return@EyeTapper // the face is being redrawn
-                    eyes = if (eyes.size >= 2) listOf(tap) else eyes + tap
-                    reaction = Reaction(PetEvent.Petted, (reaction?.nonce ?: 0) + 1)
-                }
-                if (eyes.isNotEmpty()) TextButton(onClick = { eyes = emptyList() }) { Text("Clear") }
-            }
-
-            if (source != null) {
-                Text("Detail", fontWeight = FontWeight.Bold)
-                ChipRow(listOf(32 to "Small", 40 to "Medium", 48 to "Large", 64 to "Detailed"), settings.size) { settings = settings.copy(size = it); eyes = emptyList() }
-                Text("Colours", fontWeight = FontWeight.Bold)
-                ChipRow(listOf(6 to "6", 8 to "8", 12 to "12", 16 to "16"), settings.colors) { settings = settings.copy(colors = it) }
-            }
             OutlinedButton(onClick = pick) { Text(if (existing != null && source == null) "Use a new photo" else "Use a different photo") }
 
             if (existing == null) {
@@ -236,10 +210,10 @@ fun SpriteMakerScreen(app: AppScope, state: AppState, existingPetId: String?) {
                     app.launch {
                         if (existing != null) {
                             val latest = app.repo.state.value.pet(existing.id) ?: existing
-                            app.repo.updateSprite(latest.copy(species = species), settings, r, eyes)
+                            app.repo.updateSprite(latest.copy(species = species), settings, r, ears)
                             app.back()
                         } else if (StateOps.canAddPet(app.repo.state.value)) {
-                            val pet = app.repo.addPet(name, species, settings, r, eyes)
+                            val pet = app.repo.addPet(name, species, settings, r, ears)
                             app.repo.platform.requestNotificationPermission()
                             app.back()
                             app.navigate(Screen.PetDetail(pet.id))
@@ -287,43 +261,5 @@ private fun FaceFramer(photo: PixelImage, face: FaceBox, modifier: Modifier, onM
         val tl = Offset((face.cx * size.width).toFloat() - side / 2, (face.cy * size.height).toFloat() - side / 2)
         drawRect(Color.White, tl, Size(side, side), style = Stroke(width = 6f))
         drawRect(accent, tl, Size(side, side), style = Stroke(width = 3f))
-    }
-}
-
-/** The pet's face, big and square, where the owner taps the eyes. Reports taps as fractions of the face image. */
-@Composable
-private fun EyeTapper(head: PixelImage, eyes: List<Pair<Double, Double>>, modifier: Modifier, onTap: (Pair<Double, Double>) -> Unit) {
-    val bitmap = remember(head) { head.toImageBitmap() }
-    val marker = MaterialTheme.colorScheme.primary
-    Canvas(
-        modifier.aspectRatio(head.width.toFloat() / head.height)
-            .pointerInput(head) {
-                detectTapGestures { o ->
-                    val fx = (o.x / size.width).toDouble().coerceIn(0.0, 0.999)
-                    val fy = (o.y / size.height).toDouble().coerceIn(0.0, 0.999)
-                    onTap(fx to fy)
-                }
-            },
-    ) {
-        drawRect(PawColors.Sand)
-        val s = min(size.width / head.width, size.height / head.height)
-        drawImage(
-            bitmap, IntOffset.Zero, IntSize(head.width, head.height),
-            IntOffset.Zero, IntSize((head.width * s).roundToInt(), (head.height * s).roundToInt()),
-            filterQuality = FilterQuality.None,
-        )
-        for ((fx, fy) in eyes) {
-            val c = Offset((fx * size.width).toFloat(), (fy * size.height).toFloat())
-            drawCircle(Color.White, radius = s * 1.8f, center = c, style = Stroke(width = s * 0.8f))
-            drawCircle(marker, radius = s * 1.8f, center = c, style = Stroke(width = s * 0.45f))
-        }
-        drawRect(Color(0x33000000), size = Size(size.width, size.height), style = Stroke(width = 2f))
-    }
-}
-
-@Composable
-private fun ChipRow(options: List<Pair<Int, String>>, selected: Int, onSelect: (Int) -> Unit) {
-    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-        options.forEach { (v, label) -> FilterChip(selected == v, { onSelect(v) }, label = { Text(label) }) }
     }
 }

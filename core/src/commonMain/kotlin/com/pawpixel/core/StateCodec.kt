@@ -16,6 +16,7 @@ object StateCodec {
                 "id" to p.id, "name" to p.name, "species" to p.species.name, "createdAt" to p.createdAtMs,
                 "spriteVersion" to p.spriteVersion,
                 "eyes" to p.eyes.map { (x, y) -> listOf(x, y) },
+                "ears" to (p.ears ?: ""),
                 "sprite" to Json.obj(
                     "size" to p.sprite.size, "colors" to p.sprite.colors,
                     "outline" to p.sprite.outline, "vibrance" to p.sprite.vibrance,
@@ -59,6 +60,7 @@ object StateCodec {
                     val x = e.list.getOrNull(0)?.double; val y = e.list.getOrNull(1)?.double
                     if (x != null && y != null && x in 0.0..1.0 && y in 0.0..1.0) x to y else null
                 }.take(2),
+                ears = p["ears"].str?.ifEmpty { null },
                 sprite = SpriteSettings(
                     size = sp["size"].int ?: spriteDefaults.size,
                     colors = sp["colors"].int ?: spriteDefaults.colors,

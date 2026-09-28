@@ -14,9 +14,9 @@ import com.pawpixel.core.StateCodec
 import com.pawpixel.core.StateOps
 import com.pawpixel.core.WidgetSnapshot
 import com.pawpixel.sprite.AnimatedExport
-import com.pawpixel.sprite.Animator
 import com.pawpixel.sprite.Argb
 import com.pawpixel.sprite.Chibi
+import com.pawpixel.sprite.Ears
 import com.pawpixel.sprite.FaceBox
 import com.pawpixel.sprite.PetArt
 import com.pawpixel.sprite.PixelImage
@@ -89,16 +89,16 @@ class PawRepository(val platform: Platform) {
 
     // ---- Pets ----
 
-    suspend fun addPet(name: String, species: Species, settings: SpriteSettings, result: SpriteResult, eyes: List<Pair<Double, Double>>): Pet {
-        val pet = Pet(Ids.newId(), name.trim().ifEmpty { "My pet" }, species, now(), settings, eyes = eyes)
+    suspend fun addPet(name: String, species: Species, settings: SpriteSettings, result: SpriteResult, ears: Ears?): Pet {
+        val pet = Pet(Ids.newId(), name.trim().ifEmpty { "My pet" }, species, now(), settings, ears = ears?.name)
         saveHead(pet.id, result.head, result.photoCrop)
         writeWidgetPoses(pet)
         update { StateOps.addPet(it, pet, now(), clock) }
         return pet
     }
 
-    suspend fun updateSprite(pet: Pet, settings: SpriteSettings, result: SpriteResult, eyes: List<Pair<Double, Double>>) {
-        val updated = pet.copy(sprite = settings, eyes = eyes, spriteVersion = pet.spriteVersion + 1)
+    suspend fun updateSprite(pet: Pet, settings: SpriteSettings, result: SpriteResult, ears: Ears?) {
+        val updated = pet.copy(sprite = settings, eyes = emptyList(), ears = ears?.name, spriteVersion = pet.spriteVersion + 1)
         saveHead(pet.id, result.head, result.photoCrop)
         writeWidgetPoses(updated)
         update { StateOps.updatePet(it, updated) }
@@ -136,8 +136,9 @@ class PawRepository(val platform: Platform) {
     }
 
     // ---- Sprite files ----
-    // Each pet keeps its pixelated face (head.bin) and a small photo crop (photo.bin). The full body
-    // is drawn from the face and species whenever needed (see Chibi), so nothing else is stored.
+    // Each pet keeps a small pixelated copy of its face (head.bin), used only for its fur colours and
+    // markings, and a small photo crop (photo.bin). The pixel pet is drawn from those plus species and
+    // ears whenever needed (see Chibi), so nothing else is stored.
 
     private fun saveHead(petId: String, head: PixelImage, photoCrop: PixelImage) {
         files.writeBytes("sprites/$petId/head.bin", RawImage.encode(head))
@@ -148,7 +149,7 @@ class PawRepository(val platform: Platform) {
     /** Pre-rendered mood poses for the widgets, pre-scaled so widgets that smooth when scaling stay crisp. */
     private fun writeWidgetPoses(pet: Pet) {
         val art = art(pet) ?: return
-        val sleeping = Chibi.sleeping(art, Animator.eyePixels(art.head, pet.eyes))
+        val sleeping = Chibi.sleeping(art)
         for ((mood, img) in Poses.renderAll(art.still, sleeping)) {
             files.writeBytes(WidgetSnapshot.spritePath(pet.id, mood), Png.encode(img.scaled(WIDGET_SCALE)))
         }
@@ -157,13 +158,13 @@ class PawRepository(val platform: Platform) {
     fun head(petId: String): PixelImage? = headCache[petId]
         ?: files.readBytes("sprites/$petId/head.bin")?.let(RawImage::decode)?.also { headCache[petId] = it }
 
-    /** The pet's face plus its species: everything needed to draw and animate it. */
-    fun art(pet: Pet): PetArt? = head(pet.id)?.let { PetArt(it, pet.species) }
+    /** The pet's face (its colours and markings), species and ears: everything needed to draw and animate it. */
+    fun art(pet: Pet): PetArt? = head(pet.id)?.let { PetArt(it, pet.species, Ears.of(pet.ears)) }
 
     fun photoCrop(petId: String): PixelImage? = files.readBytes("sprites/$petId/photo.bin")?.let(RawImage::decode)
 
     fun pose(pet: Pet, mood: Mood): PixelImage? = art(pet)?.let { a ->
-        if (mood == Mood.SLEEPY) Poses.render(Chibi.sleeping(a, Animator.eyePixels(a.head, pet.eyes)), mood) else Poses.render(a.still, mood)
+        if (mood == Mood.SLEEPY) Poses.render(Chibi.sleeping(a), mood) else Poses.render(a.still, mood)
     }
 
     /** The stored face and crop as a [SpriteResult], for marking eyes or switching species without a new photo. */
@@ -185,7 +186,7 @@ class PawRepository(val platform: Platform) {
      * on a background thread: get [art] on the main thread first.
      */
     fun animationGif(pet: Pet, art: PetArt): ByteArray =
-        AnimatedExport.clip(art, Animator.eyePixels(art.head, pet.eyes), pet.name)
+        AnimatedExport.clip(art, emptyList(), pet.name)
 
     fun shareGif(pet: Pet, gif: ByteArray) = platform.shareFile(gif, "${fileStem(pet)}.gif", "image/gif")
 

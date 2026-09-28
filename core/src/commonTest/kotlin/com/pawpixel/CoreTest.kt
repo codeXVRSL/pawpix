@@ -118,7 +118,7 @@ class CoreTest {
     }
 
     @Test fun stateCodecRoundTrips() {
-        val st = StateOps.complete(StateOps.addPet(AppState(), pet.copy(name = "Mó \"Chi\"\n", eyes = listOf(0.25 to 0.4, 0.75 to 0.4)), 0, clock), "missing", 0, clock)
+        val st = StateOps.complete(StateOps.addPet(AppState(), pet.copy(name = "Mó \"Chi\"\n", eyes = listOf(0.25 to 0.4, 0.75 to 0.4), ears = "POINTY"), 0, clock), "missing", 0, clock)
         val withDone = StateOps.complete(st, st.tasks.first().id, at(420), clock)
         val decoded = StateCodec.decode(StateCodec.encode(withDone))
         assertEquals(withDone, decoded)
@@ -210,8 +210,9 @@ class SpriteTest {
         val r = SpritePipeline.generate(fakePhoto(), SpriteSettings(size = 40))
         for (species in listOf(Species.DOG, Species.CAT)) {
             val still = r.art(species).still
+            assertEquals(Chibi.WIDTH to Chibi.HEIGHT, still.width to still.height, "one size for every pet")
             val box = Animator.opaqueBounds(still)!!
-            assertTrue(box[3] - box[1] > r.head.height * 1.3, "$species body extends well below the face")
+            assertTrue(box[3] - box[1] >= Chibi.HEIGHT - 3, "$species stands from ears to paws")
         }
         // Fur colours come from the face, not the dark eyes.
         val fur = r.art(Species.DOG).fur
@@ -299,26 +300,38 @@ class AnimationTest {
     @Test fun allFramesShareOneCanvas() {
         val set = Chibi.build(art(), emptyList())
         assertEquals(1, Frame.entries.map { set[it].width to set[it].height }.distinct().size)
-        assertTrue(!set.hasEyes, "no taps, no guessing")
     }
 
-    @Test fun tappedEyesBlink() {
-        val s = sprite()
-        // Find the two dark eye pixels in the sprite to "tap" them.
-        val dark = (0 until s.height).flatMap { y -> (0 until s.width).map { x -> x to y } }
-            .filter { (x, y) ->
-                val inside = listOf(0 to 0, 1 to 0, -1 to 0, 0 to 1, 0 to -1, 2 to 0, -2 to 0, 0 to 2, 0 to -2)
-                    .all { (dx, dy) -> s.inBounds(x + dx, y + dy) && Argb.alpha(s[x + dx, y + dy]) > 0 }
-                inside && Lab.fromArgb(s[x, y]).l < 0.25 && y < s.height * 2 / 3
-            }
-        val left = dark.filter { it.first < s.width / 2 }.minBy { it.second }
-        val right = dark.filter { it.first > s.width / 2 }.minBy { it.second }
-        val set = Chibi.build(PetArt(s, Species.CAT), listOf(left, right))
-        assertEquals(2, set.eyes.size)
-        assertFalse(set[Frame.BLINK].pixels.contentEquals(set[Frame.BASE].pixels), "blink changes the eyes")
+    @Test fun drawnEyesBlinkAndSleep() {
+        val set = Chibi.build(art())
         val changed = set[Frame.BLINK].pixels.indices.count { set[Frame.BLINK].pixels[it] != set[Frame.BASE].pixels[it] }
-        assertTrue(changed < 40, "blink only touches the eyes ($changed px)")
+        assertTrue(changed in 2..20, "blink only touches the eyes ($changed px)")
         assertFalse(set[Frame.SLEEP].pixels.contentEquals(set[Frame.BASE].pixels), "sleeping pose differs")
+    }
+
+    private fun swatch(f: (Double, Double) -> Int) = PixelImage(26, 26, IntArray(26 * 26) { f((it % 26 + 0.5) / 26, (it / 26 + 0.5) / 26) })
+
+    @Test fun lookReadsTonesAndMarkings() {
+        val black = Argb.rgb(0x222226); val white = Argb.rgb(0xF4F1EA)
+        val tux = PetLook.from(swatch { x, y -> if (y > 0.55 && kotlin.math.abs(x - 0.5) < 0.25) white else black })
+        assertEquals(2, tux.tones.size)
+        assertTrue(tux.light != null, "white muzzle is a light tone")
+        assertEquals(tux.light, tux.toneAt(0.5, 0.8), "muzzle stays white")
+        assertEquals(0, tux.toneAt(0.1, 0.1), "forehead is the main colour")
+        // Lighting differences on one colour are not markings.
+        val gold = PetLook.from(swatch { x, _ -> Lab(0.72 - x * 0.08, 0.03, 0.12).toArgb() })
+        assertEquals(1, gold.tones.size)
+        // A few dark eye pixels don't become a patch.
+        val eyed = PetLook.from(swatch { x, y -> if (kotlin.math.abs(y - 0.45) < 0.04 && kotlin.math.abs(kotlin.math.abs(x - 0.5) - 0.2) < 0.04) black else Argb.rgb(0xC08050) })
+        assertEquals(1, eyed.tones.size)
+    }
+
+    @Test fun earsDefaultBySpeciesAndCanChange() {
+        val s = sprite()
+        assertEquals(Ears.FLOPPY, PetArt(s, Species.DOG).ears)
+        assertEquals(Ears.POINTY, PetArt(s, Species.CAT).ears)
+        assertFalse(PetArt(s, Species.DOG, Ears.POINTY).still.pixels.contentEquals(PetArt(s, Species.DOG).still.pixels))
+        assertEquals(Ears.FLOPPY, Ears.of("FLOPPY")); assertEquals(null, Ears.of(""))
     }
 
     @Test fun breatheAndWalkMovePixels() {

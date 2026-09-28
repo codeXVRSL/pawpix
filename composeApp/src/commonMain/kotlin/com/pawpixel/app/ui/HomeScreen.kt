@@ -89,7 +89,7 @@ fun statusesFor(app: AppScope, state: AppState, petId: String): List<TaskStatus>
 @Composable
 private fun PetCard(app: AppScope, state: AppState, pet: Pet) {
     val reading = MoodEngine.read(state, pet.id, app.now, app.repo.clock)
-    val pose = remember(pet.id, pet.spriteVersion, pet.species, pet.eyes, reading.mood) { app.repo.pose(pet, reading.mood) }
+    val pose = remember(pet.id, pet.spriteVersion, pet.species, pet.ears, reading.mood) { app.repo.pose(pet, reading.mood) }
     val statuses = statusesFor(app, state, pet.id)
     val urgent = statuses.filter { it.isOverdue }.maxByOrNull { MoodEngine.penalty(it, app.now) }
     val next = statuses.filter { !it.isOverdue }.mapNotNull { s -> s.nextDueMs?.let { s to it } }.minByOrNull { it.second }

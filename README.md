@@ -1,6 +1,6 @@
 # PawPixel
 
-Turn a photo of your real pet into a full-body pixel pet: your pet's real face, pixelated from the photo, on a little drawn body in its own fur colours. It lives on your home screen, and its mood follows the real care you give: fed, walked, medicine given.
+Turn a photo of your real pet into a full-body pixel pet: a hand-drawn-style chibi character (big round head, stubby legs, glossy eyes) painted in your pet's own fur colours and face markings, read from the photo. It lives on your home screen, and its mood follows the real care you give: fed, walked, medicine given.
 
 Android and iOS, with one Kotlin codebase (Compose Multiplatform) plus a native widget on each platform.
 
@@ -8,11 +8,11 @@ Android and iOS, with one Kotlin codebase (Compose Multiplatform) plus a native 
 
 | Feature | Where |
 |---|---|
-| Photo to pixel face, fully on device (cut-out, face square guessed and adjustable, feature-keeping downscale, OKLab palette, clean-up) | `core/.../sprite/SpritePipeline.kt` |
-| **Full-body pets**: the face goes on a procedurally drawn dog or cat body painted in the pet's own fur colours (sampled from the face), with walking legs, a wagging tail and a curled-up sleeping pose. Works from face close-ups and full-body photos alike | `core/.../sprite/Chibi.kt` |
+| Photo to fur colours and face markings, fully on device (cut-out, face square guessed and adjustable, OKLab palette, patch map) | `core/.../sprite/SpritePipeline.kt` |
+| **Full-body chibi pets**: head about half the height, walking legs, a wagging tail, drawn eyes that blink, and a curled-up sleeping pose. Works from face close-ups and full-body photos alike | `core/.../sprite/Chibi.kt` |
 | 7 mood poses (happy, content, hungry, restless, needs meds, sleepy, sad) drawn with posture, lighting and original pixel icons, never by redrawing the pet's face | `core/.../sprite/Poses.kt` |
 | **Living pet animation**: breathing, blinking, looking around, wandering the floor, hopping, wet-dog shakes, begging when hungry, pacing when restless, drooping when sad, curling up asleep at night. Tap the pet for hearts. Logging care plays a reaction: eating from a bowl after feeding, zoomies after a walk, a shake after grooming | `core/.../sprite/Animator.kt` (frames), `PetBrain.kt` (behaviour), `composeApp/.../ui/LivePet.kt` |
-| Tap-to-mark eyes in the sprite maker, so the pet blinks and closes its eyes to sleep (also used for the sleeping widget pose) | `Animator.eyeAt`, `SpriteMakerScreen.kt` |
+| One consistent pixel style: every pet is drawn from the same chibi template (dog or cat body, pointy or floppy ears), with three-tone shading and a soft coloured outline. The photo supplies up to three fur tones and where they go on the face (white muzzle, dark ears, patches) | `sprite/Chibi.kt` (`PetLook`, `Chibi.compose`) |
 | **Share animation**: a 5-second looping GIF of your pet, watermarked | `core/.../sprite/Stage.kt` (`AnimatedExport`, `Gif`) |
 | Care tasks (feed, water, walk, play, meds, groom, litter), daily or every N days, 1 to 4 times a day | `core/.../core/CareEngine.kt` |
 | Mood engine: overdue tasks lower the mood over each task's grace period | `core/.../core/MoodEngine.kt` |
@@ -95,8 +95,8 @@ Widgets never run the mood engine. The app precomputes a 24-hour mood timeline (
 
 ## Known limits (by design, for the MVP)
 - Widgets show still mood poses, not animation. iOS doesn't allow animated widgets, and it keeps battery use low. The app itself animates.
-- The face is the real pet; the body is a stylised pixel body (dog or cat shape) in the pet's colours, so markings on the body (spots, socks) aren't copied yet. A hand-drawn body from the owner's photos is a natural Pro upgrade, and a fit for your pixel art commissions.
-- Blinking needs the owner to tap the eyes once. Automatic eye-finding was tried and dropped: fur stripes and shadows fooled it, and a blink in the wrong place looks worse than none.
+- Body markings (spots, socks) aren't copied yet; the chest and paws use the pet's lighter tone when it has one. A hand-drawn body from the owner's photos is a natural Pro upgrade, and a fit for your pixel art commissions.
+- Likeness comes from colours and markings, not a pixelated copy of the photo. Pasting the real (pixelated) face on a drawn body was tried and dropped: the two styles clashed and the head looked out of proportion. Fine stripes (tabby) are not reproduced yet.
 - One widget pet: with several pets, the widget shows whichever needs attention most.
 - Adaptive timing learns from the last 4 weeks and needs 3 completions near a time before moving it.
 - Daylight-saving shifts may move a reminder by an hour on the change day (not an issue in the Philippines).
