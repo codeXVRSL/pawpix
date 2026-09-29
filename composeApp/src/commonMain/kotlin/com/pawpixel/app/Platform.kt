@@ -3,6 +3,7 @@ package com.pawpixel.app
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.ImageBitmap
 import com.pawpixel.core.Reminder
+import com.pawpixel.map.Http
 import com.pawpixel.sprite.Mask
 import com.pawpixel.sprite.PixelImage
 
@@ -44,7 +45,29 @@ interface Platform {
     fun openUrl(url: String)
     /** Diagnostic line in the system log (logcat / Console), never shown to the user. */
     fun log(message: String) {}
+
+    // ---- Pet map (opt-in) ----
+
+    /** HTTP for the map server. */
+    val http: Http
+    /** Downloads a map tile (or null on any failure). */
+    suspend fun fetchBytes(url: String): ByteArray?
+    /** Approximate location, asking permission first. Null if refused or unavailable. Snapped to a grid by the caller. */
+    suspend fun approximateLocation(): Pair<Double, Double>?
+    /** "Sign in with Google" (Android) / "Sign in with Apple" (iOS). */
+    val mapSignInLabel: String
+    /**
+     * Google (Android) or Apple (iOS) sign-in. [hashedNonce] is SHA-256 of the raw nonce the server
+     * checks. Returns null if the owner cancels; throws with a readable message on errors.
+     */
+    suspend fun signInForMap(hashedNonce: String, googleWebClientId: String): MapIdentity?
 }
+
+/** An identity token from Google or Apple, exchanged for a map session by the server. */
+data class MapIdentity(val provider: String, val idToken: String)
+
+/** Decodes a PNG/JPEG (map tiles) for drawing. */
+expect fun decodeImage(bytes: ByteArray): ImageBitmap?
 
 expect fun PixelImage.toImageBitmap(): ImageBitmap
 

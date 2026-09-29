@@ -8,6 +8,8 @@ import androidx.compose.ui.window.ComposeUIViewController
 import com.pawpixel.app.ui.App
 import com.pawpixel.core.Json
 import com.pawpixel.core.Reminder
+import com.pawpixel.map.Http
+import com.pawpixel.map.HttpResponse
 import com.pawpixel.sprite.Mask
 import com.pawpixel.sprite.PixelImage
 import com.pawpixel.sprite.Png
@@ -58,6 +60,18 @@ interface IosHost {
     fun reloadWidgets()
     fun shareFile(data: NSData, fileName: String)
     fun openUrl(url: String)
+    /** Approximate location (asks permission; reduced accuracy is fine). */
+    fun approximateLocation(completion: LocationCallback)
+    /** Sign in with Apple; the request carries [hashedNonce]. Token null + error null = cancelled. */
+    fun signInWithApple(hashedNonce: String, completion: TokenCallback)
+}
+
+interface LocationCallback {
+    fun onResult(found: Boolean, lat: Double, lng: Double)
+}
+
+interface TokenCallback {
+    fun onResult(token: String?, error: String?)
 }
 
 /** Entry points for Swift. */
@@ -128,6 +142,67 @@ class IosPlatform(private val host: IosHost) : Platform {
     // Only the format argument is bridged to NSString: passing a Kotlin String through NSLog's
     // variadic "%@" crashes (EXC_BAD_ACCESS). So the message is the format, with % escaped.
     override fun log(message: String) = platform.Foundation.NSLog("PawPixel: " + message.replace("%", "%%"))
+
+    // ---- Pet map ----
+
+    override val http = Http { r ->
+        suspendCancellableCoroutine { cont ->
+            val url = platform.Foundation.NSURL.URLWithString(r.url)
+            if (url == null) { cont.resumeWith(Result.failure(IllegalArgumentException("bad url"))); return@suspendCancellableCoroutine }
+            val req = platform.Foundation.NSMutableURLRequest(uRL = url)
+            req.HTTPMethod = r.method
+            req.timeoutInterval = 20.0
+            r.headers.forEach { (k, v) -> req.setValue(v, forHTTPHeaderField = k) }
+            r.body?.let { req.HTTPBody = it.encodeToByteArray().toNSData() }
+            val task = platform.Foundation.NSURLSession.sharedSession.dataTaskWithRequest(req) { data, response, error ->
+                if (error != null || response == null) {
+                    cont.resumeWith(Result.failure(IllegalStateException(error?.localizedDescription ?: "no response")))
+                } else {
+                    val code = (response as platform.Foundation.NSHTTPURLResponse).statusCode.toInt()
+                    cont.resumeWith(Result.success(HttpResponse(code, data?.toByteArray()?.decodeToString() ?: "")))
+                }
+            }
+            cont.invokeOnCancellation { task.cancel() }
+            task.resume()
+        }
+    }
+
+    override suspend fun fetchBytes(url: String): ByteArray? = suspendCancellableCoroutine { cont ->
+        val u = platform.Foundation.NSURL.URLWithString(url)
+        if (u == null) { cont.resume(null); return@suspendCancellableCoroutine }
+        val req = platform.Foundation.NSMutableURLRequest(uRL = u)
+        req.setValue("PawPixel/1.0 (iOS)", forHTTPHeaderField = "User-Agent")
+        val task = platform.Foundation.NSURLSession.sharedSession.dataTaskWithRequest(req) { data, response, _ ->
+            val ok = (response as? platform.Foundation.NSHTTPURLResponse)?.statusCode?.toInt() == 200
+            cont.resume(if (ok) data?.toByteArray() else null)
+        }
+        cont.invokeOnCancellation { task.cancel() }
+        task.resume()
+    }
+
+    override suspend fun approximateLocation(): Pair<Double, Double>? = suspendCancellableCoroutine { cont ->
+        host.approximateLocation(object : LocationCallback {
+            override fun onResult(found: Boolean, lat: Double, lng: Double) {
+                if (cont.isActive) cont.resume(if (found) lat to lng else null)
+            }
+        })
+    }
+
+    override val mapSignInLabel = "Sign in with Apple"
+
+    override suspend fun signInForMap(hashedNonce: String, googleWebClientId: String): MapIdentity? =
+        suspendCancellableCoroutine { cont ->
+            host.signInWithApple(hashedNonce, object : TokenCallback {
+                override fun onResult(token: String?, error: String?) {
+                    if (!cont.isActive) return
+                    when {
+                        token != null -> cont.resume(MapIdentity("apple", token))
+                        error != null -> cont.resumeWith(Result.failure(IllegalStateException(error)))
+                        else -> cont.resume(null)
+                    }
+                }
+            })
+        }
 }
 
 class IosFileStore(private val root: String) : FileStore {
@@ -151,6 +226,9 @@ class IosFileStore(private val root: String) : FileStore {
         fm.removeItemAtPath(p(path), error = null)
     }
 }
+
+actual fun decodeImage(bytes: ByteArray): ImageBitmap? =
+    runCatching { Image.makeFromEncoded(bytes).toComposeImageBitmap() }.getOrNull()
 
 actual fun PixelImage.toImageBitmap(): ImageBitmap = Image.makeFromEncoded(Png.encode(this)).toComposeImageBitmap()
 

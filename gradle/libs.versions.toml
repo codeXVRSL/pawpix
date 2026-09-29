@@ -15,6 +15,8 @@ androidxTestExtJunit = "1.2.1"
 espresso = "3.6.1"
 uiautomator = "2.3.0"
 junit = "4.13.2"
+credentials = "1.5.0"
+googleid = "1.1.1"
 androidMinSdk = "26"
 androidTargetSdk = "36"
 androidCompileSdk = "36"
@@ -33,6 +35,9 @@ androidx-test-ext-junit = { module = "androidx.test.ext:junit", version.ref = "a
 androidx-espresso-intents = { module = "androidx.test.espresso:espresso-intents", version.ref = "espresso" }
 androidx-uiautomator = { module = "androidx.test.uiautomator:uiautomator", version.ref = "uiautomator" }
 junit = { module = "junit:junit", version.ref = "junit" }
+androidx-credentials = { module = "androidx.credentials:credentials", version.ref = "credentials" }
+androidx-credentials-play-services = { module = "androidx.credentials:credentials-play-services-auth", version.ref = "credentials" }
+googleid = { module = "com.google.android.libraries.identity.googleid:googleid", version.ref = "googleid" }
 mlkit-subject-segmentation = { module = "com.google.android.gms:play-services-mlkit-subject-segmentation", version.ref = "mlkitSubjectSegmentation" }
 
 [plugins]

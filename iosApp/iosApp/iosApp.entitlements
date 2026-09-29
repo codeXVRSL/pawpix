@@ -7,5 +7,10 @@
     <array>
         <string>group.com.pawpixel.app</string>
     </array>
+    <!-- Pet map sign-in. Enable "Sign in with Apple" for com.pawpixel.app in your Apple Developer account. -->
+    <key>com.apple.developer.applesignin</key>
+    <array>
+        <string>Default</string>
+    </array>
 </dict>
 </plist>

@@ -7,6 +7,46 @@ plugins {
     alias(libs.plugins.composeCompiler)
 }
 
+// ---- Pet map settings, baked in at build time ----
+// From environment variables (CI secrets) or a local, git-ignored `pawpixel.properties` file.
+// Blank values build an app whose map screen says "not set up yet". See docs/MAP_SETUP.md.
+val mapFile = rootProject.file("pawpixel.properties")
+val mapProps = java.util.Properties().apply { if (mapFile.exists()) mapFile.inputStream().use { load(it) } }
+val mapKeys = listOf(
+    "PAWPIXEL_SUPABASE_URL", "PAWPIXEL_SUPABASE_ANON_KEY", "PAWPIXEL_TILE_URL", "PAWPIXEL_TILE_ATTRIBUTION",
+    "PAWPIXEL_GOOGLE_WEB_CLIENT_ID", "PAWPIXEL_TEST_EMAIL", "PAWPIXEL_TEST_PASSWORD",
+)
+val mapValues = mapKeys.associateWith { k ->
+    (System.getenv(k) ?: mapProps.getProperty(k) ?: "").replace("\\", "\\\\").replace("\"", "\\\"").replace("$", "\\$")
+}
+val mapConfigSource = """
+    |package com.pawpixel.app
+    |
+    |import com.pawpixel.map.MapSettings
+    |
+    |/** Generated at build time from environment variables or pawpixel.properties. Do not edit. */
+    |internal val MapBuildConfig = MapSettings(
+    |    supabaseUrl = "${mapValues["PAWPIXEL_SUPABASE_URL"]}",
+    |    anonKey = "${mapValues["PAWPIXEL_SUPABASE_ANON_KEY"]}",
+    |    tileUrl = "${mapValues["PAWPIXEL_TILE_URL"]}",
+    |    tileAttribution = "${mapValues["PAWPIXEL_TILE_ATTRIBUTION"]}",
+    |    googleWebClientId = "${mapValues["PAWPIXEL_GOOGLE_WEB_CLIENT_ID"]}",
+    |    testEmail = "${mapValues["PAWPIXEL_TEST_EMAIL"]}",
+    |    testPassword = "${mapValues["PAWPIXEL_TEST_PASSWORD"]}",
+    |)
+    |""".trimMargin()
+val generateMapConfig by tasks.registering {
+    val out = layout.buildDirectory.dir("generated/mapConfig/kotlin")
+    val source = mapConfigSource
+    inputs.property("source", source)
+    outputs.dir(out)
+    doLast {
+        val f = out.get().file("com/pawpixel/app/MapBuildConfig.kt").asFile
+        f.parentFile.mkdirs()
+        f.writeText(source)
+    }
+}
+
 kotlin {
     androidTarget {
         compilerOptions { jvmTarget.set(JvmTarget.JVM_17) }
@@ -20,6 +60,9 @@ kotlin {
     }
 
     sourceSets {
+        commonMain {
+            kotlin.srcDir(generateMapConfig)
+        }
         commonMain.dependencies {
             implementation(project(":core"))
             implementation(compose.runtime)
@@ -35,6 +78,10 @@ kotlin {
             implementation(libs.androidx.glance.material3)
             implementation(libs.kotlinx.coroutines.android)
             implementation(libs.mlkit.subject.segmentation)
+            // Google sign-in for the pet map (Credential Manager)
+            implementation(libs.androidx.credentials)
+            implementation(libs.androidx.credentials.play.services)
+            implementation(libs.googleid)
         }
         // End-to-end test on a real emulator: see scripts/android-e2e.sh and the "android-e2e" CI job.
         androidInstrumentedTest.dependencies {
@@ -72,7 +119,10 @@ android {
         }
     }
     buildTypes {
+        // Debug builds may talk to a local test server over plain HTTP (the CI end-to-end run).
+        getByName("debug") { manifestPlaceholders["cleartext"] = "true" }
         getByName("release") {
+            manifestPlaceholders["cleartext"] = "false"
             if (keystore != null) signingConfig = signingConfigs.getByName("release")
             isMinifyEnabled = true
             isShrinkResources = true

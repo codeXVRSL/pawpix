@@ -121,11 +121,12 @@ s, n = rpc(b, "rsvp", {"p_id": gid, "p_going": False})
 check("you can cancel", s == 200 and n == 1, (s, n))
 
 # Moderation and self-service
-s, _ = call("PATCH", f"/rest/v1/map_profiles?user_id=eq.{c['id']}", {"banned": False}, c["token"])
-check("owners can't touch the ban flag", s >= 400, s)
 call("PATCH", f"/rest/v1/map_profiles?user_id=eq.{b['id']}", {"banned": True}, key=SERVICE)
 s, cells = rpc(d, "nearby_cells", {"p_cell_lat": NAGA[1], "p_cell_lng": NAGA[2]})
 check("a banned owner's pets disappear (area drops below 3)", s == 200 and cells == [], (s, cells))
+s, _ = call("PATCH", f"/rest/v1/map_profiles?user_id=eq.{b['id']}", {"banned": False}, b["token"])
+s2, rows = call("GET", f"/rest/v1/map_profiles?user_id=eq.{b['id']}&select=banned", key=SERVICE)
+check("a banned owner can't unban themselves", s >= 400 and rows[0]["banned"] is True, (s, rows))
 
 s, r = call("POST", "/rest/v1/map_pets", {"owner_id": a["id"], "name": "x", "species": "DOG", "look": "<script>"}, a["token"])
 check("look codes are validated", s >= 400, (s, r))

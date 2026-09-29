@@ -52,6 +52,9 @@ class PawRepository(val platform: Platform) {
 
     fun now() = platform.nowMs()
 
+    /** The opt-in pet map (sign-in session, shared pets, your ~1 km area). */
+    val map: PetMapModel by lazy { PetMapModel(platform, files) }
+
     private fun load(): AppState =
         files.readText(STATE_FILE)?.let { runCatching { StateCodec.decode(it) }.getOrNull() } ?: AppState()
 
@@ -125,6 +128,9 @@ class PawRepository(val platform: Platform) {
     suspend fun setSettings(settings: Settings) = update { StateOps.setSettings(it, settings) }
 
     suspend fun deleteAllData() {
+        // If you joined the pet map, delete that account too (best effort: offline still wipes the phone).
+        if (map.client.isSignedIn) runCatching { map.deleteAccount() }
+        map.forgetLocally()
         mutex.withLock {
             files.delete("sprites")
             files.delete(STATE_FILE)

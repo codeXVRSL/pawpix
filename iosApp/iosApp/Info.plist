@@ -20,5 +20,8 @@
     <key>UISupportedInterfaceOrientations</key>
     <array><string>UIInterfaceOrientationPortrait</string></array>
     <key>ITSAppUsesNonExemptEncryption</key><false/>
+    <!-- Pet map (opt-in): approximate location, snapped to a ~1 km square on the phone. -->
+    <key>NSLocationWhenInUseUsageDescription</key><string>If you join the pet map, PawPixel shows your pixel pets in your rough area (about 1 km). Your exact location never leaves your phone.</string>
+    <key>NSLocationDefaultAccuracyReduced</key><true/>
 </dict>
 </plist>

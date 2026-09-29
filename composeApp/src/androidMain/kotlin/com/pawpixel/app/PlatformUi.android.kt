@@ -14,6 +14,9 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalContext
 import com.pawpixel.sprite.PixelImage
 
+actual fun decodeImage(bytes: ByteArray): ImageBitmap? =
+    runCatching { android.graphics.BitmapFactory.decodeByteArray(bytes, 0, bytes.size)?.asImageBitmap() }.getOrNull()
+
 actual fun PixelImage.toImageBitmap(): ImageBitmap =
     Bitmap.createBitmap(pixels, width, height, Bitmap.Config.ARGB_8888).asImageBitmap()
 

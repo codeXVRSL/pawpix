@@ -26,6 +26,7 @@ sealed interface Screen {
     data class RemakeSprite(val petId: String) : Screen
     data class EditTask(val petId: String, val taskId: String?) : Screen
     data object Settings : Screen
+    data object PetMap : Screen
 }
 
 /** Shared state handed to every screen. */
@@ -94,6 +95,7 @@ fun App(repo: PawRepository, registerBack: ((() -> Boolean) -> (() -> Unit))? = 
                     if (pet == null) LaunchedEffect(screen) { back() } else TaskEditorScreen(app, state, pet, screen.taskId)
                 }
                 Screen.Settings -> SettingsScreen(app, state)
+                Screen.PetMap -> PetMapScreen(app, state)
             }
         }
     }

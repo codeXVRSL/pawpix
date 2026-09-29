@@ -179,6 +179,50 @@ class EndToEndTest {
             find(By.text("Chelsea"))
         }
 
+        step("pet map: join, see the pixel pets nearby, report, RSVP, leave") {
+            if (!repo.map.settings.isConfigured) { note("map not set up in this build; skipped"); return@step }
+            retrying { find(By.text("Pet map")).click() }
+            retrying { find(By.text("I'm 18 or older")).click() }
+            retrying { find(By.textStartsWith("Show my pixel pets")).click() }
+            shot("pet-map-join")
+            retrying { scrollTo(By.textContains("and join")).click() }
+            find(By.text("Nearby"), 60_000)
+            val area = repo.map.myArea
+            check(area != null) { "no area after joining" }
+            val areas = runBlocking { repo.map.client.nearbyAreas(area) }
+            check(areas.any { it.cellId == area.id }) { "your area (${area.id}) should show with 3+ owners: $areas" }
+            Thread.sleep(2_500)
+            shot("pet-map")
+            // Your area's pin sits at the centre of the map, which fills the screen below the tabs.
+            val tabsBottom = find(By.text("Nearby")).visibleBounds.bottom
+            val mapBottom = device.displayHeight - (48 * ctx.resources.displayMetrics.density).toInt()
+            device.click(device.displayWidth / 2, (tabsBottom + mapBottom) / 2 + (4 * ctx.resources.displayMetrics.density).toInt())
+            find(By.textStartsWith("Your area"), 15_000)
+            find(By.text("Chelsea"))
+            Thread.sleep(1_000)
+            shot("pet-map-area")
+            retrying { find(By.text("⋯")).click() }
+            retrying { find(By.text("Report")).click() }
+            retrying { find(By.text("Send report")).click() }
+            find(By.text("Thanks for telling us"))
+            retrying { find(By.text("OK")).click() }
+            retrying { find(By.text("Close")).click() }
+
+            retrying { find(By.text("Gatherings")).click() }
+            find(By.textStartsWith("Sunday pet walk"), 20_000)
+            retrying { scrollTo(By.text("I'm going")).click() }
+            find(By.textStartsWith("Meet at: Plaza Rizal"), 20_000)
+            shot("pet-map-gathering")
+
+            retrying { find(By.text("More")).click() }
+            retrying { find(By.text("Leave the map")).click() }
+            retrying { find(By.text("Leave")).click() }
+            find(By.text("I'm 18 or older"), 20_000)
+            check(!runBlocking { repo.map.client.hasJoined() }) { "still on the map after leaving" }
+            device.pressBack()
+            find(By.text("Chelsea"))
+        }
+
         step("reminder notification with a working Done button") {
             val task = repo.state.value.tasksFor(petId).first { it.kind.name == "WATER" }
             val before = completions()

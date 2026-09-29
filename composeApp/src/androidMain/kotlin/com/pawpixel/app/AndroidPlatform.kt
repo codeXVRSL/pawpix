@@ -21,6 +21,8 @@ import com.google.mlkit.vision.segmentation.subject.SubjectSegmenterOptions
 import com.pawpixel.app.widget.PetWidget
 import com.pawpixel.core.HOUR_MS
 import com.pawpixel.core.Reminder
+import com.pawpixel.map.Http
+import com.pawpixel.map.HttpResponse
 import com.pawpixel.sprite.Mask
 import com.pawpixel.sprite.PixelImage
 import kotlinx.coroutines.CoroutineScope
@@ -143,6 +145,102 @@ class AndroidPlatform(private val context: Context) : Platform {
     }
 
     override fun log(message: String) { android.util.Log.w("PawPixel", message) }
+
+    // ---- Pet map ----
+
+    /** Set by [MainActivity]: asks for approximate location permission; true if granted. */
+    var locationPermission: (suspend () -> Boolean)? = null
+    /** The visible activity, for Google sign-in's account picker. */
+    var activity: java.lang.ref.WeakReference<android.app.Activity>? = null
+
+    override val http = Http { r ->
+        withContext(Dispatchers.IO) {
+            val c = (java.net.URL(r.url).openConnection() as java.net.HttpURLConnection).apply {
+                requestMethod = r.method
+                connectTimeout = 15_000
+                readTimeout = 20_000
+                r.headers.forEach { (k, v) -> setRequestProperty(k, v) }
+                if (r.body != null) {
+                    doOutput = true
+                    outputStream.use { it.write(r.body!!.encodeToByteArray()) }
+                }
+            }
+            try {
+                val code = c.responseCode
+                val stream = if (code in 200..399) c.inputStream else c.errorStream
+                HttpResponse(code, stream?.use { it.readBytes().decodeToString() } ?: "")
+            } finally {
+                c.disconnect()
+            }
+        }
+    }
+
+    override suspend fun fetchBytes(url: String): ByteArray? = withContext(Dispatchers.IO) {
+        runCatching {
+            val c = (java.net.URL(url).openConnection() as java.net.HttpURLConnection).apply {
+                connectTimeout = 10_000; readTimeout = 15_000
+                setRequestProperty("User-Agent", "PawPixel/1.0 (Android)")
+            }
+            try { if (c.responseCode == 200) c.inputStream.use { it.readBytes() } else null } finally { c.disconnect() }
+        }.getOrNull()
+    }
+
+    private fun hasCoarseLocation() =
+        context.checkSelfPermission(android.Manifest.permission.ACCESS_COARSE_LOCATION) == android.content.pm.PackageManager.PERMISSION_GRANTED
+
+    @android.annotation.SuppressLint("MissingPermission")
+    override suspend fun approximateLocation(): Pair<Double, Double>? {
+        if (!hasCoarseLocation() && locationPermission?.invoke() != true) return null
+        if (!hasCoarseLocation()) return null
+        val lm = context.getSystemService(android.location.LocationManager::class.java)
+        val providers = buildList {
+            if (Build.VERSION.SDK_INT >= 31) add(android.location.LocationManager.FUSED_PROVIDER)
+            add(android.location.LocationManager.NETWORK_PROVIDER)
+            add(android.location.LocationManager.GPS_PROVIDER)
+            add(android.location.LocationManager.PASSIVE_PROVIDER)
+        }.filter { runCatching { lm.isProviderEnabled(it) }.getOrDefault(false) }
+        if (Build.VERSION.SDK_INT >= 30) {
+            for (p in providers) {
+                val fix = kotlinx.coroutines.withTimeoutOrNull(8_000) {
+                    suspendCancellableCoroutine<android.location.Location?> { cont ->
+                        val cancel = android.os.CancellationSignal()
+                        cont.invokeOnCancellation { cancel.cancel() }
+                        runCatching { lm.getCurrentLocation(p, cancel, context.mainExecutor) { cont.resume(it) } }
+                            .onFailure { cont.resume(null) }
+                    }
+                }
+                if (fix != null) return fix.latitude to fix.longitude
+            }
+        }
+        return providers.mapNotNull { runCatching { lm.getLastKnownLocation(it) }.getOrNull() }
+            .maxByOrNull { it.time }?.let { it.latitude to it.longitude }
+    }
+
+    override val mapSignInLabel = "Sign in with Google"
+
+    override suspend fun signInForMap(hashedNonce: String, googleWebClientId: String): MapIdentity? {
+        if (googleWebClientId.isBlank()) throw IllegalStateException("Google sign-in isn't set up in this build yet.")
+        val act = activity?.get() ?: throw IllegalStateException("Open PawPixel to sign in.")
+        val option = com.google.android.libraries.identity.googleid.GetSignInWithGoogleOption.Builder(googleWebClientId)
+            .setNonce(hashedNonce).build()
+        val request = androidx.credentials.GetCredentialRequest.Builder().addCredentialOption(option).build()
+        return try {
+            val credential = androidx.credentials.CredentialManager.create(act).getCredential(act, request).credential
+            if (credential is androidx.credentials.CustomCredential &&
+                credential.type == com.google.android.libraries.identity.googleid.GoogleIdTokenCredential.TYPE_GOOGLE_ID_TOKEN_CREDENTIAL
+            ) {
+                MapIdentity("google", com.google.android.libraries.identity.googleid.GoogleIdTokenCredential.createFrom(credential.data).idToken)
+            } else {
+                throw IllegalStateException("Google sign-in returned something unexpected.")
+            }
+        } catch (e: androidx.credentials.exceptions.GetCredentialCancellationException) {
+            null
+        } catch (e: androidx.credentials.exceptions.NoCredentialException) {
+            throw IllegalStateException("Add a Google account to this phone to sign in.")
+        } catch (e: androidx.credentials.exceptions.GetCredentialException) {
+            throw IllegalStateException("Google sign-in didn't work: ${e.message ?: e.type}")
+        }
+    }
 
     override fun openUrl(url: String) {
         runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }

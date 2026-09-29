@@ -42,6 +42,7 @@ fun HomeScreen(app: AppScope, state: AppState) {
     Column(Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding().padding(horizontal = 16.dp)) {
         Row(Modifier.fillMaxWidth().padding(vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
             Text("PawPixel", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Black, modifier = Modifier.weight(1f))
+            if (state.pets.isNotEmpty()) TextButton(onClick = { app.navigate(Screen.PetMap) }) { Text("Pet map") }
             TextButton(onClick = { app.navigate(Screen.Settings) }) { Text("Settings") }
         }
         if (state.pets.isEmpty()) {

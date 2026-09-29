@@ -70,6 +70,8 @@ fun SettingsScreen(app: AppScope, state: AppState) {
         Text(
             "Everything stays on this phone: no account, no uploads, no tracking. Your photo is turned into a sprite on the device, " +
                 "and only a small crop is kept for your before/after card. Deleting the app deletes everything. " +
+                "The pet map is optional: only if you join it, your pixel pets, their names and your rough area (about 1 km, never " +
+                "your exact location) go to PawPixel's map server, with the Google or Apple account you sign in with. " +
                 "On Android, Google's on-device pet detector (ML Kit) sends Google anonymous performance data, never your photos.",
         )
         OutlinedButton(onClick = { app.repo.platform.openUrl(PRIVACY_URL) }) { Text("Privacy policy") }
@@ -83,7 +85,7 @@ fun SettingsScreen(app: AppScope, state: AppState) {
         AlertDialog(
             onDismissRequest = { confirmWipe = false },
             title = { Text("Delete everything?") },
-            text = { Text("All pets, sprites, tasks and history will be removed from this phone. This can't be undone.") },
+            text = { Text("All pets, sprites, tasks and history will be removed from this phone, and your pet map account (if you joined) from the server. This can't be undone.") },
             confirmButton = {
                 TextButton(onClick = { confirmWipe = false; app.launch { app.repo.deleteAllData() } }) {
                     Text("Delete", color = MaterialTheme.colorScheme.error)

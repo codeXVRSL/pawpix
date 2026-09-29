@@ -19,11 +19,23 @@ class MainActivity : ComponentActivity() {
         lifecycleScope.launch { app.repo.publish() }
     }
 
+    private var locationAnswer: kotlinx.coroutines.CompletableDeferred<Boolean>? = null
+    private val locationPermission = registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+        locationAnswer?.complete(granted)
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
         app.platform.permissionRequester = {
             if (Build.VERSION.SDK_INT >= 33) notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
+        }
+        app.platform.activity = java.lang.ref.WeakReference(this)
+        app.platform.locationPermission = {
+            val answer = kotlinx.coroutines.CompletableDeferred<Boolean>()
+            locationAnswer = answer
+            locationPermission.launch(Manifest.permission.ACCESS_COARSE_LOCATION)
+            answer.await()
         }
         setContent {
             App(app.repo, registerBack = { handler ->
@@ -47,6 +59,8 @@ class MainActivity : ComponentActivity() {
 
     override fun onDestroy() {
         app.platform.permissionRequester = null
+        app.platform.locationPermission = null
+        app.platform.activity = null
         super.onDestroy()
     }
 }

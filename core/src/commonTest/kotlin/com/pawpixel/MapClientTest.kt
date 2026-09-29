@@ -135,3 +135,33 @@ class MapClientTest {
         assertEquals(null, saved[0])
     }
 }
+
+class MapMathTest {
+    @Test fun sha256MatchesKnownVectors() {
+        assertEquals("e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855", com.pawpixel.map.Sha256.hex(""))
+        assertEquals("ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad", com.pawpixel.map.Sha256.hex("abc"))
+        assertEquals("248d6a61d20638b8e5c026930c3e6039a33ce45964ff2167f6ecedd419db06c1",
+            com.pawpixel.map.Sha256.hex("abcdbcdecdefdefgefghfghighijhijkijkljklmklmnlmnomnopnopq"))
+        assertEquals(32, com.pawpixel.map.Sha256.newNonce().length)
+    }
+
+    @Test fun mercatorRoundTripsAndPicksTiles() {
+        val m = com.pawpixel.map.WebMercator
+        val z = 15
+        val x = m.x(123.1948, z); val y = m.y(13.6218, z)
+        assertTrue(kotlin.math.abs(m.lng(x, z) - 123.1948) < 1e-9 && kotlin.math.abs(m.lat(y, z) - 13.6218) < 1e-9)
+        assertEquals(27597, (x / 256).toInt()) // Naga City tile column at zoom 15: (123.1948+180)/360 * 2^15
+        assertEquals("https://t/15/1/2.png?k=1", m.tileUrl("https://t/{z}/{x}/{y}.png?k=1", 15, 1, 2))
+    }
+}
+
+class IsoTimeTest {
+    @Test fun parsesServerTimestamps() {
+        val t = com.pawpixel.map.IsoTime
+        assertEquals(0L, t.parseMs("1970-01-01T00:00:00Z"))
+        assertEquals(4070908800000L, t.parseMs("2099-01-01T00:00:00+00:00"))
+        assertEquals(t.parseMs("2026-10-04T00:00:00Z"), t.parseMs("2026-10-04T08:00:00+08:00"))
+        assertEquals(1759536000123L, t.parseMs("2025-10-04T00:00:00.123456Z"))
+        assertEquals(null, t.parseMs("next sunday"))
+    }
+}

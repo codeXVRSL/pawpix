@@ -125,6 +125,19 @@ jobs:
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
+      - uses: supabase/setup-cli@v1
+        with: { version: latest }
+      - name: Start a local map server and seed owners around Naga
+        run: |
+          supabase start -x studio,imgproxy,edge-runtime,logflare,vector,realtime,storage-api,postgres-meta,supavisor
+          eval "$(supabase status -o env)"
+          # The emulator reaches this machine's localhost as 10.0.2.2.
+          echo "PAWPIXEL_SUPABASE_URL=http://10.0.2.2:54321" >> "$GITHUB_ENV"
+          echo "PAWPIXEL_SUPABASE_ANON_KEY=${ANON_KEY:-$PUBLISHABLE_KEY}" >> "$GITHUB_ENV"
+          echo "PAWPIXEL_TEST_EMAIL=e2e@test.pawpixel" >> "$GITHUB_ENV"
+          echo "PAWPIXEL_TEST_PASSWORD=e2e-pass-123" >> "$GITHUB_ENV"
+          SUPABASE_URL="$API_URL" SERVICE_KEY="${SERVICE_ROLE_KEY:-$SECRET_KEY}" \
+            TEST_EMAIL=e2e@test.pawpixel TEST_PASSWORD=e2e-pass-123 python3 supabase/tests/seed_e2e.py
       - run: ./gradlew :composeApp:assembleDebug :composeApp:assembleDebugAndroidTest --stacktrace
       - name: Run on an Android 14 emulator
         id: e2e

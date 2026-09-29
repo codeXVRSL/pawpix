@@ -5,6 +5,8 @@ import CoreVideo
 import UserNotifications
 import WidgetKit
 import UniformTypeIdentifiers
+import CoreLocation
+import AuthenticationServices
 import ComposeApp
 
 /// Apple-framework services for the shared Kotlin app (see `IosHost` in composeApp/src/iosMain).
@@ -15,6 +17,8 @@ final class SwiftHost: NSObject, IosHost {
     static let doneAction = "DONE"
 
     private var pickerDelegate: PickerDelegate?
+    private var locationDelegate: ApproximateLocation?
+    private var appleDelegate: AppleSignIn?
 
     // MARK: Files
 
@@ -158,6 +162,37 @@ final class SwiftHost: NSObject, IosHost {
         UIApplication.shared.open(u)
     }
 
+    // MARK: Pet map
+
+    /// Approximate location only: the app snaps it to a ~1 km square before anything leaves the phone.
+    func approximateLocation(completion: LocationCallback) {
+        let finder = ApproximateLocation { [weak self] location in
+            if let l = location {
+                completion.onResult(found: true, lat: l.coordinate.latitude, lng: l.coordinate.longitude)
+            } else {
+                completion.onResult(found: false, lat: 0, lng: 0)
+            }
+            self?.locationDelegate = nil
+        }
+        locationDelegate = finder
+        finder.start()
+    }
+
+    func signInWithApple(hashedNonce: String, completion: TokenCallback) {
+        let request = ASAuthorizationAppleIDProvider().createRequest()
+        request.requestedScopes = []   // no name or email needed
+        request.nonce = hashedNonce
+        let controller = ASAuthorizationController(authorizationRequests: [request])
+        let delegate = AppleSignIn { [weak self] token, error in
+            completion.onResult(token: token, error: error)
+            self?.appleDelegate = nil
+        }
+        appleDelegate = delegate
+        controller.delegate = delegate
+        controller.presentationContextProvider = delegate
+        controller.performRequests()
+    }
+
     static func topViewController() -> UIViewController? {
         let scene = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }.first
         var top = scene?.windows.first { $0.isKeyWindow }?.rootViewController
@@ -231,5 +266,68 @@ enum RawImageBytes {
 
     private static func readInt(_ b: [UInt8], _ o: Int) -> Int {
         Int(b[o]) << 24 | Int(b[o + 1]) << 16 | Int(b[o + 2]) << 8 | Int(b[o + 3])
+    }
+}
+
+/// One approximate fix (reduced accuracy is fine), with a 15 s fallback to the last known location.
+private final class ApproximateLocation: NSObject, CLLocationManagerDelegate {
+    private let manager = CLLocationManager()
+    private let done: (CLLocation?) -> Void
+    private var finished = false
+
+    init(done: @escaping (CLLocation?) -> Void) {
+        self.done = done
+        super.init()
+        manager.delegate = self
+        manager.desiredAccuracy = kCLLocationAccuracyReduced
+    }
+
+    func start() {
+        switch manager.authorizationStatus {
+        case .notDetermined: manager.requestWhenInUseAuthorization()
+        case .authorizedWhenInUse, .authorizedAlways: manager.requestLocation()
+        default: finish(nil)
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 15) { [weak self] in self?.finish(self?.manager.location) }
+    }
+
+    func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
+        switch manager.authorizationStatus {
+        case .authorizedWhenInUse, .authorizedAlways: manager.requestLocation()
+        case .denied, .restricted: finish(nil)
+        default: break
+        }
+    }
+
+    func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) { finish(locations.last) }
+    func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) { finish(manager.location) }
+
+    private func finish(_ location: CLLocation?) {
+        guard !finished else { return }
+        finished = true
+        DispatchQueue.main.async { self.done(location) }
+    }
+}
+
+/// Sign in with Apple for the pet map. Returns the identity token; the server checks the nonce.
+private final class AppleSignIn: NSObject, ASAuthorizationControllerDelegate, ASAuthorizationControllerPresentationContextProviding {
+    private let done: (String?, String?) -> Void
+    init(done: @escaping (String?, String?) -> Void) { self.done = done }
+
+    func authorizationController(controller: ASAuthorizationController, didCompleteWithAuthorization authorization: ASAuthorization) {
+        guard let credential = authorization.credential as? ASAuthorizationAppleIDCredential,
+              let data = credential.identityToken, let token = String(data: data, encoding: .utf8) else {
+            done(nil, "Apple didn't return a sign-in token.")
+            return
+        }
+        done(token, nil)
+    }
+
+    func authorizationController(controller: ASAuthorizationController, didCompleteWithError error: Error) {
+        if let e = error as? ASAuthorizationError, e.code == .canceled { done(nil, nil) } else { done(nil, error.localizedDescription) }
+    }
+
+    func presentationAnchor(for controller: ASAuthorizationController) -> ASPresentationAnchor {
+        SwiftHost.topViewController()?.view.window ?? ASPresentationAnchor()
     }
 }

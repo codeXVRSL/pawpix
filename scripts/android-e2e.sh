@@ -18,6 +18,11 @@ adb shell getprop ro.product.model >> "$OUT/device.txt"
 adb shell input keyevent 82 || true
 sleep 30
 adb shell settings put global window_animation_scale 0 || true
+# Put the emulator in Naga City for the pet map test, with location switched on.
+adb shell cmd location set-location-enabled true || true
+adb emu geo fix 123.1948 13.6218 || true
+sleep 2
+adb emu geo fix 123.1948 13.6218 || true
 adb logcat -c
 adb shell am instrument -w -r -e class com.pawpixel.app.EndToEndTest \
   $APP.test/androidx.test.runner.AndroidJUnitRunner > "$OUT/instrument.txt" 2>&1
