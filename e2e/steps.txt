@@ -1,0 +1,28 @@
+PASS  first open goes straight to making a pet  (1383 ms)
+PASS  photo becomes a pixel pet  (4902 ms)
+PASS  cat body, floppy ears, then back to pointy  (3403 ms)
+PASS  face square is shown and can be resized  (12848 ms)
+PASS  name and save  (18576 ms)
+PASS  Done on a care task counts and cheers the pet up  (6198 ms)
+      note: found by dragging after 4 accessibility scrolls: BySelector [TEXT='\Q+ Add care task\E']
+PASS  add a medicine task  (44183 ms)
+PASS  health: a kitten's birthday gives her the first-year plan  (40611 ms)
+PASS  health: record a dose with a photo of the vaccination card  (35086 ms)
+      note: anti-rabies after 'a month ago': Due in 11 months
+PASS  health: an anti-rabies shot given a month ago is next due in 11 months  (19412 ms)
+PASS  weight: two weigh-ins draw the chart; the list opens  (22462 ms)
+PASS  milestone: 7 days of care is celebrated and shareable  (13763 ms)
+PASS  outfits: a week of care earns a bandana, and it shows on the pet  (10417 ms)
+PASS  share animation and before/after card open the share sheet  (4827 ms)
+PASS  home screen lists the pet  (2053 ms)
+PASS  settings open and close  (1292 ms)
+PASS  away mode pauses care and comes back  (1601 ms)
+      note: record photo restored for vy9u2v450c8j
+PASS  backup: save a file, then restore one  (7577 ms)
+PASS  pet map: join, see the pixel pets nearby, report, RSVP, leave  (19964 ms)
+      note: litter records: partnerlitter1 by=0d0daef7-b57d-4b46-a075-4ffb24dd4de5 day=20725 today=20725 me=af47d63e-0e4e-4b68-96be-588321bb3e08 name=Jamaica
+PASS  family sharing: start a family, a partner joins, her Done shows on this phone  (16636 ms)
+      note: pressed Done on the notification
+PASS  reminder notification with a working Done button  (4005 ms)
+PASS  home-screen widget can be added and draws the pet  (7140 ms)
+PASS  reopening the app keeps the pet  (46670 ms)
