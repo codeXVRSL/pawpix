@@ -125,6 +125,23 @@ jobs:
           unzip -l "$APK" | grep '\.so$' || echo "No native libraries."
           ZIPALIGN=$(ls $ANDROID_HOME/build-tools/*/zipalign | sort -V | tail -1)
           $ZIPALIGN -c -P 16 -v 4 "$APK" | tail -5
+      - name: Report app size (bundle, APK, and the download for a budget arm64 phone)
+        run: |
+          AAB=$(ls composeApp/build/outputs/bundle/release/*.aab | head -1)
+          APK=$(ls composeApp/build/outputs/apk/release/*.apk | head -1)
+          A=$(stat -c %s "$AAB"); P=$(stat -c %s "$APK")
+          DEX=$(unzip -l "$APK" | awk '/classes[0-9]*\.dex$/ {s+=$1} END {print s+0}')
+          ARSC=$(unzip -l "$APK" | awk '/ resources\.arsc$/ {print $1}')
+          SO=$(unzip -l "$APK" | grep -c '\.so$' || true)
+          # What Play would deliver to a Realme/Oppo/Vivo-class phone: arm64, Android 11, xhdpi, English.
+          curl -sSL -o bundletool.jar https://github.com/google/bundletool/releases/download/1.17.2/bundletool-all-1.17.2.jar
+          echo '{"supportedAbis":["arm64-v8a"],"supportedLocales":["en-US"],"screenDensity":320,"sdkVersion":30}' > budget-phone.json
+          DL=$(java -jar bundletool.jar build-apks --bundle="$AAB" --output=app.apks --device-spec=budget-phone.json >/dev/null 2>&1 \
+            && java -jar bundletool.jar get-size total --apks=app.apks --device-spec=budget-phone.json | tail -1 || echo "n/a")
+          MSG="AAB ${A} B, universal APK ${P} B (dex ${DEX} B, resources.arsc ${ARSC} B, ${SO} native libs), budget-phone download MIN,MAX ${DL} B"
+          echo "$MSG"
+          echo "::notice title=App size::$MSG"
+          echo "$MSG" >> "$GITHUB_STEP_SUMMARY"
       - uses: actions/upload-artifact@v4
         with:
           name: pawpixel-release
