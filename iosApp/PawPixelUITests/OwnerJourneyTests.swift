@@ -71,20 +71,25 @@ final class OwnerJourneyTests: XCTestCase {
             // Type like a person: tap the keys (lowercase, the field doesn't auto-capitalise).
             // If the text input session wasn't ready yet, nothing lands: wait and type again.
             let saveButton = element("Save \(petName)")
+            // The name may land even when that button is below the fold: the field's value says so.
+            let typed = app.descendants(matching: .any).matching(NSPredicate(format: "value CONTAINS %@", petName)).firstMatch
             for attempt in 1...3 {
+                // The typing tip can also appear late, over the keyboard.
+                if tipContinue.exists { tipContinue.tap(); sleep(1) }
                 for ch in petName {
                     let key = app.keys[String(ch)]
                     guard key.waitForExistence(timeout: 3) else { throw Failure("no key \(ch) on the keyboard") }
                     key.tap()
                 }
-                if saveButton.waitForExistence(timeout: 2) { log.append("      typed on attempt \(attempt)"); break }
+                if saveButton.waitForExistence(timeout: 2) || typed.exists { log.append("      typed on attempt \(attempt)"); break }
                 log.append("      attempt \(attempt): typing didn't land yet")
                 field.tap()
                 sleep(2)
             }
             shot("name-typed")
             let ret = app.keyboards.buttons["Return"].exists ? app.keyboards.buttons["Return"] : app.keyboards.buttons["return"]
-            if ret.exists { ret.tap() }
+            if tipContinue.exists { tipContinue.tap(); sleep(1) }
+            if ret.exists && ret.isHittable { ret.tap() }
             try scrollTo("Save").tap() // the header's Save
             allowNotificationsIfAsked()
             try find("Care", timeout: 30)
