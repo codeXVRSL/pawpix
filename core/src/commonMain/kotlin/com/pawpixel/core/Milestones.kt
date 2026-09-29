@@ -63,13 +63,16 @@ object WeightTrend {
     /** The weight as the owner would type it: "4.2". */
     fun kgInput(grams: Int): String = kg(grams).removeSuffix(" kg")
 
-    /** A chart's weight axis: (bottom, top, step) in grams, on round steps, with at least two steps. */
+    /** A chart's weight axis: (bottom, top, step) in grams, on round steps, at least two, with room around the values. */
     fun axis(grams: List<Int>): Triple<Int, Int, Int> {
         if (grams.isEmpty()) return Triple(0, 1000, 500)
         val lo = grams.min(); val hi = grams.max()
         val step = AXIS_STEPS.firstOrNull { (hi - lo) / it < 3 } ?: AXIS_STEPS.last()
         var bottom = lo / step * step
         var top = (hi + step - 1) / step * step
+        // A little room, so no point sits on the chart's edge.
+        if (lo == bottom && bottom - step >= 0) bottom -= step
+        if (hi == top) top += step
         while (top - bottom < 2 * step) {
             if (bottom - step >= 0 && lo - bottom < top - hi) bottom -= step else top += step
         }

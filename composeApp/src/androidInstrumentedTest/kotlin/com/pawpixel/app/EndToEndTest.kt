@@ -25,6 +25,7 @@ import androidx.test.uiautomator.Configurator
 import androidx.test.uiautomator.StaleObjectException
 import androidx.test.uiautomator.UiDevice
 import androidx.test.uiautomator.UiObject2
+import androidx.test.uiautomator.Until
 import com.pawpixel.app.widget.PetWidgetReceiver
 import kotlinx.coroutines.runBlocking
 import org.hamcrest.CoreMatchers.not
@@ -539,9 +540,14 @@ class EndToEndTest {
 
     /** Back to the home screen from wherever an earlier (failed) step left the app. */
     private fun goHome() {
-        repeat(5) {
-            if (device.hasObject(By.text("PawPixel")) && device.hasObject(By.text("Settings"))) return
-            device.pressBack(); Thread.sleep(400)
+        repeat(6) {
+            // Pressed back once too often (the screen was still settling): open the app again.
+            if (device.currentPackageName != ctx.packageName) {
+                scenario = ActivityScenario.launch(MainActivity::class.java)
+                Thread.sleep(1_500)
+            }
+            if (device.wait(Until.hasObject(By.text("Settings")), 1_500) == true && device.hasObject(By.text("PawPixel"))) return
+            device.pressBack(); Thread.sleep(600)
         }
     }
 
@@ -575,10 +581,13 @@ class EndToEndTest {
     private fun scrollTo(selector: BySelector): UiObject2 {
         runCatching { find(selector, 3_000) }.getOrNull()?.let { return it }
         for (forward in listOf(true, false)) {
-            repeat(15) {
+            // Just after a dialog closes the app's window may not be the active one yet, and a scroll
+            // fails: wait for it rather than giving up at once. A few failures in a row = the end.
+            var stuck = 0
+            for (i in 0 until 15) {
                 device.findObject(selector)?.let { return it }
-                if (!accessibilityScroll(forward)) return@repeat
-                Thread.sleep(400)
+                if (accessibilityScroll(forward)) stuck = 0 else if (++stuck >= 4) break
+                Thread.sleep(if (stuck > 0) 600L else 400L)
             }
         }
         return device.findObject(selector) ?: throw AssertionError("not found after scrolling: $selector")

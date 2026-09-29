@@ -60,14 +60,14 @@ class WeightLogTest {
     }
 
     @Test fun chartAxisOnRoundSteps() {
-        assertEquals(Triple(4000, 4200, 100), WeightTrend.axis(listOf(4000, 4200)))
+        assertEquals(Triple(3900, 4300, 100), WeightTrend.axis(listOf(4000, 4200)), "room above and below")
         assertEquals(Triple(4100, 4300, 100), WeightTrend.axis(listOf(4200, 4200)), "a flat line still gets room")
         assertEquals(Triple(0, 200, 100), WeightTrend.axis(listOf(100, 100)), "never below zero")
         assertEquals(Triple(8000, 12_000, 2000), WeightTrend.axis(listOf(8200, 11_900)))
         assertEquals(Triple(20_000, 40_000, 10_000), WeightTrend.axis(listOf(21_000, 36_500)))
         for (values in listOf(listOf(350, 900), listOf(3000, 3100, 2900), listOf(45_000, 52_000))) {
             val (bottom, top, step) = WeightTrend.axis(values)
-            assertTrue(bottom <= values.min() && top >= values.max() && (top - bottom) / step in 2..4, "$values -> $bottom..$top by $step")
+            assertTrue(bottom <= values.min() && top >= values.max() && (top - bottom) / step in 2..5, "$values -> $bottom..$top by $step")
             assertEquals(0, bottom % step)
         }
     }
