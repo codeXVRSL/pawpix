@@ -10,6 +10,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -73,40 +75,44 @@ fun BirthdayDialog(
         confirmButton = { TextButton(enabled = chosen != null, onClick = { chosen?.let(onSave) }) { Text(tr("Save")) } },
         dismissButton = { TextButton(onClick = onSkip) { Text(skipLabel) } },
     ) {
-        Column(Modifier.padding(start = 24.dp, end = 16.dp, top = 20.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text(tr("When was {0} born?", petName), style = MaterialTheme.typography.titleLarge)
-            Text(tr("A guess is fine. It plans puppy and kitten shots and deworming."), style = MaterialTheme.typography.bodySmall)
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                FilterChip(!exact, { exact = false }, label = { Text(tr("About how old")) })
-                FilterChip(exact, { exact = true }, label = { Text(tr("Exact date")) })
+        // One scrolling column: the dialog stacks its content in a single box, and a small phone
+        // may not fit the calendar and the header together.
+        Column(Modifier.verticalScroll(rememberScrollState())) {
+            Column(Modifier.padding(start = 24.dp, end = 16.dp, top = 20.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(tr("When was {0} born?", petName), style = MaterialTheme.typography.titleLarge)
+                Text(tr("A guess is fine. It plans puppy and kitten shots and deworming."), style = MaterialTheme.typography.bodySmall)
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    FilterChip(!exact, { exact = false }, label = { Text(tr("About how old")) })
+                    FilterChip(exact, { exact = true }, label = { Text(tr("Exact date")) })
+                }
             }
-        }
-        if (exact) {
-            DatePicker(state = picker, title = null, showModeToggle = true)
-        } else {
-            Column(
-                Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 16.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
-            ) {
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    val limit = maxAmount(unit)
-                    StepperButton("−", tr("Younger"), enabled = amount > 1) { amount-- }
-                    Text(
-                        "$amount", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold,
-                        textAlign = TextAlign.Center, modifier = Modifier.widthIn(min = 40.dp),
-                    )
-                    StepperButton("+", tr("Older"), enabled = amount < limit) { amount++ }
-                }
-                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    AgeUnit.entries.forEach { u ->
-                        FilterChip(unit == u, { unit = u; amount = amount.coerceAtMost(maxAmount(u)) }, label = { Text(unitLabel(u)) })
+            if (exact) {
+                DatePicker(state = picker, title = null, showModeToggle = true)
+            } else {
+                Column(
+                    Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 16.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        val limit = maxAmount(unit)
+                        StepperButton("−", tr("Younger"), enabled = amount > 1) { amount-- }
+                        Text(
+                            "$amount", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold,
+                            textAlign = TextAlign.Center, modifier = Modifier.widthIn(min = 40.dp),
+                        )
+                        StepperButton("+", tr("Older"), enabled = amount < limit) { amount++ }
                     }
-                }
-                chosen?.let {
-                    Text(
-                        tr("About {0} · born around {1}", ageText(amount, unit), LocalClock.shortDate(it)),
-                        style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
+                    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        AgeUnit.entries.forEach { u ->
+                            FilterChip(unit == u, { unit = u; amount = amount.coerceAtMost(maxAmount(u)) }, label = { Text(unitLabel(u)) })
+                        }
+                    }
+                    chosen?.let {
+                        Text(
+                            tr("About {0} · born around {1}", ageText(amount, unit), LocalClock.shortDate(it)),
+                            style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
                 }
             }
         }
