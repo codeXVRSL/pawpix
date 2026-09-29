@@ -98,6 +98,12 @@ object StateOps {
     fun removeWeight(state: AppState, petId: String, day: Long): AppState =
         state.copy(weights = state.weights.filterNot { it.petId == petId && it.day == day })
 
+    /** Corrects a weigh-in: its weight, or the day it was taken (replacing any other that day). */
+    fun editWeight(state: AppState, petId: String, day: Long, newDay: Long, grams: Int): AppState {
+        if (state.weights.none { it.petId == petId && it.day == day } || grams !in 1..200_000) return state
+        return logWeight(removeWeight(state, petId, day), petId, newDay, grams)
+    }
+
     /**
      * A "Done" from a notification. Health care counts only if it's due within a day, so tapping an
      * old notification after already logging it in the app doesn't record it twice.
@@ -114,7 +120,7 @@ object StateOps {
     fun completeFromReminder(state: AppState, refs: List<ReminderRef>, atMs: Long, clock: LocalClock): AppState =
         refs.fold(state) { s, ref ->
             val task = s.task(ref.taskId) ?: return@fold s
-            if (!HealthDue.canQuickComplete(task, s.completions, atMs, clock) || isCovered(s, ref, atMs, clock)) return@fold s
+            if (!HealthDue.canQuickComplete(task, s.completions, atMs, clock, s.pet(task.petId)) || isCovered(s, ref, atMs, clock)) return@fold s
             val at = if (refs.size > 1 && ref.slotAt != null && ref.slotAt <= atMs) ref.slotAt else atMs
             complete(s, task.id, at, clock)
         }
@@ -142,12 +148,18 @@ object StateOps {
      * so undo never takes back someone else's Done.
      */
     fun undoLast(state: AppState, taskId: String, mine: Set<String?>? = null): AppState {
-        val i = state.completions.indexOfLast { it.taskId == taskId && (mine == null || it.by in mine) }
+        val gone = state.completions.lastOrNull { it.taskId == taskId && (mine == null || it.by in mine) } ?: return state
+        return removeCompletion(state, gone.id)
+    }
+
+    /** Deletes one record (a health record logged by mistake), and its day from the care calendar if nothing else was logged then. */
+    fun removeCompletion(state: AppState, completionId: String): AppState {
+        val i = state.completions.indexOfFirst { it.id == completionId }
         if (i < 0) return state
         val gone = state.completions[i]
         val next = state.copy(completions = state.completions.filterIndexed { j, _ -> j != i })
         // Take the day off the care calendar if nothing else was logged for the pet that day.
-        val petId = state.task(taskId)?.petId ?: return next
+        val petId = state.task(gone.taskId)?.petId ?: return next
         val petTasks = next.tasksFor(petId).map { it.id }.toSet()
         if (next.completions.any { it.taskId in petTasks && it.localDay == gone.localDay }) return next
         return next.copy(pets = next.pets.map { p -> if (p.id == petId) p.copy(careDays = p.careDays - gone.localDay) else p })
@@ -157,10 +169,12 @@ object StateOps {
      * Health records: "last given on [day]". Logs it at the task's usual time that day (never in the
      * future), so the next due date follows from it.
      */
-    fun logOnDay(state: AppState, taskId: String, day: Long, nowMs: Long, clock: LocalClock): AppState {
+    fun logOnDay(
+        state: AppState, taskId: String, day: Long, nowMs: Long, clock: LocalClock, newId: () -> String = { Ids.newId() },
+    ): AppState {
         val task = state.task(taskId) ?: return state
         val at = minOf(clock.at(day, task.slots.firstOrNull() ?: (9 * 60)), nowMs)
-        return complete(state, taskId, at, clock, careDay = day == clock.dayIndex(nowMs))
+        return complete(state, taskId, at, clock, newId, careDay = day == clock.dayIndex(nowMs))
     }
 
     /** Someone else is caring for the pets until [untilMs]. "I'm back" passes now, so care missed while away stays forgiven. */

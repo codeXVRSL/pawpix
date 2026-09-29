@@ -5,6 +5,7 @@ import com.pawpixel.i18n.I18n
 import com.pawpixel.i18n.Lang
 import com.pawpixel.i18n.tr
 import com.pawpixel.core.Backup
+import com.pawpixel.core.CareTask
 import com.pawpixel.core.HealthPlan
 import com.pawpixel.core.Ids
 import com.pawpixel.core.LocalClock
@@ -115,8 +116,8 @@ class PawRepository(val platform: Platform) {
 
     // ---- Pets ----
 
-    suspend fun addPet(name: String, species: Species, settings: SpriteSettings, result: SpriteResult, ears: Ears?): Pet {
-        val draft = Pet(Ids.newId(), name.trim().ifEmpty { "My pet" }, species, now(), settings, ears = ears?.name)
+    suspend fun addPet(name: String, species: Species, settings: SpriteSettings, result: SpriteResult, ears: Ears?, birthDay: Long? = null): Pet {
+        val draft = Pet(Ids.newId(), name.trim().ifEmpty { "My pet" }, species, now(), settings, ears = ears?.name, birthDay = birthDay)
         saveHead(draft.id, result.head, result.photoCrop)
         val pet = draft.copy(lookCode = art(draft)?.look?.encode())
         writeWidgetPoses(pet)
@@ -134,9 +135,9 @@ class PawRepository(val platform: Platform) {
     }
 
     /** Species decides the body shape (dog or cat), so changing it redraws the widget poses. */
-    suspend fun renamePet(pet: Pet, name: String, species: Species) {
+    suspend fun renamePet(pet: Pet, name: String, species: Species, birthDay: Long? = pet.birthDay) {
         val updated = pet.copy(
-            name = name.trim().ifEmpty { pet.name }, species = species,
+            name = name.trim().ifEmpty { pet.name }, species = species, birthDay = birthDay,
             spriteVersion = if (species != pet.species) pet.spriteVersion + 1 else pet.spriteVersion,
         )
         if (species != pet.species) writeWidgetPoses(updated)
@@ -160,42 +161,71 @@ class PawRepository(val platform: Platform) {
         update { StateOps.logOnDay(it, taskId, clock.dayIndex(now()) - days, now(), clock) }
 
     /**
-     * Adds the usual health care the pet doesn't have yet (see [HealthPlan]). With a [birthDay], a
-     * puppy or kitten also gets its first-year vaccine and deworming series.
+     * Records a health item as given [daysAgo] days ago, with an optional [photo] of the vaccination
+     * card or receipt. The record is kept even if the photo can't be read: returns a message then.
+     */
+    suspend fun recordHealth(task: CareTask, daysAgo: Int, photo: ByteArray?): String? {
+        val id = Ids.newId()
+        update { StateOps.logOnDay(it, task.id, clock.dayIndex(now()) - daysAgo, now(), clock, newId = { id }) }
+        if (photo == null || saveRecordPhoto(task.petId, id, photo)) return null
+        return tr("Saved, but that photo couldn't be read. Add another one from History.")
+    }
+
+    /**
+     * Adds the usual health care the pet doesn't have yet (see [HealthPlan]). With a birthday, a
+     * puppy's or kitten's items follow its first-year schedule.
      */
     suspend fun addHealthCare(pet: Pet, birthDay: Long?) = update { s ->
-        val withBirthday = pet.copy(birthDay = birthDay ?: pet.birthDay)
+        val withBirthday = (s.pet(pet.id) ?: pet).let { it.copy(birthDay = birthDay ?: it.birthDay) }
         HealthPlan.addTo(StateOps.updatePet(s, withBirthday), withBirthday, now(), clock)
     }
 
-    suspend fun deleteTask(task: com.pawpixel.core.CareTask) {
+    suspend fun deleteTask(task: CareTask) {
+        val records = _state.value.completionsFor(task.id)
         update { StateOps.removeTask(it, task.id) }
         files.delete(Backup.cardPath(task.petId, task.id))
+        records.forEach { files.delete(Backup.recordPhotoPath(task.petId, it.id)) }
+        _cardRevision.value = _cardRevision.value + 1
     }
 
-    // ---- Vaccination card photos ----
+    /** Deletes a health record logged by mistake, with its photo. */
+    suspend fun deleteRecord(task: CareTask, completionId: String) {
+        update { StateOps.removeCompletion(it, completionId) }
+        deleteRecordPhoto(task.petId, completionId)
+    }
+
+    // ---- Health photos (vaccination cards, registration cards, vet receipts) ----
 
     /**
-     * Keeps a photo of the vaccination card (or vet receipt) with a health item. Re-encoded on the
-     * phone (max 1600 px, JPEG), which also removes location and other photo metadata.
+     * Keeps a photo with a health record. Re-encoded on the phone (long side at most [CARD_MAX_SIDE],
+     * JPEG, or PNG where JPEG isn't available), which also drops location and other photo metadata.
      */
-    suspend fun saveCard(task: com.pawpixel.core.CareTask, photo: ByteArray): Boolean {
+    suspend fun saveRecordPhoto(petId: String, completionId: String, photo: ByteArray): Boolean {
         val img = platform.decodePhoto(photo, CARD_MAX_SIDE) ?: return false
         val bytes = platform.encodeJpeg(img) ?: withContext(Dispatchers.Default) { Png.encode(img) }
-        files.writeBytes(Backup.cardPath(task.petId, task.id), bytes)
+        if (!files.writeBytes(Backup.recordPhotoPath(petId, completionId), bytes)) return false
         _cardRevision.value = _cardRevision.value + 1
         return true
     }
 
-    fun card(task: com.pawpixel.core.CareTask): ByteArray? = files.readBytes(Backup.cardPath(task.petId, task.id))
-    fun hasCard(task: com.pawpixel.core.CareTask): Boolean = files.exists(Backup.cardPath(task.petId, task.id))
+    fun recordPhoto(petId: String, completionId: String): ByteArray? = files.readBytes(Backup.recordPhotoPath(petId, completionId))
+    fun hasRecordPhoto(petId: String, completionId: String): Boolean = files.exists(Backup.recordPhotoPath(petId, completionId))
 
-    fun deleteCard(task: com.pawpixel.core.CareTask) {
+    fun deleteRecordPhoto(petId: String, completionId: String) {
+        files.delete(Backup.recordPhotoPath(petId, completionId))
+        _cardRevision.value = _cardRevision.value + 1
+    }
+
+    /** A card photo from an older version, kept with the item rather than a record. */
+    fun card(task: CareTask): ByteArray? = files.readBytes(Backup.cardPath(task.petId, task.id))
+    fun hasCard(task: CareTask): Boolean = files.exists(Backup.cardPath(task.petId, task.id))
+
+    fun deleteCard(task: CareTask) {
         files.delete(Backup.cardPath(task.petId, task.id))
         _cardRevision.value = _cardRevision.value + 1
     }
 
-    /** Bumped when a card photo changes, so the screen re-reads it. */
+    /** Bumped when a health photo changes, so the screen re-reads it. */
     private val _cardRevision = MutableStateFlow(0L)
     val cardRevision: StateFlow<Long> = _cardRevision.asStateFlow()
 
@@ -204,7 +234,13 @@ class PawRepository(val platform: Platform) {
         StateOps.setAway(it, if (days <= 0) now() else clock.at(clock.dayIndex(now()) + days, 12 * 60))
     }
     /** Undo takes back this phone's own last record, never a family member's. */
-    suspend fun undo(taskId: String) = update { StateOps.undoLast(it, taskId, mine = setOf(null, family.myUserId)) }
+    suspend fun undo(taskId: String) {
+        val mine = setOf(null, family.myUserId)
+        val gone = _state.value.completions.lastOrNull { it.taskId == taskId && it.by in mine }
+        val s = update { StateOps.undoLast(it, taskId, mine = mine) }
+        val task = s.task(taskId)
+        if (gone != null && task != null && task.kind.health && s.completions.none { it.id == gone.id }) deleteRecordPhoto(task.petId, gone.id)
+    }
     suspend fun setSettings(settings: Settings) = update { StateOps.setSettings(it, settings) }
 
     suspend fun deleteAllData() {
@@ -378,7 +414,8 @@ class PawRepository(val platform: Platform) {
     }
 
     suspend fun celebrate(petId: String, days: Int) = update { com.pawpixel.core.Milestones.celebrate(it, petId, days) }
-    suspend fun logWeight(petId: String, grams: Int) = update { StateOps.logWeight(it, petId, clock.dayIndex(now()), grams) }
+    suspend fun logWeight(petId: String, day: Long, grams: Int) = update { StateOps.logWeight(it, petId, day, grams) }
+    suspend fun editWeight(petId: String, day: Long, newDay: Long, grams: Int) = update { StateOps.editWeight(it, petId, day, newDay, grams) }
     suspend fun removeWeight(petId: String, day: Long) = update { StateOps.removeWeight(it, petId, day) }
 
     fun shareGif(pet: Pet, gif: ByteArray) = platform.shareFile(gif, "${fileStem(pet)}.gif", "image/gif")
@@ -388,7 +425,8 @@ class PawRepository(val platform: Platform) {
     companion object {
         const val STATE_FILE = "state.json"
         const val WIDGET_SCALE = 4
-        const val CARD_MAX_SIDE = 1600
+        /** Health photos: big enough to read a vaccination card, small enough for backups (~250 KB). */
+        const val CARD_MAX_SIDE = 1280
         private const val STAGING = "restore"
         private const val OLD_SPRITES = "sprites.old"
     }

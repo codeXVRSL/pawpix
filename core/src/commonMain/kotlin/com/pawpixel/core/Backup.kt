@@ -14,9 +14,9 @@ object Backup {
     const val FORMAT = "pawpixel-backup"
     const val VERSION = 1
     /** The only files a backup may carry, so a crafted file can't write anywhere else. */
-    private val FILE_PATH = Regex("sprites/([a-z0-9]{1,40})/(head\\.bin|photo\\.bin|card-[a-z0-9]{1,40}\\.jpg)")
+    private val FILE_PATH = Regex("sprites/([a-z0-9]{1,40})/(head\\.bin|photo\\.bin|(card|rec)-[a-z0-9]{1,40}\\.jpg)")
     /**
-     * Much larger than any real backup (a pet is ~100 KB, a card photo ~300 KB), to refuse junk early.
+     * Much larger than any real backup (a pet is ~100 KB, a record photo ~250 KB), to refuse junk early.
      * The iOS document picker uses the same limit (SwiftHost.swift).
      */
     const val MAX_BYTES = 40_000_000
@@ -26,11 +26,21 @@ object Backup {
     class NotABackup(message: String) : IllegalArgumentException(message)
 
     /** Paths of a pet's files that belong in a backup (some may not exist, e.g. no card photo). */
-    fun filesFor(state: AppState, petId: String) =
-        listOf("sprites/$petId/head.bin", "sprites/$petId/photo.bin") + state.tasksFor(petId).filter { it.kind.health }.map { cardPath(petId, it.id) }
+    fun filesFor(state: AppState, petId: String): List<String> {
+        val health = state.tasksFor(petId).filter { it.kind.health }
+        val ids = health.map { it.id }.toSet()
+        return listOf("sprites/$petId/head.bin", "sprites/$petId/photo.bin") + health.map { cardPath(petId, it.id) } +
+            state.completions.filter { it.taskId in ids }.map { recordPhotoPath(petId, it.id) }
+    }
 
-    /** A photo of the vaccination card (or vet receipt) for a health item. */
+    /** Older versions: one photo of the vaccination card per health item. */
     fun cardPath(petId: String, taskId: String) = "sprites/$petId/card-$taskId.jpg"
+
+    /**
+     * A photo kept with one health record: the vaccination or registration card, or a vet receipt.
+     * JPEG (or PNG where the phone can't make JPEGs), long side at most 1280 px.
+     */
+    fun recordPhotoPath(petId: String, completionId: String) = "sprites/$petId/rec-$completionId.jpg"
 
     fun encode(state: AppState, files: Map<String, ByteArray>, nowMs: Long): String = Json.obj(
         "format" to FORMAT,

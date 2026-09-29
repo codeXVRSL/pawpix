@@ -40,12 +40,32 @@ object CareStats {
     }
 
     /** Health care for a pet, soonest due first: (task, due date or null if never planned, overdue?). */
-    fun healthDue(state: AppState, petId: String, nowMs: Long, clock: LocalClock): List<HealthItem> =
-        state.tasksFor(petId).filter { it.kind.health }.map { t ->
-            val s = CareEngine.status(t, state.completions, nowMs, clock)
-            val due = if (s.isOverdue) s.overdueSinceMs else if (s.allDoneThisCycle || s.slotTimes.size <= s.done) s.nextDueMs else s.slotTimes[s.done]
-            HealthItem(t, due, s.isOverdue || (due != null && due <= nowMs), s.lastDoneMs)
+    fun healthDue(state: AppState, petId: String, nowMs: Long, clock: LocalClock): List<HealthItem> {
+        val pet = state.pet(petId)
+        return state.tasksFor(petId).filter { it.kind.health }.map { t ->
+            val s = CareEngine.status(t, state.completions, nowMs, clock, pet = pet)
+            val due = s.slotTimes.firstOrNull()
+            HealthItem(t, due, due != null && due <= nowMs, s.lastDoneMs, s.dose, s.doses, s.scheduled)
         }.sortedBy { it.dueMs ?: Long.MAX_VALUE }
+    }
+
+    /**
+     * Every record of a health item, newest first, with its dose number in a puppy's or kitten's
+     * vaccine series (null for boosters and other items).
+     */
+    fun healthRecords(state: AppState, taskId: String): List<HealthRecord> {
+        val task = state.task(taskId) ?: return emptyList()
+        val pet = state.pet(task.petId)
+        val records = state.completionsFor(taskId).sortedBy { it.atMs }
+        val schedule = HealthPlan.scheduleFor(pet, task)
+        // Several records on one day are one dose (a double tap): number the day once.
+        val numbers = if (schedule == null) emptyMap() else {
+            val days = records.map { it.localDay }.distinct()
+            days.zip(HealthPlan.doseNumbers(schedule, pet!!.birthDay!!, days)).toMap()
+        }
+        val seen = HashSet<Long>()
+        return records.map { c -> HealthRecord(c, if (seen.add(c.localDay)) numbers[c.localDay] else null) }.reversed()
+    }
 
     /** "Due today", "Due in 12 days", "Due in 3 months", "Overdue by 5 days". */
     fun dueLabel(item: HealthItem, nowMs: Long, clock: LocalClock): String {
@@ -60,4 +80,17 @@ object CareStats {
     }
 }
 
-data class HealthItem(val task: CareTask, val dueMs: Long?, val due: Boolean, val lastDoneMs: Long?)
+data class HealthItem(
+    val task: CareTask,
+    val dueMs: Long?,
+    val due: Boolean,
+    val lastDoneMs: Long?,
+    /** In an unfinished first-year vaccine series: the next one is dose [dose] of [doses]. */
+    val dose: Int? = null,
+    val doses: Int? = null,
+    /** Follows the pet's first-year schedule (see [HealthPlan]). */
+    val scheduled: Boolean = false,
+)
+
+/** A health item given on a day ([Completion.localDay]), and which dose of the first-year series it was. */
+data class HealthRecord(val completion: Completion, val dose: Int?)

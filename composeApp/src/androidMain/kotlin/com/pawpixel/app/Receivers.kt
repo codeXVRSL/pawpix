@@ -36,6 +36,11 @@ class ReminderReceiver : BroadcastReceiver() {
             work { PawPixelApplication.repo(context).completeFromReminder(refs) }
             return
         }
+        // A note that isn't about a task (Rabies Awareness Month): just show it.
+        if (taskId.isEmpty()) {
+            work { if (PawPixelApplication.repo(context).state.value.settings.remindersEnabled) show(context, intent, taskId, emptyList(), id) }
+            return
+        }
         work {
             val repo = PawPixelApplication.repo(context)
             // Family sharing: fetch the others' taps first, so nobody is told to feed a pet that was just fed.

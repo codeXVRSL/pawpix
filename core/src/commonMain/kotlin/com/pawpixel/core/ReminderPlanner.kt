@@ -70,7 +70,7 @@ object ReminderPlanner {
             val pet = state.pet(task.petId) ?: continue
             val slots = AdaptiveTiming.effectiveSlots(task, state.completions, nowMs, clock)
             if (slots.isEmpty()) continue
-            val status = CareEngine.status(task, state.completions, nowMs, clock, slots)
+            val status = CareEngine.status(task, state.completions, nowMs, clock, slots, pet)
             if (task.kind.health) {
                 health += healthReminders(task, pet, status, nowMs, clock)
                 continue
@@ -96,7 +96,8 @@ object ReminderPlanner {
                 cycle += n
             }
         }
-        val keptHealth = bundle(health.filter { it.atMs >= quietUntil }, state).sortedBy { it.atMs }.take(MAX_HEALTH)
+        val keptHealth = (bundle(health.filter { it.atMs >= quietUntil }, state).sortedBy { it.atMs }.take(MAX_HEALTH - 1) +
+            listOfNotNull(rabiesMonth(state, nowMs, clock))).sortedBy { it.atMs }
         val daily = bundleDaily(out.filter { it.atMs >= quietUntil }, state, clock).sortedBy { it.atMs }.take(MAX_PENDING - keptHealth.size)
         return (daily + keptHealth).sortedBy { it.atMs }
     }
@@ -122,6 +123,31 @@ object ReminderPlanner {
         )
         return list.filter { it.atMs > nowMs }
     }
+
+    /** Local time of the yearly Rabies Awareness Month note. */
+    const val RABIES_MONTH_MINUTE = 9 * 60
+
+    /**
+     * March is Rabies Awareness Month in the Philippines (Executive Order 84, 1999), when cities and
+     * barangays often hold free anti-rabies drives. Owners of a dog or cat get one note a year, on
+     * March 1. It isn't about a task, so it has no Done button ([Reminder.taskIds] is empty). Like
+     * the other reminders it's planned again whenever PawPixel runs, so only within [RABIES_MONTH_LEAD_MS].
+     */
+    fun rabiesMonth(state: AppState, nowMs: Long, clock: LocalClock): Reminder? {
+        val pet = state.pets.firstOrNull { it.species != Species.OTHER } ?: return null
+        val (year, _, _) = LocalClock.civil(clock.dayIndex(nowMs))
+        val at = listOf(year, year + 1).map { clock.at(LocalClock.dayOf(it, 3, 1), RABIES_MONTH_MINUTE) }.first { it > nowMs }
+        if (at - nowMs > RABIES_MONTH_LEAD_MS) return null
+        return Reminder(
+            stableId(RABIES_MONTH_ID, at, false), taskId = "", petId = pet.id, atMs = at,
+            title = "💉 " + tr("Rabies Awareness Month"),
+            body = tr("Free anti-rabies shots are often offered in March — check your barangay."),
+            exact = false, quickDone = false, taskIds = emptyList(), slots = emptyList(),
+        )
+    }
+
+    private const val RABIES_MONTH_ID = "rabies-month"
+    const val RABIES_MONTH_LEAD_MS = 45 * DAY_MS
 
     /** Reminders this close together become one notification. */
     const val BUNDLE_WINDOW_MS = 20 * MINUTE_MS

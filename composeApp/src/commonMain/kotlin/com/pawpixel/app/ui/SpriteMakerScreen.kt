@@ -90,6 +90,9 @@ fun SpriteMakerScreen(app: AppScope, state: AppState, existingPetId: String?) {
     var ears by remember { mutableStateOf(Ears.of(existing?.ears)) }
     var name by remember { mutableStateOf(existing?.name ?: "") }
     var species by remember { mutableStateOf(existing?.species ?: Species.DOG) }
+    /** New pets: an optional birthday, for puppy and kitten care. */
+    var birthDay by remember { mutableStateOf<Long?>(null) }
+    var askBirthday by remember { mutableStateOf(false) }
     var saving by remember { mutableStateOf(false) }
     var reaction by remember { mutableStateOf<Reaction?>(null) }
     /** Which inputs the current [result] was made from; eyes and Save wait until it matches. */
@@ -142,7 +145,7 @@ fun SpriteMakerScreen(app: AppScope, state: AppState, existingPetId: String?) {
                 app.repo.updateSprite(latest.copy(species = species), settings, made, ears)
                 app.back()
             } else if (StateOps.canAddPet(app.repo.state.value)) {
-                val pet = app.repo.addPet(name, species, settings, made, ears)
+                val pet = app.repo.addPet(name, species, settings, made, ears, birthDay)
                 app.repo.platform.requestNotificationPermission()
                 app.back()
                 app.navigate(Screen.PetDetail(pet.id))
@@ -208,6 +211,7 @@ fun SpriteMakerScreen(app: AppScope, state: AppState, existingPetId: String?) {
 
             if (existing == null) {
                 OutlinedTextField(name, { name = it.take(24) }, label = { Text(tr("Pet's name")) }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                BirthdayRow(birthDay, app.repo.clock.dayIndex(app.now)) { askBirthday = true }
             }
 
             Text(tr("Body"), fontWeight = FontWeight.Bold)
@@ -240,6 +244,12 @@ fun SpriteMakerScreen(app: AppScope, state: AppState, existingPetId: String?) {
         }
         error?.takeIf { r == null }?.let { Text(it, color = MaterialTheme.colorScheme.error) }
         Spacer(Modifier.height(24.dp))
+    }
+    if (askBirthday) {
+        BirthdayDialog(
+            name.ifBlank { tr("your pet") }, birthDay, app.repo.clock.dayIndex(app.now), skipLabel = tr("Cancel"),
+            onSkip = { askBirthday = false }, onSave = { birthDay = it; askBirthday = false },
+        )
     }
 }
 

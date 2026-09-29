@@ -185,7 +185,7 @@ class HealthReviewFixesTest {
     @Test fun youngPetsStartParasiteCareAtEightWeeks() {
         val pup = pet.copy(birthDay = today - 30)
         val s = HealthPlan.addTo(AppState(pets = listOf(pup)), pup, now, clock)
-        assertEquals(listOf(today + 26), s.tasks.single { it.title == "Heartworm prevention" }.series)
+        assertEquals("Due in 26 days", label(s, s.tasks.single { it.title == "Heartworm prevention" }.id))
         assertEquals("Due in 26 days", label(s, s.tasks.single { it.title == "Tick & flea prevention" }.id))
     }
 }
@@ -268,20 +268,23 @@ class BackupTest {
     @Test fun roundTripsStateAndPetFiles() {
         val head = ByteArray(300) { (it * 7).toByte() }
         val photo = byteArrayOf(0, 1, 2, -1, -128, 127)
-        assertEquals(listOf("sprites/abc123/head.bin", "sprites/abc123/photo.bin", "sprites/abc123/card-t1.jpg"), Backup.filesFor(state, "abc123"))
-        val text = Backup.encode(state, mapOf("sprites/abc123/head.bin" to head, "sprites/abc123/photo.bin" to photo, "sprites/abc123/card-t1.jpg" to photo), 42)
+        val record = "sprites/abc123/rec-${state.completions[0].id}.jpg"
+        assertEquals(listOf("sprites/abc123/head.bin", "sprites/abc123/photo.bin", "sprites/abc123/card-t1.jpg", record), Backup.filesFor(state, "abc123"))
+        val text = Backup.encode(state, mapOf("sprites/abc123/head.bin" to head, "sprites/abc123/photo.bin" to photo, "sprites/abc123/card-t1.jpg" to photo, record to head), 42)
         val back = Backup.decode(text)
         assertEquals(state, back.state)
         assertTrue(head.contentEquals(back.files["sprites/abc123/head.bin"]))
         assertTrue(photo.contentEquals(back.files["sprites/abc123/photo.bin"]))
         assertTrue(photo.contentEquals(back.files["sprites/abc123/card-t1.jpg"]))
+        assertTrue(head.contentEquals(back.files[record]), "a health record's photo")
         assertEquals(42, back.createdAtMs)
     }
 
     @Test fun refusesOtherFilesAndPaths() {
         val sneaky = Backup.encode(state, emptyMap(), 1).replace(
             "\"files\":{}",
-            "\"files\":{\"../state.json\":\"AAAA\",\"sprites/abc123/../../x.bin\":\"AAAA\",\"sprites/other/head.bin\":\"AAAA\",\"sprites/abc123/head.bin\":\"!!\"}",
+            "\"files\":{\"../state.json\":\"AAAA\",\"sprites/abc123/../../x.bin\":\"AAAA\",\"sprites/other/head.bin\":\"AAAA\",\"sprites/abc123/head.bin\":\"!!\"," +
+                "\"sprites/abc123/rec-../../x.jpg\":\"AAAA\",\"sprites/abc123/rec-Ab.jpg\":\"AAAA\",\"sprites/abc123/rec-x.jpg.exe\":\"AAAA\"}",
         )
         assertTrue(Backup.decode(sneaky).files.isEmpty(), "only this backup's own pet files, as valid base64")
         assertFailsWith<Backup.NotABackup> { Backup.decode("""{"pets":[]}""") }

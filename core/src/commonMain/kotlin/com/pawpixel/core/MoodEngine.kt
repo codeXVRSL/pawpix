@@ -91,7 +91,7 @@ object MoodEngine {
         val tasks = state.tasksFor(petId)
         val statuses = tasks.map { t ->
             val slots = AdaptiveTiming.effectiveSlots(t, state.completions, nowMs, clock)
-            CareEngine.status(t, state.completions, nowMs, clock, slots)
+            CareEngine.status(t, state.completions, nowMs, clock, slots, pet)
         }
         // Health care weighs lightly: only the most overdue item counts, and only one with a known
         // date (a record or a planned puppy/kitten dose), so a pet never gets sad over paperwork.

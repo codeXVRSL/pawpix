@@ -4,11 +4,13 @@ import com.pawpixel.core.*
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
+/** Young-pet schedules from the birthday (HealthPlan), and how they show up everywhere else. */
 class HealthPlanTest {
     private val clock = LocalClock.MANILA
-    private val today = 20500L
+    private val today = LocalClock.dayOf(2026, 9, 29)
     private val now = clock.at(today, 12 * 60)
     private var n = 0
     private fun ids() = { "t${n++}" }
@@ -18,6 +20,10 @@ class HealthPlanTest {
         return HealthPlan.addTo(AppState(pets = listOf(pet)), pet, now, clock, ids())
     }
     private fun AppState.byTitle(t: String) = tasks.single { it.title == t }
+    private fun AppState.item(title: String, at: Long = now) =
+        CareStats.healthDue(this, "p1", at, clock).single { it.task.title == title }
+    private fun AppState.dueDay(title: String, at: Long = now) = clock.dayIndex(item(title, at).dueMs!!)
+    private fun AppState.give(title: String, day: Long) = StateOps.logOnDay(this, byTitle(title).id, day, clock.at(day, 18 * 60), clock)
 
     @Test fun adultDogGetsTheYearlyRoutineDueNow() {
         val s = planFor(Species.DOG, null)
@@ -25,66 +31,190 @@ class HealthPlanTest {
             listOf("Anti-rabies shot", "5-in-1 vaccine", "Deworming", "Tick & flea prevention", "Heartworm prevention", "Vet check-up"),
             s.tasks.map { it.title },
         )
-        assertTrue(s.tasks.all { it.series.isEmpty() && it.kind.health })
-        assertTrue(CareStats.healthDue(s, "p1", now, clock).all { it.due }, "not known when last given: due now")
-        // Adding again doesn't duplicate.
-        val again = HealthPlan.addTo(s, s.pets[0], now, clock, ids())
-        assertEquals(s.tasks.size, again.tasks.size)
+        assertEquals(listOf(365, 365, 90, 30, 30, 365), s.tasks.map { it.everyDays })
+        val items = CareStats.healthDue(s, "p1", now, clock)
+        assertTrue(items.all { it.due && !it.scheduled && it.dose == null }, "not known when last given: due now, no schedule")
+        assertTrue(ReminderPlanner.plan(s, now, clock).isEmpty(), "no reminders for guessed dates")
+        assertEquals(s.tasks.size, HealthPlan.addTo(s, s.pets[0], now, clock, ids()).tasks.size, "adding again doesn't duplicate")
     }
 
-    @Test fun eightWeekPuppyGetsItsSeries() {
-        val s = planFor(Species.DOG, 56)
-        val shots = s.byTitle("5-in-1 vaccine")
-        // 6 weeks was 14 days ago: left out. 9, 12 and 16 weeks remain.
-        assertEquals(listOf(today + 7, today + 28, today + 56), shots.series)
-        assertEquals(listOf(today + 35), s.byTitle("Anti-rabies shot").series, "anti-rabies at 13 weeks")
-        val item = CareStats.healthDue(s, "p1", now, clock).first { it.task.id == shots.id }
-        assertFalse(item.due)
-        assertEquals("Due in 7 days", CareStats.dueLabel(item, now, clock))
-        // Deworming at 8 weeks is today's dose.
-        assertEquals("Due today", CareStats.dueLabel(CareStats.healthDue(s, "p1", now, clock).first { it.task.title == "Deworming" }, now, clock))
+    @Test fun puppyGetsItsFiveInOneDoseByDose() {
+        var s = planFor(Species.DOG, 42) // 6 weeks old today
+        val shot = s.item("5-in-1 vaccine")
+        assertTrue(shot.scheduled)
+        assertEquals(today, clock.dayIndex(shot.dueMs!!))
+        assertEquals(1 to 4, shot.dose to shot.doses, "6, 9, 12 and 16 weeks")
+        s = s.give("5-in-1 vaccine", today)
+        assertEquals(today + 21, s.dueDay("5-in-1 vaccine"))
+        assertEquals(2 to 4, s.item("5-in-1 vaccine").let { it.dose to it.doses })
+        s = s.give("5-in-1 vaccine", today + 21)
+        assertEquals(today + 42, s.dueDay("5-in-1 vaccine", clock.at(today + 21, 20 * 60)))
+        s = s.give("5-in-1 vaccine", today + 42)
+        // 15 weeks would be a week short of 16: the last dose waits for 16 weeks.
+        val third = clock.at(today + 42, 20 * 60)
+        assertEquals(today - 42 + 112, s.dueDay("5-in-1 vaccine", third))
+        assertEquals(4 to 4, s.item("5-in-1 vaccine", third).let { it.dose to it.doses })
+        s = s.give("5-in-1 vaccine", today + 70)
+        // Series done: the yearly booster counts from the last dose, and has no dose number.
+        val done = s.item("5-in-1 vaccine", clock.at(today + 70, 20 * 60))
+        assertEquals(today + 70 + 365, clock.dayIndex(done.dueMs!!))
+        assertNull(done.dose)
+        assertEquals(listOf(null, 4, 3, 2, 1), CareStats.healthRecords(s.give("5-in-1 vaccine", today + 435), s.byTitle("5-in-1 vaccine").id).map { it.dose })
     }
 
-    @Test fun eachDoseMovesToTheNextThenYearly() {
-        var s = planFor(Species.DOG, 56)
-        val id = s.byTitle("5-in-1 vaccine").id
-        fun due(at: Long) = CareStats.healthDue(s, "p1", at, clock).first { it.task.id == id }
-        // Dose 1 on its day.
-        val d1 = clock.at(today + 7, 10 * 60)
-        assertTrue(due(d1).due)
-        s = StateOps.complete(s, id, d1, clock)
-        assertEquals(clock.at(today + 28, 9 * 60), due(d1).dueMs)
-        // Dose 2 a few days late still counts as dose 2.
-        val d2 = clock.at(today + 31, 10 * 60)
-        assertTrue(due(d2).due)
-        s = StateOps.complete(s, id, d2, clock)
-        assertEquals(clock.at(today + 56, 9 * 60), due(d2).dueMs)
-        // Dose 3, then the yearly booster counts from it.
-        val d3 = clock.at(today + 56, 10 * 60)
-        s = StateOps.complete(s, id, d3, clock)
-        assertEquals(clock.at(today + 56 + 365, 9 * 60), due(d3).dueMs)
-        assertFalse(due(d3).due)
-        // Undo the last dose: dose 3 is due again.
-        s = StateOps.undoLast(s, id)
-        assertTrue(due(d3).due)
+    @Test fun aLateDoseMovesTheNextOneAndTheCount() {
+        var s = planFor(Species.DOG, 42)
+        s = s.give("5-in-1 vaccine", today)
+        s = s.give("5-in-1 vaccine", today + 30) // 9 days late (at ~10.3 weeks)
+        val at = clock.at(today + 30, 20 * 60)
+        assertEquals(today + 51, s.dueDay("5-in-1 vaccine", at))
+        // 13.3 weeks, then 16.3 weeks (not short of 16): 4 doses in all.
+        assertEquals(3 to 4, s.item("5-in-1 vaccine", at).let { it.dose to it.doses })
+        // A double tap is one dose.
+        s = s.give("5-in-1 vaccine", today + 30)
+        assertEquals(3 to 4, s.item("5-in-1 vaccine", at).let { it.dose to it.doses })
     }
 
-    @Test fun seriesRemindersAndSaving() {
-        val s = planFor(Species.CAT, 50)
-        val fvrcp = s.byTitle("FVRCP vaccine")
-        assertEquals(listOf(today + 6, today + 34, today + 62), fvrcp.series)
-        val r = ReminderPlanner.plan(s, now, clock).filter { it.body.contains("FVRCP") }
-        assertEquals(listOf(clock.at(today + 3, 540), clock.at(today + 6, 540), clock.at(today + 9, 540)), r.map { it.atMs })
-        val back = StateCodec.decode(StateCodec.encode(s))
-        assertEquals(s, back)
-        assertEquals(today - 50, back.pets[0].birthDay)
+    @Test fun aPuppyAddedLateStartsNowWithoutFretting() {
+        val s = planFor(Species.DOG, 70) // 10 weeks, no records: maybe the breeder gave some
+        val shot = s.item("5-in-1 vaccine")
+        assertTrue(shot.due)
+        assertEquals(1 to 3, shot.dose to shot.doses, "10, 13, 16 weeks")
+        val status = CareEngine.status(s.byTitle("5-in-1 vaccine"), s.completions, now, clock, pet = s.pets[0])
+        assertFalse(status.known, "a guess: no reminders or sad pet until it's recorded")
+        assertTrue(ReminderPlanner.plan(s, now, clock).none { it.taskId == shot.task.id })
+        // An older puppy with no records: one dose, then yearly.
+        assertNull(planFor(Species.DOG, 140).item("5-in-1 vaccine").dose)
     }
 
-    @Test fun olderThanSevenMonthsIsAnAdult() {
-        assertFalse(HealthPlan.isYoung(today - 300, today))
-        assertTrue(planFor(Species.CAT, 300).tasks.all { it.series.isEmpty() })
+    @Test fun kittenFvrcpAt8_12_16Weeks() {
+        var s = planFor(Species.CAT, 50)
+        assertEquals(today + 6, s.dueDay("FVRCP vaccine"))
+        assertEquals(1 to 3, s.item("FVRCP vaccine").let { it.dose to it.doses })
+        s = s.give("FVRCP vaccine", today + 6)
+        assertEquals(today + 34, s.dueDay("FVRCP vaccine", clock.at(today + 6, 20 * 60)))
+        // Ten weeks old with nothing recorded (the e2e journey's kitten): 10, 14, 18 weeks.
+        assertEquals(1 to 3, planFor(Species.CAT, 70).item("FVRCP vaccine").let { it.dose to it.doses })
+    }
+
+    @Test fun antiRabiesAtThreeCalendarMonthsThenYearly() {
+        val born = LocalClock.dayOf(2026, 7, 15)
+        assertEquals(LocalClock.dayOf(2026, 10, 15), HealthPlan.RABIES.firstDay(born))
+        assertEquals(LocalClock.dayOf(2027, 2, 28), HealthPlan.RABIES.firstDay(LocalClock.dayOf(2026, 11, 30)))
+        assertEquals(LocalClock.dayOf(2028, 2, 29), HealthPlan.RABIES.firstDay(LocalClock.dayOf(2027, 11, 30)))
+        var s = planFor(Species.CAT, today - born)
+        assertEquals(LocalClock.dayOf(2026, 10, 15), s.dueDay("Anti-rabies shot"))
+        assertNull(s.item("Anti-rabies shot").dose, "a single dose, not a series")
+        s = s.give("Anti-rabies shot", LocalClock.dayOf(2026, 10, 16))
+        assertEquals(LocalClock.dayOf(2026, 10, 16) + 365, s.dueDay("Anti-rabies shot", clock.at(LocalClock.dayOf(2026, 10, 16), 20 * 60)))
+    }
+
+    @Test fun dewormingGetsLessFrequentAsThePetGrows() {
+        var s = planFor(Species.DOG, 10)
+        val born = today - 10
+        assertEquals(born + 14, s.dueDay("Deworming"), "from 2 weeks")
+        fun nextAfter(age: Long): Long {
+            s = s.give("Deworming", born + age)
+            return s.dueDay("Deworming", clock.at(born + age, 20 * 60)) - born
+        }
+        assertEquals(28, nextAfter(14), "every 2 weeks while under 12 weeks")
+        assertEquals(84, nextAfter(70))
+        assertEquals(114, nextAfter(84), "monthly from 12 weeks")
+        assertEquals(211, nextAfter(181), "still monthly just under 6 months")
+        assertEquals(290, nextAfter(200), "then every 3 months (the item's own repeat)")
+        assertEquals(born + 21, planFor(Species.CAT, 10).dueDay("Deworming"), "kittens from 3 weeks")
+    }
+
+    @Test fun preventionAndCheckUpsStartAtTheRightAge() {
+        val s = planFor(Species.DOG, 30)
+        assertEquals(today + 26, s.dueDay("Heartworm prevention"))
+        assertEquals(today + 26, s.dueDay("Tick & flea prevention"))
+        assertEquals(today + 12, s.dueDay("Vet check-up"))
+        assertEquals(today + 26, planFor(Species.CAT, 30).dueDay("Vet check-up"))
+        // Planned first doses are real dates: heads-up 3 days before, on the day, and a follow-up.
+        val r = ReminderPlanner.plan(s, now, clock).filter { it.body.contains("check-up") }
+        assertEquals(listOf(today + 9, today + 12, today + 15).map { clock.at(it, 9 * 60) }, r.map { it.atMs })
+    }
+
+    @Test fun theScheduleFollowsTheBirthdayAndTheUsualName() {
+        // Added as an adult (no birthday), then the owner gives one: the same items now follow it.
+        var s = planFor(Species.DOG, null)
+        val pet = s.pets[0].copy(birthDay = today - 42)
+        s = StateOps.updatePet(s, pet)
+        assertEquals(1 to 4, s.item("5-in-1 vaccine").let { it.dose to it.doses })
+        // A changed birthday moves the plan.
+        s = StateOps.updatePet(s, pet.copy(birthDay = today - 20))
+        assertEquals(today + 22, s.dueDay("5-in-1 vaccine"))
+        // Renamed: a plain yearly item again.
+        val shot = s.byTitle("5-in-1 vaccine")
+        s = StateOps.upsertTask(s, shot.copy(title = "DHPP (Nobivac)"))
+        assertFalse(s.item("DHPP (Nobivac)").scheduled)
+        // Other species' names don't match: a cat has no "5-in-1 vaccine" plan.
+        assertNull(HealthPlan.scheduleFor(pet.copy(species = Species.CAT), shot))
+    }
+
+    @Test fun dueHealthCareIsGentleOnTheMood() {
+        var s = planFor(Species.DOG, 30)
+        val later = clock.at(today + 30, 12 * 60) // everything planned is days overdue
+        val r = MoodEngine.read(s, "p1", later, clock)
+        assertEquals(Mood.NEEDS_MEDS, r.mood)
+        s = s.copy(tasks = s.tasks.filter { it.kind.health })
+        for (h in listOf(0, 24, 72, 24 * 20)) assertTrue(MoodEngine.read(s, "p1", later + h * HOUR_MS, clock).mood != Mood.SAD)
+    }
+
+    @Test fun birthdaysFromAnAgeAndAgeLabels() {
+        assertEquals(today - 70, HealthPlan.birthDayFromAge(today, 10, HealthPlan.AgeUnit.WEEKS))
+        assertEquals(LocalClock.dayOf(2026, 5, 29), HealthPlan.birthDayFromAge(today, 4, HealthPlan.AgeUnit.MONTHS))
+        assertEquals(LocalClock.dayOf(2024, 9, 29), HealthPlan.birthDayFromAge(today, 2, HealthPlan.AgeUnit.YEARS))
+        assertEquals("1 day old", HealthPlan.ageLabel(today - 1, today))
         assertEquals("8 weeks old", HealthPlan.ageLabel(today - 56, today))
-        assertEquals("5 months old", HealthPlan.ageLabel(today - 150, today))
-        assertEquals("2 years old", HealthPlan.ageLabel(today - 800, today))
+        assertEquals("4 months old", HealthPlan.ageLabel(LocalClock.dayOf(2026, 5, 29), today))
+        assertEquals("3 months old", HealthPlan.ageLabel(LocalClock.dayOf(2026, 5, 30), today))
+        assertEquals("23 months old", HealthPlan.ageLabel(LocalClock.dayOf(2024, 9, 30), today))
+        assertEquals("2 years old", HealthPlan.ageLabel(LocalClock.dayOf(2024, 9, 29), today))
+        assertEquals("Not born yet", HealthPlan.ageLabel(today + 1, today))
+        assertFalse(HealthPlan.isYoung(today - 300, today))
+        assertTrue(HealthPlan.isYoung(today - 100, today))
+    }
+
+    @Test fun calendarArithmetic() {
+        for (d in listOf(-1000L, 0, 11016, 20725, 30000)) {
+            val (y, m, day) = LocalClock.civil(d)
+            assertEquals(d, LocalClock.dayOf(y, m, day))
+        }
+        assertEquals(LocalClock.dayOf(2027, 1, 31), LocalClock.plusMonths(LocalClock.dayOf(2026, 12, 31), 1))
+        assertEquals(LocalClock.dayOf(2025, 11, 30), LocalClock.plusMonths(LocalClock.dayOf(2026, 1, 30), -2))
+        assertEquals(0, LocalClock.monthsBetween(today, today - 5))
+        assertEquals(12, LocalClock.monthsBetween(LocalClock.dayOf(2025, 9, 29), today))
+    }
+
+    @Test fun savedAndOlderDataStillWork() {
+        val s = planFor(Species.CAT, 50).give("FVRCP vaccine", today)
+        assertEquals(s, StateCodec.decode(StateCodec.encode(s)))
+        // A save from the first version: a planned series of days on the task, a pet without a birthday.
+        val old = """{"schema":1,"pets":[{"id":"p1","name":"Mingming","species":"CAT","createdAt":0}],
+            "tasks":[{"id":"v","petId":"p1","kind":"VACCINE","title":"FVRCP vaccine","slots":[540],"everyDays":365,
+            "anchorDay":$today,"series":[${today + 5},${today + 33}]}],"completions":[]}"""
+        val back = StateCodec.decode(old)
+        val item = CareStats.healthDue(back, "p1", now, clock).single()
+        assertEquals(today + 5, clock.dayIndex(item.dueMs!!))
+        assertEquals(1 to 2, item.dose to item.doses)
+    }
+
+    @Test fun rabiesAwarenessMonthOnceAYearForDogAndCatOwners() {
+        val feb = clock.at(LocalClock.dayOf(2027, 2, 10), 12 * 60)
+        val s = planFor(Species.DOG, null).copy(tasks = emptyList())
+        val r = ReminderPlanner.plan(s, feb, clock).single()
+        assertEquals(clock.at(LocalClock.dayOf(2027, 3, 1), 9 * 60), r.atMs)
+        assertEquals("Free anti-rabies shots are often offered in March — check your barangay.", r.body)
+        assertFalse(r.quickDone)
+        assertTrue(r.taskIds.isEmpty() && r.refs.isEmpty())
+        // Not months ahead (it's planned again whenever PawPixel runs), and not again after it's shown.
+        assertTrue(ReminderPlanner.plan(s, clock.at(LocalClock.dayOf(2026, 12, 1), 12 * 60), clock).isEmpty())
+        assertTrue(ReminderPlanner.plan(s, clock.at(LocalClock.dayOf(2027, 3, 1), 10 * 60), clock).isEmpty())
+        // Only for dogs and cats, and only with reminders on.
+        assertTrue(ReminderPlanner.plan(s.copy(pets = s.pets.map { it.copy(species = Species.OTHER) }), feb, clock).isEmpty())
+        assertTrue(ReminderPlanner.plan(s.copy(settings = s.settings.copy(remindersEnabled = false)), feb, clock).isEmpty())
+        assertEquals(r.id, ReminderPlanner.plan(s, feb + DAY_MS, clock).single().id, "the same notification, not a second one")
     }
 }

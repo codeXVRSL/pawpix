@@ -49,13 +49,34 @@ object WeightTrend {
         return "${tenths / 10}.${tenths % 10} kg"
     }
 
-    /** Parses what an owner types: "4.2", "4,2", "4.25 kg". Null if it isn't a sensible pet weight. */
+    const val STEP_G = 100
+    const val MAX_G = 200_000
+
+    /** Parses what an owner types ("4.2", "4,2", "4.2 kg") to grams, in 0.1 kg steps. Null if it isn't a sensible pet weight. */
     fun parseKg(text: String): Int? {
         val t = text.trim().lowercase().removeSuffix("kg").trim().replace(',', '.')
-        val v = t.toDoubleOrNull() ?: return null
-        val g = kotlin.math.round(v * 1000).toInt()
-        return g.takeIf { it in 50..200_000 }
+        val v = t.toDoubleOrNull()?.takeIf { it.isFinite() && it > 0 && it <= MAX_G / 1000.0 } ?: return null
+        val g = kotlin.math.floor(v * 10 + 0.5).toInt() * STEP_G
+        return g.takeIf { it in STEP_G..MAX_G }
     }
+
+    /** The weight as the owner would type it: "4.2". */
+    fun kgInput(grams: Int): String = kg(grams).removeSuffix(" kg")
+
+    /** A chart's weight axis: (bottom, top, step) in grams, on round steps, with at least two steps. */
+    fun axis(grams: List<Int>): Triple<Int, Int, Int> {
+        if (grams.isEmpty()) return Triple(0, 1000, 500)
+        val lo = grams.min(); val hi = grams.max()
+        val step = AXIS_STEPS.firstOrNull { (hi - lo) / it < 3 } ?: AXIS_STEPS.last()
+        var bottom = lo / step * step
+        var top = (hi + step - 1) / step * step
+        while (top - bottom < 2 * step) {
+            if (bottom - step >= 0 && lo - bottom < top - hi) bottom -= step else top += step
+        }
+        return Triple(bottom, top, step)
+    }
+
+    private val AXIS_STEPS = listOf(100, 200, 500, 1000, 2000, 5000, 10_000, 20_000, 50_000)
 
     /** "+0.3 kg since Aug 30, 2026" compared with the previous weigh-in. */
     fun change(weights: List<Weight>): String? {

@@ -109,13 +109,42 @@ final class OwnerJourneyTests: XCTestCase {
             try scrollTo(query: element(containing: "Medicine"), "medicine task in the list")
         }
 
-        step("health reminders: add the usual set") {
+        step("health: a kitten's birthday gives her the first-year plan") {
             try scrollTo("+ Add health reminders").tap()
-            try find("Adult / not sure").tap()
-            try scrollTo(query: element(containing: "Anti-rabies shot"), "vaccine row")
-            guard element(containing: "Due today").waitForExistence(timeout: 10) else { throw Failure("vaccine not shown as due") }
+            // "About how old" is the default, at 8 weeks: two taps make the pet a 10-week-old kitten.
+            let older = element(containing: "Older")
+            guard older.waitForExistence(timeout: 10) else { throw Failure("birthday dialog didn't open") }
+            older.tap()
+            usleep(300_000)
+            older.tap()
+            guard element(containing: "About 10 weeks old").waitForExistence(timeout: 5) else { throw Failure("age didn't change to 10 weeks") }
+            shot("health-birthday")
+            try find("Save").tap()
+            try scrollTo(query: element(containing: "FVRCP vaccine"), "FVRCP row")
+            guard element(containing: "Dose 1 of 3").waitForExistence(timeout: 10) else { throw Failure("the first-year series isn't shown") }
             sleep(1)
-            shot("health-section")
+            shot("health-series")
+        }
+
+        step("weight: two weigh-ins draw the chart") {
+            // Without the keyboard: +1 kg four times (4.0 kg) yesterday, then +0.1 kg twice from it (4.2 kg) today.
+            try scrollTo("+ Add weight").tap()
+            let addKilo = element(containing: "Add 1 kg")
+            guard addKilo.waitForExistence(timeout: 10) else { throw Failure("weight dialog didn't open") }
+            for _ in 0..<4 { addKilo.tap(); usleep(200_000) }
+            try find("Yesterday").tap()
+            shot("weight-dialog")
+            try find("Save").tap()
+            try scrollTo("+ Add weight").tap()
+            let addTenth = element(containing: "Add 0.1 kg")
+            guard addTenth.waitForExistence(timeout: 10) else { throw Failure("weight dialog didn't open again") }
+            addTenth.tap(); usleep(200_000); addTenth.tap()
+            try find("Save").tap()
+            try scrollTo(query: element(containing: "Weight chart"), "weight chart")
+            try scrollTo("+ Add weight")
+            guard element("4.2 kg").waitForExistence(timeout: 10) else { throw Failure("latest weight not shown") }
+            sleep(1)
+            shot("weight")
         }
 
         step("before/after card opens the share sheet") {

@@ -8,8 +8,9 @@ _Last updated: [date]. Replace the bracketed parts and publish this page before 
 - **Your pet's photo:** used on your phone to make the pixel sprite. PawPixel keeps only a small (256×256) crop so it can make your before/after card and remake the sprite. The original stays in your photo library.
 - **Your pets, care tasks and when you did them:** stored in the app's private storage on your phone, and used to set your pet's mood and your reminder times.
 - **Widget data:** a copy of your pet's mood and sprite, in storage shared only with PawPixel's own home-screen widget.
-- **Health records you add:** vaccine, deworming, tick & flea and vet-visit dates you log, kept on your phone like your other care tasks.
-- **Backups:** on Android, your phone's Google backup includes PawPixel (pets, tasks, history, sprites), so a new phone gets them back; the pet-map sign-in is left out. If you tap **Save backup file**, PawPixel makes a file and opens your share sheet; it goes only where you choose to save it.
+- **Health records you add:** vaccine, deworming, tick & flea and vet-visit dates you log, your pet's birthday if you give it (used only to plan puppy and kitten care), and weigh-ins, kept on your phone like your other care tasks.
+- **Health photos:** if you attach a photo of a vaccination card, registration card or vet receipt to a record, PawPixel keeps a smaller copy (at most 1280 pixels on the long side) in the app's private storage on your phone. It is re-saved on the phone, which drops location and other photo details. It is never uploaded, never shared with the pet map or your family, and is deleted when you delete the photo, the record, the pet, or all your data. It is included in backup files (below).
+- **Backups:** on Android, your phone's Google backup includes PawPixel (pets, tasks, history, sprites, health photos), so a new phone gets them back; the pet-map sign-in is left out. If you tap **Save backup file**, PawPixel makes a file with all of this, health photos included, and opens your share sheet; it goes only where you choose to save it, so keep it somewhere private.
 
 ## The pet map (optional)
 If you join the pet map, and only then:
@@ -25,7 +26,7 @@ If you join the pet map, and only then:
 ## Family sharing (optional)
 If you start or join a family, and only then:
 - **Sign-in:** the same Google or Apple sign-in as the pet map.
-- **What your family sees:** the pets you choose to share (name, dog or cat, ear shape, pixel look code, birthday if you gave one), their care tasks and health schedules, when each was done and by whom (the name you chose), and the names of the people in the family. Never photos (vaccination-card photos stay on your phone) and never your location.
+- **What your family sees:** the pets you choose to share (name, dog or cat, ear shape, pixel look code, birthday if you gave one), their care tasks and health schedules, when each was done and by whom (the name you chose), and the names of the people in the family. Never photos (vaccination-card and receipt photos stay on your phone) and never your location. Weigh-ins stay on your phone too.
 - **Who can see it:** only the people in your family, who joined with an invite code. Our server enforces this.
 - **Leaving:** "Leave" removes you from the family; shared pets stay on your phone. Care records you logged stay with the family. Deleting your account removes you and marks your records as by an unknown person; a family with nobody left is deleted.
 
