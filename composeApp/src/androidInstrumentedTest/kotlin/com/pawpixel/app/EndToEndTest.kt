@@ -787,10 +787,19 @@ class EndToEndTest {
         val end = System.currentTimeMillis() + timeoutMs
         while (true) {
             dismissSystemDialogs()
-            device.findObject(selector)?.let { return it }
+            fresh(selector)?.let { return it }
             if (System.currentTimeMillis() > end) throw AssertionError("not on screen: $selector")
             Thread.sleep(300)
         }
+    }
+
+    /**
+     * Looks for [selector] in the screen as it is now. The accessibility cache can keep an old copy
+     * of a scrolled page (the living pet keeps the app from ever going idle), so it's cleared first.
+     */
+    private fun fresh(selector: BySelector): UiObject2? {
+        if (Build.VERSION.SDK_INT >= 34) runCatching { instr.uiAutomation.clearCache() }
+        return device.findObject(selector)
     }
 
     /** CI emulators sometimes show "<some system app> isn't responding" over the app: wait it out. */
@@ -814,7 +823,7 @@ class EndToEndTest {
             // app's screen rather than giving up at once. Several failures in a row = the end.
             var stuck = 0
             for (i in 0 until 20) {
-                device.findObject(selector)?.let { return it }
+                fresh(selector)?.let { return it }
                 if (accessibilityScroll(forward)) { stuck = 0; moved++ } else if (++stuck >= 8) break
                 Thread.sleep(if (stuck > 0) 600L else 400L)
             }
@@ -832,14 +841,14 @@ class EndToEndTest {
         // (A pet's page with its health section open is many screens long: enough drags to cross it.)
         for (up in listOf(true, false)) {
             repeat(30) {
-                device.findObject(selector)?.let { note("found by dragging after $moved accessibility scrolls: $selector"); return it }
+                fresh(selector)?.let { note("found by dragging after $moved accessibility scrolls: $selector"); return it }
                 val (from, to) = if (up) 0.8 to 0.25 else 0.25 to 0.8
                 device.swipe(x, (device.displayHeight * from).toInt(), x, (device.displayHeight * to).toInt(), 50)
                 Thread.sleep(500)
             }
         }
         val seen = device.findObjects(By.textContains(" ")).mapNotNull { runCatching { it.text }.getOrNull() }.take(12)
-        return device.findObject(selector) ?: throw AssertionError("not found after scrolling ($moved scrolls): $selector; on screen: $seen")
+        return fresh(selector) ?: throw AssertionError("not found after scrolling ($moved scrolls): $selector; on screen: $seen")
     }
 
     /**
@@ -847,6 +856,7 @@ class EndToEndTest {
      * the app's full screen yet (a dialog still closing).
      */
     private fun accessibilityScroll(forward: Boolean): Boolean {
+        if (Build.VERSION.SDK_INT >= 34) runCatching { instr.uiAutomation.clearCache() } // see [fresh]
         val root = instr.uiAutomation.rootInActiveWindow ?: return false
         val bounds = Rect().also { root.getBoundsInScreen(it) }
         if (root.packageName != ctx.packageName || bounds.height() < device.displayHeight * 0.8) return false
