@@ -602,20 +602,23 @@ class EndToEndTest {
 
     /** Scrolls the first scrollable container of the app one page. False when it can't move. */
     private fun accessibilityScroll(forward: Boolean): Boolean {
-        // The app's biggest scrollable area: its screen, not a dialog that's still closing.
-        val roots = instr.uiAutomation.windows.mapNotNull { it.root }.filter { it.packageName == ctx.packageName }
-            .ifEmpty { listOfNotNull(instr.uiAutomation.rootInActiveWindow) }
-        val scrollables = ArrayList<AccessibilityNodeInfo>()
-        val queue = ArrayDeque(roots)
+        fun height(n: AccessibilityNodeInfo) = Rect().also { n.getBoundsInScreen(it) }.height()
+        // The active window, unless that's a dialog still closing: then the app's full-screen window.
+        val active = instr.uiAutomation.rootInActiveWindow
+        val root = active?.takeIf { it.packageName == ctx.packageName && height(it) >= device.displayHeight * 0.8 }
+            ?: instr.uiAutomation.windows.mapNotNull { it.root }.filter { it.packageName == ctx.packageName }.maxByOrNull(::height)
+            ?: active ?: return false
+        val queue = ArrayDeque(listOf(root))
         while (queue.isNotEmpty()) {
             val node = queue.removeFirst()
-            if (node.isScrollable) { scrollables += node; continue }
+            if (node.isScrollable) {
+                return node.performAction(
+                    if (forward) AccessibilityNodeInfo.ACTION_SCROLL_FORWARD else AccessibilityNodeInfo.ACTION_SCROLL_BACKWARD,
+                )
+            }
             for (i in 0 until node.childCount) node.getChild(i)?.let { queue.addLast(it) }
         }
-        val target = scrollables.maxByOrNull { n -> Rect().also { n.getBoundsInScreen(it) }.let { it.width().toLong() * it.height() } } ?: return false
-        return target.performAction(
-            if (forward) AccessibilityNodeInfo.ACTION_SCROLL_FORWARD else AccessibilityNodeInfo.ACTION_SCROLL_BACKWARD,
-        )
+        return false
     }
 
     private fun waitFor(what: String, timeoutMs: Long = 15_000, condition: () -> Boolean) {
