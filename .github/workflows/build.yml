@@ -29,7 +29,7 @@ jobs:
         if: failure()
         run: |
           grep -n -E "^e: |error:|What went wrong|Exception|FAILED|\.kts:" diag/gradle.txt | head -n 200 > diag/errors.txt || true
-          bash scripts/publish-results.sh diag ci-results/core "${{ github.token }}"
+          bash scripts/publish-results.sh diag ci-results/${{ github.ref_name == 'main' && 'core' || format('{0}-core', github.ref_name) }} "${{ github.token }}"
       - uses: actions/upload-artifact@v4
         if: failure()
         with: { name: core-test-report, path: core/build/reports/tests }
@@ -67,7 +67,7 @@ jobs:
         run: |
           mkdir -p backend-out
           docker logs supabase_db_pawpixel 2>&1 | tail -n 200 > backend-out/db-log.txt || true
-          bash scripts/publish-results.sh backend-out ci-results/backend "${{ github.token }}"
+          bash scripts/publish-results.sh backend-out ci-results/${{ github.ref_name == 'main' && 'backend' || format('{0}-backend', github.ref_name) }} "${{ github.token }}"
 
   android:
     name: Android debug APK
@@ -169,7 +169,7 @@ jobs:
           script: bash scripts/android-e2e.sh e2e-out
       - name: Publish screenshots and logs to the ci-results/android branch
         if: always()
-        run: bash scripts/publish-results.sh e2e-out ci-results/android "${{ github.token }}"
+        run: bash scripts/publish-results.sh e2e-out ci-results/${{ github.ref_name == 'main' && 'android' || format('{0}-android', github.ref_name) }} "${{ github.token }}"
       - uses: actions/upload-artifact@v4
         if: always()
         with: { name: android-e2e, path: e2e-out }
@@ -233,4 +233,4 @@ jobs:
           exit $code
       - name: Publish screenshots and logs to the ci-results/ios branch
         if: always()
-        run: bash scripts/publish-results.sh ios-out ci-results/ios "${{ github.token }}"
+        run: bash scripts/publish-results.sh ios-out ci-results/${{ github.ref_name == 'main' && 'ios' || format('{0}-ios', github.ref_name) }} "${{ github.token }}"
