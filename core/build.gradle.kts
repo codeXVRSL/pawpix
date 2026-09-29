@@ -29,6 +29,14 @@ kotlin {
         mainClass.set("com.pawpixel.tools.SpriteLabKt")
         workingDir = rootProject.projectDir
     }
+    tasks.register<JavaExec>("mapLive") {
+        group = "pawpixel"
+        description = "Runs the app's map client against a live Supabase (see supabase/tests)."
+        val main = desktop.compilations.getByName("main")
+        dependsOn(main.compileTaskProvider)
+        classpath = files(main.output.allOutputs, main.runtimeDependencyFiles ?: files())
+        mainClass.set("com.pawpixel.tools.MapLiveKt")
+    }
     iosX64()
     iosArm64()
     iosSimulatorArm64()
