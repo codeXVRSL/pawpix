@@ -45,6 +45,14 @@ class PetLook(val tones: List<Int>, private val patches: IntArray) {
     val light: Int? = tones.indices.drop(1).filter { Lab.fromArgb(tones[it]).l - Lab.fromArgb(tones[0]).l > 0.12 }
         .maxByOrNull { Lab.fromArgb(tones[it]).l }
 
+    /**
+     * A short text form of the look (about 90 characters): what the pet map shares instead of any
+     * photo. Format: `1;<tone>,<tone>,...;<64 patch digits>`, tones as RGB hex.
+     */
+    fun encode(): String =
+        "1;" + tones.joinToString(",") { (it and 0xFFFFFF).toString(16).padStart(6, '0') } + ";" +
+            patches.joinToString("") { it.toString() }
+
     /** Tone at a point of the face, [u] and [v] from 0 to 1. */
     fun toneAt(u: Double, v: Double): Int {
         val gx = (u * GRID).toInt().coerceIn(0, GRID - 1)
@@ -54,6 +62,24 @@ class PetLook(val tones: List<Int>, private val patches: IntArray) {
 
     companion object {
         const val GRID = 8
+
+        /** Reads [encode]'s format; null if it isn't a valid look (e.g. from an older or bad client). */
+        fun decode(code: String): PetLook? {
+            val parts = code.split(';')
+            if (parts.size != 3 || parts[0] != "1") return null
+            val tones = parts[1].split(',').map { h ->
+                if (h.length != 6 || !h.all { it in '0'..'9' || it in 'a'..'f' || it in 'A'..'F' }) return null
+                h.toInt(16) or (0xFF shl 24)
+            }
+            if (tones.isEmpty() || tones.size > 3) return null
+            if (parts[2].length != GRID * GRID) return null
+            val patches = IntArray(GRID * GRID) { i ->
+                val d = parts[2][i] - '0'
+                if (d !in tones.indices) return null
+                d
+            }
+            return PetLook(tones, patches)
+        }
         private val DEFAULT = 0xFFB07A4A.toInt()
 
         fun from(face: PixelImage): PetLook {
@@ -143,9 +169,11 @@ class PetLook(val tones: List<Int>, private val patches: IntArray) {
 }
 
 /** Everything needed to draw a pet: its face (a colour source only), species and ear shape. */
-class PetArt(val head: PixelImage, val species: Species, ears: Ears? = null) {
+class PetArt(val look: PetLook, val species: Species, ears: Ears? = null) {
+    /** From the pet's face in the photo (its colours and markings). */
+    constructor(head: PixelImage, species: Species, ears: Ears? = null) : this(PetLook.from(head), species, ears)
+
     val ears: Ears = ears ?: if (species == Species.CAT) Ears.POINTY else Ears.FLOPPY
-    val look: PetLook = PetLook.from(head)
     val fur: FurColors get() {
         val base = look.tones[0]
         val light = look.light?.let { look.tones[it] } ?: Chibi.ramp(base).hi

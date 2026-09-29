@@ -1,0 +1,272 @@
+package com.pawpixel.map
+
+import com.pawpixel.core.Json
+import com.pawpixel.core.LocationGrid
+import com.pawpixel.sprite.PetLook
+
+/** Build-time settings for the map (see docs/MAP_SETUP.md). Blank values mean "not set up". */
+data class MapSettings(
+    val supabaseUrl: String,
+    val anonKey: String,
+    /** Raster tile URL with {z}/{x}/{y}, e.g. MapTiler's 256px street tiles. */
+    val tileUrl: String,
+    val tileAttribution: String,
+    /** Google OAuth "web" client id: Android's Google sign-in asks Google for a token for it. */
+    val googleWebClientId: String,
+    /** Test builds only: sign in with this email/password instead of Google/Apple. */
+    val testEmail: String = "",
+    val testPassword: String = "",
+) {
+    val isConfigured: Boolean get() = supabaseUrl.isNotBlank() && anonKey.isNotBlank()
+    val hasTiles: Boolean get() = tileUrl.contains("{z}")
+}
+
+data class HttpRequest(val method: String, val url: String, val headers: Map<String, String>, val body: String? = null)
+data class HttpResponse(val status: Int, val body: String)
+
+/** The platform's HTTP stack. Throws on network failure (no connection, timeout). */
+fun interface Http {
+    suspend fun send(request: HttpRequest): HttpResponse
+}
+
+/** Where the sign-in session is kept (a private file on the device). */
+interface SessionStore {
+    fun load(): String?
+    fun save(json: String?)
+}
+
+data class Session(val accessToken: String, val refreshToken: String, val expiresAtMs: Long, val userId: String)
+
+class MapException(val kind: Kind, message: String) : Exception(message) {
+    enum class Kind { NOT_SET_UP, OFFLINE, SIGNED_OUT, REFUSED, FULL, SERVER }
+}
+
+/** An area (~1 km square) with 3+ owners. */
+data class MapArea(val cellId: String, val lat: Double, val lng: Double, val pets: Int)
+
+/** A pet as other owners see it: name and pixel look, never a photo or its owner. */
+data class MapPet(val id: String, val name: String, val species: String, val ears: String?, val look: PetLook?, val mine: Boolean)
+
+data class Gathering(
+    val id: String, val title: String, val startsAt: String, val cellId: String, val areaLabel: String,
+    val capacity: Int, val going: Int, val iAmGoing: Boolean,
+)
+
+data class Venue(val name: String, val lat: Double, val lng: Double)
+
+/** What an owner puts on the map for one of their pets. */
+data class SharedPet(val localId: String, val name: String, val species: String, val ears: String, val look: String)
+
+/**
+ * Talks to the map backend (Supabase: Auth + PostgREST). All privacy rules are enforced by the
+ * server (supabase/migrations); this client only ever sends a grid cell, never a coordinate.
+ */
+class MapClient(
+    private val settings: MapSettings,
+    private val http: Http,
+    private val store: SessionStore,
+    private val nowMs: () -> Long,
+) {
+    private var session: Session? = store.load()?.let(::parseStoredSession)
+
+    val isSignedIn: Boolean get() = session != null
+    val userId: String? get() = session?.userId
+
+    // ---------- Sign-in ----------
+
+    /** Google (Android) or Apple (iOS) identity token. [nonce] is the raw nonce whose hash went to the provider. */
+    suspend fun signInWithIdToken(provider: String, idToken: String, nonce: String?) {
+        val body = Json.obj("provider" to provider, "id_token" to idToken, "nonce" to nonce).stringify()
+        acceptSession(auth("/auth/v1/token?grant_type=id_token", body))
+    }
+
+    /** Test builds only (a seeded test account on a local server). */
+    suspend fun signInWithPassword(email: String, password: String) {
+        acceptSession(auth("/auth/v1/token?grant_type=password", Json.obj("email" to email, "password" to password).stringify()))
+    }
+
+    fun signOutLocally() { session = null; store.save(null) }
+
+    private suspend fun auth(path: String, body: String): Json {
+        val r = send("POST", path, body, bearer = settings.anonKey)
+        if (r.status !in 200..299) throw MapException(MapException.Kind.REFUSED, "Sign-in failed (${r.status})")
+        return Json.parse(r.body)
+    }
+
+    private fun acceptSession(j: Json) {
+        val s = Session(
+            accessToken = j["access_token"].str ?: throw MapException(MapException.Kind.SERVER, "No token"),
+            refreshToken = j["refresh_token"].str ?: "",
+            expiresAtMs = nowMs() + (j["expires_in"].long ?: 3600L) * 1000,
+            userId = j["user"]["id"].str ?: throw MapException(MapException.Kind.SERVER, "No user"),
+        )
+        session = s
+        store.save(Json.obj("a" to s.accessToken, "r" to s.refreshToken, "e" to s.expiresAtMs, "u" to s.userId).stringify())
+    }
+
+    private fun parseStoredSession(text: String): Session? = runCatching {
+        val j = Json.parse(text)
+        Session(j["a"].str!!, j["r"].str!!, j["e"].long!!, j["u"].str!!)
+    }.getOrNull()
+
+    /** A fresh access token, refreshing it if it's about to expire. */
+    private suspend fun token(): String {
+        val s = session ?: throw MapException(MapException.Kind.SIGNED_OUT, "Please sign in")
+        if (s.expiresAtMs - nowMs() > 60_000) return s.accessToken
+        val r = send("POST", "/auth/v1/token?grant_type=refresh_token", Json.obj("refresh_token" to s.refreshToken).stringify(), bearer = settings.anonKey)
+        if (r.status !in 200..299) {
+            signOutLocally()
+            throw MapException(MapException.Kind.SIGNED_OUT, "Please sign in again")
+        }
+        acceptSession(Json.parse(r.body))
+        return session!!.accessToken
+    }
+
+    // ---------- Joining, updating and leaving ----------
+
+    /** Joins (or updates): confirms 18+ and consent, replaces your pets on the map, and sets your area. */
+    suspend fun join(pets: List<SharedPet>, cell: LocationGrid.Cell) {
+        val me = userId ?: throw MapException(MapException.Kind.SIGNED_OUT, "Please sign in")
+        rest("POST", "/rest/v1/map_profiles", Json.obj("user_id" to me, "confirmed_adult" to true).stringify(), prefer = "resolution=merge-duplicates")
+        rest("DELETE", "/rest/v1/map_pets?owner_id=eq.$me")
+        if (pets.isNotEmpty()) {
+            val rows = Json.arr(pets.take(5).map {
+                Json.obj("owner_id" to me, "local_id" to it.localId, "name" to it.name.take(24).ifBlank { "Pet" },
+                    "species" to it.species, "ears" to it.ears, "look" to it.look)
+            })
+            rest("POST", "/rest/v1/map_pets", rows.stringify())
+        }
+        setArea(cell)
+    }
+
+    /** Refreshes your area (presence expires after 14 days without opening the map). */
+    suspend fun setArea(cell: LocationGrid.Cell) {
+        val me = userId ?: throw MapException(MapException.Kind.SIGNED_OUT, "Please sign in")
+        val body = Json.obj("owner_id" to me, "cell_id" to cell.id, "cell_lat" to cell.centerLat, "cell_lng" to cell.centerLng,
+            "updated_at" to isoNow()).stringify()
+        rest("POST", "/rest/v1/map_presence", body, prefer = "resolution=merge-duplicates")
+    }
+
+    /** True if you've joined (have a map profile). */
+    suspend fun hasJoined(): Boolean {
+        val me = userId ?: return false
+        return Json.parse(rest("GET", "/rest/v1/map_profiles?user_id=eq.$me&select=user_id")).list.isNotEmpty()
+    }
+
+    suspend fun leaveMap() { rpc("leave_map") }
+
+    /** Deletes the sign-in account and everything on the server; signs out. */
+    suspend fun deleteAccount() {
+        rpc("delete_account")
+        signOutLocally()
+    }
+
+    // ---------- Reading the map ----------
+
+    suspend fun nearbyAreas(around: LocationGrid.Cell, radiusKm: Double = 10.0): List<MapArea> =
+        Json.parse(rpc("nearby_cells", Json.obj("p_cell_lat" to around.centerLat, "p_cell_lng" to around.centerLng, "p_radius_km" to radiusKm))).list
+            .mapNotNull { c ->
+                MapArea(c["cell_id"].str ?: return@mapNotNull null, c["cell_lat"].double ?: 0.0, c["cell_lng"].double ?: 0.0, c["pets"].int ?: 0)
+            }
+
+    suspend fun petsInArea(cellId: String): List<MapPet> =
+        Json.parse(rpc("pets_in_cell", Json.obj("p_cell_id" to cellId))).list.mapNotNull { p ->
+            MapPet(
+                id = p["pet_id"].str ?: return@mapNotNull null,
+                name = p["name"].str ?: "Pet",
+                species = p["species"].str ?: "OTHER",
+                ears = p["ears"].str,
+                look = p["look"].str?.let(PetLook::decode),
+                mine = p["mine"].bool ?: false,
+            )
+        }
+
+    suspend fun blockOwnerOf(petId: String) { rpc("block_pet_owner", Json.obj("p_pet_id" to petId)) }
+
+    suspend fun report(petId: String, reason: String, details: String?) {
+        rpc("report_pet", Json.obj("p_pet_id" to petId, "p_reason" to reason, "p_details" to details))
+    }
+
+    // ---------- Gatherings ----------
+
+    suspend fun gatherings(): List<Gathering> =
+        Json.parse(rest("GET", "/rest/v1/gatherings_public?select=*")).list.mapNotNull { g ->
+            Gathering(
+                id = g["id"].str ?: return@mapNotNull null,
+                title = g["title"].str ?: "",
+                startsAt = g["starts_at"].str ?: "",
+                cellId = g["cell_id"].str ?: "",
+                areaLabel = g["area_label"].str ?: "",
+                capacity = g["capacity"].int ?: 0,
+                going = g["going"].int ?: 0,
+                iAmGoing = g["i_am_going"].bool ?: false,
+            )
+        }
+
+    /** Going or not; returns how many are going. Throws [MapException.Kind.FULL] when full. */
+    suspend fun rsvp(gatheringId: String, going: Boolean): Int =
+        Json.parse(rpc("rsvp", Json.obj("p_id" to gatheringId, "p_going" to going))).int ?: 0
+
+    /** The exact venue: only returned once you've RSVP'd. */
+    suspend fun venue(gatheringId: String): Venue? =
+        Json.parse(rpc("gathering_details", Json.obj("p_id" to gatheringId))).list.firstOrNull()?.let { v ->
+            Venue(v["venue_name"].str ?: return@let null, v["venue_lat"].double ?: 0.0, v["venue_lng"].double ?: 0.0)
+        }
+
+    // ---------- Plumbing ----------
+
+    private suspend fun rpc(name: String, args: Json = Json.obj()): String = rest("POST", "/rest/v1/rpc/$name", args.stringify())
+
+    private suspend fun rest(method: String, path: String, body: String? = null, prefer: String? = null): String {
+        val r = send(method, path, body, bearer = token(), prefer = prefer)
+        when {
+            r.status in 200..299 -> return r.body
+            r.status == 401 -> { signOutLocally(); throw MapException(MapException.Kind.SIGNED_OUT, "Please sign in again") }
+            r.body.contains("gathering is full") -> throw MapException(MapException.Kind.FULL, "This gathering is full")
+            r.status in 400..499 -> throw MapException(MapException.Kind.REFUSED, errorMessage(r.body) ?: "Not allowed (${r.status})")
+            else -> throw MapException(MapException.Kind.SERVER, "The map server had a problem (${r.status})")
+        }
+    }
+
+    private fun errorMessage(body: String): String? = runCatching { Json.parse(body)["message"].str }.getOrNull()
+
+    private suspend fun send(method: String, path: String, body: String?, bearer: String, prefer: String? = null): HttpResponse {
+        if (!settings.isConfigured) throw MapException(MapException.Kind.NOT_SET_UP, "The pet map isn't set up in this build")
+        val headers = buildMap {
+            put("apikey", settings.anonKey)
+            put("Authorization", "Bearer $bearer")
+            put("Content-Type", "application/json")
+            if (prefer != null) put("Prefer", prefer)
+        }
+        return try {
+            http.send(HttpRequest(method, settings.supabaseUrl.trimEnd('/') + path, headers, body))
+        } catch (e: MapException) {
+            throw e
+        } catch (e: Exception) {
+            throw MapException(MapException.Kind.OFFLINE, "Can't reach the map. Check your connection.")
+        }
+    }
+
+    private fun isoNow(): String {
+        val ms = nowMs()
+        val days = ms.floorDiv(86_400_000L)
+        val rem = ms - days * 86_400_000L
+        val (y, m, d) = civil(days)
+        fun p(n: Long, w: Int = 2) = n.toString().padStart(w, '0')
+        return "${p(y, 4)}-${p(m)}-${p(d)}T${p(rem / 3_600_000)}:${p(rem / 60_000 % 60)}:${p(rem / 1000 % 60)}Z"
+    }
+
+    /** Days since 1970-01-01 to (year, month, day), Howard Hinnant's civil_from_days. */
+    private fun civil(z0: Long): Triple<Long, Long, Long> {
+        val z = z0 + 719468
+        val era = z.floorDiv(146097L)
+        val doe = z - era * 146097
+        val yoe = (doe - doe / 1460 + doe / 36524 - doe / 146096) / 365
+        val y = yoe + era * 400
+        val doy = doe - (365 * yoe + yoe / 4 - yoe / 100)
+        val mp = (5 * doy + 2) / 153
+        val d = doy - (153 * mp + 2) / 5 + 1
+        val m = if (mp < 10) mp + 3 else mp - 9
+        return Triple(if (m <= 2) y + 1 else y, m, d)
+    }
+}

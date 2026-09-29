@@ -27,6 +27,8 @@ jobs:
   map-backend:
     name: Map backend on a real Supabase stack (privacy rules)
     runs-on: ubuntu-latest
+    permissions:
+      contents: write   # pushes the test log to the ci-results/backend branch
     steps:
       - uses: actions/checkout@v4
       - uses: supabase/setup-cli@v1
@@ -37,7 +39,15 @@ jobs:
         run: |
           eval "$(supabase status -o env)"
           export SUPABASE_URL="$API_URL" ANON_KEY="${ANON_KEY:-$PUBLISHABLE_KEY}" SERVICE_KEY="${SERVICE_ROLE_KEY:-$SECRET_KEY}"
-          python3 supabase/tests/map_test.py
+          mkdir -p backend-out
+          python3 supabase/tests/map_test.py 2>&1 | tee backend-out/map_test.txt
+      - name: Publish the log to the ci-results/backend branch
+        if: always()
+        run: |
+          mkdir -p backend-out
+          supabase status > backend-out/status.txt 2>&1 || true
+          docker logs supabase_db_pawpixel 2>&1 | tail -n 200 > backend-out/db-log.txt || true
+          bash scripts/publish-results.sh backend-out ci-results/backend "${{ github.token }}"
 
   android:
     name: Android debug APK

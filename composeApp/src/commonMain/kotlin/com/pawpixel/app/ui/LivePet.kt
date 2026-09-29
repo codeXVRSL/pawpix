@@ -24,7 +24,6 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
 import com.pawpixel.app.toImageBitmap
 import com.pawpixel.core.Mood
-import com.pawpixel.sprite.Animator
 import com.pawpixel.sprite.EffectKind
 import com.pawpixel.sprite.Frame
 import com.pawpixel.sprite.Icons
@@ -54,7 +53,7 @@ fun LivePet(
     onPetted: () -> Unit = {},
 ) {
     if (art == null) return
-    val set = remember(art, eyes) { Chibi.build(art, Animator.eyePixels(art.head, eyes)) }
+    val set = remember(art, eyes) { Chibi.build(art) }
     val layout = remember(set) { StageLayout(set) }
     val moodSet = remember(set, mood) { set.forMood(mood) }
     val frames: Map<Frame, ImageBitmap> = remember(moodSet) { Frame.entries.associateWith { moodSet[it].toImageBitmap() } }

@@ -349,6 +349,17 @@ class AnimationTest {
         assertEquals(1, eyed.tones.size)
     }
 
+    @Test fun lookCodeRoundTripsAndRejectsJunk() {
+        val look = PetArt(sprite(), Species.CAT).look
+        val code = look.encode()
+        assertTrue(code.length <= 100 && Regex("^[A-Za-z0-9;,.]*$").matches(code), code)
+        val back = PetLook.decode(code)!!
+        assertEquals(code, back.encode())
+        assertTrue(PetArt(back, Species.CAT).still.pixels.contentEquals(PetArt(look, Species.CAT).still.pixels), "same pixel pet")
+        for (bad in listOf("", "2;ffffff;" + "0".repeat(64), "1;;" + "0".repeat(64), "1;ffffff;" + "1".repeat(64), "1;zzzzzz;" + "0".repeat(64), "1;ffffff;00"))
+            assertEquals(null, PetLook.decode(bad), bad)
+    }
+
     @Test fun earsDefaultBySpeciesAndCanChange() {
         val s = sprite()
         assertEquals(Ears.FLOPPY, PetArt(s, Species.DOG).ears)
