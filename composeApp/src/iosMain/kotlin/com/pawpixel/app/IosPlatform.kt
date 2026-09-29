@@ -23,7 +23,12 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
 import org.jetbrains.skia.Image
+import platform.Foundation.*  // Foundation categories (e.g. NSURLSession's dataTaskWithRequest) are extensions
 import platform.Foundation.NSData
+import platform.Foundation.NSError
+import platform.Foundation.NSMutableURLRequest
+import platform.Foundation.NSURLResponse
+import platform.Foundation.NSURLSession
 import platform.Foundation.NSDate
 import platform.Foundation.NSFileManager
 import platform.Foundation.NSTimeZone
@@ -149,12 +154,12 @@ class IosPlatform(private val host: IosHost) : Platform {
         suspendCancellableCoroutine { cont ->
             val url = platform.Foundation.NSURL.URLWithString(r.url)
             if (url == null) { cont.resumeWith(Result.failure(IllegalArgumentException("bad url"))); return@suspendCancellableCoroutine }
-            val req = platform.Foundation.NSMutableURLRequest(uRL = url)
-            req.HTTPMethod = r.method
-            req.timeoutInterval = 20.0
+            val req = NSMutableURLRequest.requestWithURL(url)
+            req.setHTTPMethod(r.method)
+            req.setTimeoutInterval(20.0)
             r.headers.forEach { (k, v) -> req.setValue(v, forHTTPHeaderField = k) }
-            r.body?.let { req.HTTPBody = it.encodeToByteArray().toNSData() }
-            val task = platform.Foundation.NSURLSession.sharedSession.dataTaskWithRequest(req) { data, response, error ->
+            r.body?.let { req.setHTTPBody(it.encodeToByteArray().toNSData()) }
+            val task = NSURLSession.sharedSession.dataTaskWithRequest(req) { data: NSData?, response: NSURLResponse?, error: NSError? ->
                 if (error != null || response == null) {
                     cont.resumeWith(Result.failure(IllegalStateException(error?.localizedDescription ?: "no response")))
                 } else {
@@ -170,9 +175,9 @@ class IosPlatform(private val host: IosHost) : Platform {
     override suspend fun fetchBytes(url: String): ByteArray? = suspendCancellableCoroutine { cont ->
         val u = platform.Foundation.NSURL.URLWithString(url)
         if (u == null) { cont.resume(null); return@suspendCancellableCoroutine }
-        val req = platform.Foundation.NSMutableURLRequest(uRL = u)
+        val req = NSMutableURLRequest.requestWithURL(u)
         req.setValue("PawPixel/1.0 (iOS)", forHTTPHeaderField = "User-Agent")
-        val task = platform.Foundation.NSURLSession.sharedSession.dataTaskWithRequest(req) { data, response, _ ->
+        val task = NSURLSession.sharedSession.dataTaskWithRequest(req) { data: NSData?, response: NSURLResponse?, _: NSError? ->
             val ok = (response as? platform.Foundation.NSHTTPURLResponse)?.statusCode?.toInt() == 200
             cont.resume(if (ok) data?.toByteArray() else null)
         }
