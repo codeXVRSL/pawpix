@@ -1,0 +1,200 @@
+	  return h;
+	end $$
+172.18.0.1 2026-09-29 17:23:22.300 UTC [207] postgres@postgres LOG:  execute <unnamed>: -- Leaving: your records stay with the family (the author becomes unknown only if you delete your
+	-- account). The last person to leave takes the household with them.
+	create or replace function public.leave_household() returns void
+	language plpgsql security definer set search_path = public as $$
+	declare h uuid;
+	begin
+	  delete from household_members where user_id = auth.uid() returning household_id into h;
+	  if h is not null and not exists (select 1 from household_members where household_id = h) then
+	    delete from households where id = h;
+	  end if;
+	end $$
+172.18.0.1 2026-09-29 17:23:22.300 UTC [207] postgres@postgres LOG:  execute <unnamed>: -- The owner removes someone (they keep their own copies of the pets on their phone) and can
+	-- cancel all open invites, e.g. after a code was shared by mistake.
+	create or replace function public.remove_member(p_user uuid) returns void
+	language plpgsql security definer set search_path = public as $$
+	declare h uuid;
+	begin
+	  select household_id into h from household_members where user_id = auth.uid();
+	  if h is null or not exists (select 1 from households where id = h and owner_id = auth.uid()) then
+	    raise exception 'only the person who started the family can remove people';
+	  end if;
+	  if p_user = auth.uid() then raise exception 'use Leave to leave the family'; end if;
+	  delete from household_members where household_id = h and user_id = p_user;
+	end $$
+172.18.0.1 2026-09-29 17:23:22.301 UTC [207] postgres@postgres LOG:  execute <unnamed>: create or replace function public.revoke_invites() returns void
+	language plpgsql security definer set search_path = public as $$
+	declare h uuid;
+	begin
+	  select household_id into h from household_members where user_id = auth.uid();
+	  if h is null or not exists (select 1 from households where id = h and owner_id = auth.uid()) then
+	    raise exception 'only the person who started the family can cancel invites';
+	  end if;
+	  delete from household_invites where household_id = h;
+	end $$
+172.18.0.1 2026-09-29 17:23:22.301 UTC [207] postgres@postgres LOG:  execute <unnamed>: -- Deleting an account (delete_account in 0002) removes its membership by cascade; clean up a
+	-- household left with nobody in it.
+	create or replace function public.household_cleanup() returns trigger
+	language plpgsql security definer set search_path = public as $$
+	begin
+	  if not exists (select 1 from household_members where household_id = old.household_id) then
+	    delete from households where id = old.household_id;
+	  elsif exists (select 1 from households where id = old.household_id and (owner_id = old.user_id or owner_id is null)) then
+	    -- The owner left: the longest-standing member takes over.
+	    update households set owner_id = (select user_id from household_members where household_id = old.household_id order by joined_at limit 1)
+	      where id = old.household_id;
+	  end if;
+	  return old;
+	end $$
+172.18.0.1 2026-09-29 17:23:22.301 UTC [207] postgres@postgres LOG:  execute <unnamed>: create trigger household_cleanup after delete on public.household_members for each row execute function public.household_cleanup()
+172.18.0.1 2026-09-29 17:23:22.301 UTC [207] postgres@postgres LOG:  execute <unnamed>: revoke all on function public.create_household, public.create_invite, public.join_household, public.leave_household,
+	  public.remove_member, public.revoke_invites, public.is_household_member from public, anon
+172.18.0.1 2026-09-29 17:23:22.302 UTC [207] postgres@postgres LOG:  execute <unnamed>: grant execute on function public.create_household, public.create_invite, public.join_household, public.leave_household,
+	  public.remove_member, public.revoke_invites, public.is_household_member to authenticated
+172.18.0.1 2026-09-29 17:23:22.305 UTC [207] postgres@postgres LOG:  execute <unnamed>: -- Family sharing: the outfit a shared pet wears (earned with days of care in the app).
+	alter table public.household_pets add column accessory text
+	  check (accessory is null or accessory in ('BANDANA', 'FLOWER', 'BOW_TIE', 'PARTY_HAT', 'SUNGLASSES', 'CROWN'))
+172.18.0.1 2026-09-29 17:23:22.308 UTC [207] postgres@postgres LOG:  execute <unnamed>: -- Households, round 2: an append-only care log that phones sync incrementally, last-write-wins
+	-- edits, and the person who started the household can stop sharing for everyone.
+	--
+	-- - Care records are never deleted by a member: Undo marks one undone (undone_at), so the undo
+	--   reaches every phone with the same "what changed since my last sync" query as a new record.
+	--   Only the member who logged a record can undo it. Old records are still trimmed (400 per task).
+	-- - changed_ms is the server's clock (ms) when a record was added or undone: phones ask for
+	--   records changed since their last sync (with a short look-back, so a slow commit isn't missed).
+	-- - edited_at_ms on pets and tasks is the phone's time of the edit, for "the later edit wins" when
+	--   two phones changed the same task offline. A phone whose clock runs ahead can't win forever:
+	--   the server caps it at its own time.
+	
+	create or replace function public.household_now_ms() returns bigint language sql volatile as $$
+	  select (extract(epoch from clock_timestamp()) * 1000)::bigint
+	$$
+172.18.0.1 2026-09-29 17:23:22.309 UTC [207] postgres@postgres LOG:  execute <unnamed>: -- ---------- The care log ----------
+	alter table public.household_completions
+	  add column undone_at  timestamptz,
+	  add column undone_by  uuid references auth.users on delete set null,
+	  add column changed_ms bigint not null default public.household_now_ms()
+172.18.0.1 2026-09-29 17:23:22.311 UTC [207] postgres@postgres LOG:  execute <unnamed>: create index household_completions_changed on public.household_completions (household_id, changed_ms)
+172.18.0.1 2026-09-29 17:23:22.312 UTC [207] postgres@postgres LOG:  execute <unnamed>: -- New records: the author is whoever is signed in, and a time in the future (a phone with a wrong
+	-- clock) is brought back to now.
+	create or replace function public.household_completion_author() returns trigger language plpgsql as $$
+	begin
+	  new.done_by := auth.uid();
+	  new.at_ms := least(new.at_ms, public.household_now_ms());
+	  new.undone_at := null;
+	  new.undone_by := null;
+	  new.changed_ms := public.household_now_ms();
+	  return new;
+	end $$
+172.18.0.1 2026-09-29 17:23:22.312 UTC [207] postgres@postgres LOG:  execute <unnamed>: -- Undo is the only change allowed, it happens once, and the server stamps who and when.
+	create or replace function public.household_completion_undo() returns trigger language plpgsql as $$
+	begin
+	  if new.done_by is distinct from old.done_by or new.undone_by is distinct from old.undone_by then
+	    return new; -- an account was deleted (FK set null): members can't change these columns
+	  end if;
+	  if old.undone_at is not null then
+	    return old; -- already undone: nothing changes (a second undo from another sync is harmless)
+	  end if;
+	  new := old;
+	  new.undone_at := now();
+	  new.undone_by := auth.uid();
+	  new.changed_ms := public.household_now_ms();
+	  return new;
+	end $$
+172.18.0.1 2026-09-29 17:23:22.312 UTC [207] postgres@postgres LOG:  execute <unnamed>: create trigger household_completions_undo before update on public.household_completions
+	  for each row execute function public.household_completion_undo()
+172.18.0.1 2026-09-29 17:23:22.313 UTC [207] postgres@postgres LOG:  execute <unnamed>: -- Trimming the oldest record runs as the database owner: members themselves can't delete records.
+	create or replace function public.household_completions_limit() returns trigger
+	language plpgsql security definer set search_path = public as $$
+	begin
+	  if exists (select 1 from household_completions where household_id = new.household_id and id = new.id) then
+	    return new; -- a duplicate: ON CONFLICT ignores it
+	  end if;
+	  if (select count(*) from household_completions where household_id = new.household_id and task_id = new.task_id) >= 400 then
+	    delete from household_completions where household_id = new.household_id and id = (
+	      select id from household_completions where household_id = new.household_id and task_id = new.task_id order by at_ms, id limit 1);
+	  end if;
+	  return new;
+	end $$
+172.18.0.1 2026-09-29 17:23:22.313 UTC [207] postgres@postgres LOG:  execute <unnamed>: drop policy family_records_undo on public.household_completions
+172.18.0.1 2026-09-29 17:23:22.313 UTC [207] postgres@postgres LOG:  execute <unnamed>: create policy family_records_undo on public.household_completions for update
+	  using (public.is_household_member(household_id) and done_by = auth.uid())
+	  with check (public.is_household_member(household_id))
+172.18.0.1 2026-09-29 17:23:22.313 UTC [207] postgres@postgres LOG:  execute <unnamed>: revoke delete on public.household_completions from authenticated
+172.18.0.1 2026-09-29 17:23:22.313 UTC [207] postgres@postgres LOG:  execute <unnamed>: grant update (undone_at) on public.household_completions to authenticated
+172.18.0.1 2026-09-29 17:23:22.313 UTC [207] postgres@postgres LOG:  execute <unnamed>: -- ---------- Last edit wins ----------
+	alter table public.household_pets add column edited_at_ms bigint not null default 0
+172.18.0.1 2026-09-29 17:23:22.313 UTC [207] postgres@postgres LOG:  execute <unnamed>: alter table public.household_tasks add column edited_at_ms bigint not null default 0
+172.18.0.1 2026-09-29 17:23:22.313 UTC [207] postgres@postgres LOG:  execute <unnamed>: create or replace function public.household_stamp() returns trigger language plpgsql as $$
+	begin
+	  if tg_op = 'UPDATE' and new.updated_by is null and old.updated_by is not null then
+	    return new; -- the author's account was deleted (FK set null): keep it null
+	  end if;
+	  new.updated_at := now();
+	  new.updated_by := auth.uid();
+	  new.edited_at_ms := least(coalesce(new.edited_at_ms, 0), public.household_now_ms());
+	  return new;
+	end $$
+172.18.0.1 2026-09-29 17:23:22.314 UTC [207] postgres@postgres LOG:  execute <unnamed>: -- ---------- Stop sharing for everyone ----------
+	-- The person who started the household deletes it: pets, tasks, records, invites and memberships.
+	-- Every phone keeps its own copy of the pets, no longer shared.
+	create or replace function public.delete_household() returns void
+	language plpgsql security definer set search_path = public as $$
+	declare h uuid;
+	begin
+	  select household_id into h from household_members where user_id = auth.uid();
+	  if h is null or not exists (select 1 from households where id = h and owner_id = auth.uid()) then
+	    raise exception 'only the person who started the household can stop sharing for everyone';
+	  end if;
+	  delete from households where id = h;
+	end $$
+172.18.0.1 2026-09-29 17:23:22.314 UTC [207] postgres@postgres LOG:  execute <unnamed>: revoke all on function public.delete_household, public.household_now_ms from public, anon
+172.18.0.1 2026-09-29 17:23:22.314 UTC [207] postgres@postgres LOG:  execute <unnamed>: grant execute on function public.delete_household to authenticated
+172.18.0.1 2026-09-29 17:23:22.314 UTC [207] postgres@postgres LOG:  execute <unnamed>: grant execute on function public.household_now_ms to authenticated
+172.18.0.6 2026-09-29 17:23:35.598 UTC [345] authenticator@postgres ERROR:  permission denied for function nearby_cells
+172.18.0.6 2026-09-29 17:23:35.598 UTC [345] authenticator@postgres STATEMENT:  WITH pgrst_source AS (SELECT "pgrst_call".* FROM (SELECT $1 AS json_data) pgrst_payload, LATERAL (SELECT "p_cell_lat", "p_cell_lng" FROM json_to_record(pgrst_payload.json_data) AS _("p_cell_lat" double precision, "p_cell_lng" double precision) LIMIT 1) pgrst_body , LATERAL "public"."nearby_cells"("p_cell_lat" := pgrst_body."p_cell_lat", "p_cell_lng" := pgrst_body."p_cell_lng") pgrst_call) SELECT null::bigint AS total_result_set, pg_catalog.count(_postgrest_t) AS page_total, coalesce(json_agg(_postgrest_t), '[]') AS body, nullif(current_setting('response.headers', true), '') AS response_headers, nullif(current_setting('response.status', true), '') AS response_status, '' AS response_inserted FROM (SELECT "record".* FROM "pgrst_source" AS "record"   LIMIT $2 OFFSET $3) _postgrest_t
+172.18.0.6 2026-09-29 17:23:35.635 UTC [345] authenticator@postgres ERROR:  gathering is full
+172.18.0.6 2026-09-29 17:23:35.635 UTC [345] authenticator@postgres CONTEXT:  PL/pgSQL function rsvp(uuid,boolean) line 12 at RAISE
+172.18.0.6 2026-09-29 17:23:35.635 UTC [345] authenticator@postgres STATEMENT:  WITH pgrst_source AS (SELECT pgrst_call.pgrst_scalar FROM (SELECT $1 AS json_data) pgrst_payload, LATERAL (SELECT "p_id", "p_going" FROM json_to_record(pgrst_payload.json_data) AS _("p_id" uuid, "p_going" boolean) LIMIT 1) pgrst_body , LATERAL (SELECT "public"."rsvp"("p_id" := pgrst_body."p_id", "p_going" := pgrst_body."p_going") pgrst_scalar) pgrst_call) SELECT null::bigint AS total_result_set, 1 AS page_total, coalesce(json_agg(_postgrest_t.pgrst_scalar)->0, 'null') AS body, nullif(current_setting('response.headers', true), '') AS response_headers, nullif(current_setting('response.status', true), '') AS response_status, '' AS response_inserted FROM (SELECT "rsvp".* FROM "pgrst_source" AS "rsvp"   LIMIT $2 OFFSET $3) _postgrest_t
+172.18.0.6 2026-09-29 17:23:35.636 UTC [345] authenticator@postgres ERROR:  join the map first
+172.18.0.6 2026-09-29 17:23:35.636 UTC [345] authenticator@postgres CONTEXT:  PL/pgSQL function rsvp(uuid,boolean) line 5 at RAISE
+172.18.0.6 2026-09-29 17:23:35.636 UTC [345] authenticator@postgres STATEMENT:  WITH pgrst_source AS (SELECT pgrst_call.pgrst_scalar FROM (SELECT $1 AS json_data) pgrst_payload, LATERAL (SELECT "p_id", "p_going" FROM json_to_record(pgrst_payload.json_data) AS _("p_id" uuid, "p_going" boolean) LIMIT 1) pgrst_body , LATERAL (SELECT "public"."rsvp"("p_id" := pgrst_body."p_id", "p_going" := pgrst_body."p_going") pgrst_scalar) pgrst_call) SELECT null::bigint AS total_result_set, 1 AS page_total, coalesce(json_agg(_postgrest_t.pgrst_scalar)->0, 'null') AS body, nullif(current_setting('response.headers', true), '') AS response_headers, nullif(current_setting('response.status', true), '') AS response_status, '' AS response_inserted FROM (SELECT "rsvp".* FROM "pgrst_source" AS "rsvp"   LIMIT $2 OFFSET $3) _postgrest_t
+172.18.0.6 2026-09-29 17:23:35.643 UTC [345] authenticator@postgres ERROR:  not allowed
+172.18.0.6 2026-09-29 17:23:35.643 UTC [345] authenticator@postgres CONTEXT:  PL/pgSQL function keep_banned() line 4 at RAISE
+172.18.0.6 2026-09-29 17:23:35.643 UTC [345] authenticator@postgres STATEMENT:  WITH pgrst_source AS (UPDATE "public"."map_profiles" SET "banned" = "pgrst_body"."banned" FROM (SELECT $1 AS json_data) pgrst_payload, LATERAL (SELECT "banned" FROM json_to_record(pgrst_payload.json_data) AS _("banned" boolean) ) pgrst_body  WHERE  "public"."map_profiles"."user_id" = $2 RETURNING 1) SELECT '' AS total_result_set, pg_catalog.count(_postgrest_t) AS page_total, array[]::text[] AS header, ''::text AS body, nullif(current_setting('response.headers', true), '') AS response_headers, nullif(current_setting('response.status', true), '') AS response_status, '' AS response_inserted FROM (SELECT * FROM pgrst_source) _postgrest_t
+172.18.0.6 2026-09-29 17:23:35.653 UTC [345] authenticator@postgres ERROR:  too many pets
+172.18.0.6 2026-09-29 17:23:35.653 UTC [345] authenticator@postgres CONTEXT:  PL/pgSQL function limit_map_pets() line 4 at RAISE
+172.18.0.6 2026-09-29 17:23:35.653 UTC [345] authenticator@postgres STATEMENT:  WITH pgrst_source AS (INSERT INTO "public"."map_pets"("look", "name", "owner_id", "species") SELECT "pgrst_body"."look", "pgrst_body"."name", "pgrst_body"."owner_id", "pgrst_body"."species" FROM (SELECT $1 AS json_data) pgrst_payload, LATERAL (SELECT "look", "name", "owner_id", "species" FROM json_to_record(pgrst_payload.json_data) AS _("look" text, "name" text, "owner_id" uuid, "species" text) ) pgrst_body  RETURNING 1) SELECT '' AS total_result_set, pg_catalog.count(_postgrest_t) AS page_total, array[]::text[] AS header, ''::text AS body, nullif(current_setting('response.headers', true), '') AS response_headers, nullif(current_setting('response.status', true), '') AS response_status, '' AS response_inserted FROM (SELECT * FROM pgrst_source) _postgrest_t
+172.18.0.6 2026-09-29 17:23:35.655 UTC [345] authenticator@postgres ERROR:  new row for relation "map_presence" violates check constraint "map_presence_cell_id_check"
+172.18.0.6 2026-09-29 17:23:35.655 UTC [345] authenticator@postgres STATEMENT:  WITH pgrst_source AS (INSERT INTO "public"."map_presence"("cell_id", "cell_lat", "cell_lng", "owner_id") SELECT "pgrst_body"."cell_id", "pgrst_body"."cell_lat", "pgrst_body"."cell_lng", "pgrst_body"."owner_id" FROM (SELECT $1 AS json_data) pgrst_payload, LATERAL (SELECT "cell_id", "cell_lat", "cell_lng", "owner_id" FROM json_to_record(pgrst_payload.json_data) AS _("cell_id" text, "cell_lat" double precision, "cell_lng" double precision, "owner_id" uuid) ) pgrst_body WHERE set_config('pgrst.inserted', (coalesce(nullif(current_setting('pgrst.inserted', true), '')::int, 0) + 1)::text, true) <> '0' ON CONFLICT("owner_id") DO UPDATE SET "cell_id" = EXCLUDED."cell_id", "cell_lat" = EXCLUDED."cell_lat", "cell_lng" = EXCLUDED."cell_lng", "owner_id" = EXCLUDED."owner_id"WHERE set_config('pgrst.inserted', (coalesce(nullif(current_setting('pgrst.inserted', true), '')::int, 0) - 1)::text, true) <> '-1' RETURNING 1) SELECT '' AS total_result_set, pg_catalog.count(_postgrest_t) AS page_total, array[]::text[] AS header, ''::text AS body, nullif(current_setting('response.headers', true), '') AS response_headers, nullif(current_setting('response.status', true), '') AS response_status, nullif(current_setting('pgrst.inserted', true),'')::int AS response_inserted FROM (SELECT * FROM pgrst_source) _postgrest_t
+172.18.0.6 2026-09-29 17:23:36.874 UTC [345] authenticator@postgres ERROR:  you are already in a family: leave it first
+172.18.0.6 2026-09-29 17:23:36.874 UTC [345] authenticator@postgres CONTEXT:  PL/pgSQL function create_household(text,text) line 6 at RAISE
+172.18.0.6 2026-09-29 17:23:36.874 UTC [345] authenticator@postgres STATEMENT:  WITH pgrst_source AS (SELECT pgrst_call.pgrst_scalar FROM (SELECT $1 AS json_data) pgrst_payload, LATERAL (SELECT "p_name", "p_display_name" FROM json_to_record(pgrst_payload.json_data) AS _("p_name" text, "p_display_name" text) LIMIT 1) pgrst_body , LATERAL (SELECT "public"."create_household"("p_name" := pgrst_body."p_name", "p_display_name" := pgrst_body."p_display_name") pgrst_scalar) pgrst_call) SELECT null::bigint AS total_result_set, 1 AS page_total, coalesce(json_agg(_postgrest_t.pgrst_scalar)->0, 'null') AS body, nullif(current_setting('response.headers', true), '') AS response_headers, nullif(current_setting('response.status', true), '') AS response_status, '' AS response_inserted FROM (SELECT "create_household".* FROM "pgrst_source" AS "create_household"   LIMIT $2 OFFSET $3) _postgrest_t
+172.18.0.6 2026-09-29 17:23:36.883 UTC [345] authenticator@postgres ERROR:  new row violates row-level security policy for table "household_members"
+172.18.0.6 2026-09-29 17:23:36.883 UTC [345] authenticator@postgres STATEMENT:  WITH pgrst_source AS (INSERT INTO "public"."household_members"("display_name", "household_id", "user_id") SELECT "pgrst_body"."display_name", "pgrst_body"."household_id", "pgrst_body"."user_id" FROM (SELECT $1 AS json_data) pgrst_payload, LATERAL (SELECT "display_name", "household_id", "user_id" FROM json_to_record(pgrst_payload.json_data) AS _("display_name" text, "household_id" uuid, "user_id" uuid) ) pgrst_body  RETURNING 1) SELECT '' AS total_result_set, pg_catalog.count(_postgrest_t) AS page_total, array[]::text[] AS header, ''::text AS body, nullif(current_setting('response.headers', true), '') AS response_headers, nullif(current_setting('response.status', true), '') AS response_status, '' AS response_inserted FROM (SELECT * FROM pgrst_source) _postgrest_t
+172.18.0.6 2026-09-29 17:23:36.885 UTC [345] authenticator@postgres ERROR:  not your family
+172.18.0.6 2026-09-29 17:23:36.885 UTC [345] authenticator@postgres CONTEXT:  PL/pgSQL function create_invite(uuid) line 7 at RAISE
+172.18.0.6 2026-09-29 17:23:36.885 UTC [345] authenticator@postgres STATEMENT:  WITH pgrst_source AS (SELECT pgrst_call.pgrst_scalar FROM (SELECT $1 AS json_data) pgrst_payload, LATERAL (SELECT "p_household" FROM json_to_record(pgrst_payload.json_data) AS _("p_household" uuid) LIMIT 1) pgrst_body , LATERAL (SELECT "public"."create_invite"("p_household" := pgrst_body."p_household") pgrst_scalar) pgrst_call) SELECT null::bigint AS total_result_set, 1 AS page_total, coalesce(json_agg(_postgrest_t.pgrst_scalar)->0, 'null') AS body, nullif(current_setting('response.headers', true), '') AS response_headers, nullif(current_setting('response.status', true), '') AS response_status, '' AS response_inserted FROM (SELECT "create_invite".* FROM "pgrst_source" AS "create_invite"   LIMIT $2 OFFSET $3) _postgrest_t
+172.18.0.6 2026-09-29 17:23:36.928 UTC [345] authenticator@postgres ERROR:  new row violates row-level security policy for table "household_completions"
+172.18.0.6 2026-09-29 17:23:36.928 UTC [345] authenticator@postgres STATEMENT:  WITH pgrst_source AS (INSERT INTO "public"."household_completions"("at_ms", "household_id", "id", "local_day", "local_minute", "task_id") SELECT "pgrst_body"."at_ms", "pgrst_body"."household_id", "pgrst_body"."id", "pgrst_body"."local_day", "pgrst_body"."local_minute", "pgrst_body"."task_id" FROM (SELECT $1 AS json_data) pgrst_payload, LATERAL (SELECT "at_ms", "household_id", "id", "local_day", "local_minute", "task_id" FROM json_to_record(pgrst_payload.json_data) AS _("at_ms" bigint, "household_id" uuid, "id" text, "local_day" bigint, "local_minute" integer, "task_id" text) ) pgrst_body  RETURNING 1) SELECT '' AS total_result_set, pg_catalog.count(_postgrest_t) AS page_total, array[]::text[] AS header, ''::text AS body, nullif(current_setting('response.headers', true), '') AS response_headers, nullif(current_setting('response.status', true), '') AS response_status, '' AS response_inserted FROM (SELECT * FROM pgrst_source) _postgrest_t
+172.18.0.6 2026-09-29 17:23:36.938 UTC [345] authenticator@postgres ERROR:  permission denied for table household_completions
+172.18.0.6 2026-09-29 17:23:36.938 UTC [345] authenticator@postgres STATEMENT:  WITH pgrst_source AS (DELETE FROM "public"."household_completions"  WHERE  "public"."household_completions"."household_id" = $1 AND  "public"."household_completions"."id" = $2 RETURNING 1) SELECT '' AS total_result_set, pg_catalog.count(_postgrest_t) AS page_total, array[]::text[] AS header, ''::text AS body, nullif(current_setting('response.headers', true), '') AS response_headers, nullif(current_setting('response.status', true), '') AS response_status, '' AS response_inserted FROM (SELECT * FROM pgrst_source) _postgrest_t
+172.18.0.6 2026-09-29 17:23:37.968 UTC [345] authenticator@postgres ERROR:  this family is full (8 people)
+172.18.0.6 2026-09-29 17:23:37.968 UTC [345] authenticator@postgres CONTEXT:  PL/pgSQL function join_household(text,text) line 19 at RAISE
+172.18.0.6 2026-09-29 17:23:37.968 UTC [345] authenticator@postgres STATEMENT:  WITH pgrst_source AS (SELECT pgrst_call.pgrst_scalar FROM (SELECT $1 AS json_data) pgrst_payload, LATERAL (SELECT "p_code", "p_display_name" FROM json_to_record(pgrst_payload.json_data) AS _("p_code" text, "p_display_name" text) LIMIT 1) pgrst_body , LATERAL (SELECT "public"."join_household"("p_code" := pgrst_body."p_code", "p_display_name" := pgrst_body."p_display_name") pgrst_scalar) pgrst_call) SELECT null::bigint AS total_result_set, 1 AS page_total, coalesce(json_agg(_postgrest_t.pgrst_scalar)->0, 'null') AS body, nullif(current_setting('response.headers', true), '') AS response_headers, nullif(current_setting('response.status', true), '') AS response_status, '' AS response_inserted FROM (SELECT "join_household".* FROM "pgrst_source" AS "join_household"   LIMIT $2 OFFSET $3) _postgrest_t
+172.18.0.6 2026-09-29 17:23:37.970 UTC [345] authenticator@postgres ERROR:  only the person who started the family can remove people
+172.18.0.6 2026-09-29 17:23:37.970 UTC [345] authenticator@postgres CONTEXT:  PL/pgSQL function remove_member(uuid) line 6 at RAISE
+172.18.0.6 2026-09-29 17:23:37.970 UTC [345] authenticator@postgres STATEMENT:  WITH pgrst_source AS (SELECT pgrst_call.pgrst_scalar FROM (SELECT $1 AS json_data) pgrst_payload, LATERAL (SELECT "p_user" FROM json_to_record(pgrst_payload.json_data) AS _("p_user" uuid) LIMIT 1) pgrst_body , LATERAL (SELECT "public"."remove_member"("p_user" := pgrst_body."p_user") pgrst_scalar) pgrst_call) SELECT null::bigint AS total_result_set, 1 AS page_total, coalesce(json_agg(_postgrest_t.pgrst_scalar)->0, 'null') AS body, nullif(current_setting('response.headers', true), '') AS response_headers, nullif(current_setting('response.status', true), '') AS response_status, '' AS response_inserted FROM (SELECT "remove_member".* FROM "pgrst_source" AS "remove_member"   LIMIT $2 OFFSET $3) _postgrest_t
+172.18.0.6 2026-09-29 17:23:38.136 UTC [345] authenticator@postgres ERROR:  only the person who started the household can stop sharing for everyone
+172.18.0.6 2026-09-29 17:23:38.136 UTC [345] authenticator@postgres CONTEXT:  PL/pgSQL function delete_household() line 6 at RAISE
+172.18.0.6 2026-09-29 17:23:38.136 UTC [345] authenticator@postgres STATEMENT:  WITH pgrst_source AS (SELECT pgrst_call.pgrst_scalar FROM (SELECT "public"."delete_household"() pgrst_scalar) pgrst_call) SELECT null::bigint AS total_result_set, 1 AS page_total, coalesce(json_agg(_postgrest_t.pgrst_scalar)->0, 'null') AS body, nullif(current_setting('response.headers', true), '') AS response_headers, nullif(current_setting('response.status', true), '') AS response_status, '' AS response_inserted FROM (SELECT "delete_household".* FROM "pgrst_source" AS "delete_household"   LIMIT $1 OFFSET $2) _postgrest_t
+172.18.0.6 2026-09-29 17:24:12.506 UTC [578] authenticator@postgres ERROR:  too many wrong codes: please wait an hour and try again
+172.18.0.6 2026-09-29 17:24:12.506 UTC [578] authenticator@postgres CONTEXT:  PL/pgSQL function join_household(text,text) line 6 at RAISE
+172.18.0.6 2026-09-29 17:24:12.506 UTC [578] authenticator@postgres STATEMENT:  WITH pgrst_source AS (SELECT pgrst_call.pgrst_scalar FROM (SELECT $1 AS json_data) pgrst_payload, LATERAL (SELECT "p_code", "p_display_name" FROM json_to_record(pgrst_payload.json_data) AS _("p_code" text, "p_display_name" text) LIMIT 1) pgrst_body , LATERAL (SELECT "public"."join_household"("p_code" := pgrst_body."p_code", "p_display_name" := pgrst_body."p_display_name") pgrst_scalar) pgrst_call) SELECT null::bigint AS total_result_set, 1 AS page_total, coalesce(json_agg(_postgrest_t.pgrst_scalar)->0, 'null') AS body, nullif(current_setting('response.headers', true), '') AS response_headers, nullif(current_setting('response.status', true), '') AS response_status, '' AS response_inserted FROM (SELECT "join_household".* FROM "pgrst_source" AS "join_household"   LIMIT $2 OFFSET $3) _postgrest_t
+172.18.0.6 2026-09-29 17:24:12.508 UTC [578] authenticator@postgres ERROR:  too many wrong codes: please wait an hour and try again
+172.18.0.6 2026-09-29 17:24:12.508 UTC [578] authenticator@postgres CONTEXT:  PL/pgSQL function join_household(text,text) line 6 at RAISE
+172.18.0.6 2026-09-29 17:24:12.508 UTC [578] authenticator@postgres STATEMENT:  WITH pgrst_source AS (SELECT pgrst_call.pgrst_scalar FROM (SELECT $1 AS json_data) pgrst_payload, LATERAL (SELECT "p_code", "p_display_name" FROM json_to_record(pgrst_payload.json_data) AS _("p_code" text, "p_display_name" text) LIMIT 1) pgrst_body , LATERAL (SELECT "public"."join_household"("p_code" := pgrst_body."p_code", "p_display_name" := pgrst_body."p_display_name") pgrst_scalar) pgrst_call) SELECT null::bigint AS total_result_set, 1 AS page_total, coalesce(json_agg(_postgrest_t.pgrst_scalar)->0, 'null') AS body, nullif(current_setting('response.headers', true), '') AS response_headers, nullif(current_setting('response.status', true), '') AS response_status, '' AS response_inserted FROM (SELECT "join_household".* FROM "pgrst_source" AS "join_household"   LIMIT $2 OFFSET $3) _postgrest_t
+172.18.0.6 2026-09-29 17:24:12.603 UTC [578] authenticator@postgres ERROR:  new row violates row-level security policy for table "household_pets"
+172.18.0.6 2026-09-29 17:24:12.603 UTC [578] authenticator@postgres STATEMENT:  WITH pgrst_source AS (INSERT INTO "public"."household_pets"("accessory", "birth_day", "created_at_ms", "ears", "edited_at_ms", "eyes", "household_id", "id", "look", "name", "species") SELECT "pgrst_body"."accessory", "pgrst_body"."birth_day", "pgrst_body"."created_at_ms", "pgrst_body"."ears", "pgrst_body"."edited_at_ms", "pgrst_body"."eyes", "pgrst_body"."household_id", "pgrst_body"."id", "pgrst_body"."look", "pgrst_body"."name", "pgrst_body"."species" FROM (SELECT $1 AS json_data) pgrst_payload, LATERAL (SELECT "accessory", "birth_day", "created_at_ms", "ears", "edited_at_ms", "eyes", "household_id", "id", "look", "name", "species" FROM json_to_recordset(pgrst_payload.json_data) AS _("accessory" text, "birth_day" bigint, "created_at_ms" bigint, "ears" text, "edited_at_ms" bigint, "eyes" jsonb, "household_id" uuid, "id" text, "look" text, "name" text, "species" text) ) pgrst_body WHERE set_config('pgrst.inserted', (coalesce(nullif(current_setting('pgrst.inserted', true), '')::int, 0) + 1)::text, true) <> '0' ON CONFLICT("household_id", "id") DO UPDATE SET "accessory" = EXCLUDED."accessory", "birth_day" = EXCLUDED."birth_day", "created_at_ms" = EXCLUDED."created_at_ms", "ears" = EXCLUDED."ears", "edited_at_ms" = EXCLUDED."edited_at_ms", "eyes" = EXCLUDED."eyes", "household_id" = EXCLUDED."household_id", "id" = EXCLUDED."id", "look" = EXCLUDED."look", "name" = EXCLUDED."name", "species" = EXCLUDED."species"WHERE set_config('pgrst.inserted', (coalesce(nullif(current_setting('pgrst.inserted', true), '')::int, 0) - 1)::text, true) <> '-1' RETURNING 1) SELECT '' AS total_result_set, pg_catalog.count(_postgrest_t) AS page_total, array[]::text[] AS header, ''::text AS body, nullif(current_setting('response.headers', true), '') AS response_headers, nullif(current_setting('response.status', true), '') AS response_status, nullif(current_setting('pgrst.inserted', true),'')::int AS response_inserted FROM (SELECT * FROM pgrst_source) _postgrest_t
