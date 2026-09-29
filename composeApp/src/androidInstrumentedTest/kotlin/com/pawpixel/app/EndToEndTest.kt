@@ -1,7 +1,6 @@
 package com.pawpixel.app
 
 import android.Manifest
-import android.accessibilityservice.AccessibilityServiceInfo
 import android.graphics.Rect
 import android.app.Activity
 import android.app.Instrumentation
@@ -64,11 +63,6 @@ class EndToEndTest {
     fun setUp() {
         out.deleteRecursively(); out.mkdirs()
         Configurator.getInstance().waitForIdleTimeout = 1_000
-        // See every window, not only the "active" one: just after a dialog closes, the active window
-        // can still be the dialog's, and UiAutomator would miss what's on screen.
-        instr.uiAutomation.serviceInfo = instr.uiAutomation.serviceInfo.apply {
-            flags = flags or AccessibilityServiceInfo.FLAG_RETRIEVE_INTERACTIVE_WINDOWS
-        }
         if (Build.VERSION.SDK_INT >= 33) {
             instr.uiAutomation.grantRuntimePermission(ctx.packageName, Manifest.permission.POST_NOTIFICATIONS)
         }
@@ -589,22 +583,22 @@ class EndToEndTest {
         runCatching { find(selector, 3_000) }.getOrNull()?.let { return it }
         var moved = 0
         for (forward in listOf(true, false)) {
-            // Just after a dialog closes the app's window may not be the active one yet, and a scroll
-            // fails: wait for it rather than giving up at once. A few failures in a row = the end.
+            // Just after a dialog closes, the active window can still be the dialog's: wait for the
+            // app's screen rather than giving up at once. Several failures in a row = the end.
             var stuck = 0
-            for (i in 0 until 15) {
+            for (i in 0 until 20) {
                 device.findObject(selector)?.let { return it }
-                if (accessibilityScroll(forward)) { stuck = 0; moved++ } else if (++stuck >= 4) break
+                if (accessibilityScroll(forward)) { stuck = 0; moved++ } else if (++stuck >= 8) break
                 Thread.sleep(if (stuck > 0) 600L else 400L)
             }
         }
-        // Last resort: swipe like a finger, along the right-hand margin (away from photos and maps).
-        val x = device.displayWidth - 12
+        // Last resort: drag the page like a finger, down the middle.
+        val x = device.displayWidth / 2
         for (up in listOf(true, false)) {
             repeat(12) {
-                device.findObject(selector)?.let { note("found by swiping after $moved accessibility scrolls: $selector"); return it }
-                val (from, to) = if (up) 0.75 to 0.3 else 0.3 to 0.75
-                device.swipe(x, (device.displayHeight * from).toInt(), x, (device.displayHeight * to).toInt(), 20)
+                device.findObject(selector)?.let { note("found by dragging after $moved accessibility scrolls: $selector"); return it }
+                val (from, to) = if (up) 0.75 to 0.35 else 0.35 to 0.75
+                device.swipe(x, (device.displayHeight * from).toInt(), x, (device.displayHeight * to).toInt(), 25)
                 Thread.sleep(500)
             }
         }
@@ -612,14 +606,14 @@ class EndToEndTest {
         return device.findObject(selector) ?: throw AssertionError("not found after scrolling ($moved scrolls): $selector; on screen: $seen")
     }
 
-    /** Scrolls the first scrollable container of the app one page. False when it can't move. */
+    /**
+     * Scrolls the app's screen one page. False when it can't move, or when the active window isn't
+     * the app's full screen yet (a dialog still closing).
+     */
     private fun accessibilityScroll(forward: Boolean): Boolean {
-        fun height(n: AccessibilityNodeInfo) = Rect().also { n.getBoundsInScreen(it) }.height()
-        // The active window, unless that's a dialog still closing: then the app's full-screen window.
-        val active = instr.uiAutomation.rootInActiveWindow
-        val root = active?.takeIf { it.packageName == ctx.packageName && height(it) >= device.displayHeight * 0.8 }
-            ?: instr.uiAutomation.windows.mapNotNull { it.root }.filter { it.packageName == ctx.packageName }.maxByOrNull(::height)
-            ?: active ?: return false
+        val root = instr.uiAutomation.rootInActiveWindow ?: return false
+        val bounds = Rect().also { root.getBoundsInScreen(it) }
+        if (root.packageName != ctx.packageName || bounds.height() < device.displayHeight * 0.8) return false
         val queue = ArrayDeque(listOf(root))
         while (queue.isNotEmpty()) {
             val node = queue.removeFirst()
