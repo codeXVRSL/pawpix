@@ -1,5 +1,8 @@
 package com.pawpixel.core
 
+import com.pawpixel.i18n.tr
+import com.pawpixel.i18n.trName
+
 data class Reminder(
     /** Stable positive id, so rescheduling replaces rather than duplicates. */
     val id: Int,
@@ -105,14 +108,16 @@ object ReminderPlanner {
         // Nothing recorded yet: the date is a guess, so no reminders until the owner records it.
         if (!status.known) return emptyList()
         val due = status.slotTimes.firstOrNull() ?: return emptyList()
-        val what = task.title.lowercase()
+        val shown = trName(task.title)
+        val what = shown.lowercase()
+        val title = "${task.kind.emoji} $shown · ${pet.name}"
         val list = listOf(
             Reminder(stableId(task.id, due - HEALTH_HEADS_UP_MS, false), task.id, pet.id, due - HEALTH_HEADS_UP_MS,
-                "${task.kind.emoji} ${task.title} · ${pet.name}", "${pet.name}'s $what is due in 3 days. A good time to book the vet.", false, quickDone = false),
+                title, tr("{0}'s {1} is due in 3 days. A good time to book the vet.", pet.name, what), false, quickDone = false, slots = listOf(due)),
             Reminder(stableId(task.id, due, false), task.id, pet.id, due,
-                "${task.kind.emoji} ${task.title} · ${pet.name}", "${pet.name}'s $what is due today.", task.exactAlarm),
+                title, tr("{0}'s {1} is due today.", pet.name, what), task.exactAlarm, slots = listOf(due)),
             Reminder(stableId(task.id, due + HEALTH_FOLLOW_UP_MS, true), task.id, pet.id, due + HEALTH_FOLLOW_UP_MS,
-                "${task.kind.emoji} ${task.title} · ${pet.name}", "${pet.name}'s $what is still due. Tap Done in PawPixel once it's given.", false),
+                title, tr("{0}'s {1} is still due. Tap Done in PawPixel once it's given.", pet.name, what), false, slots = listOf(due)),
         )
         return list.filter { it.atMs > nowMs }
     }
@@ -146,8 +151,8 @@ object ReminderPlanner {
     private fun merged(group: List<Reminder>, state: AppState): Reminder {
         val byPet = group.groupBy { it.petId }
         val parts = byPet.map { (petId, rs) ->
-            val name = state.pet(petId)?.name ?: "Your pet"
-            name + ": " + joinNames(rs.mapNotNull { state.task(it.taskId)?.title?.lowercase() }.distinct())
+            val name = state.pet(petId)?.name ?: tr("Your pet")
+            name + ": " + joinNames(rs.mapNotNull { state.task(it.taskId)?.title?.let(::trName)?.lowercase() }.distinct())
         }
         val pets = byPet.keys.mapNotNull { state.pet(it)?.name }
         val first = group[0]
@@ -156,15 +161,15 @@ object ReminderPlanner {
         return first.copy(
             slots = unique.map { it.slots.first() },
             id = stableId(ids.joinToString(","), first.atMs, false),
-            title = "🐾 Care time · " + joinNames(pets),
-            body = parts.joinToString(" · ") + ". Tap Done when it's all done.",
+            title = "🐾 " + tr("Care time · {0}", joinNames(pets)),
+            body = tr("{0}. Tap Done when it's all done.", parts.joinToString(" · ")),
             exact = group.any { it.exact },
             taskIds = ids,
         )
     }
 
     private fun joinNames(names: List<String>): String =
-        if (names.size <= 2) names.joinToString(" and ") else names.dropLast(1).joinToString(", ") + " and " + names.last()
+        if (names.size <= 2) names.joinToString(tr(" and ")) else names.dropLast(1).joinToString(", ") + tr(" and ") + names.last()
 
     /**
      * Several health items for the same pet at the same moment (deworming and tick & flea due the
@@ -174,26 +179,27 @@ object ReminderPlanner {
         reminders.groupBy { it.petId to it.atMs }.values.map { group ->
             if (group.size == 1) return@map group[0]
             val first = group[0]
-            val pet = state.pet(first.petId)?.name ?: "Your pet"
-            val names = group.mapNotNull { state.task(it.taskId)?.title?.lowercase() }
-            val list = if (names.size <= 2) names.joinToString(" and ") else names.dropLast(1).joinToString(", ") + " and " + names.last()
-            val body = when {
-                first.body.contains("in 3 days") -> "$pet's $list are due in 3 days. A good time to book the vet."
-                first.body.contains("still due") -> "$pet's $list are still due. Tap Done in PawPixel once they're given."
-                else -> "$pet's $list are due today."
+            val pet = state.pet(first.petId)?.name ?: tr("Your pet")
+            val names = group.mapNotNull { state.task(it.taskId)?.title?.let(::trName)?.lowercase() }
+            val list = joinNames(names)
+            val body = when (first.slots.firstOrNull()?.let { first.atMs - it } ?: 0L) {
+                -HEALTH_HEADS_UP_MS -> tr("{0}'s {1} are due in 3 days. A good time to book the vet.", pet, list)
+                HEALTH_FOLLOW_UP_MS -> tr("{0}'s {1} are still due. Tap Done in PawPixel once they're given.", pet, list)
+                else -> tr("{0}'s {1} are due today.", pet, list)
             }
-            first.copy(title = "🩺 Health care · $pet", body = body, quickDone = false,
+            first.copy(title = "🩺 " + tr("Health care · {0}", pet), body = body, quickDone = false,
                 id = stableId(group.joinToString { it.taskId }, first.atMs, false))
         }
 
     private fun reminder(task: CareTask, pet: Pet, at: Long, nudge: Boolean, slotAt: Long = at): Reminder {
-        val title = "${task.kind.emoji} ${task.title} · ${pet.name}"
+        val name = trName(task.title)
+        val title = "${task.kind.emoji} $name · ${pet.name}"
         val body = when {
-            nudge -> "${pet.name} still needs ${task.title.lowercase()}."
-            task.kind == TaskKind.FEED -> "${pet.name} is getting hungry. Tap Done after feeding."
-            task.kind == TaskKind.WALK -> "${pet.name} is ready for a walk!"
-            task.kind == TaskKind.MEDS -> "Time for ${pet.name}'s ${task.title.lowercase()}."
-            else -> "Time to ${task.title.lowercase()} for ${pet.name}."
+            nudge -> tr("{0} still needs {1}.", pet.name, name.lowercase())
+            task.kind == TaskKind.FEED -> tr("{0} is getting hungry. Tap Done after feeding.", pet.name)
+            task.kind == TaskKind.WALK -> tr("{0} is ready for a walk!", pet.name)
+            task.kind == TaskKind.MEDS -> tr("Time for {0}'s {1}.", pet.name, name.lowercase())
+            else -> tr("Time to {0} for {1}.", name.lowercase(), pet.name)
         }
         return Reminder(stableId(task.id, at, nudge), task.id, pet.id, at, title, body, task.exactAlarm, slots = listOf(slotAt))
     }

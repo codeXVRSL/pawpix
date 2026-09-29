@@ -1,5 +1,8 @@
 package com.pawpixel.core
 
+import com.pawpixel.i18n.tr
+import com.pawpixel.i18n.trName
+
 /**
  * Progress that never goes backwards: days of care add up to milestones (7, 30, 100 days...), each
  * celebrated once with a card to share. Missing a day never takes anything away.
@@ -19,9 +22,9 @@ object Milestones {
         state.copy(pets = state.pets.map { if (it.id == petId) it.copy(milestoneSeen = maxOf(it.milestoneSeen, milestone)) else it })
 
     fun title(days: Int): String = when (days) {
-        365 -> "A whole year of care"
-        730 -> "Two years of care"
-        else -> "$days days of care"
+        365 -> tr("A whole year of care")
+        730 -> tr("Two years of care")
+        else -> tr("{0} days of care", days)
     }
 }
 
@@ -45,8 +48,8 @@ object WeightTrend {
         if (weights.size < 2) return null
         val last = weights[weights.size - 1]; val prev = weights[weights.size - 2]
         val d = last.grams - prev.grams
-        if (kotlin.math.abs(d) < 50) return "About the same as ${LocalClock.shortDate(prev.day)}"
+        if (kotlin.math.abs(d) < 50) return tr("About the same as {0}", LocalClock.shortDate(prev.day))
         val sign = if (d > 0) "+" else "−"
-        return "$sign${kg(kotlin.math.abs(d)).removeSuffix(" kg")} kg since ${LocalClock.shortDate(prev.day)}"
+        return tr("{0} kg since {1}", sign + kg(kotlin.math.abs(d)).removeSuffix(" kg"), LocalClock.shortDate(prev.day))
     }
 }

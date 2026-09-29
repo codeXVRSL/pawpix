@@ -1,5 +1,8 @@
 package com.pawpixel.core
 
+import com.pawpixel.i18n.tr
+import com.pawpixel.i18n.trName
+
 /** The poses a sprite can show. Each has its own pre-rendered PNG so widgets never render anything. */
 enum class Mood(val key: String) {
     HAPPY("happy"),
@@ -78,11 +81,11 @@ object MoodEngine {
 
     fun read(state: AppState, petId: String, nowMs: Long, clock: LocalClock): MoodReading {
         val pet = state.pet(petId)
-        val name = pet?.name ?: "Your pet"
+        val name = pet?.name ?: tr("Your pet")
         if (state.isAway(nowMs)) {
             val night = isNight(clock.minuteOfDay(nowMs), state.settings)
-            return if (night) MoodReading(Mood.SLEEPY, "$name is sleeping", 100, null)
-            else MoodReading(Mood.CONTENT, "$name is being looked after", 100, null)
+            return if (night) MoodReading(Mood.SLEEPY, tr("{0} is sleeping", name), 100, null)
+            else MoodReading(Mood.CONTENT, tr("{0} is being looked after", name), 100, null)
         }
         val tasks = state.tasksFor(petId)
         val statuses = tasks.map { t ->
@@ -102,28 +105,28 @@ object MoodEngine {
         val lastCare = statuses.mapNotNull { it.lastDoneMs }.maxOrNull()
 
         if (worst != null && total >= SAD_THRESHOLD) {
-            return MoodReading(Mood.SAD, "$name misses you", score, worst.first.task.id)
+            return MoodReading(Mood.SAD, tr("{0} misses you", name), score, worst.first.task.id)
         }
         if (worst != null && worst.second >= NEED_THRESHOLD) {
             val task = worst.first.task
             val (mood, caption) = when (task.kind) {
-                TaskKind.FEED -> Mood.HUNGRY to "$name is hungry"
-                TaskKind.WATER -> Mood.HUNGRY to "$name is thirsty"
-                TaskKind.WALK -> Mood.RESTLESS to "$name wants a walk"
-                TaskKind.PLAY -> Mood.RESTLESS to "$name wants to play"
-                TaskKind.LITTER -> Mood.RESTLESS to "The litter needs cleaning"
-                TaskKind.GROOM -> Mood.RESTLESS to "$name needs grooming"
-                TaskKind.MEDS -> Mood.NEEDS_MEDS to "Time for $name's ${task.title.lowercase()}"
+                TaskKind.FEED -> Mood.HUNGRY to tr("{0} is hungry", name)
+                TaskKind.WATER -> Mood.HUNGRY to tr("{0} is thirsty", name)
+                TaskKind.WALK -> Mood.RESTLESS to tr("{0} wants a walk", name)
+                TaskKind.PLAY -> Mood.RESTLESS to tr("{0} wants to play", name)
+                TaskKind.LITTER -> Mood.RESTLESS to tr("The litter needs cleaning")
+                TaskKind.GROOM -> Mood.RESTLESS to tr("{0} needs grooming", name)
+                TaskKind.MEDS -> Mood.NEEDS_MEDS to tr("Time for {0}'s {1}", name, trName(task.title).lowercase())
                 TaskKind.VACCINE, TaskKind.DEWORM, TaskKind.FLEA_TICK, TaskKind.VET ->
-                    Mood.NEEDS_MEDS to "$name's ${task.title.lowercase()} is due"
+                    Mood.NEEDS_MEDS to tr("{0}'s {1} is due", name, trName(task.title).lowercase())
             }
             return MoodReading(mood, caption, score, task.id)
         }
-        if (night) return MoodReading(Mood.SLEEPY, "$name is sleeping", score, null)
+        if (night) return MoodReading(Mood.SLEEPY, tr("{0} is sleeping", name), score, null)
         if (lastCare != null && nowMs - lastCare <= RECENT_CARE_MS) {
-            return MoodReading(Mood.HAPPY, "$name is happy!", score, null)
+            return MoodReading(Mood.HAPPY, tr("{0} is happy!", name), score, null)
         }
-        return MoodReading(Mood.CONTENT, "$name is doing fine", score, null)
+        return MoodReading(Mood.CONTENT, tr("{0} is doing fine", name), score, null)
     }
 
     /**

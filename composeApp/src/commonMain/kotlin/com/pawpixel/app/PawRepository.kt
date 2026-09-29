@@ -1,6 +1,8 @@
 package com.pawpixel.app
 
 import com.pawpixel.core.AppState
+import com.pawpixel.i18n.I18n
+import com.pawpixel.i18n.Lang
 import com.pawpixel.core.Backup
 import com.pawpixel.core.HealthPlan
 import com.pawpixel.core.Ids
@@ -66,13 +68,21 @@ class PawRepository(val platform: Platform) {
     private fun load(): AppState {
         // A restore interrupted between its two renames: put the pets' files back.
         if (!files.exists("sprites") && files.exists(OLD_SPRITES)) files.rename(OLD_SPRITES, "sprites")
-        return files.readText(STATE_FILE)?.let { runCatching { StateCodec.decode(it) }.getOrNull() } ?: AppState()
+        val state = files.readText(STATE_FILE)?.let { runCatching { StateCodec.decode(it) }.getOrNull() } ?: AppState()
+        applyLanguage(state)
+        return state
+    }
+
+    /** Everything drawn after this speaks the owner's language (Settings → Language, or the phone's). */
+    private fun applyLanguage(state: AppState) {
+        I18n.lang = Lang.resolve(state.settings.language, platform.systemLanguage())
     }
 
     suspend fun update(change: (AppState) -> AppState): AppState = mutex.withLock {
         val n = change(_state.value)
         if (n != _state.value) {
             files.writeText(STATE_FILE, StateCodec.encode(n))
+            if (n.settings.language != _state.value.settings.language) applyLanguage(n)
             _state.value = n
         }
         // Inside the lock, so concurrent updates (UI, widget, notification) publish in order.

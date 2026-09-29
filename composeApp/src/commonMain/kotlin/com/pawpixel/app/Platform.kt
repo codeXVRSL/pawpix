@@ -29,6 +29,8 @@ interface Platform {
     val files: FileStore
     /** Debug/test builds: shows testing switches (like the Pro beta unlock) that release builds hide. */
     val isDebugBuild: Boolean
+    /** The phone's language code ("en", "fil", "tl"...), for following it by default. */
+    fun systemLanguage(): String = "en"
     fun nowMs(): Long
     /** Offset from UTC for the device's time zone at [atMs] (DST-aware). */
     fun utcOffsetMs(atMs: Long): Long

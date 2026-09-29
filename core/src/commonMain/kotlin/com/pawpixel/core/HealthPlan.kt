@@ -1,5 +1,8 @@
 package com.pawpixel.core
 
+import com.pawpixel.i18n.tr
+import com.pawpixel.i18n.trName
+
 /**
  * The usual health care for a pet, as care tasks, from its species and (if known) its birthday.
  *
@@ -72,11 +75,11 @@ object HealthPlan {
     fun ageLabel(birthDay: Long, today: Long): String {
         val days = today - birthDay
         return when {
-            days < 0 -> "Not born yet"
-            days < 14 -> "$days days old"
-            days < 16 * 7 -> "${days / 7} weeks old"
-            days < 730 -> "${days / 30} months old"
-            else -> "${days / 365} years old"
+            days < 0 -> tr("Not born yet")
+            days < 14 -> tr("{0} days old", days)
+            days < 16 * 7 -> tr("{0} weeks old", days / 7)
+            days < 730 -> tr("{0} months old", days / 30)
+            else -> tr("{0} years old", days / 365)
         }
     }
 }

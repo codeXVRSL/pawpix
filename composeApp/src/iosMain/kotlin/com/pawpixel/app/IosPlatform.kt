@@ -122,6 +122,7 @@ class IosPlatform(private val host: IosHost) : Platform {
     @OptIn(kotlin.experimental.ExperimentalNativeApi::class)
     override val isDebugBuild: Boolean = kotlin.native.Platform.isDebugBinary
 
+    override fun systemLanguage(): String = (NSLocale.preferredLanguages.firstOrNull() as? String) ?: "en"
     override fun nowMs(): Long = (NSDate().timeIntervalSince1970 * 1000).toLong()
 
     override fun utcOffsetMs(atMs: Long): Long =

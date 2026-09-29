@@ -136,6 +136,8 @@ data class Settings(
     val awayUntilMs: Long = 0,
     /** The owner closed the "add the widget" tip. */
     val widgetTipDismissed: Boolean = false,
+    /** "en", "fil", or "" to follow the phone's language. */
+    val language: String = "",
     val pro: Boolean = false,
     /** Local minute to start "sleepy" night mode. */
     val nightStart: Int = 22 * 60,

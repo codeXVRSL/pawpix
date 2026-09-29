@@ -135,6 +135,8 @@ class AndroidPlatform(private val context: Context) : Platform {
         alarms.setAndAllowWhileIdle(AlarmManager.RTC, at, WidgetTickReceiver.pendingIntent(context))
     }
 
+    override fun systemLanguage(): String = java.util.Locale.getDefault().language
+
     override fun widgetInstalled(): Boolean = runCatching {
         android.appwidget.AppWidgetManager.getInstance(context)
             .getAppWidgetIds(android.content.ComponentName(context, com.pawpixel.app.widget.PetWidgetReceiver::class.java)).isNotEmpty()

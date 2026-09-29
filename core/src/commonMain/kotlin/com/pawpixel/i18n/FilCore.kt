@@ -1,0 +1,117 @@
+package com.pawpixel.i18n
+
+/**
+ * Filipino for the app's own words used by the care engine (moods, reminders, health, progress).
+ * Everyday Filipino as spoken in the Philippines, English loanwords kept where people use them
+ * ("vet", "Done"). Should be reviewed by a native speaker before release.
+ */
+object FilCore {
+    val map: Map<String, String> = mapOf(
+        // Task kinds and default names
+        "Feed" to "Pakain",
+        "Fresh water" to "Malinis na tubig",
+        "Walk" to "Lakad",
+        "Play" to "Laro",
+        "Medicine" to "Gamot",
+        "Groom" to "Paliguan at suklayin",
+        "Clean litter" to "Linisin ang litter",
+        "Vaccine" to "Bakuna",
+        "Deworming" to "Purga",
+        "Tick & flea" to "Garapata at pulgas",
+        "Vet check-up" to "Check-up sa vet",
+        "Anti-rabies shot" to "Bakuna kontra rabies",
+        "Tick & flea prevention" to "Pangontra sa garapata at pulgas",
+        "Heartworm prevention" to "Pangontra sa heartworm",
+        "5-in-1 vaccine" to "5-in-1 na bakuna",
+        "FVRCP vaccine" to "FVRCP na bakuna",
+        "Fed" to "Napakain na",
+        "Refilled water" to "Napalitan ang tubig",
+        "Walked" to "Nailakad na",
+        "Played" to "Nakipaglaro na",
+        "Gave medicine" to "Nabigyan ng gamot",
+        "Groomed" to "Naayusan na",
+        "Cleaned litter" to "Nalinis ang litter",
+        "Vaccinated" to "Nabakunahan",
+        "Dewormed" to "Napurga na",
+        "Gave tick & flea care" to "Nabigyan ng pangontra",
+        "Saw the vet" to "Nadala sa vet",
+        "Dog" to "Aso",
+        "Cat" to "Pusa",
+        "Other" to "Iba pa",
+        "Your pet" to "Ang alaga mo",
+
+        // Moods
+        "{0} is sleeping" to "Tulog si {0}",
+        "{0} is being looked after" to "May nag-aalaga kay {0}",
+        "{0} misses you" to "Nami-miss ka ni {0}",
+        "{0} is hungry" to "Gutom na si {0}",
+        "{0} is thirsty" to "Nauuhaw si {0}",
+        "{0} wants a walk" to "Gustong maglakad ni {0}",
+        "{0} wants to play" to "Gustong maglaro ni {0}",
+        "The litter needs cleaning" to "Kailangan nang linisin ang litter",
+        "{0} needs grooming" to "Kailangan nang ayusan si {0}",
+        "Time for {0}'s {1}" to "Oras na ng {1} ni {0}",
+        "{0}'s {1} is due" to "Takdang araw na ng {1} ni {0}",
+        "{0} is happy!" to "Masaya si {0}!",
+        "{0} is doing fine" to "Ayos lang si {0}",
+
+        // Reminders
+        "{0} still needs {1}." to "Kailangan pa rin ni {0} ang {1}.",
+        "{0} is getting hungry. Tap Done after feeding." to "Nagugutom na si {0}. I-tap ang Done pagkatapos magpakain.",
+        "{0} is ready for a walk!" to "Handa nang maglakad si {0}!",
+        "Time for {0}'s {1}." to "Oras na ng {1} ni {0}.",
+        "Time to {0} for {1}." to "Oras na para sa {0} ni {1}.",
+        "{0}'s {1} is due in 3 days. A good time to book the vet." to "Sa loob ng 3 araw na ang {1} ni {0}. Magandang oras para mag-book sa vet.",
+        "{0}'s {1} is due today." to "Ngayong araw ang {1} ni {0}.",
+        "{0}'s {1} is still due. Tap Done in PawPixel once it's given." to "Hindi pa tapos ang {1} ni {0}. I-tap ang Done sa PawPixel kapag naibigay na.",
+        "{0}'s {1} are due in 3 days. A good time to book the vet." to "Sa loob ng 3 araw na ang {1} ni {0}. Magandang oras para mag-book sa vet.",
+        "{0}'s {1} are still due. Tap Done in PawPixel once they're given." to "Hindi pa tapos ang {1} ni {0}. I-tap ang Done sa PawPixel kapag naibigay na.",
+        "{0}'s {1} are due today." to "Ngayong araw ang {1} ni {0}.",
+        "Health care · {0}" to "Kalusugan · {0}",
+        "Care time · {0}" to "Oras ng alaga · {0}",
+        "{0}. Tap Done when it's all done." to "{0}. I-tap ang Done kapag tapos na lahat.",
+        " and " to " at ",
+
+        // Progress
+        "{0} is being looked after while you're away." to "May nag-aalaga kay {0} habang wala ka.",
+        "Tap Done when you care for {0}, and it shows here." to "I-tap ang Done tuwing inaalagaan mo si {0}, at makikita mo rito.",
+        "You cared for {0} every day this week!" to "Inalagaan mo si {0} araw-araw ngayong linggo!",
+        "You cared for {0} on {1} of the last 7 days." to "Inalagaan mo si {0} sa {1} sa huling 7 araw.",
+        "No date yet" to "Wala pang petsa",
+        "Due today" to "Ngayong araw",
+        "Overdue by 1 day" to "Lampas na nang 1 araw",
+        "Overdue by {0} days" to "Lampas na nang {0} araw",
+        "Due in 1 day" to "Bukas na",
+        "Due in {0} days" to "Sa loob ng {0} araw",
+        "Due in 1 month" to "Sa loob ng 1 buwan",
+        "Due in {0} months" to "Sa loob ng {0} buwan",
+        "A whole year of care" to "Isang buong taon ng pag-aalaga",
+        "Two years of care" to "Dalawang taon ng pag-aalaga",
+        "{0} days of care" to "{0} araw ng pag-aalaga",
+        "About the same as {0}" to "Halos pareho noong {0}",
+        "{0} kg since {1}" to "{0} kg mula noong {1}",
+        "Not born yet" to "Hindi pa ipinapanganak",
+        "{0} days old" to "{0} araw na",
+        "{0} weeks old" to "{0} linggo na",
+        "{0} months old" to "{0} buwan na",
+        "{0} years old" to "{0} taon na",
+
+        // Dates
+        "Jan" to "Ene", "Feb" to "Peb", "Apr" to "Abr", "Jun" to "Hun", "Jul" to "Hul", "Aug" to "Ago",
+        "Sep" to "Set", "Oct" to "Okt", "Nov" to "Nob", "Dec" to "Dis",
+        "today {0}" to "ngayon {0}",
+        "tomorrow {0}" to "bukas {0}",
+        "yesterday {0}" to "kahapon {0}",
+        "in {0} days, {1}" to "sa loob ng {0} araw, {1}",
+
+        // Backups and server
+        "That file is too big to be a PawPixel backup." to "Masyadong malaki ang file para maging backup ng PawPixel.",
+        "That file isn't a PawPixel backup." to "Hindi backup ng PawPixel ang file na iyan.",
+        "This backup is from a newer PawPixel. Update the app, then try again." to "Galing ang backup sa mas bagong PawPixel. I-update ang app, saka subukan ulit.",
+        "This backup has no pets in it." to "Walang alaga sa backup na ito.",
+        "Can't reach PawPixel's server. Check your connection." to "Hindi maabot ang server ng PawPixel. Tingnan ang koneksyon mo.",
+        "Please sign in" to "Mag-sign in muna",
+        "Please sign in again" to "Mag-sign in ulit",
+        "That invite code is wrong or has expired. Check it with the person who sent it." to "Mali o expired na ang invite code. Tanungin ang nagpadala nito.",
+    )
+}

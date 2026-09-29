@@ -49,10 +49,10 @@ class LocalClock(private val offsetAt: (Long) -> Long) {
 
         private val MONTHS = listOf("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")
 
-        /** "Sep 29, 2026" */
+        /** "Sep 29, 2026" (month in the owner's language). */
         fun shortDate(day: Long): String {
             val (y, m, d) = civil(day)
-            return "${MONTHS[m - 1]} $d, $y"
+            return "${com.pawpixel.i18n.tr(MONTHS[m - 1])} $d, $y"
         }
 
         fun fixed(offsetMs: Long) = LocalClock { offsetMs }

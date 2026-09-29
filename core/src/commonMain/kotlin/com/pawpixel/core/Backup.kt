@@ -1,5 +1,8 @@
 package com.pawpixel.core
 
+import com.pawpixel.i18n.tr
+import com.pawpixel.i18n.trName
+
 /**
  * A single-file backup of everything PawPixel keeps: pets, care tasks, history, settings and each
  * pet's small face and photo crop (so its pixel pet can be redrawn). It's a JSON file the owner
@@ -39,12 +42,12 @@ object Backup {
 
     /** Reads a backup; throws [NotABackup] with a message fit for the owner if it isn't one. */
     fun decode(text: String): Contents {
-        if (text.length > MAX_BYTES) throw NotABackup("That file is too big to be a PawPixel backup.")
+        if (text.length > MAX_BYTES) throw NotABackup(tr("That file is too big to be a PawPixel backup."))
         val root = runCatching { Json.parse(text) }.getOrNull()
-        if (root == null || root["format"].str != FORMAT) throw NotABackup("That file isn't a PawPixel backup.")
-        if ((root["version"].int ?: 0) > VERSION) throw NotABackup("This backup is from a newer PawPixel. Update the app, then try again.")
+        if (root == null || root["format"].str != FORMAT) throw NotABackup(tr("That file isn't a PawPixel backup."))
+        if ((root["version"].int ?: 0) > VERSION) throw NotABackup(tr("This backup is from a newer PawPixel. Update the app, then try again."))
         val state = StateCodec.decode(root["state"].stringify())
-        if (state.pets.isEmpty()) throw NotABackup("This backup has no pets in it.")
+        if (state.pets.isEmpty()) throw NotABackup(tr("This backup has no pets in it."))
         val petIds = state.pets.map { it.id }.toSet()
         val files = (root["files"] as? Json.Obj)?.fields.orEmpty().mapNotNull { (path, v) ->
             val m = FILE_PATH.matchEntire(path) ?: return@mapNotNull null

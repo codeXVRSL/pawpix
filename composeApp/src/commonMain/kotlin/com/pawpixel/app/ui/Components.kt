@@ -29,6 +29,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
 import com.pawpixel.app.toImageBitmap
 import com.pawpixel.core.LocalClock
+import com.pawpixel.i18n.tr
 import com.pawpixel.sprite.PixelImage
 
 object PawColors {
@@ -122,8 +123,8 @@ fun relativeDay(ms: Long, now: Long, clock: LocalClock): String {
     val d = clock.dayIndex(ms) - clock.dayIndex(now)
     val t = formatTime(ms, clock)
     return when (d) {
-        0L -> "today $t"; 1L -> "tomorrow $t"; -1L -> "yesterday $t"
-        in 2L..6L -> "in $d days, $t"
+        0L -> tr("today {0}", t); 1L -> tr("tomorrow {0}", t); -1L -> tr("yesterday {0}", t)
+        in 2L..6L -> tr("in {0} days, {1}", d, t)
         else -> LocalClock.shortDate(clock.dayIndex(ms))
     }
 }
