@@ -109,6 +109,10 @@ fun SpriteView(image: PixelImage?, modifier: Modifier = Modifier, animate: Boole
     )
 }
 
+/** The owner uses a big font (Android's largest sizes, iOS's accessibility sizes): side-by-side rows stack. */
+@Composable
+fun largeText(): Boolean = androidx.compose.ui.platform.LocalDensity.current.fontScale >= 1.5f
+
 /** A section title, marked as a heading so screen readers can jump between sections. */
 @Composable
 fun SectionTitle(text: String, modifier: Modifier = Modifier) {

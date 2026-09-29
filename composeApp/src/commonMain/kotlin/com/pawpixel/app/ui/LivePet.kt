@@ -11,7 +11,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableLongStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
@@ -89,20 +89,32 @@ fun LivePet(
     val layout = current.layout
     val icons = current.icons
     val brain = remember(layout, seed) { layout.brain(seed) }
-    /** Last pose drawn, for tap hit-testing (plain holder: must not trigger recomposition). */
-    val lastPose = remember(brain) { arrayOfNulls<PetPose>(1) }
     val petted by rememberUpdatedState(onPetted)
+    val currentMood by rememberUpdatedState(mood)
 
-    // One clock for the lifetime of this pet view, independent of brain rebuilds.
-    var now by remember { mutableLongStateOf(0L) }
-    LaunchedEffect(Unit) {
-        val start = withFrameMillis { it }
-        while (true) withFrameMillis { now = it - start }
+    // One clock for the lifetime of this pet view, independent of brain rebuilds. A plain holder:
+    // reading it (taps, reactions) must not redraw anything.
+    val clock = remember { longArrayOf(-1L, 0L) } // start, now
+    /**
+     * The pose on screen. The pet thinks every frame, but the stage is redrawn only when what it
+     * shows changes by a pet pixel (a few times a second), not 60 times a second: a budget phone
+     * keeps its time for scrolling and its battery.
+     */
+    var shown by remember(brain) { mutableStateOf<PetPose?>(null) }
+    LaunchedEffect(brain) {
+        while (true) withFrameMillis { t ->
+            if (clock[0] < 0) clock[0] = t
+            clock[1] = t - clock[0]
+            val pose = brain.pose(clock[1], currentMood).onPixelGrid()
+            if (pose != shown) shown = pose
+        }
     }
-    LaunchedEffect(reaction, brain) { reaction?.let { brain.react(it.event, now) } }
+    LaunchedEffect(reaction, brain) { reaction?.let { brain.react(it.event, clock[1]) } }
 
-    val floorColor = PawColors.Sand
-    val floorLine = Color(0xFFE9C99A)
+    // In dark mode a sand floor glared under the pet: a dusky one instead.
+    val dark = androidx.compose.foundation.isSystemInDarkTheme()
+    val floorColor = if (dark) Color(0xFF4A3D5C) else PawColors.Sand
+    val floorLine = if (dark) Color(0xFF6B5A80) else Color(0xFFE9C99A)
     val petLabel = tr("Give pets")
     Canvas(
         modifier
@@ -110,11 +122,11 @@ fun LivePet(
             // A picture only shows the mood: say it, and let screen-reader users give pets too.
             .semantics {
                 if (description != null) contentDescription = description
-                onClick(label = petLabel) { brain.react(PetEvent.Petted, now); petted(); true }
+                onClick(label = petLabel) { brain.react(PetEvent.Petted, clock[1]); petted(); true }
             }
             .pointerInput(brain) {
                 detectTapGestures { tap ->
-                    val pose = lastPose[0] ?: return@detectTapGestures
+                    val pose = shown ?: return@detectTapGestures
                     val px = pixelScale(size.width.toFloat(), layout.stageWidth)
                     val left = (size.width - px * layout.stageWidth) / 2
                     val top = size.height - px * layout.stageHeight
@@ -124,15 +136,13 @@ fun LivePet(
                     val (b0, b2) = if (pose.flip) (w - layout.body[2]) to (w - layout.body[0]) else layout.body[0] to layout.body[2]
                     val petTopY = layout.petTop + pose.lift + layout.body[1]
                     if (sx >= pose.x + b0 - 4 && sx <= pose.x + b2 + 4 && sy >= petTopY - 8 && sy <= layout.floorY + 2) {
-                        brain.react(PetEvent.Petted, now)
+                        brain.react(PetEvent.Petted, clock[1])
                         petted()
                     }
                 }
             },
     ) {
-        val t = now // read state here so only drawing (not composition) reruns each frame
-        val pose = brain.pose(t, mood)
-        lastPose[0] = pose
+        val pose = shown ?: return@Canvas // read here, so a new pose redraws the stage without recomposing
         val px = pixelScale(size.width, layout.stageWidth)
         val left = ((size.width - px * layout.stageWidth) / 2).roundToInt().toFloat()
         // Bottom-aligned: any spare height becomes sky, not floor.

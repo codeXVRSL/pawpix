@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.imePadding
@@ -99,19 +100,20 @@ fun TaskEditorScreen(app: AppScope, state: AppState, pet: Pet, taskId: String?, 
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         // Save sits in the top bar, always visible; the form below can be long.
+        val title = when {
+            original == null && health -> tr("New health item")
+            original == null -> tr("New care task")
+            health -> tr("Edit health item")
+            else -> tr("Edit care task")
+        }
+        val big = largeText()
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             BackButton(app)
-            ScreenTitle(
-                when {
-                    original == null && health -> tr("New health item")
-                    original == null -> tr("New care task")
-                    health -> tr("Edit health item")
-                    else -> tr("Edit care task")
-                },
-                modifier = Modifier.weight(1f),
-            )
+            // A big font puts the title on its own line instead of three squeezed ones.
+            if (big) Spacer(Modifier.weight(1f)) else ScreenTitle(title, modifier = Modifier.weight(1f))
             Button(onClick = save, enabled = !saving) { Text(tr("Save")) }
         }
+        if (big) ScreenTitle(title)
 
         // All kinds visible at once (wrapping), so Medicine or Litter aren't hidden off-screen.
         FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {

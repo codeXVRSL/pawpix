@@ -166,6 +166,30 @@ class QualityTest {
         assertEquals(key, pet.copy(name = "Mochi Jr", careDays = listOf(1, 2), milestoneSeen = 7).lookKey)
     }
 
+    @Test fun thePetIsRedrawnOnlyWhenItMovesAWholePixel() {
+        val a = com.pawpixel.sprite.PetPose(com.pawpixel.sprite.Frame.BASE, 10.2, 0, false, com.pawpixel.sprite.Behavior.WALK,
+            listOf(com.pawpixel.sprite.Effect(com.pawpixel.sprite.EffectKind.HEART, 3.4, -5.6)))
+        // Sub-pixel steps look the same on screen: no redraw.
+        assertEquals(a.onPixelGrid(), a.copy(x = 9.8, effects = listOf(com.pawpixel.sprite.Effect(com.pawpixel.sprite.EffectKind.HEART, 2.6, -6.4))).onPixelGrid())
+        assertEquals(10.0, a.onPixelGrid().x)
+        assertEquals(com.pawpixel.sprite.Effect(com.pawpixel.sprite.EffectKind.HEART, 3.0, -6.0), a.onPixelGrid().effects.single())
+        // A whole pixel, a new frame, turning around or a new effect: redraw.
+        for (moved in listOf(a.copy(x = 11.1), a.copy(frame = com.pawpixel.sprite.Frame.BREATHE), a.copy(flip = true), a.copy(lift = -1), a.copy(effects = emptyList()))) {
+            assertNotEquals(a.onPixelGrid(), moved.onPixelGrid())
+        }
+        // A day of the pet going about its life on the stage changes the picture far less often than 60 times a second.
+        val head = PixelImage(24, 24, IntArray(576) { 0xFFB07A4A.toInt() })
+        val layout = com.pawpixel.sprite.StageLayout(com.pawpixel.sprite.Chibi.build(com.pawpixel.sprite.PetArt(head, Species.DOG)))
+        val brain = layout.brain(7)
+        var changes = 0; var last: com.pawpixel.sprite.PetPose? = null
+        val frames = 60 * 60 // a minute at 60 fps
+        for (i in 0 until frames) {
+            val p = brain.pose(i * 1000L / 60, Mood.CONTENT).onPixelGrid()
+            if (p != last) { changes++; last = p }
+        }
+        assertTrue(changes < frames / 3, "redrawn $changes times in $frames frames")
+    }
+
     @Test fun spritesAreDescribedWithNameAndMood() {
         assertEquals("Pixel Mochi, hungry", MoodEngine.describe("Mochi", Mood.HUNGRY))
         assertEquals("Pixel Mochi, sleepy", MoodEngine.describe("Mochi", Mood.SLEEPY))

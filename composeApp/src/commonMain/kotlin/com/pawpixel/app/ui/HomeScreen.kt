@@ -48,10 +48,24 @@ import com.pawpixel.i18n.trName
 fun HomeScreen(app: AppScope, state: AppState) {
     var showProDialog by remember { mutableStateOf(false) }
     Column(Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding().padding(horizontal = 16.dp)) {
-        Row(Modifier.fillMaxWidth().padding(vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
-            Text("PawPixel", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Black, modifier = Modifier.weight(1f).semantics { heading() })
+        val title = @Composable { m: Modifier ->
+            Text("PawPixel", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Black, maxLines = 1, modifier = m.semantics { heading() })
+        }
+        val links = @Composable {
             if (state.pets.isNotEmpty()) TextButton(onClick = { app.navigate(Screen.PetMap) }) { Text(tr("Pet map")) }
             TextButton(onClick = { app.navigate(Screen.Settings) }) { Text(tr("Settings")) }
+        }
+        if (largeText()) {
+            // A big font: the name on its own line, never broken in two.
+            Column(Modifier.fillMaxWidth().padding(vertical = 8.dp)) {
+                title(Modifier)
+                Row(verticalAlignment = Alignment.CenterVertically) { links() }
+            }
+        } else {
+            Row(Modifier.fillMaxWidth().padding(vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+                title(Modifier.weight(1f))
+                links()
+            }
         }
         if (state.pets.isEmpty()) {
             PixelCard(Modifier.fillMaxWidth()) {

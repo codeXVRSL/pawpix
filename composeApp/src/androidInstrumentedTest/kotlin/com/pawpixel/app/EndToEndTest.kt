@@ -544,11 +544,11 @@ class EndToEndTest {
                 retrying { find(By.text("Chelsea")).click() }
                 Thread.sleep(1_500)
                 shot("large-pet")
-                repeat(3) { i -> accessibilityScroll(true); Thread.sleep(700); shot("large-pet-${i + 2}") }
+                repeat(3) { i -> pageDown(); Thread.sleep(900); shot("large-pet-${i + 2}") }
                 retrying { scrollTo(By.text("+ Add care task")).click() }
                 Thread.sleep(1_000)
                 shot("large-task-editor")
-                accessibilityScroll(true); Thread.sleep(700)
+                pageDown(); Thread.sleep(900)
                 shot("large-task-editor-2")
                 device.pressBack()
                 scrollTo(By.text("+ Add care task"))
@@ -556,7 +556,7 @@ class EndToEndTest {
                 retrying { find(By.text("Settings")).click() }
                 Thread.sleep(800)
                 shot("large-settings")
-                accessibilityScroll(true); Thread.sleep(700)
+                pageDown(); Thread.sleep(900)
                 shot("large-settings-2")
                 device.pressBack()
                 find(By.text("Chelsea"))
@@ -579,7 +579,7 @@ class EndToEndTest {
                 retrying { find(By.text("Chelsea")).click() }
                 Thread.sleep(1_500)
                 shot("dark-pet")
-                repeat(2) { i -> accessibilityScroll(true); Thread.sleep(700); shot("dark-pet-${i + 2}") }
+                repeat(2) { i -> pageDown(); Thread.sleep(900); shot("dark-pet-${i + 2}") }
                 device.pressBack()
                 retrying { find(By.text("Settings")).click() }
                 Thread.sleep(800)
@@ -731,6 +731,17 @@ class EndToEndTest {
     }
 
     private fun choosers() = Intents.getIntents().count { it.action == Intent.ACTION_CHOOSER }
+
+    /**
+     * Scrolls the app's screen down about half a page with a finger drag, within the app's own
+     * window (its size follows `wm size`, unlike the cached display size).
+     */
+    private fun pageDown() {
+        val bounds = Rect().also { r -> instr.uiAutomation.rootInActiveWindow?.getBoundsInScreen(r) }
+        if (bounds.height() <= 0) return
+        val x = bounds.centerX()
+        device.swipe(x, bounds.top + bounds.height() * 3 / 4, x, bounds.top + bounds.height() * 3 / 10, 30)
+    }
 
     /** Runs a shell command as the shell user (settings, wm, dumpsys) and returns its output. */
     private fun shell(command: String): String =

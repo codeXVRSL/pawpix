@@ -27,7 +27,16 @@ data class PetPose(
     val flip: Boolean,
     val behavior: Behavior,
     val effects: List<Effect>,
-)
+) {
+    /**
+     * This pose on whole pet pixels, as it's drawn. Two poses that look the same on screen are
+     * equal, so a view redraws only when the picture changes (a few times a second, not 60).
+     */
+    fun onPixelGrid(): PetPose = copy(
+        x = kotlin.math.round(x),
+        effects = effects.map { it.copy(x = kotlin.math.round(it.x), y = kotlin.math.round(it.y)) },
+    )
+}
 
 /** Things that happen to the pet. */
 sealed interface PetEvent {

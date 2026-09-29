@@ -104,9 +104,10 @@ fun PetScreen(app: AppScope, state: AppState, pet: Pet) {
         // Gentle progress: days cared for this week, never a streak that breaks.
         val week = CareStats.week(state, pet.id, app.now, app.repo.clock)
         val summary = CareStats.summary(state, pet.id, app.now, app.repo.clock)
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
+        // Side by side, or (big font) the summary under the dots rather than squeezed next to them.
+        FlowRow(
             horizontalArrangement = Arrangement.spacedBy(8.dp),
+            maxItemsInEachRow = if (largeText()) 1 else Int.MAX_VALUE,
             modifier = Modifier.semantics(mergeDescendants = true) { contentDescription = summary },
         ) {
             Text(week.joinToString(" ") { if (it) "●" else "○" }, color = MaterialTheme.colorScheme.primary)

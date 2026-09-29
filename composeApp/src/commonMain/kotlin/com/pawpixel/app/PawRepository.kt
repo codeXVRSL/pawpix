@@ -138,10 +138,13 @@ class PawRepository(val platform: Platform) {
     private fun publishLocked(state: AppState) {
         applyLanguage(state) // the phone's language may have changed while PawPixel was running
         val now = now()
-        files.writeText(WidgetSnapshot.FILE_NAME, WidgetSnapshot.build(state, now, clock).stringify())
+        val snapshot = WidgetSnapshot.build(state, now, clock)
+        files.writeText(WidgetSnapshot.FILE_NAME, snapshot.stringify())
         _widgetRevision.value = _widgetRevision.value + 1
         platform.scheduleReminders(ReminderPlanner.plan(state, now, clock))
-        val nextChange = state.pets.mapNotNull { MoodEngine.nextChangeMs(state, it.id, now, clock) }.minOrNull()
+        // The next mood change is the second point of a pet's timeline (as MoodEngine.nextChangeMs),
+        // already worked out for the snapshot: working out every timeline again took as long again.
+        val nextChange = snapshot["pets"].list.mapNotNull { it["timeline"].list.getOrNull(1)?.get("at")?.long }.minOrNull()
         platform.refreshWidgets(nextChange)
     }
 
