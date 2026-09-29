@@ -14,3 +14,4 @@ web/u2netp.onnx
 web/ort-wasm-simd-threaded.wasm
 pawpixel.properties
 .claude/
+__pycache__/

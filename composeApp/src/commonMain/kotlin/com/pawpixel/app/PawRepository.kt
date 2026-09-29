@@ -371,7 +371,7 @@ class PawRepository(val platform: Platform) {
                 writeWidgetPoses(pet, art, "$STAGING/")
             }
         }
-        withContext(Dispatchers.Default) { mutex.withLock {
+        family.replacingPets { withContext(Dispatchers.Default) { mutex.withLock {
             // Restored pets come back unshared: the family's copy may have moved on since the backup, and
             // re-sharing (Family sharing) merges them without deleting anyone's newer records.
             val restored = contents.state.copy(
@@ -396,9 +396,8 @@ class PawRepository(val platform: Platform) {
             // Keep this phone's own "Pro" (purchases belong to the store account, not the file).
             _state.value = restored
             publishLocked(restored)
-        } }
+        } } }
 
-        family.forgetBase()
         _cardRevision.value = _cardRevision.value + 1
         return contents.state.pets.size
     }

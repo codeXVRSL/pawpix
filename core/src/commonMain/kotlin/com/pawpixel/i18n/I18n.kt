@@ -34,12 +34,16 @@ object I18n {
 
     fun has(en: String): Boolean = filipino.containsKey(en)
 
+    /** Fills {0}, {1}... in one pass, so a pet named "{1}" stays "{1}". */
     fun format(template: String, args: Array<out Any?>): String {
         if (args.isEmpty()) return template
-        var out = template
-        args.forEachIndexed { i, a -> out = out.replace("{$i}", a.toString()) }
-        return out
+        return PLACEHOLDER.replace(template) { m ->
+            val i = m.groupValues[1].toInt()
+            if (i < args.size) args[i].toString() else m.value
+        }
     }
+
+    private val PLACEHOLDER = Regex("\\{(\\d)\\}")
 }
 
 /**

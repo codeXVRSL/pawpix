@@ -22,11 +22,16 @@ class LocalClock(private val offsetAt: (Long) -> Long) {
     fun offsetMs(ms: Long): Long = offsetAt(ms)
     fun dayIndex(ms: Long): Long = (ms + offsetAt(ms)).floorDiv(DAY_MS)
     fun minuteOfDay(ms: Long): Int = ((ms + offsetAt(ms)).mod(DAY_MS) / MINUTE_MS).toInt()
-    fun startOfDay(day: Long): Long {
-        val guess = day * DAY_MS
-        return guess - offsetAt(guess)
+    fun startOfDay(day: Long): Long = at(day, 0)
+
+    /**
+     * The moment the local clock shows [minute] on [day]. The offset is the one in force at that
+     * moment (found in two steps), so on a day the clocks change, 8:00 AM is still 8:00 AM.
+     */
+    fun at(day: Long, minute: Int): Long {
+        val local = day * DAY_MS + minute * MINUTE_MS
+        return local - offsetAt(local - offsetAt(local))
     }
-    fun at(day: Long, minute: Int): Long = startOfDay(day) + minute * MINUTE_MS
 
     companion object {
         /** Year, month (1-12), day of month for a day index (days since 1970-01-01). Howard Hinnant's algorithm. */

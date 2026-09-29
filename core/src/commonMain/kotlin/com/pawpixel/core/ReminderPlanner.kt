@@ -219,9 +219,10 @@ object ReminderPlanner {
     /**
      * Several health items for the same pet at the same moment (deworming and tick & flea due the
      * same day) become one notification: "Mochi's deworming and tick & flea prevention are due today."
+     * Only the same kind of note: one item's heads-up and another's "due today" at the same moment stay apart.
      */
     private fun bundle(reminders: List<Reminder>, state: AppState): List<Reminder> =
-        reminders.groupBy { it.petId to it.atMs }.values.map { group ->
+        reminders.groupBy { Triple(it.petId, it.atMs, it.atMs - (it.slots.firstOrNull() ?: it.atMs)) }.values.map { group ->
             if (group.size == 1) return@map group[0]
             val first = group[0]
             val pet = state.pet(first.petId)?.name ?: tr("Your pet")

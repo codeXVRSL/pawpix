@@ -153,6 +153,9 @@ object HouseholdSync {
             val changedHere = l?.let(::view) != b?.let(::view) &&
                 !(l != null && b != null && theirsIsLater(l.editedAtMs, view(b), r?.let(::view), r?.editedAtMs ?: 0))
             when {
+                // Someone else removed it from the family (its tasks and records went with it on the
+                // server): even if it was edited here, it stays on this phone unshared, with its history.
+                l != null && b != null && r == null -> unshared += id
                 changedHere && l != null -> { keptPets[id] = l; if (r?.let(::view) != view(l)) push.upsertPets += l }
                 // Stopped sharing (or deleted) here: take it out of the family. Everyone else keeps a copy.
                 changedHere && l == null -> { if (remoteAll.pets.any { it.id == id }) push.deletePetIds += id }

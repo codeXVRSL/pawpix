@@ -112,6 +112,11 @@ s, r = call("POST", "/rest/v1/household_pets", dict(pet, look="1;ffffff;" + "0" 
             prefer="resolution=merge-duplicates,return=representation")
 check("a clock far ahead can't win every later edit", s in (200, 201) and r[0]["edited_at_ms"] < 9_999_999_999_999, (s, r))
 check("Jamaica sees Chelsea's pixel look", rows(jamaica, "household_pets", hid)[0]["look"].startswith("1;ffffff"))
+for table, key in (("household_pets", "chelsea"), ("household_tasks", "feed")):
+    s, r = call("PATCH", f"/rest/v1/{table}?household_id=eq.{hid}&id=eq.{key}", {"updated_by": None, "edited_at_ms": 9_999_999_999_999},
+                jamaica["token"], prefer="return=representation")
+    check(f"an edit claiming no author is still stamped ({table})",
+          s == 200 and r[0]["updated_by"] == jamaica["id"] and r[0]["edited_at_ms"] < 9_999_999_999_999, (s, r))
 
 rec = {"household_id": hid, "id": "cjam1", "task_id": "feed", "at_ms": 1_790_000_000_000, "local_minute": 422, "local_day": 20717}
 s, r = call("POST", "/rest/v1/household_completions", dict(rec, done_by=save["id"]), jamaica["token"])

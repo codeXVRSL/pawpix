@@ -117,6 +117,13 @@ class FamilyModel(private val repo: PawRepository, private val map: PetMapModel)
         _status.value = FamilyStatus(notice = notice)
     }
 
+    /**
+     * Replaces the phone's pets ([block]: a restore) with no sync in flight, then forgets the base.
+     * A sync that pulled before the swap and merged after it would see the family's pets missing
+     * here and delete them for everyone.
+     */
+    suspend fun <T> replacingPets(block: suspend () -> T): T = syncLock.withLock { block().also { forgetBase() } }
+
     /** After restoring a backup or joining: the phone's pets are no longer what the household last saw from it. */
     fun forgetBase() {
         files.delete(BASE)
