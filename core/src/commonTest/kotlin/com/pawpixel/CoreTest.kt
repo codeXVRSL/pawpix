@@ -146,9 +146,11 @@ class CoreTest {
         val snap = WidgetSnapshot.build(base, at(9 * 60), clock)
         val p = snap["pets"].list.single()
         assertEquals("hungry", p["timeline"].list.first()["mood"].str)
-        assertEquals("t1", p["action"]["taskId"].str)
-        assertEquals("happy", p["action"]["timelineIfDone"].list.first()["mood"].str)
+        val action = p["actions"].list.first()
+        assertEquals("t1", action["taskId"].str)
+        assertEquals("happy", action["ifDone"]["timeline"].list.first()["mood"].str)
         assertEquals("sprites/p1/happy.png", p["sprites"]["happy"].str)
+        assertEquals("t1", WidgetSnapshot.face(snap, at(9 * 60))!!.actionTaskId)
         // Round-trips through the JSON text the widgets actually read.
         assertEquals(snap, Json.parse(snap.stringify()))
     }

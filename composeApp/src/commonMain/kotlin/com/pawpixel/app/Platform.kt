@@ -53,6 +53,14 @@ interface Platform {
     fun widgetInstalled(): Boolean? = null
     /** Asks the launcher to add the widget (Android launchers that support it). False if it can't. */
     fun pinWidget(): Boolean = false
+    /**
+     * A one-time tip when this phone seems to stop PawPixel in the background (reminders that never
+     * arrived, see [com.pawpixel.core.ReminderDelivery]); null when all is well or it was dismissed.
+     */
+    fun backgroundTip(): BackgroundTip? = null
+    /** Opens the phone's setting for running PawPixel in the background (the app's details as a fallback). */
+    fun openBackgroundSettings() {}
+    fun dismissBackgroundTip() {}
     /** Opens the system share sheet for a file (PNG, GIF, or a JSON backup). */
     fun shareFile(bytes: ByteArray, fileName: String, mimeType: String)
     /** Opens the share sheet for a short text (a family invite). */
@@ -77,6 +85,9 @@ interface Platform {
      */
     suspend fun signInForMap(hashedNonce: String, googleWebClientId: String): MapIdentity?
 }
+
+/** What to tell the owner: the phone's make ("Xiaomi"; null if it doesn't say) and where its background setting is. */
+data class BackgroundTip(val brand: String?, val steps: String)
 
 /** An identity token from Google or Apple, exchanged for a map session by the server. */
 data class MapIdentity(val provider: String, val idToken: String)

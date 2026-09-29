@@ -1,5 +1,7 @@
 <resources>
-    <string name="app_name">PawPixel</string>
-    <string name="widget_description">Your pixel pet and how they feel right now</string>
-    <string name="channel_care">Care reminders</string>
+    <string name="app_name" translatable="false">PawPixel</string>
+    <string name="widget_description">Your pixel pet, how they feel right now, and a Done button when care is due</string>
+    <!-- The widget picker's sample (Android 12 to 14; Android 15 shows your own pet). -->
+    <string name="widget_preview_name" translatable="false">Mochi</string>
+    <string name="widget_preview_caption">Mochi is happy!</string>
 </resources>

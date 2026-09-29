@@ -80,19 +80,24 @@ object MoodEngine {
         return if (s <= e) minute in s until e else minute >= s || minute < e
     }
 
-    fun read(state: AppState, petId: String, nowMs: Long, clock: LocalClock): MoodReading {
+    /** Where each of the pet's tasks stands at [nowMs] (with learned times), as [read] sees them. */
+    fun statuses(state: AppState, petId: String, nowMs: Long, clock: LocalClock): List<TaskStatus> {
         val pet = state.pet(petId)
-        val name = pet?.name ?: tr("Your pet")
+        return state.tasksFor(petId).map { t ->
+            val slots = AdaptiveTiming.effectiveSlots(t, state.completions, nowMs, clock)
+            CareEngine.status(t, state.completions, nowMs, clock, slots, pet)
+        }
+    }
+
+    /** [known]: [statuses] at the same moment, when the caller already has them. */
+    fun read(state: AppState, petId: String, nowMs: Long, clock: LocalClock, known: List<TaskStatus>? = null): MoodReading {
+        val name = state.pet(petId)?.name ?: tr("Your pet")
         if (state.isAway(nowMs)) {
             val night = isNight(clock.minuteOfDay(nowMs), state.settings)
             return if (night) MoodReading(Mood.SLEEPY, tr("{0} is sleeping", name), 100, null)
             else MoodReading(Mood.CONTENT, tr("{0} is being looked after", name), 100, null)
         }
-        val tasks = state.tasksFor(petId)
-        val statuses = tasks.map { t ->
-            val slots = AdaptiveTiming.effectiveSlots(t, state.completions, nowMs, clock)
-            CareEngine.status(t, state.completions, nowMs, clock, slots, pet)
-        }
+        val statuses = known ?: statuses(state, petId, nowMs, clock)
         // Health care weighs lightly: only the most overdue item counts, and only one with a known
         // date (a record or a planned puppy/kitten dose), so a pet never gets sad over paperwork.
         val daily = statuses.filter { !it.task.kind.health }.map { it to penalty(it, nowMs, state.settings.awayUntilMs) }
@@ -144,16 +149,12 @@ object MoodEngine {
         stepMs: Long = 15 * MINUTE_MS,
     ): List<MoodPoint> {
         val points = ArrayList<MoodPoint>()
-        var t = nowMs
-        val end = nowMs + horizonMs
-        while (t <= end) {
+        for (t in samples(nowMs, horizonMs, stepMs)) {
             val r = read(state, petId, t, clock)
             val last = points.lastOrNull()
             if (last == null || last.mood != r.mood || last.caption != r.caption) {
                 points += MoodPoint(t, r.mood, r.caption)
             }
-            // Align later samples to the step grid so timelines are stable between refreshes.
-            t = if (t == nowMs) (nowMs / stepMs + 1) * stepMs else t + stepMs
         }
         return points
     }
@@ -172,7 +173,13 @@ object MoodEngine {
         Mood.SAD -> tr("missing you")
     })
 
-    /** First time after [nowMs] when the mood or caption changes, or null within the horizon. */
-    fun nextChangeMs(state: AppState, petId: String, nowMs: Long, clock: LocalClock): Long? =
-        timeline(state, petId, nowMs, clock).getOrNull(1)?.atMs
+    /**
+     * [nowMs], then every [stepMs] on a fixed grid up to [horizonMs] later. The grid keeps timelines
+     * stable between refreshes, and always samples local midnight (a multiple of 15 minutes from UTC
+     * in every time zone in use).
+     */
+    fun samples(nowMs: Long, horizonMs: Long, stepMs: Long = 15 * MINUTE_MS): Sequence<Long> {
+        val end = nowMs + horizonMs
+        return sequenceOf(nowMs) + generateSequence((nowMs.floorDiv(stepMs) + 1) * stepMs) { it + stepMs }.takeWhile { it <= end }
+    }
 }

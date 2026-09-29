@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The widget's Done button before Android 12 (Android 12+ uses Material You colours). -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
+    <solid android:color="@color/widget_button" />
+    <corners android:radius="24dp" />
+</shape>

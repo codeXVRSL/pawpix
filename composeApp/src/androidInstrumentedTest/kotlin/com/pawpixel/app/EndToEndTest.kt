@@ -28,6 +28,8 @@ import androidx.test.uiautomator.UiDevice
 import androidx.test.uiautomator.UiObject2
 import androidx.test.uiautomator.Until
 import com.pawpixel.app.widget.PetWidgetReceiver
+import androidx.compose.ui.unit.dp
+import androidx.glance.appwidget.compose
 import kotlinx.coroutines.runBlocking
 import org.hamcrest.CoreMatchers.not
 import org.junit.After
@@ -505,6 +507,137 @@ class EndToEndTest {
             check(!device.hasObject(By.textContains("Problem loading widget"))) { "the widget failed to load" }
         }
 
+        step("widget: good layouts from a one-row strip to 4x3, light and dark") {
+            // Launchers can't be resized from a test, so the widget is drawn off-screen at each size,
+            // exactly as a launcher would (Glance → RemoteViews → views).
+            val sizes = listOf("2x1" to (110 to 50), "4x1" to (250 to 50), "2x2" to (120 to 120), "2x3" to (120 to 200),
+                "3x2" to (180 to 120), "4x2" to (250 to 120), "4x3" to (250 to 190))
+            for ((name, wh) in sizes) {
+                val texts = renderWidget(name, wh.first, wh.second, dark = false)
+                check("Chelsea" in texts || texts.any { it.startsWith("Chelsea ") }) { "$name shows no Chelsea: $texts" }
+            }
+            renderWidget("2x2", 120, 120, dark = true)
+            renderWidget("4x2", 250, 120, dark = true)
+        }
+
+        step("widget: Done on the widget logs care and cheers the pet up") {
+            goHome()
+            // Something due right now: fresh water that was due half an hour ago.
+            val minute = repo.clock.minuteOfDay(repo.now())
+            val water = com.pawpixel.core.CareTask("e2ewater", petId, com.pawpixel.core.TaskKind.WATER, "Fresh water",
+                listOf((minute - 30).coerceAtLeast(0)), anchorDay = 0, adaptive = false, createdAtMs = 0)
+            runBlocking { repo.update { com.pawpixel.core.StateOps.upsertTask(it, water) } }
+            val face = widgetFace()
+            if (face?.actionTaskId == null) throw AssertionError("no Done on the widget: $face")
+            val label = "${face.actionEmoji} Done"
+            note("widget button: $label for ${face.actionTaskId}")
+            renderWidget("4x1-due", 250, 50, dark = false)
+            renderWidget("2x3-due", 120, 200, dark = false)
+            renderWidget("4x2-due", 250, 120, dark = true)
+            device.pressHome()
+            val button = find(By.text(label), 20_000)
+            Thread.sleep(1_000)
+            shot("widget-due")
+            val before = repo.state.value.completions.count { it.taskId == face.actionTaskId }
+            button.click()
+            waitFor("Done from the widget", 20_000) { repo.state.value.completions.count { it.taskId == face.actionTaskId } == before + 1 }
+            // The widget redraws from the new file (the pet cheers up; another task may be due next).
+            val after = widgetFace()
+            note("widget after Done: ${after?.caption}, button for ${after?.actionTitle}")
+            if (after?.actionTaskId != face.actionTaskId) check(device.wait(Until.gone(By.text(label)), 15_000)) { "the widget still offers '$label'" }
+            Thread.sleep(1_500)
+            shot("widget-after-done")
+        }
+
+        step("widget: tapping it opens the pet's page") {
+            // From the app, Home shows the widget's page (Home on the launcher would switch pages).
+            goHome()
+            device.pressHome()
+            retrying { find(By.desc(Pattern.compile("Chelsea: .*"))).click() }
+            check(device.wait(Until.hasObject(By.pkg(ctx.packageName)), 15_000)) { "the app didn't open" }
+            scrollTo(By.text("+ Add care task")) // only on a pet's page
+            shot("widget-opens-pet")
+            goHome()
+        }
+
+        step("widget: each widget can show a different pet") {
+            val awm = AppWidgetManager.getInstance(ctx)
+            val widgetId = awm.getAppWidgetIds(ComponentName(ctx, PetWidgetReceiver::class.java)).first()
+            // A second pet (a family pet, drawn from Chelsea's look).
+            val chelsea = repo.state.value.pet(petId)!!
+            val kiko = chelsea.copy(id = "e2ekiko", name = "Kiko", shared = false)
+            runBlocking { repo.update { it.copy(pets = it.pets + kiko) } }
+            repo.redrawPoses(listOf(kiko.id))
+            ctx.startActivity(Intent(ctx, com.pawpixel.app.widget.PetPickerActivity::class.java)
+                .putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, widgetId).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+            find(By.text("Which pet should this widget show?"))
+            find(By.text("Whoever needs you most"))
+            Thread.sleep(500)
+            shot("widget-pick-pet")
+            retrying { find(By.text("Kiko")).click() }
+            goHome()
+            device.pressHome()
+            find(By.desc(Pattern.compile("Kiko: .*")), 20_000)
+            Thread.sleep(1_000)
+            shot("widget-kiko")
+            // Kiko leaves: the widget goes back to the first pet.
+            runBlocking { repo.deletePet(kiko.id) }
+            find(By.desc(Pattern.compile("Chelsea: .*")), 20_000)
+        }
+
+        step("bundled reminder: one notification, and its Done logs everything in it") {
+            if (!device.hasObject(By.pkg(ctx.packageName))) scenario = ActivityScenario.launch(MainActivity::class.java)
+            val st = repo.state.value
+            val open = st.tasksFor(petId).filter { !it.kind.health && it.remindersOn }.mapNotNull { t ->
+                val s = com.pawpixel.core.CareEngine.status(t, st.completions, repo.now(), repo.clock)
+                (s.slotTimes.getOrNull(s.done) ?: s.nextDueMs)?.let { com.pawpixel.core.ReminderRef(t.id, it) }
+            }.take(2)
+            check(open.size == 2) { "need two open tasks: $open" }
+            val names = open.map { st.task(it.taskId)!!.title.lowercase() }
+            val before = completions()
+            ctx.sendBroadcast(
+                Intent(ctx, ReminderReceiver::class.java).setAction(ReminderReceiver.ACTION_SHOW)
+                    .putExtra(ReminderReceiver.EXTRA_TASK, open[0].taskId)
+                    .putExtra(ReminderReceiver.EXTRA_REFS, com.pawpixel.core.ReminderRef.encodeAll(open))
+                    .putExtra(ReminderReceiver.EXTRA_ID, 4343)
+                    .putExtra(ReminderReceiver.EXTRA_TITLE, "🐾 Care time · Chelsea")
+                    .putExtra(ReminderReceiver.EXTRA_BODY, "Chelsea: ${names.joinToString(" and ")}. Tap Done when it's all done."),
+            )
+            device.openNotification()
+            val title = find(By.textContains("Care time"), 15_000)
+            Thread.sleep(800)
+            shot("bundled-notification")
+            val done = device.findObject(By.text(Pattern.compile("(?i)done")))
+                ?: run { title.click(); null }
+            if (done != null) {
+                done.click()
+                waitFor("both logged from one Done") { completions() == before + 2 }
+                check(open.all { r -> repo.state.value.completions.any { it.taskId == r.taskId } })
+            } else {
+                note("notification actions hidden; opened the app from it instead")
+            }
+            device.pressBack()
+            if (!device.hasObject(By.pkg(ctx.packageName))) scenario = ActivityScenario.launch(MainActivity::class.java)
+        }
+
+        step("reminders that never arrived: a one-time tip for this phone's background setting") {
+            // As if two reminders were lost while the phone had PawPixel stopped.
+            AndroidPlatform.reminderPrefs(ctx).edit().putInt(AndroidPlatform.KEY_LOST, 2).commit()
+            goHome()
+            retrying { find(By.text("Settings")).click() }
+            find(By.text("Some reminders didn't arrive"))
+            Thread.sleep(500)
+            shot("background-tip")
+            retrying { find(By.text("Open settings")).click() }
+            // The emulator isn't one of the makers with their own screen: the app's details page.
+            waitFor("the phone's settings opened") { Intents.getIntents().any { it.action == android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS } }
+            retrying { find(By.text("Got it")).click() }
+            check(device.wait(Until.gone(By.text("Some reminders didn't arrive")), 5_000)) { "tip still shown" }
+            check(AndroidPlatform.reminderPrefs(ctx).getBoolean(AndroidPlatform.KEY_TIP_DISMISSED, false)) { "dismissal not saved" }
+            device.pressBack()
+            find(By.text("Chelsea"))
+        }
+
         step("performance: frame times on Chelsea's page (living pet idle, then scrolling)") {
             goHome()
             retrying { find(By.text("Chelsea")).click() }
@@ -686,13 +819,13 @@ class EndToEndTest {
                 Thread.sleep(if (stuck > 0) 600L else 400L)
             }
         }
-        // Then UiAutomator's own scrolling of the page, both ways.
-        for (dir in listOf(androidx.test.uiautomator.Direction.DOWN, androidx.test.uiautomator.Direction.UP)) {
-            val found = runCatching {
-                device.findObject(By.scrollable(true))?.apply { setGestureMargin(device.displayHeight / 8) }
-                    ?.scrollUntil(dir, Until.findObject(selector))
-            }.getOrNull()
-            if (found != null) { note("found by UiAutomator scrolling after $moved accessibility scrolls: $selector"); return found }
+        // Then UiAutomator's own gestures on the scrolling page (the accessibility scroll sometimes
+        // stops early on a pet's page while the pet moves).
+        device.findObject(By.scrollable(true))?.let { page ->
+            for (direction in listOf(androidx.test.uiautomator.Direction.DOWN, androidx.test.uiautomator.Direction.UP)) {
+                runCatching { page.setGestureMargin(device.displayHeight / 8); page.scrollUntil(direction, Until.findObject(selector)) }
+                    .getOrNull()?.let { note("found by scrolling the page after $moved accessibility scrolls: $selector"); return it }
+            }
         }
         // Last resort: drag the page like a finger, down the middle.
         val x = device.displayWidth / 2
@@ -701,7 +834,7 @@ class EndToEndTest {
             repeat(30) {
                 device.findObject(selector)?.let { note("found by dragging after $moved accessibility scrolls: $selector"); return it }
                 val (from, to) = if (up) 0.8 to 0.25 else 0.25 to 0.8
-                device.swipe(x, (device.displayHeight * from).toInt(), x, (device.displayHeight * to).toInt(), 25)
+                device.swipe(x, (device.displayHeight * from).toInt(), x, (device.displayHeight * to).toInt(), 50)
                 Thread.sleep(500)
             }
         }
@@ -737,6 +870,57 @@ class EndToEndTest {
             Thread.sleep(250)
         }
         throw AssertionError("timed out waiting for: $what")
+    }
+
+    /** What the pinned widget shows now (its pet is the first one), from the file it reads. */
+    private fun widgetFace(): com.pawpixel.core.WidgetFace? {
+        val text = repo.platform.files.readText(com.pawpixel.core.WidgetSnapshot.FILE_NAME) ?: return null
+        return com.pawpixel.core.WidgetSnapshot.face(com.pawpixel.core.Json.parse(text), repo.now())
+    }
+
+    /**
+     * Draws the widget at [widthDp] x [heightDp] the way a launcher does (Glance's RemoteViews applied
+     * to real views), on a wallpaper-blue backdrop, saves a screenshot, and returns its texts.
+     */
+    private fun renderWidget(name: String, widthDp: Int, heightDp: Int, dark: Boolean): List<String> {
+        val config = android.content.res.Configuration(ctx.resources.configuration).apply {
+            uiMode = (uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK.inv()) or
+                (if (dark) android.content.res.Configuration.UI_MODE_NIGHT_YES else android.content.res.Configuration.UI_MODE_NIGHT_NO)
+        }
+        val themed = ctx.createConfigurationContext(config)
+        val remote = runBlocking {
+            com.pawpixel.app.widget.PetWidget().compose(
+                themed, size = androidx.compose.ui.unit.DpSize(widthDp.dp, heightDp.dp),
+                state = androidx.datastore.preferences.core.emptyPreferences(),
+            )
+        }
+        val density = ctx.resources.displayMetrics.density
+        val pad = (16 * density).toInt()
+        val w = (widthDp * density).toInt()
+        val h = (heightDp * density).toInt()
+        val texts = ArrayList<String>()
+        instr.runOnMainSync {
+            val frame = android.widget.FrameLayout(themed)
+            val view = remote.apply(themed, frame)
+            frame.addView(view, android.widget.FrameLayout.LayoutParams(w, h))
+            frame.measure(android.view.View.MeasureSpec.makeMeasureSpec(w, android.view.View.MeasureSpec.EXACTLY),
+                android.view.View.MeasureSpec.makeMeasureSpec(h, android.view.View.MeasureSpec.EXACTLY))
+            frame.layout(0, 0, w, h)
+            val bitmap = android.graphics.Bitmap.createBitmap(w + 2 * pad, h + 2 * pad, android.graphics.Bitmap.Config.ARGB_8888)
+            android.graphics.Canvas(bitmap).apply {
+                drawColor(if (dark) 0xFF1B2433.toInt() else 0xFF7FA7D9.toInt())
+                translate(pad.toFloat(), pad.toFloat())
+                frame.draw(this)
+            }
+            File(out, "widget-$name${if (dark) "-dark" else ""}.png").outputStream().use { bitmap.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, it) }
+            fun collect(v: android.view.View) {
+                if (v is android.widget.TextView && v.visibility == android.view.View.VISIBLE) texts += v.text.toString()
+                if (v is android.view.ViewGroup) for (i in 0 until v.childCount) collect(v.getChildAt(i))
+            }
+            collect(frame)
+        }
+        note("widget $name${if (dark) " dark" else ""}: $texts")
+        return texts
     }
 
     private fun choosers() = Intents.getIntents().count { it.action == Intent.ACTION_CHOOSER }

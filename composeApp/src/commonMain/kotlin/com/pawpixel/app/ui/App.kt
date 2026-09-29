@@ -137,6 +137,15 @@ fun App(repo: PawRepository, registerBack: ((() -> Boolean) -> (() -> Unit))? = 
         LaunchedEffect(Unit) {
             if (repo.state.value.pets.isEmpty() && stack == listOf(Screen.Home)) stack = listOf(Screen.Home, Screen.CreatePet)
         }
+        // A widget tap: that pet's page ("pawpixel://pet/<id>"), or making one if there's none yet.
+        val link by repo.link.collectAsState()
+        LaunchedEffect(link) {
+            val url = link ?: return@LaunchedEffect
+            repo.consumeLink()
+            val pet = repo.state.value.pet(url.substringAfter("pawpixel://pet/", ""))
+            if (pet != null) stack = listOf(Screen.Home, Screen.PetDetail(pet.id))
+            else if (repo.state.value.pets.isEmpty()) stack = listOf(Screen.Home, Screen.CreatePet)
+        }
 
         val back: () -> Boolean = {
             if (stack.size > 1) { stack = stack.dropLast(1); true } else false

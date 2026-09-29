@@ -1,11 +1,19 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+  2x2 by default; resizes from a 2x1 strip up to a large 5x4. No setup needed when placed: it shows the
+  first pet, and the owner can pick another from the widget's settings (reconfigure) any time.
+-->
 <appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
     android:description="@string/widget_description"
     android:initialLayout="@layout/glance_default_loading_layout"
+    android:previewLayout="@layout/widget_preview"
+    android:previewImage="@drawable/widget_preview"
+    android:configure="com.pawpixel.app.widget.PetPickerActivity"
+    android:widgetFeatures="reconfigurable|configuration_optional"
     android:minWidth="110dp"
     android:minHeight="110dp"
     android:minResizeWidth="110dp"
-    android:minResizeHeight="60dp"
+    android:minResizeHeight="50dp"
     android:maxResizeWidth="530dp"
     android:maxResizeHeight="450dp"
     android:targetCellWidth="2"

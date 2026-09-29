@@ -11,7 +11,6 @@ import com.pawpixel.core.HouseholdSync
 import com.pawpixel.core.Ids
 import com.pawpixel.core.LocalClock
 import com.pawpixel.core.Mood
-import com.pawpixel.core.MoodEngine
 import com.pawpixel.core.Pet
 import com.pawpixel.core.ReminderPlanner
 import com.pawpixel.core.Settings
@@ -135,18 +134,24 @@ class PawRepository(val platform: Platform) {
     /** Rebuilds widget data and reminders from the current state. Safe to call any time (e.g. app start). */
     suspend fun publish() = withContext(Dispatchers.Default) { mutex.withLock { publishLocked(_state.value) } }
 
-    private fun publishLocked(state: AppState) {
+    private suspend fun publishLocked(state: AppState) {
         applyLanguage(state) // the phone's language may have changed while PawPixel was running
         val now = now()
-        val snapshot = WidgetSnapshot.build(state, now, clock)
+        // Two days of widget timelines is real work: off the main thread (update() and publish() already are).
+        val (snapshot, reminders) = withContext(Dispatchers.Default) {
+            WidgetSnapshot.build(state, now, clock) to ReminderPlanner.plan(state, now, clock)
+        }
         files.writeText(WidgetSnapshot.FILE_NAME, snapshot.stringify())
         _widgetRevision.value = _widgetRevision.value + 1
-        platform.scheduleReminders(ReminderPlanner.plan(state, now, clock))
-        // The next mood change is the second point of a pet's timeline (as MoodEngine.nextChangeMs),
-        // already worked out for the snapshot: working out every timeline again took as long again.
-        val nextChange = snapshot["pets"].list.mapNotNull { it["timeline"].list.getOrNull(1)?.get("at")?.long }.minOrNull()
-        platform.refreshWidgets(nextChange)
+        platform.scheduleReminders(reminders)
+        platform.refreshWidgets(WidgetSnapshot.nextChangeMs(snapshot, now))
     }
+
+    /** A link into the app ("pawpixel://pet/<id>" from a widget) for the screens to follow, until [consumeLink]. */
+    private val _link = MutableStateFlow<String?>(null)
+    val link: StateFlow<String?> = _link.asStateFlow()
+    fun openLink(url: String) { _link.value = url }
+    fun consumeLink() { _link.value = null }
 
     /** Applies Done taps made on the iOS widget while the app was closed. */
     suspend fun ingestWidgetTaps() {

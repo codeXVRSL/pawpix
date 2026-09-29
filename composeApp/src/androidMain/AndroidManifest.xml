@@ -40,13 +40,31 @@
             <meta-data android:name="android.appwidget.provider" android:resource="@xml/pet_widget_info" />
         </receiver>
 
+        <!-- Which pet a widget shows (the widget's settings; configuration is optional). -->
+        <activity
+            android:name=".widget.PetPickerActivity"
+            android:exported="true"
+            android:excludeFromRecents="true"
+            android:taskAffinity=""
+            android:theme="@style/Theme.PawPixel">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_CONFIGURE" />
+            </intent-filter>
+        </activity>
+
         <receiver android:name=".ReminderReceiver" android:exported="false" />
         <receiver android:name=".WidgetTickReceiver" android:exported="false" />
+        <!-- Replans reminders and redraws widgets whenever alarms were cleared or times, words or permissions changed. -->
         <receiver android:name=".BootReceiver" android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <!-- Some Xiaomi, Oppo and HTC phones send these instead on a fast restart. -->
+                <action android:name="android.intent.action.QUICKBOOT_POWERON" />
+                <action android:name="com.htc.intent.action.QUICKBOOT_POWERON" />
                 <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
                 <action android:name="android.intent.action.TIMEZONE_CHANGED" />
+                <action android:name="android.intent.action.TIME_SET" />
+                <action android:name="android.intent.action.LOCALE_CHANGED" />
                 <action android:name="android.app.action.SCHEDULE_EXACT_ALARM_PERMISSION_STATE_CHANGED" />
             </intent-filter>
         </receiver>

@@ -81,6 +81,7 @@ fun SettingsScreen(app: AppScope, state: AppState) {
             if (on) app.repo.platform.requestNotificationPermission()
             app.launch { app.repo.setSettings(s.copy(remindersEnabled = on)) }
         }
+        if (s.remindersEnabled) BackgroundTipCard(app.repo.platform)
 
         GroupLabel(tr("Language"))
         FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
