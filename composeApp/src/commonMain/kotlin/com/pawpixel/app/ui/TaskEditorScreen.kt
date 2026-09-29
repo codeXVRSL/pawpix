@@ -34,6 +34,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.pawpixel.core.AppState
+import com.pawpixel.core.HealthPlan
 import com.pawpixel.core.Ids
 import com.pawpixel.core.MINUTES_PER_DAY
 import com.pawpixel.core.Pet
@@ -143,6 +144,13 @@ fun TaskEditorScreen(app: AppScope, state: AppState, pet: Pet, taskId: String?, 
                     task = task.copy(everyDays = d, anchorDay = if (health) task.anchorDay else today, slots = if (d > 1) task.slots.take(1) else task.slots)
                 }, label = { Text(tr(label)) })
             }
+        }
+
+        if (health && HealthPlan.scheduleFor(pet, task) != null) {
+            Text(
+                tr("{0}'s first doses follow the typical schedule for their age; this repeat comes after. Rename the item to use only the repeat.", pet.name),
+                style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.secondary,
+            )
         }
 
         if (health && original == null) {

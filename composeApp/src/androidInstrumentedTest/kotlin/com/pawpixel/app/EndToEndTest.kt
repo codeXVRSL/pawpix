@@ -1,6 +1,7 @@
 package com.pawpixel.app
 
 import android.Manifest
+import android.graphics.Rect
 import android.app.Activity
 import android.app.Instrumentation
 import android.appwidget.AppWidgetManager
@@ -158,23 +159,69 @@ class EndToEndTest {
             find(By.text("Care"))
         }
 
-        step("health reminders: add the usual set, record a shot given a month ago") {
+        /** The Done button in the same card as [row] (the nearest one vertically). */
+        fun doneNextTo(row: UiObject2): UiObject2 =
+            device.findObjects(By.text("Done")).minByOrNull { kotlin.math.abs(it.visibleBounds.centerY() - row.visibleBounds.centerY()) }
+                ?: throw AssertionError("no Done button next to ${row.text}")
+
+        step("health: a kitten's birthday gives her the first-year plan") {
             retrying { scrollTo(By.text("+ Add health reminders")).click() }
             find(By.textContains("born?"))
+            // "About how old" is the default, at 8 weeks: two taps make Chelsea a 10-week-old kitten.
+            retrying { find(By.desc("Older")).click() }
+            retrying { find(By.desc("Older")).click() }
+            find(By.textStartsWith("About 10 weeks old"))
             shot("health-birthday")
-            retrying { find(By.text("Adult / not sure")).click() }
-            // An adult cat: anti-rabies, FVRCP booster, deworming, tick & flea, check-up.
+            retrying { find(By.text("Save")).click() }
+            // A kitten: anti-rabies, FVRCP, deworming, tick & flea, check-up.
             waitFor("health tasks added") { repo.state.value.tasksFor(petId).count { it.kind.health } == 5 }
-            val vaccine = repo.state.value.tasksFor(petId).first { it.title == "Anti-rabies shot" }
-            val row = scrollTo(By.text("💉 Anti-rabies shot"))
-            find(By.text("Due today"))
-            // The Done button in the same row (the nearest one vertically).
-            val done = device.findObjects(By.text("Done")).minByOrNull { kotlin.math.abs(it.visibleBounds.centerY() - row.visibleBounds.centerY()) }
-                ?: throw AssertionError("no Done button next to the vaccine")
-            retrying { done.click() }
+            val today = repo.clock.dayIndex(repo.now())
+            check(repo.state.value.pet(petId)?.birthDay == today - 70) { "birthday not saved: ${repo.state.value.pet(petId)?.birthDay}" }
+            scrollTo(By.text("10 weeks old")) // her age, under her name
+            scrollTo(By.text("💉 FVRCP vaccine"))
+            find(By.textStartsWith("Dose 1 of 3"))
+            find(By.textStartsWith("Typical schedule"))
+            Thread.sleep(500)
+            shot("health-series")
+        }
+
+        step("health: record a dose with a photo of the vaccination card") {
+            val fvrcp = repo.state.value.tasksFor(petId).first { it.title == "FVRCP vaccine" }
+            retrying { doneNextTo(scrollTo(By.text("💉 FVRCP vaccine"))).click() }
             find(By.text("When was it done?"))
-            shot("health-when")
+            // The stubbed photo picker returns the test photo.
+            retrying { find(By.text("📷 Add photo")).click() }
+            find(By.text("Photo added"), 20_000)
+            shot("health-record")
+            retrying { find(By.text("Save")).click() }
+            waitFor("dose recorded") { repo.state.value.completions.any { it.taskId == fvrcp.id } }
+            val record = repo.state.value.completions.last { it.taskId == fvrcp.id }
+            waitFor("photo saved with it", 20_000) { repo.recordPhoto(petId, record.id) != null }
+            check(repo.recordPhoto(petId, record.id)!!.let { it[0] == 0xFF.toByte() && it[1] == 0xD8.toByte() }) { "record photo isn't a JPEG" }
+            scrollTo(By.text("💉 FVRCP vaccine"))
+            find(By.textStartsWith("Dose 2 of 3"))
+            val thumb = By.desc("Photo of Chelsea's card for FVRCP vaccine")
+            find(thumb, 20_000)
+            Thread.sleep(800) // the thumbnail decodes in the background
+            shot("health-thumbnail")
+            retrying { find(thumb).click() }
+            find(By.text("Delete photo"))
+            Thread.sleep(800)
+            shot("health-photo")
+            retrying { find(By.text("Close")).click() }
+            retrying { scrollTo(By.text("History (1)")).click() }
+            find(By.text("Dose 1"))
+            Thread.sleep(500)
+            shot("health-history")
+            retrying { find(By.text("Close")).click() }
+        }
+
+        step("health: an anti-rabies shot given a month ago is next due in 11 months") {
+            val vaccine = repo.state.value.tasksFor(petId).first { it.title == "Anti-rabies shot" }
+            retrying { doneNextTo(scrollTo(By.text("💉 Anti-rabies shot"))).click() }
+            find(By.text("When was it done?"))
             retrying { find(By.text("A month ago")).click() }
+            retrying { find(By.text("Save")).click() }
             waitFor("shot recorded") { repo.state.value.completions.any { it.taskId == vaccine.id } }
             val item = com.pawpixel.core.CareStats.healthDue(repo.state.value, petId, repo.now(), repo.clock).first { it.task.id == vaccine.id }
             val label = com.pawpixel.core.CareStats.dueLabel(item, repo.now(), repo.clock)
@@ -183,30 +230,35 @@ class EndToEndTest {
             scrollTo(By.text(label))
             Thread.sleep(500)
             shot("health-section")
-            // Photo of the vaccination card (the stubbed picker returns the test photo).
-            val cardRow = scrollTo(By.text("💉 Anti-rabies shot"))
-            val add = device.findObjects(By.text("📷 Add card photo")).minByOrNull { kotlin.math.abs(it.visibleBounds.top - cardRow.visibleBounds.bottom) }
-                ?: throw AssertionError("no card button")
-            retrying { add.click() }
-            waitFor("card saved", 20_000) { repo.card(vaccine) != null }
-            check(repo.card(vaccine)!!.let { it[0] == 0xFF.toByte() && it[1] == 0xD8.toByte() }) { "card isn't a JPEG" }
-            retrying { scrollTo(By.text("📷 View card")).click() }
-            find(By.text("Anti-rabies shot · Chelsea"))
-            shot("health-card")
-            retrying { find(By.text("Close")).click() }
             // Rabies rules and local help.
             retrying { scrollTo(By.text("Rabies rules and where to get shots")).click() }
             scrollTo(By.textContains("City Veterinary Office"))
             shot("health-local-help")
+            scrollTo(By.textStartsWith("March is Rabies Awareness Month"))
+            shot("health-local-help-2")
         }
 
-        step("weight: log a weigh-in and see it") {
-            retrying { scrollTo(By.text("+ Add today's weight")).click() }
+        step("weight: two weigh-ins draw the chart; the list opens") {
+            val today = repo.clock.dayIndex(repo.now())
+            retrying { scrollTo(By.text("+ Add weight")).click() }
+            retrying { find(By.clazz("android.widget.EditText")).text = "4.0" }
+            retrying { find(By.text("Yesterday")).click() }
+            shot("weight-dialog")
+            retrying { find(By.text("Save")).click() }
+            waitFor("first weigh-in saved") { repo.state.value.weightsFor(petId).singleOrNull()?.let { it.grams == 4000 && it.day == today - 1 } == true }
+            retrying { scrollTo(By.text("+ Add weight")).click() }
             retrying { find(By.clazz("android.widget.EditText")).text = "4.2" }
             retrying { find(By.text("Save")).click() }
-            waitFor("weight saved") { repo.state.value.weightsFor(petId).singleOrNull()?.grams == 4200 }
-            scrollTo(By.text("4.2 kg"))
+            waitFor("second weigh-in saved") { repo.state.value.weightsFor(petId).map { it.grams } == listOf(4000, 4200) }
+            scrollTo(By.descStartsWith("Weight chart"))
+            scrollTo(By.text("+ Add weight"))
+            find(By.text("4.2 kg"))
+            Thread.sleep(500)
             shot("weight")
+            retrying { scrollTo(By.text("All weigh-ins (2)")).click() }
+            scrollTo(By.text("Hide weigh-ins"))
+            shot("weight-list")
+            retrying { find(By.text("Hide weigh-ins")).click() }
         }
 
         step("milestone: 7 days of care is celebrated and shareable") {
@@ -278,6 +330,7 @@ class EndToEndTest {
             // Restore a backup of this phone with one change (bedtime 9 PM), picked from "Files".
             val state = repo.state.value
             val files = state.pets.flatMap { Backup.filesFor(state, it.id) }.mapNotNull { path -> repo.platform.files.readBytes(path)?.let { path to it } }.toMap()
+            check(files.keys.any { "/rec-" in it }) { "the dose's photo isn't in the backup: ${files.keys}" }
             val backup = File(ctx.cacheDir, "e2e-backup.json")
             backup.writeText(Backup.encode(state.copy(settings = state.settings.copy(nightStart = 21 * 60)), files, repo.now()))
             intending(hasAction(Intent.ACTION_OPEN_DOCUMENT)).respondWith(
@@ -290,6 +343,8 @@ class EndToEndTest {
             find(By.text("Restored 1 pet."), 20_000)
             check(repo.state.value.settings.nightStart == 21 * 60) { "backup not applied" }
             check(repo.state.value.pets.single().let { repo.art(it) } != null) { "pet's look not restored" }
+            val photoRecord = repo.state.value.completions.first { repo.recordPhoto(petId, it.id) != null }
+            note("record photo restored for ${photoRecord.id}")
             device.pressBack()
             find(By.text("Chelsea"))
         }
@@ -487,9 +542,14 @@ class EndToEndTest {
 
     /** Back to the home screen from wherever an earlier (failed) step left the app. */
     private fun goHome() {
-        repeat(5) {
-            if (device.hasObject(By.text("PawPixel")) && device.hasObject(By.text("Settings"))) return
-            device.pressBack(); Thread.sleep(400)
+        repeat(6) {
+            // Pressed back once too often (the screen was still settling): open the app again.
+            if (device.currentPackageName != ctx.packageName) {
+                scenario = ActivityScenario.launch(MainActivity::class.java)
+                Thread.sleep(1_500)
+            }
+            if (device.wait(Until.hasObject(By.text("Settings")), 1_500) == true && device.hasObject(By.text("PawPixel"))) return
+            device.pressBack(); Thread.sleep(600)
         }
     }
 
@@ -522,56 +582,50 @@ class EndToEndTest {
      */
     private fun scrollTo(selector: BySelector): UiObject2 {
         runCatching { find(selector, 3_000) }.getOrNull()?.let { return it }
+        var moved = 0
         for (forward in listOf(true, false)) {
-            repeat(15) {
+            // Just after a dialog closes, the active window can still be the dialog's: wait for the
+            // app's screen rather than giving up at once. Several failures in a row = the end.
+            var stuck = 0
+            for (i in 0 until 20) {
                 device.findObject(selector)?.let { return it }
-                val before = visibleTexts()
-                accessibilityScroll(forward)
-                Thread.sleep(400)
-                // CI emulators sometimes accept the accessibility scroll without moving the page: drag it
-                // instead, along the right-hand edge (away from the face-square photo).
-                if (visibleTexts() == before) {
-                    val x = device.displayWidth * 97 / 100
-                    val (from, to) = if (forward) 0.75 to 0.35 else 0.35 to 0.75
-                    device.swipe(x, (device.displayHeight * from).toInt(), x, (device.displayHeight * to).toInt(), 30)
-                    Thread.sleep(400)
-                }
+                if (accessibilityScroll(forward)) { stuck = 0; moved++ } else if (++stuck >= 8) break
+                Thread.sleep(if (stuck > 0) 600L else 400L)
             }
         }
-        return device.findObject(selector) ?: throw AssertionError("not found after scrolling: $selector")
+        // Last resort: drag the page like a finger, down the middle.
+        val x = device.displayWidth / 2
+        for (up in listOf(true, false)) {
+            repeat(12) {
+                device.findObject(selector)?.let { note("found by dragging after $moved accessibility scrolls: $selector"); return it }
+                val (from, to) = if (up) 0.75 to 0.35 else 0.35 to 0.75
+                device.swipe(x, (device.displayHeight * from).toInt(), x, (device.displayHeight * to).toInt(), 25)
+                Thread.sleep(500)
+            }
+        }
+        val seen = device.findObjects(By.textContains(" ")).mapNotNull { runCatching { it.text }.getOrNull() }.take(12)
+        return device.findObject(selector) ?: throw AssertionError("not found after scrolling ($moved scrolls): $selector; on screen: $seen")
     }
 
-    /** What's on screen now (texts and where they are), to tell whether a scroll moved anything. */
-    private fun visibleTexts(): List<String> = runCatching {
-        device.findObjects(By.pkg(instr.targetContext.packageName).textStartsWith("")).map { "${it.text}@${it.visibleBounds.top}" }
-    }.getOrDefault(emptyList())
-
     /**
-     * Scrolls the first scrollable container of the app one page. False when it can't move.
-     * Looks in the app's own windows, top one first: right after a dialog or the keyboard closes,
-     * the system's "active window" can still be the one that just went away.
+     * Scrolls the app's screen one page. False when it can't move, or when the active window isn't
+     * the app's full screen yet (a dialog still closing).
      */
     private fun accessibilityScroll(forward: Boolean): Boolean {
-        val appRoots = instr.uiAutomation.windows.sortedByDescending { it.layer }
-            .mapNotNull { it.root }.filter { it.packageName == instr.targetContext.packageName }
-        for (root in appRoots + listOfNotNull(instr.uiAutomation.rootInActiveWindow)) {
-            scrollable(root)?.let { node ->
+        val root = instr.uiAutomation.rootInActiveWindow ?: return false
+        val bounds = Rect().also { root.getBoundsInScreen(it) }
+        if (root.packageName != ctx.packageName || bounds.height() < device.displayHeight * 0.8) return false
+        val queue = ArrayDeque(listOf(root))
+        while (queue.isNotEmpty()) {
+            val node = queue.removeFirst()
+            if (node.isScrollable) {
                 return node.performAction(
                     if (forward) AccessibilityNodeInfo.ACTION_SCROLL_FORWARD else AccessibilityNodeInfo.ACTION_SCROLL_BACKWARD,
                 )
             }
-        }
-        return false
-    }
-
-    private fun scrollable(root: AccessibilityNodeInfo): AccessibilityNodeInfo? {
-        val queue = ArrayDeque(listOf(root))
-        while (queue.isNotEmpty()) {
-            val node = queue.removeFirst()
-            if (node.isScrollable) return node
             for (i in 0 until node.childCount) node.getChild(i)?.let { queue.addLast(it) }
         }
-        return null
+        return false
     }
 
     private fun waitFor(what: String, timeoutMs: Long = 15_000, condition: () -> Boolean) {

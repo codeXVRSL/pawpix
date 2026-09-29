@@ -35,6 +35,7 @@ import androidx.compose.ui.unit.dp
 import com.pawpixel.core.AdaptiveTiming
 import com.pawpixel.core.AppState
 import com.pawpixel.core.CareStats
+import com.pawpixel.core.HealthPlan
 import com.pawpixel.core.MoodEngine
 import com.pawpixel.core.Pet
 import com.pawpixel.core.Species
@@ -72,6 +73,9 @@ fun PetScreen(app: AppScope, state: AppState, pet: Pet) {
             Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
                 LivePet(art, pet.eyes, reading.mood, seed = pet.id.hashCode(), modifier = Modifier.fillMaxWidth(), reaction = reaction)
                 Text(pet.name, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Black)
+                pet.birthDay?.let { born ->
+                    Text(HealthPlan.ageLabel(born, app.repo.clock.dayIndex(app.now)), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
                 Text(reading.caption, textAlign = TextAlign.Center)
                 Text(
                     hearts(reading.score), style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.primary,
@@ -248,6 +252,9 @@ private fun TaskRow(app: AppScope, pet: Pet, s: TaskStatus, onDone: () -> Unit) 
 private fun RenameDialog(app: AppScope, pet: Pet, onClose: () -> Unit) {
     var name by remember { mutableStateOf(pet.name) }
     var species by remember { mutableStateOf(pet.species) }
+    var birthDay by remember { mutableStateOf(pet.birthDay) }
+    var askBirthday by remember { mutableStateOf(false) }
+    val today = app.repo.clock.dayIndex(app.now)
     AlertDialog(
         onDismissRequest = onClose,
         title = { Text(tr("Edit pet")) },
@@ -259,9 +266,16 @@ private fun RenameDialog(app: AppScope, pet: Pet, onClose: () -> Unit) {
                         FilterChip(selected = species == sp, onClick = { species = sp }, label = { Text(tr(sp.label)) })
                     }
                 }
+                BirthdayRow(birthDay, today) { askBirthday = true }
             }
         },
-        confirmButton = { TextButton(onClick = { app.launch { app.repo.renamePet(pet, name, species) }; onClose() }) { Text(tr("Save")) } },
+        confirmButton = { TextButton(onClick = { app.launch { app.repo.renamePet(pet, name, species, birthDay) }; onClose() }) { Text(tr("Save")) } },
         dismissButton = { TextButton(onClick = onClose) { Text(tr("Cancel")) } },
     )
+    if (askBirthday) {
+        BirthdayDialog(
+            name.ifBlank { pet.name }, birthDay, today, skipLabel = tr("Cancel"),
+            onSkip = { askBirthday = false }, onSave = { birthDay = it; askBirthday = false },
+        )
+    }
 }

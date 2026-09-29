@@ -26,7 +26,7 @@ object WidgetSnapshot {
     fun build(state: AppState, nowMs: Long, clock: LocalClock): Json {
         val pets = state.pets.map { pet ->
             val statuses = state.tasksFor(pet.id).map { t ->
-                CareEngine.status(t, state.completions, nowMs, clock, AdaptiveTiming.effectiveSlots(t, state.completions, nowMs, clock))
+                CareEngine.status(t, state.completions, nowMs, clock, AdaptiveTiming.effectiveSlots(t, state.completions, nowMs, clock), pet)
             }
             // Health care (a vaccine, a vet visit) is logged in the app, not with a quick tap on the widget.
             val urgent = statuses

@@ -95,7 +95,7 @@ fun JoinHouseholdLink(app: AppScope) {
 
 fun statusesFor(app: AppScope, state: AppState, petId: String): List<TaskStatus> =
     state.tasksFor(petId).map { t ->
-        CareEngine.status(t, state.completions, app.now, app.repo.clock, AdaptiveTiming.effectiveSlots(t, state.completions, app.now, app.repo.clock))
+        CareEngine.status(t, state.completions, app.now, app.repo.clock, AdaptiveTiming.effectiveSlots(t, state.completions, app.now, app.repo.clock), state.pet(petId))
     }
 
 @Composable

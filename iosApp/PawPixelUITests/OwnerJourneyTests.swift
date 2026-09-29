@@ -71,7 +71,11 @@ final class OwnerJourneyTests: XCTestCase {
             // Type like a person: tap the keys (lowercase, the field doesn't auto-capitalise).
             // If the text input session wasn't ready yet, nothing lands: wait and type again.
             let saveButton = element("Save \(petName)")
+            // The name may land even when that button is below the fold: the field's value says so.
+            let typed = app.descendants(matching: .any).matching(NSPredicate(format: "value CONTAINS %@", petName)).firstMatch
             for attempt in 1...3 {
+                // The typing tip can also appear late, over the keyboard.
+                if tipContinue.exists { tipContinue.tap(); sleep(1) }
                 for ch in petName {
                     let key = app.keys[String(ch)]
                     guard key.waitForExistence(timeout: 3) else { throw Failure("no key \(ch) on the keyboard") }
@@ -81,14 +85,15 @@ final class OwnerJourneyTests: XCTestCase {
                     guard key.isHittable else { log.append("      key \(ch) not ready"); break }
                     key.tap()
                 }
-                if saveButton.waitForExistence(timeout: 2) { log.append("      typed on attempt \(attempt)"); break }
+                if saveButton.waitForExistence(timeout: 2) || typed.exists { log.append("      typed on attempt \(attempt)"); break }
                 log.append("      attempt \(attempt): typing didn't land yet")
                 field.tap()
                 sleep(2)
             }
             shot("name-typed")
             let ret = app.keyboards.buttons["Return"].exists ? app.keyboards.buttons["Return"] : app.keyboards.buttons["return"]
-            if ret.exists { ret.tap() }
+            if tipContinue.exists { tipContinue.tap(); sleep(1) }
+            if ret.exists && ret.isHittable { ret.tap() }
             try scrollTo("Save").tap() // the header's Save
             allowNotificationsIfAsked()
             try find("Care", timeout: 30)
@@ -113,13 +118,42 @@ final class OwnerJourneyTests: XCTestCase {
             try scrollTo(query: element(containing: "Medicine"), "medicine task in the list")
         }
 
-        step("health reminders: add the usual set") {
+        step("health: a kitten's birthday gives her the first-year plan") {
             try scrollTo("+ Add health reminders").tap()
-            try find("Adult / not sure").tap()
-            try scrollTo(query: element(containing: "Anti-rabies shot"), "vaccine row")
-            guard element(containing: "Due today").waitForExistence(timeout: 10) else { throw Failure("vaccine not shown as due") }
+            // "About how old" is the default, at 8 weeks: two taps make the pet a 10-week-old kitten.
+            let older = element(containing: "Older")
+            guard older.waitForExistence(timeout: 10) else { throw Failure("birthday dialog didn't open") }
+            older.tap()
+            usleep(300_000)
+            older.tap()
+            guard element(containing: "About 10 weeks old").waitForExistence(timeout: 5) else { throw Failure("age didn't change to 10 weeks") }
+            shot("health-birthday")
+            try find("Save").tap()
+            try scrollTo(query: element(containing: "FVRCP vaccine"), "FVRCP row")
+            guard element(containing: "Dose 1 of 3").waitForExistence(timeout: 10) else { throw Failure("the first-year series isn't shown") }
             sleep(1)
-            shot("health-section")
+            shot("health-series")
+        }
+
+        step("weight: two weigh-ins draw the chart") {
+            // Without the keyboard: +1 kg four times (4.0 kg) yesterday, then +0.1 kg twice from it (4.2 kg) today.
+            try scrollTo("+ Add weight").tap()
+            let addKilo = element(containing: "Add 1 kg")
+            guard addKilo.waitForExistence(timeout: 10) else { throw Failure("weight dialog didn't open") }
+            for _ in 0..<4 { addKilo.tap(); usleep(200_000) }
+            try find("Yesterday").tap()
+            shot("weight-dialog")
+            try find("Save").tap()
+            try scrollTo("+ Add weight").tap()
+            let addTenth = element(containing: "Add 0.1 kg")
+            guard addTenth.waitForExistence(timeout: 10) else { throw Failure("weight dialog didn't open again") }
+            addTenth.tap(); usleep(200_000); addTenth.tap()
+            try find("Save").tap()
+            try scrollTo(query: element(containing: "Weight chart"), "weight chart")
+            try scrollTo("+ Add weight")
+            guard element("4.2 kg").waitForExistence(timeout: 10) else { throw Failure("latest weight not shown") }
+            sleep(1)
+            shot("weight")
         }
 
         step("before/after card opens the share sheet") {

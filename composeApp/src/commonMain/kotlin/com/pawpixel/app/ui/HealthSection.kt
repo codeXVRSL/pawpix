@@ -1,78 +1,75 @@
 package com.pawpixel.app.ui
 
-import androidx.compose.foundation.Image
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Button
-import androidx.compose.material3.DatePicker
-import androidx.compose.material3.DatePickerDialog
-import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.SelectableDates
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
-import androidx.compose.runtime.produceState
-import androidx.compose.ui.graphics.ImageBitmap
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.pawpixel.app.decodeImage
 import com.pawpixel.app.rememberPhotoPicker
 import com.pawpixel.core.AppState
 import com.pawpixel.core.CareStats
-import com.pawpixel.core.DAY_MS
+import com.pawpixel.core.CareTask
 import com.pawpixel.core.HealthItem
 import com.pawpixel.core.HealthPlan
+import com.pawpixel.core.HealthRecord
+import com.pawpixel.core.LocalClock
 import com.pawpixel.core.Pet
+import com.pawpixel.core.Species
 import com.pawpixel.i18n.tr
 import com.pawpixel.i18n.trName
 
 /**
- * The pet's health care: vaccines, deworming, tick & flea, check-ups. Each row says when it's due,
- * records when it was given, and can keep a photo of the vaccination card.
+ * The pet's health care: vaccines, deworming, tick & flea, check-ups. Each item says when it's next
+ * due (for a puppy or kitten, which dose of its series), records when it was given with an optional
+ * photo of the vaccination card, and keeps the history. Then the Philippine rules and where to go.
  */
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HealthSection(app: AppScope, state: AppState, pet: Pet) {
-    val clock = app.repo.clock
-    val today = clock.dayIndex(app.now)
-    val health = CareStats.healthDue(state, pet.id, app.now, clock)
+    val today = app.repo.clock.dayIndex(app.now)
+    val health = CareStats.healthDue(state, pet.id, app.now, app.repo.clock)
     var askBirthday by remember { mutableStateOf(false) }
 
     Text(tr("Health"), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-    pet.birthDay?.let { Text(tr("{0} is {1}.", pet.name, HealthPlan.ageLabel(it, today)), style = MaterialTheme.typography.bodySmall) }
     if (health.isEmpty()) {
         Text(
             tr("Keep track of {0}'s anti-rabies shot, other vaccines, deworming, tick & flea care and vet check-ups.", pet.name) + " " +
                 tr("PawPixel reminds you a few days before each is due."),
         )
-        Button(onClick = { askBirthday = true }) { Text(tr("+ Add health reminders")) }
+        Button(onClick = { if (pet.birthDay == null) askBirthday = true else app.launch { app.repo.addHealthCare(pet, null) } }) {
+            Text(tr("+ Add health reminders"))
+        }
+    } else if (health.any { it.scheduled }) {
+        Text(
+            tr("Typical schedule — confirm with your vet."),
+            style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.secondary, fontWeight = FontWeight.Bold,
+        )
     }
-    // Keyed by task, so each row keeps its own dialogs and picker when the order changes.
+    // Keyed by task, so each row keeps its own dialogs when the order changes.
     health.forEach { h -> key(h.task.id) { HealthRow(app, state, pet, h) } }
     if (health.isNotEmpty()) {
         TextButton(onClick = { app.navigate(Screen.EditTask(pet.id, null, health = true)) }) { Text(tr("+ Add health item")) }
@@ -83,167 +80,216 @@ fun HealthSection(app: AppScope, state: AppState, pet: Pet) {
             style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
     }
-    LocalHelpCard()
+    if (pet.species != Species.OTHER) PhilippineInfoCard(app)
 
     if (askBirthday) {
-        // Dates are UTC midnights in the picker; a local day index is the same number of days.
-        val picker = rememberDatePickerState(
-            initialSelectedDateMillis = pet.birthDay?.let { it * DAY_MS },
-            selectableDates = object : SelectableDates {
-                override fun isSelectableDate(utcTimeMillis: Long) = utcTimeMillis / DAY_MS <= today
-            },
+        BirthdayDialog(
+            pet.name, initial = null, today = today, skipLabel = tr("Adult / not sure"),
+            onSkip = { askBirthday = false; app.launch { app.repo.addHealthCare(pet, null) } },
+            onDismiss = { askBirthday = false },
+            onSave = { day -> askBirthday = false; app.launch { app.repo.addHealthCare(pet, day) } },
         )
-        DatePickerDialog(
-            onDismissRequest = { askBirthday = false },
-            confirmButton = {
-                TextButton(
-                    enabled = picker.selectedDateMillis != null,
-                    onClick = {
-                        val day = picker.selectedDateMillis?.let { it / DAY_MS }
-                        askBirthday = false
-                        app.launch { app.repo.addHealthCare(pet, day) }
-                    },
-                ) { Text(tr("Use this birthday")) }
-            },
-            dismissButton = {
-                TextButton(onClick = { askBirthday = false; app.launch { app.repo.addHealthCare(pet, null) } }) { Text(tr("Adult / not sure")) }
-            },
-        ) {
-            DatePicker(
-                state = picker,
-                title = { Text(tr("When was {0} born? A guess is fine.", pet.name), modifier = Modifier.padding(start = 24.dp, end = 12.dp, top = 16.dp)) },
-            )
-        }
     }
 }
 
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun HealthRow(app: AppScope, state: AppState, pet: Pet, h: HealthItem) {
     val clock = app.repo.clock
     val t = h.task
-    var askWhen by remember { mutableStateOf(false) }
-    var showCard by remember { mutableStateOf(false) }
-    var cardError by remember { mutableStateOf<String?>(null) }
-    val cardRevision by app.repo.cardRevision.collectAsState()
-    val hasCard = remember(t.id, cardRevision) { app.repo.hasCard(t) }
-    val pickCard = rememberPhotoPicker { bytes ->
-        if (bytes != null) app.launch {
-            cardError = if (app.repo.saveCard(t, bytes)) null else tr("Couldn't read that photo. Try another one.")
-        }
-    }
-    val given = state.completions.count { it.taskId == t.id }
-    val seriesLine = if (t.series.isNotEmpty() && given < t.series.size) tr("First-year series: dose {0} of {1}", given + 1, t.series.size) else null
+    var recording by remember { mutableStateOf(false) }
+    var history by remember { mutableStateOf(false) }
+    var viewing by remember { mutableStateOf<HealthRecord?>(null) }
+    var message by remember { mutableStateOf<String?>(null) }
+    val revision by app.repo.cardRevision.collectAsState()
+    val records = CareStats.healthRecords(state, t.id)
+    val latest = records.firstOrNull()
+    val latestHasPhoto = remember(latest?.completion?.id, revision) { latest != null && app.repo.hasRecordPhoto(t.petId, latest.completion.id) }
+    val name = trName(t.title)
 
     PixelCard(Modifier.fillMaxWidth(), color = MaterialTheme.colorScheme.background) {
-        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                    Text("${t.kind.emoji} ${trName(t.title)}", fontWeight = FontWeight.Bold)
+                    Text("${t.kind.emoji} $name", fontWeight = FontWeight.Bold)
                     Text(
-                        CareStats.dueLabel(h, app.now, clock),
+                        CareStats.dueLabel(h, app.now, clock), fontWeight = if (h.due) FontWeight.Bold else null,
                         color = if (h.due) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
                     )
-                    seriesLine?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.secondary) }
+                    val detail = listOfNotNull(
+                        h.dose?.let { tr("Dose {0} of {1}", it, h.doses) },
+                        h.dueMs?.let { formatDate(it, clock) },
+                    ).joinToString(" · ")
+                    if (detail.isNotEmpty()) Text(detail, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.secondary)
                     Text(
-                        (h.lastDoneMs?.let { tr("Last: {0}", formatDate(it, clock)) } ?: tr("Not recorded yet")) + " · " + tr("then {0}", everyLabel(t.everyDays)),
+                        (latest?.let { tr("Last: {0}", LocalClock.shortDate(it.completion.localDay)) } ?: tr("Not recorded yet")) +
+                            " · " + tr("then {0}", everyLabel(repeatNow(pet, t, clock.dayIndex(app.now)))),
                         style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
-                Button(onClick = { askWhen = true }) { Text(tr("Done")) }
+                Button(onClick = { recording = true }) { Text(tr("Done")) }
             }
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                TextButton(onClick = { if (hasCard) showCard = true else pickCard() }) {
-                    Text(if (hasCard) tr("📷 View card") else tr("📷 Add card photo"))
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                if (latest != null && latestHasPhoto) {
+                    PhotoThumb(app, recordPhoto(app, t, latest, revision), tr("Photo of {0}'s card for {1}", pet.name, name), size = 48.dp) { viewing = latest }
                 }
-                androidx.compose.foundation.layout.Spacer(Modifier.weight(1f))
-                if (h.lastDoneMs != null) TextButton(onClick = { app.launch { app.repo.undo(t.id) } }) { Text(tr("Undo")) }
+                if (records.isNotEmpty() || app.repo.hasCard(t)) {
+                    TextButton(onClick = { history = true }) { Text(tr("History ({0})", records.size)) }
+                }
+                Spacer(Modifier.weight(1f))
                 TextButton(onClick = { app.navigate(Screen.EditTask(pet.id, t.id)) }) { Text(tr("Edit")) }
             }
-            cardError?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
+            message?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
         }
     }
-    if (askWhen) {
-        AlertDialog(
-            onDismissRequest = { askWhen = false },
-            title = { Text(tr("When was it done?")) },
-            text = {
-                FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    WHEN_CHOICES.forEach { (days, label) ->
-                        AssistChip(onClick = { askWhen = false; app.launch { app.repo.givenDaysAgo(t.id, days) } }, label = { Text(tr(label)) })
-                    }
-                }
-            },
-            confirmButton = {},
-            dismissButton = { TextButton(onClick = { askWhen = false }) { Text(tr("Cancel")) } },
-        )
-    }
-    if (showCard) {
-        // Read and decode the photo off the main thread; null until ready.
-        val image by produceState<Result<ImageBitmap?>?>(null, t.id, cardRevision) {
-            value = withContext(Dispatchers.Default) { runCatching { app.repo.card(t)?.let { decodeImage(it) } } }
-        }
-        AlertDialog(
-            onDismissRequest = { showCard = false },
-            title = { Text("${trName(t.title)} · ${pet.name}") },
-            text = {
-                Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    val loaded = image
-                    if (loaded == null) {
-                        Text(tr("Opening…"))
-                    } else if (loaded.getOrNull() != null) {
-                        Image(loaded.getOrNull()!!, contentDescription = tr("Photo of {0}'s card for {1}", pet.name, trName(t.title)), contentScale = ContentScale.Fit,
-                            modifier = Modifier.fillMaxWidth().heightIn(max = 480.dp))
-                    } else Text(tr("The photo couldn't be opened."))
-                    Text(tr("Kept only on this phone (and in your backups)."), style = MaterialTheme.typography.bodySmall)
-                }
-            },
-            confirmButton = { TextButton(onClick = { showCard = false }) { Text(tr("Close")) } },
-            dismissButton = {
-                Row {
-                    TextButton(onClick = { showCard = false; app.repo.deleteCard(t) }) { Text(tr("Remove"), color = MaterialTheme.colorScheme.error) }
-                    TextButton(onClick = { showCard = false; pickCard() }) { Text(tr("Replace")) }
-                }
-            },
+    if (recording) RecordDialog(app, pet, t, h) { msg -> recording = false; message = msg }
+    if (history) HistoryDialog(app, pet, t, records, revision) { history = false }
+    viewing?.let { r ->
+        PhotoViewer(
+            recordPhoto(app, t, r, revision), "$name · ${LocalClock.shortDate(r.completion.localDay)}",
+            tr("Photo of {0}'s card for {1}", pet.name, name), onClose = { viewing = null },
+            onDelete = { viewing = null; app.repo.deleteRecordPhoto(t.petId, r.completion.id) },
         )
     }
 }
 
-/** What the law asks and where to go, for owners in the Philippines (the pilot is in Naga City). */
+/** How often the item repeats now: a puppy's or kitten's deworming is more frequent while it's young. */
+private fun repeatNow(pet: Pet, t: CareTask, today: Long): Int {
+    val born = pet.birthDay ?: return t.everyDays
+    return HealthPlan.scheduleFor(pet, t)?.everyAt(today - born, t.everyDays) ?: t.everyDays
+}
+
+private fun recordPhoto(app: AppScope, t: CareTask, r: HealthRecord, revision: Long) =
+    HealthPhoto("rec-${r.completion.id}", revision) { app.repo.recordPhoto(t.petId, r.completion.id) }
+
+/** "When was it done?", with an optional photo of the card or receipt, then Save. */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun LocalHelpCard() {
-    var open by remember { mutableStateOf(false) }
-    PixelCard(Modifier.fillMaxWidth().clickable(onClickLabel = if (open) tr("Hide") else tr("Show"), role = Role.Button) { open = !open }) {
-        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(tr("Rabies rules and where to get shots"), fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
-                Text(if (open) "▲" else "▼")
+private fun RecordDialog(app: AppScope, pet: Pet, t: CareTask, h: HealthItem, onClose: (String?) -> Unit) {
+    var daysAgo by remember { mutableIntStateOf(0) }
+    var photo by remember { mutableStateOf<ByteArray?>(null) }
+    var picks by remember { mutableIntStateOf(0) }
+    var saving by remember { mutableStateOf(false) }
+    val pick = rememberPhotoPicker { bytes -> if (bytes != null) { photo = bytes; picks++ } }
+    AlertDialog(
+        onDismissRequest = { if (!saving) onClose(null) },
+        title = { Text(tr("When was it done?")) },
+        text = {
+            Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                h.dose?.let { Text(tr("{0}, dose {1} of {2}", trName(t.title), it, h.doses), fontWeight = FontWeight.Bold) }
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    WHEN_CHOICES.forEach { (days, label) -> FilterChip(daysAgo == days, { daysAgo = days }, label = { Text(tr(label)) }) }
+                }
+                Text(tr("Photo of the vaccination card or receipt (optional)"), style = MaterialTheme.typography.bodyMedium)
+                val chosen = photo
+                if (chosen == null) {
+                    OutlinedButton(onClick = pick) { Text(tr("📷 Add photo")) }
+                } else {
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        PhotoThumb(app, HealthPhoto("new", picks.toLong()) { chosen }, tr("The photo you picked"), onClick = null)
+                        Text(tr("Photo added"), modifier = Modifier.weight(1f))
+                        TextButton(onClick = { photo = null }) { Text(tr("Remove")) }
+                    }
+                }
+                Text(tr("Photos stay on this phone (and in your backup files)."), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
-            if (open) {
-                Text(tr("The Anti-Rabies Act (RA 9482) asks every dog owner to:"), style = MaterialTheme.typography.bodyMedium)
-                Text(
-                    listOf(
-                        tr("have the dog vaccinated against rabies every year, and keep the card"),
-                        tr("register the dog with the city or municipality"),
-                        tr("keep it on a leash outside the home"),
-                        tr("report a bite within 24 hours and help the person get treated"),
-                    ).joinToString("\n") { "• $it" },
-                    style = MaterialTheme.typography.bodySmall,
-                )
-                Text(tr("If someone is bitten or scratched"), fontWeight = FontWeight.Bold)
-                Text(
-                    tr("Wash the wound with soap and running water for 15 minutes, then go to the nearest Animal Bite Treatment Center the same day.") + " " +
-                        tr("Watch the pet for 14 days."),
-                    style = MaterialTheme.typography.bodySmall,
-                )
-                Text(tr("In Naga City"), fontWeight = FontWeight.Bold)
-                Text(
-                    "City Veterinary Office, Maharlika Highway, Del Rosario · cvo@naga.gov.ph\n" +
-                        tr("Anti-rabies shots for pets 3 months and older (₱75 walk-in in the city's 2023 list; ask for current fees).") + " " +
-                        tr("Free consultations; deworming and spay/neuter services.") + " " +
-                        tr("Free rabies drives are usually held in March, Rabies Awareness Month."),
-                    style = MaterialTheme.typography.bodySmall,
-                )
+        },
+        confirmButton = {
+            TextButton(enabled = !saving, onClick = {
+                saving = true
+                app.launch { onClose(app.repo.recordHealth(t, daysAgo, photo)) }
+            }) { Text(if (saving) tr("Saving…") else tr("Save")) }
+        },
+        dismissButton = { TextButton(enabled = !saving, onClick = { onClose(null) }) { Text(tr("Cancel")) } },
+    )
+}
+
+/** Every time the item was given: date, dose, who (with family sharing) and its photo. */
+@Composable
+private fun HistoryDialog(app: AppScope, pet: Pet, t: CareTask, records: List<HealthRecord>, revision: Long, onClose: () -> Unit) {
+    val name = trName(t.title)
+    var viewing by remember { mutableStateOf<HealthRecord?>(null) }
+    var viewCard by remember { mutableStateOf(false) }
+    var confirmDelete by remember { mutableStateOf<HealthRecord?>(null) }
+    var pickFor by remember { mutableStateOf<String?>(null) }
+    var error by remember { mutableStateOf<String?>(null) }
+    val pick = rememberPhotoPicker { bytes ->
+        val id = pickFor
+        if (bytes != null && id != null) app.launch {
+            error = if (app.repo.saveRecordPhoto(t.petId, id, bytes)) null else tr("Couldn't read that photo. Try another one.")
+        }
+    }
+    val mine = setOf(null, app.repo.family.myUserId)
+    AlertDialog(
+        onDismissRequest = onClose,
+        title = { Text("$name · ${pet.name}") },
+        text = {
+            Column(Modifier.heightIn(max = 480.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                val hasCard = remember(t.id, revision) { app.repo.hasCard(t) }
+                if (hasCard) {
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        PhotoThumb(app, HealthPhoto("card-${t.id}", revision) { app.repo.card(t) }, tr("Photo of {0}'s card for {1}", pet.name, name)) { viewCard = true }
+                        Text(tr("Card photo"), fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
+                    }
+                    HorizontalDivider()
+                }
+                records.forEachIndexed { i, r ->
+                    if (i > 0) HorizontalDivider()
+                    HistoryRow(app, pet, t, r, revision, canDelete = r.completion.by in mine,
+                        onView = { viewing = r }, onAddPhoto = { pickFor = r.completion.id; pick() }, onDelete = { confirmDelete = r })
+                }
+                if (records.isEmpty()) Text(tr("Not recorded yet"))
+                error?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
+            }
+        },
+        confirmButton = { TextButton(onClick = onClose) { Text(tr("Close")) } },
+    )
+    viewing?.let { r ->
+        PhotoViewer(
+            recordPhoto(app, t, r, revision), "$name · ${LocalClock.shortDate(r.completion.localDay)}",
+            tr("Photo of {0}'s card for {1}", pet.name, name), onClose = { viewing = null },
+            onDelete = { viewing = null; app.repo.deleteRecordPhoto(t.petId, r.completion.id) },
+        )
+    }
+    if (viewCard) {
+        PhotoViewer(
+            HealthPhoto("card-${t.id}", revision) { app.repo.card(t) }, "$name · ${pet.name}",
+            tr("Photo of {0}'s card for {1}", pet.name, name), onClose = { viewCard = false },
+            onDelete = { viewCard = false; app.repo.deleteCard(t) },
+        )
+    }
+    confirmDelete?.let { r ->
+        AlertDialog(
+            onDismissRequest = { confirmDelete = null },
+            title = { Text(tr("Delete this record?")) },
+            text = { Text(tr("{0} on {1}. Its photo is deleted too.", name, LocalClock.shortDate(r.completion.localDay))) },
+            confirmButton = {
+                TextButton(onClick = { confirmDelete = null; app.launch { app.repo.deleteRecord(t, r.completion.id) } }) {
+                    Text(tr("Delete"), color = MaterialTheme.colorScheme.error)
+                }
+            },
+            dismissButton = { TextButton(onClick = { confirmDelete = null }) { Text(tr("Cancel")) } },
+        )
+    }
+}
+
+@Composable
+private fun HistoryRow(
+    app: AppScope, pet: Pet, t: CareTask, r: HealthRecord, revision: Long, canDelete: Boolean,
+    onView: () -> Unit, onAddPhoto: () -> Unit, onDelete: () -> Unit,
+) {
+    val hasPhoto = remember(r.completion.id, revision) { app.repo.hasRecordPhoto(t.petId, r.completion.id) }
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+        if (hasPhoto) PhotoThumb(app, recordPhoto(app, t, r, revision), tr("Photo of {0}'s card for {1}", pet.name, trName(t.title)), onClick = onView)
+        Column(Modifier.weight(1f)) {
+            Text(LocalClock.shortDate(r.completion.localDay), fontWeight = FontWeight.Bold)
+            val detail = listOfNotNull(
+                r.dose?.let { tr("Dose {0}", it) },
+                app.repo.family.nameOf(r.completion.by)?.let { tr("by {0}", it) },
+            ).joinToString(" · ")
+            if (detail.isNotEmpty()) Text(detail, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Row {
+                if (!hasPhoto) TextButton(onClick = onAddPhoto) { Text(tr("📷 Add photo")) }
+                if (canDelete) TextButton(onClick = onDelete) { Text(tr("Delete"), color = MaterialTheme.colorScheme.error) }
             }
         }
     }

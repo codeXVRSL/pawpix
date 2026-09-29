@@ -41,6 +41,34 @@ class LocalClock(private val offsetAt: (Long) -> Long) {
             return Triple(y.toInt(), m.toInt(), d.toInt())
         }
 
+        /** The day index of a calendar date (the inverse of [civil]). */
+        fun dayOf(year: Int, month: Int, day: Int): Long {
+            val y = (if (month <= 2) year - 1 else year).toLong()
+            val era = (if (y >= 0) y else y - 399) / 400
+            val yoe = y - era * 400
+            val doy = (153 * (if (month > 2) month - 3 else month + 9) + 2) / 5 + day - 1
+            val doe = yoe * 365 + yoe / 4 - yoe / 100 + doy
+            return era * 146097 + doe - 719468
+        }
+
+        /** The same day of the month [months] later (or earlier), or that month's last day ("Nov 30" + 3 = "Feb 28"). */
+        fun plusMonths(day: Long, months: Int): Long {
+            val (y, m, d) = civil(day)
+            val index = y * 12 + (m - 1) + months
+            val ny = index.floorDiv(12); val nm = index.mod(12) + 1
+            val last = (dayOf(if (nm == 12) ny + 1 else ny, if (nm == 12) 1 else nm + 1, 1) - dayOf(ny, nm, 1)).toInt()
+            return dayOf(ny, nm, minOf(d, last))
+        }
+
+        /** Whole calendar months from [from] to [to] (0 if [to] is earlier). */
+        fun monthsBetween(from: Long, to: Long): Int {
+            if (to < from) return 0
+            val (y1, m1, _) = civil(from); val (y2, m2, _) = civil(to)
+            var n = (y2 - y1) * 12 + (m2 - m1)
+            if (plusMonths(from, n) > to) n--
+            return n
+        }
+
         /** "2026-09-29" */
         fun isoDate(day: Long): String {
             val (y, m, d) = civil(day)
@@ -82,6 +110,11 @@ data class TaskStatus(
     val known: Boolean = true,
     /** Health: doses of the first-year series given so far. */
     val dosesGiven: Int = 0,
+    /** Health, in an unfinished first-year series: the next one is dose [dose] of [doses]. */
+    val dose: Int? = null,
+    val doses: Int? = null,
+    /** Health: the due date follows the pet's age (see [HealthPlan]). */
+    val scheduled: Boolean = false,
 ) {
     val isOverdue: Boolean get() = overdueSinceMs != null
     /**
@@ -104,8 +137,10 @@ object CareEngine {
         nowMs: Long,
         clock: LocalClock,
         slots: List<Int> = task.slots,
+        /** The task's pet: a puppy's or kitten's health items follow its birthday (see [HealthPlan]). */
+        pet: Pet? = null,
     ): TaskStatus {
-        if (task.kind.health) return HealthDue.status(task, completions, nowMs, clock)
+        if (task.kind.health) return HealthDue.status(task, completions, nowMs, clock, pet)
         val n = task.everyDays.coerceAtLeast(1)
         val today = clock.dayIndex(nowMs)
         val cycleStart = cycleStart(task, today)
@@ -135,20 +170,48 @@ object CareEngine {
  * was last given, however long ago that was ("given 6 months ago" on a 3-monthly item is 3 months
  * overdue, not "due in a few days").
  *
- * A first-year series (see [CareTask.series]) is walked first: each recorded dose covers the next
- * planned one, but only if it's given no more than [EARLY_DAYS] before it and on a later day than
- * the previous dose, so a double tap or an old record doesn't skip a dose. After the series, the
- * item repeats [CareTask.everyDays] after the last dose.
+ * A puppy's or kitten's usual items follow its birthday instead (see [HealthPlan.due]): the first dose
+ * at the right age, a vaccine series dose by dose, deworming more often while young.
  *
- * Nothing recorded and no series: due on the day the item was added, and marked unknown
+ * Older saves may have a planned series of days ([CareTask.series]): it's walked first, each
+ * recorded dose covering the next planned one if given no more than [EARLY_DAYS] before it and on a
+ * later day than the previous dose. After it, the item repeats [CareTask.everyDays] after the last dose.
+ *
+ * Nothing recorded (and no planned first dose): due on the day the item was added, and marked unknown
  * ([TaskStatus.known] false) so the pet doesn't fret over something that may well have been done.
  */
 object HealthDue {
     const val EARLY_DAYS = 7
 
-    fun status(task: CareTask, completions: List<Completion>, nowMs: Long, clock: LocalClock): TaskStatus {
+    fun status(task: CareTask, completions: List<Completion>, nowMs: Long, clock: LocalClock, pet: Pet? = null): TaskStatus {
         val slot = task.slots.firstOrNull() ?: (9 * 60)
         val mine = completions.filter { it.taskId == task.id && it.atMs <= nowMs }.sortedBy { it.atMs }
+        val last = mine.lastOrNull()
+        val schedule = HealthPlan.scheduleFor(pet, task)
+        val due = if (schedule != null) {
+            HealthPlan.due(schedule, pet!!.birthDay!!, mine.map { it.localDay }, task.everyDays, clock.dayIndex(task.createdAtMs))
+        } else legacyDue(task, mine, clock)
+        val dueAt = clock.at(due.day, slot)
+        val passed = if (dueAt <= nowMs) 1 else 0
+        return TaskStatus(
+            task = task,
+            cycleStartDay = due.day,
+            slotTimes = listOf(dueAt),
+            passed = passed,
+            done = 0,
+            overdueSinceMs = if (passed == 1) dueAt else null,
+            nextDueMs = dueAt,
+            lastDoneMs = last?.atMs,
+            logged = 0,
+            known = due.known,
+            dosesGiven = due.dose?.minus(1) ?: 0,
+            dose = due.dose?.takeIf { (due.doses ?: 0) > 1 },
+            doses = due.doses?.takeIf { it > 1 },
+            scheduled = schedule != null,
+        )
+    }
+
+    private fun legacyDue(task: CareTask, mine: List<Completion>, clock: LocalClock): HealthPlan.Due {
         var dose = 0
         var lastDoseDay = Long.MIN_VALUE
         for (c in mine) {
@@ -158,31 +221,16 @@ object HealthDue {
             }
         }
         val last = mine.lastOrNull()
-        val (dueDay, known) = when {
-            dose < task.series.size -> task.series[dose] to true
-            last != null -> last.localDay + task.everyDays.coerceAtLeast(1) to true
-            else -> clock.dayIndex(task.createdAtMs) to false
+        return when {
+            dose < task.series.size -> HealthPlan.Due(task.series[dose], true, dose + 1, task.series.size)
+            last != null -> HealthPlan.Due(last.localDay + task.everyDays.coerceAtLeast(1), true)
+            else -> HealthPlan.Due(clock.dayIndex(task.createdAtMs), false)
         }
-        val dueAt = clock.at(dueDay, slot)
-        val passed = if (dueAt <= nowMs) 1 else 0
-        return TaskStatus(
-            task = task,
-            cycleStartDay = dueDay,
-            slotTimes = listOf(dueAt),
-            passed = passed,
-            done = 0,
-            overdueSinceMs = if (passed == 1) dueAt else null,
-            nextDueMs = dueAt,
-            lastDoneMs = last?.atMs,
-            logged = 0,
-            known = known,
-            dosesGiven = dose,
-        )
     }
 
     /** Whether a quick "Done" (notification button) should count now: only when it's due within a day. */
-    fun canQuickComplete(task: CareTask, completions: List<Completion>, nowMs: Long, clock: LocalClock): Boolean =
-        !task.kind.health || status(task, completions, nowMs, clock).slotTimes[0] <= nowMs + DAY_MS
+    fun canQuickComplete(task: CareTask, completions: List<Completion>, nowMs: Long, clock: LocalClock, pet: Pet? = null): Boolean =
+        !task.kind.health || status(task, completions, nowMs, clock, pet).slotTimes[0] <= nowMs + DAY_MS
 }
 
 /**
