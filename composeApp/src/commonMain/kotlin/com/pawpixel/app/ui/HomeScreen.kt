@@ -62,11 +62,7 @@ fun HomeScreen(app: AppScope, state: AppState) {
                     }) { Text("+ Add another pet") }
                 }
                 item {
-                    Text(
-                        "Tip: add the PawPixel widget to your home screen to see your pet's mood at a glance.",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
+                    WidgetTip(app, state)
                     Spacer(Modifier.height(24.dp))
                 }
             }
@@ -91,8 +87,10 @@ fun statusesFor(app: AppScope, state: AppState, petId: String): List<TaskStatus>
 private fun PetCard(app: AppScope, state: AppState, pet: Pet) {
     val reading = MoodEngine.read(state, pet.id, app.now, app.repo.clock)
     val pose = remember(pet.id, pet.spriteVersion, pet.species, pet.ears, reading.mood) { app.repo.pose(pet, reading.mood) }
-    val statuses = statusesFor(app, state, pet.id)
-    val urgent = statuses.filter { it.isOverdue }.maxByOrNull { MoodEngine.penalty(it, app.now) }
+    // Quick Done is for daily care; health care (a vaccine, a vet visit) is recorded on the pet's page.
+    val statuses = statusesFor(app, state, pet.id).filter { !it.task.kind.health }
+    val urgent = statuses.filter { it.isOverdue }.takeIf { !state.isAway(app.now) }
+        ?.maxByOrNull { MoodEngine.penalty(it, app.now, state.settings.awayUntilMs) }
     val next = statuses.filter { !it.isOverdue }.mapNotNull { s -> s.nextDueMs?.let { s to it } }.minByOrNull { it.second }
 
     PixelCard(Modifier.fillMaxWidth().clickable { app.navigate(Screen.PetDetail(pet.id)) }) {
@@ -111,6 +109,37 @@ private fun PetCard(app: AppScope, state: AppState, pet: Pet) {
                     Button(onClick = { app.launch { app.repo.complete(urgent.task.id) } }) {
                         Text("${urgent.task.kind.emoji} ${urgent.task.kind.verb}")
                     }
+                }
+            }
+        }
+    }
+}
+
+/**
+ * The widget is the heart of PawPixel (people who add a widget keep using an app far longer), so the
+ * home screen offers it until one is added. Android can add it in one tap; iOS gets the steps.
+ */
+@Composable
+private fun WidgetTip(app: AppScope, state: AppState) {
+    val platform = app.repo.platform
+    val installed = remember(app.now) { platform.widgetInstalled() }
+    var manual by remember { mutableStateOf(installed == null) }
+    if (installed == true || state.settings.widgetTipDismissed) return
+    PixelCard(Modifier.fillMaxWidth()) {
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text("Put your pet on your home screen", fontWeight = FontWeight.Bold)
+            Text("See their mood at a glance and tap Done right from the widget.")
+            if (manual) {
+                Text(
+                    if (installed == null) "Touch and hold your home screen, tap Edit → Add Widget, search PawPixel, and pick a size."
+                    else "Touch and hold your home screen, tap Widgets, find PawPixel, and drag it in.",
+                    style = MaterialTheme.typography.bodySmall,
+                )
+            }
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                if (!manual) Button(onClick = { if (!platform.pinWidget()) manual = true }) { Text("Add widget") }
+                TextButton(onClick = { app.launch { app.repo.setSettings(state.settings.copy(widgetTipDismissed = true)) } }) {
+                    Text(if (manual) "Got it" else "Not now")
                 }
             }
         }

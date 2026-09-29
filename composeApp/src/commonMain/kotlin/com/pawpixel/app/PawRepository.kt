@@ -1,6 +1,7 @@
 package com.pawpixel.app
 
 import com.pawpixel.core.AppState
+import com.pawpixel.core.Backup
 import com.pawpixel.core.Ids
 import com.pawpixel.core.LocalClock
 import com.pawpixel.core.Mood
@@ -12,6 +13,7 @@ import com.pawpixel.core.Species
 import com.pawpixel.core.SpriteSettings
 import com.pawpixel.core.StateCodec
 import com.pawpixel.core.StateOps
+import com.pawpixel.core.TaskDefaults
 import com.pawpixel.core.WidgetSnapshot
 import com.pawpixel.sprite.AnimatedExport
 import com.pawpixel.sprite.Argb
@@ -124,6 +126,22 @@ class PawRepository(val platform: Platform) {
     }
 
     suspend fun complete(taskId: String) = update { StateOps.complete(it, taskId, now(), clock) }
+    /** Health records: "given N days ago" (0 = today). */
+    suspend fun givenDaysAgo(taskId: String, days: Int) =
+        update { StateOps.logOnDay(it, taskId, clock.dayIndex(now()) - days, now(), clock) }
+
+    /** Adds the usual health care for the pet's species that it doesn't have yet (vaccine, deworming, ...). */
+    suspend fun addHealthCare(pet: Pet) = update { s ->
+        val have = s.tasksFor(pet.id).map { it.kind }.toSet()
+        val today = clock.dayIndex(now())
+        TaskDefaults.healthKindsFor(pet.species).filter { it !in have }
+            .fold(s) { acc, kind -> StateOps.upsertTask(acc, StateOps.defaultTask(pet, kind, today, Ids.newId(), now())) }
+    }
+
+    /** Someone else is caring for the pets for [days] days (0 = I'm back). */
+    suspend fun setAway(days: Int) = update {
+        StateOps.setAway(it, if (days <= 0) 0 else clock.at(clock.dayIndex(now()) + days, 12 * 60))
+    }
     suspend fun undo(taskId: String) = update { StateOps.undoLast(it, taskId) }
     suspend fun setSettings(settings: Settings) = update { StateOps.setSettings(it, settings) }
 
@@ -139,6 +157,34 @@ class PawRepository(val platform: Platform) {
             _state.value = AppState()
             publishLocked(_state.value)
         }
+    }
+
+    // ---- Backup ----
+
+    /** Everything on this phone as one file, shared to wherever the owner keeps it (Drive, Files, email). */
+    fun exportBackup() {
+        val state = _state.value
+        val files = state.pets.flatMap { Backup.filesFor(it.id) }.mapNotNull { path -> files.readBytes(path)?.let { path to it } }.toMap()
+        val bytes = Backup.encode(state, files, now()).encodeToByteArray()
+        val day = clock.dayIndex(now())
+        platform.shareFile(bytes, "pawpixel-backup-${LocalClock.isoDate(day)}.json", "application/json")
+    }
+
+    /**
+     * Replaces everything on this phone with a backup. Throws [Backup.NotABackup] (with a message for
+     * the owner) if the file isn't one. The pet map sign-in is left as it is.
+     */
+    suspend fun restoreBackup(bytes: ByteArray): Int {
+        val contents = Backup.decode(bytes.decodeToString())
+        mutex.withLock {
+            files.delete("sprites")
+            headCache.clear()
+            for ((path, data) in contents.files) files.writeBytes(path, data)
+        }
+        for (pet in contents.state.pets) writeWidgetPoses(pet)
+        // Keep this phone's own "Pro" (purchases belong to the store account, not the file).
+        update { current -> contents.state.copy(settings = contents.state.settings.copy(pro = current.settings.pro)) }
+        return contents.state.pets.size
     }
 
     // ---- Sprite files ----

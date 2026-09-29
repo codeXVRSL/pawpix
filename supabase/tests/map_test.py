@@ -128,6 +128,12 @@ s, _ = call("PATCH", f"/rest/v1/map_profiles?user_id=eq.{b['id']}", {"banned": F
 s2, rows = call("GET", f"/rest/v1/map_profiles?user_id=eq.{b['id']}&select=banned", key=SERVICE)
 check("a banned owner can't unban themselves", s >= 400 and rows[0]["banned"] is True, (s, rows))
 
+for bad, want in (("G4g0", "A dog"), ("tang!na mo", "A dog"), ("Grape", "Grape"), ("Petite", "Petite")):
+    s, r = call("POST", "/rest/v1/map_pets", {"owner_id": a["id"], "name": bad, "species": "DOG", "ears": "FLOPPY", "look": LOOK},
+                a["token"], prefer="return=representation")
+    got = r[0]["name"] if s in (200, 201) and r else None
+    check(f"pet names are filtered on the server ({bad!r} -> {want!r})", got == want, (s, r))
+
 s, r = call("POST", "/rest/v1/map_pets", {"owner_id": a["id"], "name": "x", "species": "DOG", "look": "<script>"}, a["token"])
 check("look codes are validated", s >= 400, (s, r))
 s, r = call("POST", "/rest/v1/map_presence", {"owner_id": a["id"], "cell_id": "13.6218,123.1948", "cell_lat": 13.62, "cell_lng": 123.19},

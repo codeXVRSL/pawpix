@@ -1,6 +1,8 @@
 package com.pawpixel.app.ui
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -13,6 +15,7 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Button
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
@@ -27,11 +30,15 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.pawpixel.core.AdaptiveTiming
 import com.pawpixel.core.AppState
+import com.pawpixel.core.CareStats
+import com.pawpixel.core.HealthItem
 import com.pawpixel.core.MoodEngine
 import com.pawpixel.core.Pet
 import com.pawpixel.core.Species
@@ -44,7 +51,8 @@ import kotlinx.coroutines.withContext
 fun PetScreen(app: AppScope, state: AppState, pet: Pet) {
     val reading = MoodEngine.read(state, pet.id, app.now, app.repo.clock)
     val art = remember(pet.id, pet.spriteVersion, pet.species) { app.repo.art(pet) }
-    val statuses = statusesFor(app, state, pet.id)
+    val statuses = statusesFor(app, state, pet.id).filter { !it.task.kind.health }
+    val health = CareStats.healthDue(state, pet.id, app.now, app.repo.clock)
     var confirmDelete by remember { mutableStateOf(false) }
     var renaming by remember { mutableStateOf(false) }
     var reaction by remember { mutableStateOf<Reaction?>(null) }
@@ -67,7 +75,10 @@ fun PetScreen(app: AppScope, state: AppState, pet: Pet) {
                 LivePet(art, pet.eyes, reading.mood, seed = pet.id.hashCode(), modifier = Modifier.fillMaxWidth(), reaction = reaction)
                 Text(pet.name, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Black)
                 Text(reading.caption, textAlign = TextAlign.Center)
-                Text(hearts(reading.score), style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.primary)
+                Text(
+                    hearts(reading.score), style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.semantics { contentDescription = "Happiness ${(reading.score + 10) / 20} of 5" },
+                )
                 Text(
                     "Tap ${pet.name} to give pets",
                     style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center,
@@ -75,10 +86,40 @@ fun PetScreen(app: AppScope, state: AppState, pet: Pet) {
             }
         }
 
+        // Gentle progress: days cared for this week, never a streak that breaks.
+        val week = CareStats.week(state, pet.id, app.now, app.repo.clock)
+        val summary = CareStats.summary(state, pet.id, app.now, app.repo.clock)
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            modifier = Modifier.semantics(mergeDescendants = true) { contentDescription = summary },
+        ) {
+            Text(week.joinToString(" ") { if (it) "●" else "○" }, color = MaterialTheme.colorScheme.primary)
+            Text(summary, style = MaterialTheme.typography.bodySmall)
+        }
+
         Text("Care", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
         if (statuses.isEmpty()) Text("No care tasks yet. Add feeding, walks or medicine so ${pet.name}'s mood can follow real care.")
         statuses.forEach { s -> TaskRow(app, pet, s, onDone = { react(PetEvent.Cared(s.task.kind)) }) }
         OutlinedButton(onClick = { app.navigate(Screen.EditTask(pet.id, null)) }) { Text("+ Add care task") }
+
+        Spacer(Modifier.height(8.dp))
+        Text("Health", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+        if (health.isEmpty()) {
+            Text(
+                "Keep track of ${pet.name}'s anti-rabies shot, deworming, tick & flea care and vet check-ups. " +
+                    "PawPixel reminds you a few days before each is due.",
+            )
+            Button(onClick = { app.launch { app.repo.addHealthCare(pet) } }) { Text("+ Add health reminders") }
+        }
+        health.forEach { h -> HealthRow(app, pet, h) }
+        if (health.isNotEmpty()) {
+            TextButton(onClick = { app.navigate(Screen.EditTask(pet.id, null, health = true)) }) { Text("+ Add health item") }
+            Text(
+                "Schedules are typical for adult pets in the Philippines. Puppies, kittens and your vet's advice may differ: tap Edit to change them.",
+                style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
 
         Spacer(Modifier.height(8.dp))
         Text("Share & sprite", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
@@ -169,6 +210,59 @@ private fun TaskRow(app: AppScope, pet: Pet, s: TaskStatus, onDone: () -> Unit) 
             }
         }
     }
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun HealthRow(app: AppScope, pet: Pet, h: HealthItem) {
+    val clock = app.repo.clock
+    val t = h.task
+    var askWhen by remember { mutableStateOf(false) }
+    PixelCard(Modifier.fillMaxWidth(), color = MaterialTheme.colorScheme.background) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text("${t.kind.emoji} ${t.title}", fontWeight = FontWeight.Bold)
+                Text(
+                    CareStats.dueLabel(h, app.now, clock),
+                    color = if (h.due) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
+                )
+                Text(
+                    (h.lastDoneMs?.let { "Last: ${formatDate(it, clock)}" } ?: "Not recorded yet") + " · ${everyLabel(t.everyDays)}",
+                    style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            Column(horizontalAlignment = Alignment.End) {
+                Button(onClick = { askWhen = true }) { Text("Done") }
+                Row {
+                    if (h.lastDoneMs != null) TextButton(onClick = { app.launch { app.repo.undo(t.id) } }) { Text("Undo") }
+                    TextButton(onClick = { app.navigate(Screen.EditTask(pet.id, t.id)) }) { Text("Edit") }
+                }
+            }
+        }
+    }
+    if (askWhen) {
+        AlertDialog(
+            onDismissRequest = { askWhen = false },
+            title = { Text("When was it done?") },
+            text = {
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    WHEN_CHOICES.forEach { (days, label) ->
+                        AssistChip(onClick = { askWhen = false; app.launch { app.repo.givenDaysAgo(t.id, days) } }, label = { Text(label) })
+                    }
+                }
+            },
+            confirmButton = {},
+            dismissButton = { TextButton(onClick = { askWhen = false }) { Text("Cancel") } },
+        )
+    }
+}
+
+/** "When was it given?" choices, in days ago. */
+val WHEN_CHOICES = listOf(0 to "Today", 1 to "Yesterday", 7 to "A week ago", 30 to "A month ago", 91 to "3 months ago", 182 to "6 months ago", 365 to "A year ago")
+
+fun everyLabel(days: Int): String = when (days) {
+    1 -> "daily"; 7 -> "weekly"; 14 -> "every 2 weeks"; 30 -> "monthly"; 90 -> "every 3 months"; 180 -> "every 6 months"; 365 -> "yearly"
+    else -> "every $days days"
 }
 
 @Composable

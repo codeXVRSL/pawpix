@@ -55,6 +55,8 @@ interface IosHost {
     /** Absolute path of the App Group folder shared with the widget extension. */
     fun sharedContainerPath(): String
     fun pickPhoto(completion: DataCallback)
+    /** Document picker for restoring a backup (a .json file from Files, iCloud Drive, Google Drive...). */
+    fun pickFile(completion: DataCallback)
     /** Decodes and orientation-corrects a photo; returns [RawImage] bytes, longest side <= maxSide. */
     fun decodePhoto(data: NSData, maxSide: Int): NSData?
     /** Takes [RawImage] bytes, returns a Float32 little-endian mask (width*height), or null if Vision can't. */
@@ -134,7 +136,7 @@ class IosPlatform(private val host: IosHost) : Platform {
 
     override fun scheduleReminders(reminders: List<Reminder>) {
         val json = Json.arr(reminders.map {
-            Json.obj("id" to it.id.toString(), "taskId" to it.taskId, "at" to it.atMs / 1000, "title" to it.title, "body" to it.body)
+            Json.obj("id" to it.id.toString(), "taskId" to it.taskId, "at" to it.atMs / 1000, "title" to it.title, "body" to it.body, "quickDone" to it.quickDone)
         }).stringify()
         host.scheduleReminders(json)
     }
@@ -240,6 +242,11 @@ actual fun PixelImage.toImageBitmap(): ImageBitmap = Image.makeFromEncoded(Png.e
 @Composable
 actual fun rememberPhotoPicker(onResult: (ByteArray?) -> Unit): () -> Unit = {
     IosGraph.host().pickPhoto(callback { data -> onResult(data?.toByteArray()) })
+}
+
+@Composable
+actual fun rememberFilePicker(onResult: (ByteArray?) -> Unit): () -> Unit = {
+    IosGraph.host().pickFile(callback { data -> onResult(data?.toByteArray()) })
 }
 
 private fun callback(block: (NSData?) -> Unit) = object : DataCallback {

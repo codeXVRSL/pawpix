@@ -109,6 +109,14 @@ final class OwnerJourneyTests: XCTestCase {
             try scrollTo(query: element(containing: "Medicine"), "medicine task in the list")
         }
 
+        step("health reminders: add the usual set") {
+            try scrollTo("+ Add health reminders").tap()
+            try scrollTo(query: element(containing: "Anti-rabies shot"), "vaccine row")
+            guard element(containing: "Due today").waitForExistence(timeout: 10) else { throw Failure("vaccine not shown as due") }
+            sleep(1)
+            shot("health-section")
+        }
+
         step("before/after card opens the share sheet") {
             let button = try scrollTo("Before/after")
             sleep(1) // let the list settle after scrolling, or the tap can miss
@@ -144,6 +152,9 @@ final class OwnerJourneyTests: XCTestCase {
             try find("Settings").tap()
             try find("Bedtime")
             shot("settings")
+            try scrollTo("Away 3 days").tap()
+            try find("I'm back").tap()
+            try scrollTo("Save backup file")
             try find("‹ Back").tap()
         }
 

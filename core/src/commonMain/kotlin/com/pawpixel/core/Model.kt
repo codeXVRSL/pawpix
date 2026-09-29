@@ -10,7 +10,18 @@ package com.pawpixel.core
 
 enum class Species(val label: String) { DOG("Dog"), CAT("Cat"), OTHER("Other") }
 
-enum class TaskKind(val label: String, val emoji: String, val verb: String) {
+enum class TaskKind(
+    val label: String,
+    val emoji: String,
+    val verb: String,
+    /**
+     * Health care (vaccines, deworming, tick & flea, vet visits): due a set number of days after it
+     * was last done, rather than at fixed times each day. See [StateOps.complete].
+     */
+    val health: Boolean = false,
+    /** Suggested name for a new task of this kind. */
+    val defaultTitle: String = label,
+) {
     FEED("Feed", "🍖", "Fed"),
     WATER("Fresh water", "💧", "Refilled water"),
     WALK("Walk", "🦮", "Walked"),
@@ -18,6 +29,10 @@ enum class TaskKind(val label: String, val emoji: String, val verb: String) {
     MEDS("Medicine", "💊", "Gave medicine"),
     GROOM("Groom", "🪮", "Groomed"),
     LITTER("Clean litter", "🧹", "Cleaned litter"),
+    VACCINE("Vaccine", "💉", "Vaccinated", health = true, defaultTitle = "Anti-rabies shot"),
+    DEWORM("Deworming", "🪱", "Dewormed", health = true),
+    FLEA_TICK("Tick & flea", "🛡️", "Gave tick & flea care", health = true, defaultTitle = "Tick & flea prevention"),
+    VET("Vet check-up", "🩺", "Saw the vet", health = true),
 }
 
 data class Pet(
@@ -76,6 +91,13 @@ data class Completion(
 
 data class Settings(
     val remindersEnabled: Boolean = true,
+    /**
+     * "Someone else is looking after my pet" (travel, pet-sitter, boarding) until this moment:
+     * no reminders, and the pet doesn't get hungry or sad over care missed while you were away.
+     */
+    val awayUntilMs: Long = 0,
+    /** The owner closed the "add the widget" tip. */
+    val widgetTipDismissed: Boolean = false,
     val pro: Boolean = false,
     /** Local minute to start "sleepy" night mode. */
     val nightStart: Int = 22 * 60,
@@ -91,6 +113,7 @@ data class AppState(
 ) {
     fun pet(id: String): Pet? = pets.firstOrNull { it.id == id }
     fun task(id: String): CareTask? = tasks.firstOrNull { it.id == id }
+    fun isAway(nowMs: Long): Boolean = nowMs < settings.awayUntilMs
     fun tasksFor(petId: String): List<CareTask> = tasks.filter { it.petId == petId }
     fun completionsFor(taskId: String): List<Completion> = completions.filter { it.taskId == taskId }
 
@@ -98,6 +121,8 @@ data class AppState(
         const val SCHEMA_VERSION = 1
         /** Completions kept per task; enough for ~5 weeks of 4x/day learning. */
         const val MAX_COMPLETIONS_PER_TASK = 140
+        /** Longest repeat: yearly. */
+        const val MAX_EVERY_DAYS = 365
         const val FREE_PET_LIMIT = 1
     }
 }
@@ -112,11 +137,27 @@ object TaskDefaults {
         TaskKind.MEDS -> listOf(8 * 60)
         TaskKind.GROOM -> listOf(10 * 60)
         TaskKind.LITTER -> listOf(9 * 60)
+        // Health care is a day, not a time: the reminder comes in the morning of the day it's due.
+        TaskKind.VACCINE, TaskKind.DEWORM, TaskKind.FLEA_TICK, TaskKind.VET -> listOf(9 * 60)
     }
 
+    /**
+     * Typical intervals for adult dogs and cats in the Philippines (anti-rabies yearly under RA 9482,
+     * deworming every 3 months, monthly tick & flea prevention, a yearly check-up). Owners change
+     * them to what their vet says; puppies and kittens need shorter gaps.
+     */
     fun everyDaysFor(kind: TaskKind): Int = when (kind) {
         TaskKind.GROOM -> 7
+        TaskKind.VACCINE, TaskKind.VET -> 365
+        TaskKind.DEWORM -> 90
+        TaskKind.FLEA_TICK -> 30
         else -> 1
+    }
+
+    /** The health care suggested for a species, for the "add health reminders" shortcut. */
+    fun healthKindsFor(species: Species): List<TaskKind> = when (species) {
+        Species.DOG, Species.CAT -> listOf(TaskKind.VACCINE, TaskKind.DEWORM, TaskKind.FLEA_TICK, TaskKind.VET)
+        Species.OTHER -> listOf(TaskKind.VET)
     }
 
     fun kindsFor(species: Species): List<TaskKind> = when (species) {

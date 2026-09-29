@@ -7,6 +7,7 @@ import com.pawpixel.map.MapClient
 import com.pawpixel.map.MapSettings
 import com.pawpixel.map.SessionStore
 import com.pawpixel.map.Sha256
+import com.pawpixel.core.NameFilter
 import com.pawpixel.map.SharedPet
 import com.pawpixel.sprite.PetArt
 
@@ -63,7 +64,8 @@ class PetMapModel(private val platform: Platform, private val files: FileStore, 
         files.writeText(SHARED, Json.arr(pets.map { it.id }).stringify())
         val shared = pets.mapNotNull { pet ->
             val a = art(pet) ?: return@mapNotNull null
-            SharedPet(pet.id, pet.name, pet.species.name, a.ears.name, a.look.encode())
+            // Names other owners see go through the word filter (the server checks again).
+            SharedPet(pet.id, NameFilter.forMap(pet.name, pet.species), pet.species.name, a.ears.name, a.look.encode())
         }
         client.join(shared, area)
     }

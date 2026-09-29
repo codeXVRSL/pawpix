@@ -27,6 +27,34 @@ class LocalClock(private val offsetAt: (Long) -> Long) {
     fun at(day: Long, minute: Int): Long = startOfDay(day) + minute * MINUTE_MS
 
     companion object {
+        /** Year, month (1-12), day of month for a day index (days since 1970-01-01). Howard Hinnant's algorithm. */
+        fun civil(day: Long): Triple<Int, Int, Int> {
+            val z = day + 719468
+            val era = (if (z >= 0) z else z - 146096) / 146097
+            val doe = z - era * 146097
+            val yoe = (doe - doe / 1460 + doe / 36524 - doe / 146096) / 365
+            val doy = doe - (365 * yoe + yoe / 4 - yoe / 100)
+            val mp = (5 * doy + 2) / 153
+            val d = doy - (153 * mp + 2) / 5 + 1
+            val m = if (mp < 10) mp + 3 else mp - 9
+            val y = yoe + era * 400 + if (m <= 2) 1 else 0
+            return Triple(y.toInt(), m.toInt(), d.toInt())
+        }
+
+        /** "2026-09-29" */
+        fun isoDate(day: Long): String {
+            val (y, m, d) = civil(day)
+            return "$y-${m.toString().padStart(2, '0')}-${d.toString().padStart(2, '0')}"
+        }
+
+        private val MONTHS = listOf("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")
+
+        /** "Sep 29, 2026" */
+        fun shortDate(day: Long): String {
+            val (y, m, d) = civil(day)
+            return "${MONTHS[m - 1]} $d, $y"
+        }
+
         fun fixed(offsetMs: Long) = LocalClock { offsetMs }
         /** Philippine Standard Time, UTC+8, no daylight saving. */
         val MANILA = fixed(8 * HOUR_MS)
@@ -77,7 +105,10 @@ object CareEngine {
         val today = clock.dayIndex(nowMs)
         val cycleStart = cycleStart(task, today)
         val cycleEnd = cycleStart + n
-        val slotTimes = slots.sorted().map { clock.at(cycleStart, it) }.filter { it >= task.createdAtMs }
+        // Daily care planned before the task existed isn't owed (a pet added at 9am isn't hungry for
+        // 7am). Health care is: a vaccine never given is due now.
+        val slotTimes = slots.sorted().map { clock.at(cycleStart, it) }
+            .filter { task.kind.health || it >= task.createdAtMs }
         val passed = slotTimes.count { it <= nowMs }
         val mine = completions.filter { it.taskId == task.id }
         val doneCount = mine.count { it.localDay in cycleStart until cycleEnd && it.atMs <= nowMs }

@@ -9,6 +9,8 @@ data class Reminder(
     val title: String,
     val body: String,
     val exact: Boolean,
+    /** Show a "Done" button on the notification. Off for heads-ups ("due in 3 days"). */
+    val quickDone: Boolean = true,
 )
 
 /**
@@ -23,9 +25,18 @@ object ReminderPlanner {
     /** Follow-up nudge for medicine if it is still not given. */
     const val MEDS_NUDGE_MS = 45 * MINUTE_MS
 
+    /** Health care: a heads-up this long before it's due, and a follow-up this long after if not done. */
+    const val HEALTH_HEADS_UP_MS = 3 * DAY_MS
+    const val HEALTH_FOLLOW_UP_MS = 3 * DAY_MS
+    /** Of [MAX_PENDING], at most this many are health reminders (they can be months ahead). */
+    const val MAX_HEALTH = 20
+
     fun plan(state: AppState, nowMs: Long, clock: LocalClock, horizonMs: Long = HORIZON_MS): List<Reminder> {
         if (!state.settings.remindersEnabled) return emptyList()
         val out = ArrayList<Reminder>()
+        val health = ArrayList<Reminder>()
+        // While someone else is looking after the pets, daily reminders stay quiet.
+        val quietUntil = state.settings.awayUntilMs
         val end = nowMs + horizonMs
         for (task in state.tasks) {
             if (!task.remindersOn) continue
@@ -33,6 +44,10 @@ object ReminderPlanner {
             val slots = AdaptiveTiming.effectiveSlots(task, state.completions, nowMs, clock)
             if (slots.isEmpty()) continue
             val status = CareEngine.status(task, state.completions, nowMs, clock, slots)
+            if (task.kind.health) {
+                health += healthReminders(task, pet, status, nowMs, clock)
+                continue
+            }
             val n = task.everyDays.coerceAtLeast(1)
 
             // Current cycle: every slot at or after the first open one.
@@ -54,7 +69,29 @@ object ReminderPlanner {
                 cycle += n
             }
         }
-        return out.sortedBy { it.atMs }.take(MAX_PENDING)
+        val keptHealth = health.filter { it.atMs >= quietUntil }.sortedBy { it.atMs }.take(MAX_HEALTH)
+        val daily = out.filter { it.atMs >= quietUntil }.sortedBy { it.atMs }.take(MAX_PENDING - keptHealth.size)
+        return (daily + keptHealth).sortedBy { it.atMs }
+    }
+
+    /**
+     * Health care can be months away, beyond the daily horizon, so it gets its own few reminders:
+     * a heads-up a few days before, one on the day, and a follow-up if it's still not done.
+     */
+    private fun healthReminders(task: CareTask, pet: Pet, status: TaskStatus, nowMs: Long, clock: LocalClock): List<Reminder> {
+        val due = if (status.allDoneThisCycle || status.slotTimes.size <= status.done) status.nextDueMs
+        else status.slotTimes[status.done]
+        due ?: return emptyList()
+        val what = task.title.lowercase()
+        val list = listOf(
+            Reminder(stableId(task.id, due - HEALTH_HEADS_UP_MS, false), task.id, pet.id, due - HEALTH_HEADS_UP_MS,
+                "${task.kind.emoji} ${task.title} · ${pet.name}", "${pet.name}'s $what is due in 3 days. A good time to book the vet.", false, quickDone = false),
+            Reminder(stableId(task.id, due, false), task.id, pet.id, due,
+                "${task.kind.emoji} ${task.title} · ${pet.name}", "${pet.name}'s $what is due today.", task.exactAlarm),
+            Reminder(stableId(task.id, due + HEALTH_FOLLOW_UP_MS, true), task.id, pet.id, due + HEALTH_FOLLOW_UP_MS,
+                "${task.kind.emoji} ${task.title} · ${pet.name}", "${pet.name}'s $what is still due. Tap Done in PawPixel once it's given.", false),
+        )
+        return list.filter { it.atMs > nowMs }
     }
 
     private fun reminder(task: CareTask, pet: Pet, at: Long, nudge: Boolean): Reminder {

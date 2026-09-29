@@ -128,6 +128,19 @@ class AndroidPlatform(private val context: Context) : Platform {
         alarms.setAndAllowWhileIdle(AlarmManager.RTC, at, WidgetTickReceiver.pendingIntent(context))
     }
 
+    override fun widgetInstalled(): Boolean = runCatching {
+        android.appwidget.AppWidgetManager.getInstance(context)
+            .getAppWidgetIds(android.content.ComponentName(context, com.pawpixel.app.widget.PetWidgetReceiver::class.java)).isNotEmpty()
+    }.getOrDefault(true)
+
+    override fun pinWidget(): Boolean {
+        val manager = android.appwidget.AppWidgetManager.getInstance(context)
+        if (!manager.isRequestPinAppWidgetSupported) return false
+        return runCatching {
+            manager.requestPinAppWidget(android.content.ComponentName(context, com.pawpixel.app.widget.PetWidgetReceiver::class.java), null, null)
+        }.getOrDefault(false)
+    }
+
     // ---- Sharing ----
 
     override fun shareFile(bytes: ByteArray, fileName: String, mimeType: String) {

@@ -121,5 +121,12 @@ fun formatMinute(minute: Int): String {
 fun relativeDay(ms: Long, now: Long, clock: LocalClock): String {
     val d = clock.dayIndex(ms) - clock.dayIndex(now)
     val t = formatTime(ms, clock)
-    return when (d) { 0L -> "today $t"; 1L -> "tomorrow $t"; -1L -> "yesterday $t"; else -> t }
+    return when (d) {
+        0L -> "today $t"; 1L -> "tomorrow $t"; -1L -> "yesterday $t"
+        in 2L..6L -> "in $d days, $t"
+        else -> LocalClock.shortDate(clock.dayIndex(ms))
+    }
 }
+
+/** "Sep 29, 2026" */
+fun formatDate(ms: Long, clock: LocalClock): String = LocalClock.shortDate(clock.dayIndex(ms))

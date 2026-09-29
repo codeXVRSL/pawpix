@@ -45,6 +45,8 @@ object MoodEngine {
         TaskKind.WATER -> 0.7
         TaskKind.PLAY, TaskKind.LITTER -> 0.5
         TaskKind.GROOM -> 0.3
+        // Health care that's due shows as a gentle "needs care" look, never enough to make the pet sad.
+        TaskKind.VACCINE, TaskKind.DEWORM, TaskKind.FLEA_TICK, TaskKind.VET -> 0.4
     }
 
     fun graceMinutes(kind: TaskKind): Int = when (kind) {
@@ -54,11 +56,16 @@ object MoodEngine {
         TaskKind.PLAY -> 240
         TaskKind.LITTER -> 360
         TaskKind.GROOM -> 1440
+        TaskKind.VACCINE, TaskKind.DEWORM, TaskKind.FLEA_TICK, TaskKind.VET -> 2 * 1440
     }
 
-    fun penalty(status: TaskStatus, nowMs: Long): Double {
-        val since = status.overdueSinceMs ?: return 0.0
-        val minutes = (nowMs - since).toDouble() / MINUTE_MS
+    /**
+     * How much an overdue task weighs on the pet right now. Care missed while the owner was away
+     * ([awayUntilMs]) doesn't count: the clock starts when they're back.
+     */
+    fun penalty(status: TaskStatus, nowMs: Long, awayUntilMs: Long = 0): Double {
+        val since = maxOf(status.overdueSinceMs ?: return 0.0, awayUntilMs)
+        val minutes = (nowMs - since).coerceAtLeast(0).toDouble() / MINUTE_MS
         val kind = status.task.kind
         return weight(kind) * (minutes / graceMinutes(kind)).coerceIn(0.0, 1.0)
     }
@@ -72,12 +79,17 @@ object MoodEngine {
     fun read(state: AppState, petId: String, nowMs: Long, clock: LocalClock): MoodReading {
         val pet = state.pet(petId)
         val name = pet?.name ?: "Your pet"
+        if (state.isAway(nowMs)) {
+            val night = isNight(clock.minuteOfDay(nowMs), state.settings)
+            return if (night) MoodReading(Mood.SLEEPY, "$name is sleeping", 100, null)
+            else MoodReading(Mood.CONTENT, "$name is being looked after", 100, null)
+        }
         val tasks = state.tasksFor(petId)
         val statuses = tasks.map { t ->
             val slots = AdaptiveTiming.effectiveSlots(t, state.completions, nowMs, clock)
             CareEngine.status(t, state.completions, nowMs, clock, slots)
         }
-        val penalties = statuses.map { it to penalty(it, nowMs) }
+        val penalties = statuses.map { it to penalty(it, nowMs, state.settings.awayUntilMs) }
         val total = penalties.sumOf { it.second }
         val worst = penalties.maxByOrNull { it.second }
         val score = (100 - total / 2.0 * 100).toInt().coerceIn(0, 100)
@@ -97,6 +109,8 @@ object MoodEngine {
                 TaskKind.LITTER -> Mood.RESTLESS to "The litter needs cleaning"
                 TaskKind.GROOM -> Mood.RESTLESS to "$name needs grooming"
                 TaskKind.MEDS -> Mood.NEEDS_MEDS to "Time for $name's ${task.title.lowercase()}"
+                TaskKind.VACCINE, TaskKind.DEWORM, TaskKind.FLEA_TICK, TaskKind.VET ->
+                    Mood.NEEDS_MEDS to "$name's ${task.title.lowercase()} is due"
             }
             return MoodReading(mood, caption, score, task.id)
         }

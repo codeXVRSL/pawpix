@@ -43,25 +43,37 @@ import com.pawpixel.core.TaskKind
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-fun TaskEditorScreen(app: AppScope, state: AppState, pet: Pet, taskId: String?) {
+fun TaskEditorScreen(app: AppScope, state: AppState, pet: Pet, taskId: String?, healthOnly: Boolean = false) {
     val original = taskId?.let { state.task(it) }
     val today = app.repo.clock.dayIndex(app.now)
+    val health = original?.kind?.health ?: healthOnly
     var task by remember {
-        mutableStateOf(original ?: StateOps.defaultTask(pet, TaskKind.FEED, today, Ids.newId(), app.now))
+        mutableStateOf(original ?: StateOps.defaultTask(pet, if (health) TaskKind.VACCINE else TaskKind.FEED, today, Ids.newId(), app.now))
     }
+    /** New health items: when it was last done (days ago), or null for never / don't know. */
+    var lastDoneDaysAgo by remember { mutableStateOf<Int?>(null) }
 
     fun setKind(kind: TaskKind) {
-        val keepTitle = task.title != task.kind.label
+        val keepTitle = task.title != task.kind.defaultTitle
         task = task.copy(
             kind = kind,
-            title = if (keepTitle) task.title else kind.label,
+            title = if (keepTitle) task.title else kind.defaultTitle,
             slots = if (original == null) TaskDefaults.slotsFor(kind, pet.species) else task.slots,
             everyDays = if (original == null) TaskDefaults.everyDaysFor(kind) else task.everyDays,
             adaptive = if (original == null) kind != TaskKind.MEDS else task.adaptive,
         )
     }
 
-    val save: () -> Unit = { app.launch { app.repo.update { StateOps.upsertTask(it, task) }; app.back() } }
+    val save: () -> Unit = {
+        app.launch {
+            app.repo.update { s ->
+                val saved = StateOps.upsertTask(s, task)
+                val ago = lastDoneDaysAgo
+                if (original == null && ago != null) StateOps.logOnDay(saved, task.id, today - ago, app.repo.now(), app.repo.clock) else saved
+            }
+            app.back()
+        }
+    }
 
     Column(
         Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding()
@@ -73,7 +85,12 @@ fun TaskEditorScreen(app: AppScope, state: AppState, pet: Pet, taskId: String?) 
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             TextButton(onClick = app.back) { Text("‹ Back") }
             Text(
-                if (original == null) "New care task" else "Edit care task",
+                when {
+                    original == null && health -> "New health item"
+                    original == null -> "New care task"
+                    health -> "Edit health item"
+                    else -> "Edit care task"
+                },
                 style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f),
             )
             Button(onClick = save) { Text("Save") }
@@ -81,13 +98,13 @@ fun TaskEditorScreen(app: AppScope, state: AppState, pet: Pet, taskId: String?) 
 
         // All kinds visible at once (wrapping), so Medicine or Litter aren't hidden off-screen.
         FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            TaskKind.entries.forEach { k ->
+            TaskKind.entries.filter { it.health == health }.forEach { k ->
                 FilterChip(task.kind == k, { setKind(k) }, label = { Text("${k.emoji} ${k.label}") })
             }
         }
         OutlinedTextField(task.title, { task = task.copy(title = it.take(30)) }, label = { Text("Name") }, singleLine = true, modifier = Modifier.fillMaxWidth())
 
-        Text("Times", fontWeight = FontWeight.Bold)
+        Text(if (health) "Reminder time on the day" else "Times", fontWeight = FontWeight.Bold)
         task.slots.forEachIndexed { i, minute ->
             // Time first, never wrapped; compact steppers so a row fits a small phone with the ✕.
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -108,7 +125,7 @@ fun TaskEditorScreen(app: AppScope, state: AppState, pet: Pet, taskId: String?) 
                 }
             }
         }
-        if (task.slots.size < 4 && task.everyDays == 1) {
+        if (!health && task.slots.size < 4 && task.everyDays == 1) {
             TextButton(onClick = {
                 val last = task.slots.maxOrNull() ?: (8 * 60)
                 task = task.copy(slots = (task.slots + ((last + 4 * 60) % MINUTES_PER_DAY)).distinct())
@@ -117,16 +134,35 @@ fun TaskEditorScreen(app: AppScope, state: AppState, pet: Pet, taskId: String?) 
 
         Text("Repeat", fontWeight = FontWeight.Bold)
         FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            listOf(1 to "Daily", 2 to "Every 2 days", 7 to "Weekly", 14 to "Every 2 weeks", 30 to "Monthly").forEach { (d, label) ->
+            val choices = if (health) listOf(14 to "Every 2 weeks", 30 to "Monthly", 90 to "Every 3 months", 180 to "Every 6 months", 365 to "Yearly")
+            else listOf(1 to "Daily", 2 to "Every 2 days", 7 to "Weekly", 14 to "Every 2 weeks", 30 to "Monthly")
+            // Health items keep their cycle (it counts from when they were last done).
+            choices.forEach { (d, label) ->
                 FilterChip(task.everyDays == d, {
-                    task = task.copy(everyDays = d, anchorDay = today, slots = if (d > 1) task.slots.take(1) else task.slots)
+                    task = task.copy(everyDays = d, anchorDay = if (health) task.anchorDay else today, slots = if (d > 1) task.slots.take(1) else task.slots)
                 }, label = { Text(label) })
             }
         }
 
-        SwitchRow("Reminders", "Get a notification when it's time.", task.remindersOn) { task = task.copy(remindersOn = it) }
-        SwitchRow("Learn my routine", "Moves reminders toward when you actually do this (up to 2 hours).", task.adaptive) { task = task.copy(adaptive = it) }
-        SwitchRow("Exact time", "Remind at the exact minute. Good for medicine. Android may ask for permission.", task.exactAlarm) { task = task.copy(exactAlarm = it) }
+        if (health && original == null) {
+            Text("Last done", fontWeight = FontWeight.Bold)
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                FilterChip(lastDoneDaysAgo == null, { lastDoneDaysAgo = null }, label = { Text("Never / not sure") })
+                WHEN_CHOICES.forEach { (days, label) ->
+                    FilterChip(lastDoneDaysAgo == days, { lastDoneDaysAgo = days }, label = { Text(label) })
+                }
+            }
+            Text(
+                if (lastDoneDaysAgo == null) "It'll show as due now. Tap Done once it's given." else "The next one is counted from then.",
+                style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+
+        SwitchRow("Reminders", if (health) "A heads-up 3 days before, and on the day." else "Get a notification when it's time.", task.remindersOn) {
+            task = task.copy(remindersOn = it)
+        }
+        if (!health) SwitchRow("Learn my routine", "Moves reminders toward when you actually do this (up to 2 hours).", task.adaptive) { task = task.copy(adaptive = it) }
+        if (!health) SwitchRow("Exact time", "Remind at the exact minute. Good for medicine. Android may ask for permission.", task.exactAlarm) { task = task.copy(exactAlarm = it) }
 
         Button(onClick = save, modifier = Modifier.fillMaxWidth()) { Text("Save") }
         if (original != null) {

@@ -45,14 +45,14 @@ class ReminderReceiver : BroadcastReceiver() {
             Intent(context, ReminderReceiver::class.java).setAction(ACTION_DONE).putExtra(EXTRA_TASK, taskId).putExtra(EXTRA_ID, id),
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
         )
-        val notification = NotificationCompat.Builder(context, AndroidPlatform.CHANNEL_ID)
+        val builder = NotificationCompat.Builder(context, AndroidPlatform.CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_stat_paw)
             .setContentTitle(intent.getStringExtra(EXTRA_TITLE))
             .setContentText(intent.getStringExtra(EXTRA_BODY))
             .setContentIntent(open)
             .setAutoCancel(true)
-            .addAction(0, "Done", done)
-            .build()
+        if (intent.getBooleanExtra(EXTRA_QUICK_DONE, true)) builder.addAction(0, "Done", done)
+        val notification = builder.build()
         runCatching { nm.notify(id, notification) } // no-op if notification permission was denied
     }
 
@@ -63,12 +63,13 @@ class ReminderReceiver : BroadcastReceiver() {
         const val EXTRA_ID = "id"
         const val EXTRA_TITLE = "title"
         const val EXTRA_BODY = "body"
+        const val EXTRA_QUICK_DONE = "quickDone"
 
         /** Same request code and action => same PendingIntent, so it can be cancelled later. */
         fun pendingIntent(context: Context, id: Int, r: Reminder?): PendingIntent {
             val intent = Intent(context, ReminderReceiver::class.java).setAction(ACTION_SHOW)
             if (r != null) intent.putExtra(EXTRA_TASK, r.taskId).putExtra(EXTRA_ID, r.id)
-                .putExtra(EXTRA_TITLE, r.title).putExtra(EXTRA_BODY, r.body)
+                .putExtra(EXTRA_TITLE, r.title).putExtra(EXTRA_BODY, r.body).putExtra(EXTRA_QUICK_DONE, r.quickDone)
             return PendingIntent.getBroadcast(context, id, intent, PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
         }
     }

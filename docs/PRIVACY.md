@@ -8,6 +8,8 @@ _Last updated: [date]. Replace the bracketed parts and publish this page before 
 - **Your pet's photo:** used on your phone to make the pixel sprite. PawPixel keeps only a small (256×256) crop so it can make your before/after card and remake the sprite. The original stays in your photo library.
 - **Your pets, care tasks and when you did them:** stored in the app's private storage on your phone, and used to set your pet's mood and your reminder times.
 - **Widget data:** a copy of your pet's mood and sprite, in storage shared only with PawPixel's own home-screen widget.
+- **Health records you add:** vaccine, deworming, tick & flea and vet-visit dates you log, kept on your phone like your other care tasks.
+- **Backups:** on Android, your phone's Google backup includes PawPixel (pets, tasks, history, sprites), so a new phone gets them back; the pet-map sign-in is left out. If you tap **Save backup file**, PawPixel makes a file and opens your share sheet; it goes only where you choose to save it.
 
 ## The pet map (optional)
 If you join the pet map, and only then:
@@ -37,4 +39,5 @@ PawPixel is a general-audience app. The pet map is only for people 18 and over; 
 
 ## Contact
 [Your name], Naga City, Philippines · [support email]
-Under the Philippine Data Privacy Act of 2012 (RA 10173), you can contact us about your data at any time.
+Data protection officer: [your name] · [support email]
+Under the Philippine Data Privacy Act of 2012 (RA 10173), you can contact us about your data at any time: to see it, correct it or have it deleted.

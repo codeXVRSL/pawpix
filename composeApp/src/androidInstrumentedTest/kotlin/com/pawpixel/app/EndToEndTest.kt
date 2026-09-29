@@ -13,7 +13,10 @@ import android.view.accessibility.AccessibilityNodeInfo
 import androidx.test.core.app.ActivityScenario
 import androidx.test.espresso.intent.Intents
 import androidx.test.espresso.intent.Intents.intending
+import androidx.test.espresso.intent.matcher.IntentMatchers.hasAction
 import androidx.test.espresso.intent.matcher.IntentMatchers.isInternal
+import com.pawpixel.core.Backup
+import com.pawpixel.core.ReminderPlanner
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import androidx.test.uiautomator.By
@@ -154,6 +157,25 @@ class EndToEndTest {
             find(By.text("Care"))
         }
 
+        step("health reminders: add the usual set, record a shot given a month ago") {
+            retrying { scrollTo(By.text("+ Add health reminders")).click() }
+            waitFor("health tasks added") { repo.state.value.tasksFor(petId).count { it.kind.health } == 4 }
+            val vaccine = repo.state.value.tasksFor(petId).first { it.kind.name == "VACCINE" }
+            val row = scrollTo(By.text("💉 Anti-rabies shot"))
+            find(By.text("Due today"))
+            // The Done button in the same row (the nearest one vertically).
+            val done = device.findObjects(By.text("Done")).minByOrNull { kotlin.math.abs(it.visibleBounds.centerY() - row.visibleBounds.centerY()) }
+                ?: throw AssertionError("no Done button next to the vaccine")
+            retrying { done.click() }
+            find(By.text("When was it done?"))
+            shot("health-when")
+            retrying { find(By.text("A month ago")).click() }
+            waitFor("shot recorded") { repo.state.value.completions.any { it.taskId == vaccine.id } }
+            scrollTo(By.text("Due in 11 months"))
+            Thread.sleep(500)
+            shot("health-section")
+        }
+
         step("share animation and before/after card open the share sheet") {
             val before = choosers()
             retrying { scrollTo(By.text("Share animation")).click() }
@@ -175,6 +197,44 @@ class EndToEndTest {
             retrying { find(By.text("Settings")).click() }
             find(By.text("Bedtime"))
             shot("10-settings")
+            device.pressBack()
+            find(By.text("Chelsea"))
+        }
+
+        step("away mode pauses care and comes back") {
+            retrying { find(By.text("Settings")).click() }
+            retrying { scrollTo(By.text("Away 3 days")).click() }
+            find(By.text("I'm back"))
+            check(repo.state.value.isAway(repo.now())) { "not away" }
+            val away = repo.state.value
+            check(ReminderPlanner.plan(away, repo.now(), repo.clock).none { it.atMs < away.settings.awayUntilMs }) { "reminders still planned while away" }
+            shot("away-mode")
+            retrying { find(By.text("I'm back")).click() }
+            waitFor("back home") { !repo.state.value.isAway(repo.now()) }
+            device.pressBack()
+            find(By.text("Chelsea"))
+        }
+
+        step("backup: save a file, then restore one") {
+            retrying { find(By.text("Settings")).click() }
+            val before = choosers()
+            retrying { scrollTo(By.text("Save backup file")).click() }
+            waitFor("backup share sheet") { choosers() == before + 1 }
+            // Restore a backup of this phone with one change (bedtime 9 PM), picked from "Files".
+            val state = repo.state.value
+            val files = state.pets.flatMap { Backup.filesFor(it.id) }.mapNotNull { path -> repo.platform.files.readBytes(path)?.let { path to it } }.toMap()
+            val backup = File(ctx.cacheDir, "e2e-backup.json")
+            backup.writeText(Backup.encode(state.copy(settings = state.settings.copy(nightStart = 21 * 60)), files, repo.now()))
+            intending(hasAction(Intent.ACTION_OPEN_DOCUMENT)).respondWith(
+                Instrumentation.ActivityResult(Activity.RESULT_OK, Intent().setData(Uri.fromFile(backup))),
+            )
+            retrying { scrollTo(By.text("Restore")).click() }
+            find(By.text("Restore this backup?"))
+            shot("backup-restore")
+            retrying { find(By.text("Replace with backup")).click() }
+            find(By.text("Restored 1 pet."), 20_000)
+            check(repo.state.value.settings.nightStart == 21 * 60) { "backup not applied" }
+            check(repo.state.value.pets.single().let { repo.art(it) } != null) { "pet's look not restored" }
             device.pressBack()
             find(By.text("Chelsea"))
         }
@@ -256,7 +316,8 @@ class EndToEndTest {
             val provider = ComponentName(ctx, PetWidgetReceiver::class.java)
             check(awm.isRequestPinAppWidgetSupported) { "this launcher can't pin widgets" }
             find(By.text("Chelsea"))
-            awm.requestPinAppWidget(provider, null, null)
+            // The home screen offers the widget until one is added.
+            retrying { scrollTo(By.text("Add widget")).click() }
             val add = find(By.text(Pattern.compile("(?i)add( to home screen)?|add automatically")), 15_000)
             shot("12-widget-dialog")
             add.click()

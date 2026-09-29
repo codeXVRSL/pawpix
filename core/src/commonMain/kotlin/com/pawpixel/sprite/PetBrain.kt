@@ -86,7 +86,8 @@ class PetBrain(
                 TaskKind.FEED, TaskKind.WATER -> start(Behavior.EAT, nowMs, 2800)
                 TaskKind.WALK, TaskKind.PLAY -> { zoomLegs = 2; startZoom(nowMs) }
                 TaskKind.GROOM -> start(Behavior.SHAKE, nowMs, 1100)
-                TaskKind.MEDS, TaskKind.LITTER -> start(Behavior.PETTED, nowMs, 1600)
+                TaskKind.MEDS, TaskKind.LITTER, TaskKind.VACCINE, TaskKind.DEWORM, TaskKind.FLEA_TICK, TaskKind.VET ->
+                    start(Behavior.PETTED, nowMs, 1600)
             }
         }
     }

@@ -24,7 +24,8 @@ sealed interface Screen {
     data object CreatePet : Screen
     data class PetDetail(val petId: String) : Screen
     data class RemakeSprite(val petId: String) : Screen
-    data class EditTask(val petId: String, val taskId: String?) : Screen
+    /** [health] picks which kinds a new task offers: daily care, or health care (vaccines, deworming...). */
+    data class EditTask(val petId: String, val taskId: String?, val health: Boolean = false) : Screen
     data object Settings : Screen
     data object PetMap : Screen
 }
@@ -92,7 +93,7 @@ fun App(repo: PawRepository, registerBack: ((() -> Boolean) -> (() -> Unit))? = 
                 }
                 is Screen.EditTask -> {
                     val pet = state.pet(screen.petId)
-                    if (pet == null) LaunchedEffect(screen) { back() } else TaskEditorScreen(app, state, pet, screen.taskId)
+                    if (pet == null) LaunchedEffect(screen) { back() } else TaskEditorScreen(app, state, pet, screen.taskId, screen.health)
                 }
                 Screen.Settings -> SettingsScreen(app, state)
                 Screen.PetMap -> PetMapScreen(app, state)

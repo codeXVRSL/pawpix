@@ -17,6 +17,7 @@ final class SwiftHost: NSObject, IosHost {
     static let doneAction = "DONE"
 
     private var pickerDelegate: PickerDelegate?
+    private var documentDelegate: DocumentDelegate?
     private var locationDelegate: ApproximateLocation?
     private var appleDelegate: AppleSignIn?
 
@@ -50,6 +51,20 @@ final class SwiftHost: NSObject, IosHost {
         }
         pickerDelegate = delegate
         picker.delegate = delegate
+        Self.topViewController()?.present(picker, animated: true)
+    }
+
+    // MARK: Backups
+
+    func pickFile(completion: DataCallback) {
+        let picker = UIDocumentPickerViewController(forOpeningContentTypes: [.json, .plainText, .data], asCopy: true)
+        let delegate = DocumentDelegate { [weak self] data in
+            completion.onResult(data: data)
+            self?.documentDelegate = nil
+        }
+        documentDelegate = delegate
+        picker.delegate = delegate
+        picker.allowsMultipleSelection = false
         Self.topViewController()?.present(picker, animated: true)
     }
 
@@ -128,7 +143,8 @@ final class SwiftHost: NSObject, IosHost {
             content.title = item["title"] as? String ?? "PawPixel"
             content.body = item["body"] as? String ?? ""
             content.sound = .default
-            content.categoryIdentifier = Self.careCategory
+            // The Done button is left off heads-ups ("due in 3 days").
+            if (item["quickDone"] as? Bool) != false { content.categoryIdentifier = Self.careCategory }
             content.userInfo = ["taskId": taskId]
             let trigger = UNTimeIntervalNotificationTrigger(timeInterval: at - now, repeats: false)
             center.add(UNNotificationRequest(identifier: id, content: content, trigger: trigger))
@@ -148,7 +164,9 @@ final class SwiftHost: NSObject, IosHost {
     func shareFile(data: Data, fileName: String) {
         let url = FileManager.default.temporaryDirectory.appendingPathComponent(fileName)
         try? data.write(to: url)
-        let sheet = UIActivityViewController(activityItems: [url, "Meet my pet in pixels! Made with PawPixel"], applicationActivities: nil)
+        // Pictures get a friendly caption; a backup file travels on its own.
+        let items: [Any] = fileName.hasSuffix(".json") ? [url] : [url, "Meet my pet in pixels! Made with PawPixel"]
+        let sheet = UIActivityViewController(activityItems: items, applicationActivities: nil)
         guard let top = Self.topViewController() else { NSLog("PawPixel: share failed, no view controller to present from"); return }
         NSLog("PawPixel: sharing %@ (%d bytes) from %@", fileName, data.count, String(describing: type(of: top)))
         sheet.popoverPresentationController?.sourceView = top.view
@@ -214,6 +232,20 @@ private final class PickerDelegate: NSObject, PHPickerViewControllerDelegate {
             DispatchQueue.main.async { self.done(data) }
         }
     }
+}
+
+private final class DocumentDelegate: NSObject, UIDocumentPickerDelegate {
+    let done: (Data?) -> Void
+    init(done: @escaping (Data?) -> Void) { self.done = done }
+
+    func documentPicker(_ controller: UIDocumentPickerViewController, didPickDocumentsAt urls: [URL]) {
+        guard let url = urls.first else { done(nil); return }
+        // Backups are small; don't read anything huge into memory.
+        let size = (try? url.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0
+        done(size > 40_000_000 ? nil : try? Data(contentsOf: url))
+    }
+
+    func documentPickerWasCancelled(_ controller: UIDocumentPickerViewController) { done(nil) }
 }
 
 /// Mirrors Kotlin's `RawImage`: "PPX1", width, height (big-endian Int32), then ARGB Int32s (big-endian).

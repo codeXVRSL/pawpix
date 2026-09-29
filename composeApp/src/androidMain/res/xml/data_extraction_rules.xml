@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Android 12+: the same as backup_rules.xml, for cloud backup and phone-to-phone transfer. -->
+<data-extraction-rules>
+    <cloud-backup>
+        <include domain="file" path="pawpixel/" />
+        <exclude domain="file" path="pawpixel/map/" />
+    </cloud-backup>
+    <device-transfer>
+        <include domain="file" path="pawpixel/" />
+        <exclude domain="file" path="pawpixel/map/" />
+    </device-transfer>
+</data-extraction-rules>

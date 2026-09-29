@@ -40,7 +40,11 @@ interface Platform {
     fun requestNotificationPermission()
     /** Reload widgets now, and again at [nextChangeMs] when the mood is due to change. */
     fun refreshWidgets(nextChangeMs: Long?)
-    /** Opens the system share sheet for an image (PNG or GIF). */
+    /** Whether a PawPixel widget is on the home screen; null when the system can't say (iOS). */
+    fun widgetInstalled(): Boolean? = null
+    /** Asks the launcher to add the widget (Android launchers that support it). False if it can't. */
+    fun pinWidget(): Boolean = false
+    /** Opens the system share sheet for a file (PNG, GIF, or a JSON backup). */
     fun shareFile(bytes: ByteArray, fileName: String, mimeType: String)
     fun openUrl(url: String)
     /** Diagnostic line in the system log (logcat / Console), never shown to the user. */
@@ -74,3 +78,7 @@ expect fun PixelImage.toImageBitmap(): ImageBitmap
 /** Returns a launcher that opens the system photo picker and reports the chosen image's bytes. */
 @Composable
 expect fun rememberPhotoPicker(onResult: (ByteArray?) -> Unit): () -> Unit
+
+/** Returns a launcher that opens the system file picker (for restoring a backup) and reports the file's bytes. */
+@Composable
+expect fun rememberFilePicker(onResult: (ByteArray?) -> Unit): () -> Unit

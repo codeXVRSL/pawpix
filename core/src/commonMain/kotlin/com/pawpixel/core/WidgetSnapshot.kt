@@ -28,10 +28,12 @@ object WidgetSnapshot {
             val statuses = state.tasksFor(pet.id).map { t ->
                 CareEngine.status(t, state.completions, nowMs, clock, AdaptiveTiming.effectiveSlots(t, state.completions, nowMs, clock))
             }
+            // Health care (a vaccine, a vet visit) is logged in the app, not with a quick tap on the widget.
             val urgent = statuses
+                .filter { !it.task.kind.health }
                 .filter { it.isOverdue || (it.nextDueMs != null && it.nextDueMs - nowMs <= DUE_SOON_MS && !it.allDoneThisCycle) }
                 .maxWithOrNull(compareBy<TaskStatus>({ MoodEngine.penalty(it, nowMs) }, { -(it.nextDueMs ?: Long.MAX_VALUE) }))
-            val next = statuses.filter { !it.isOverdue }.mapNotNull { s -> s.nextDueMs?.let { s to it } }.minByOrNull { it.second }
+            val next = statuses.filter { !it.isOverdue && !it.task.kind.health }.mapNotNull { s -> s.nextDueMs?.let { s to it } }.minByOrNull { it.second }
 
             Json.obj(
                 "id" to pet.id,
@@ -39,7 +41,7 @@ object WidgetSnapshot {
                 "spriteVersion" to pet.spriteVersion,
                 "sprites" to Mood.entries.associate { it.key to spritePath(pet.id, it) },
                 "timeline" to timelineJson(MoodEngine.timeline(state, pet.id, nowMs, clock)),
-                "action" to urgent?.let { s ->
+                "action" to urgent?.takeIf { !state.isAway(nowMs) }?.let { s ->
                     val after = StateOps.complete(state, s.task.id, nowMs, clock)
                     Json.obj(
                         "taskId" to s.task.id,

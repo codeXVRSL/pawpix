@@ -7,6 +7,8 @@ object StateCodec {
         "schema" to AppState.SCHEMA_VERSION,
         "settings" to Json.obj(
             "remindersEnabled" to state.settings.remindersEnabled,
+            "awayUntil" to state.settings.awayUntilMs,
+            "widgetTipDismissed" to state.settings.widgetTipDismissed,
             "pro" to state.settings.pro,
             "nightStart" to state.settings.nightStart,
             "nightEnd" to state.settings.nightEnd,
@@ -42,6 +44,8 @@ object StateCodec {
         val defaults = Settings()
         val settings = Settings(
             remindersEnabled = s["remindersEnabled"].bool ?: defaults.remindersEnabled,
+            awayUntilMs = s["awayUntil"].long ?: defaults.awayUntilMs,
+            widgetTipDismissed = s["widgetTipDismissed"].bool ?: defaults.widgetTipDismissed,
             pro = s["pro"].bool ?: defaults.pro,
             nightStart = s["nightStart"].int ?: defaults.nightStart,
             nightEnd = s["nightEnd"].int ?: defaults.nightEnd,
@@ -80,7 +84,7 @@ object StateCodec {
                 title = t["title"].str ?: kind.label,
                 slots = t["slots"].list.mapNotNull { it.int }.filter { it in 0 until MINUTES_PER_DAY }.sorted()
                     .ifEmpty { listOf(8 * 60) },
-                everyDays = (t["everyDays"].int ?: 1).coerceAtLeast(1),
+                everyDays = (t["everyDays"].int ?: 1).coerceIn(1, AppState.MAX_EVERY_DAYS),
                 anchorDay = t["anchorDay"].long ?: 0L,
                 adaptive = t["adaptive"].bool ?: true,
                 exactAlarm = t["exactAlarm"].bool ?: false,
