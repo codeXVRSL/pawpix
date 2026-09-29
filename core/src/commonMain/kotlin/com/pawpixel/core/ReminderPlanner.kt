@@ -13,7 +13,26 @@ data class Reminder(
     val quickDone: Boolean = true,
     /** Every task this notification is about (several when bundled); its Done completes them all. */
     val taskIds: List<String> = listOf(taskId),
-)
+    /** The planned time each of [taskIds] is for, so a Done can tell whether it's already covered. */
+    val slots: List<Long> = listOf(atMs),
+) {
+    /** What a notification's Done refers to, as "task@slot" pairs (compact for notification extras). */
+    val refs: List<ReminderRef> get() = taskIds.mapIndexed { i, id -> ReminderRef(id, slots.getOrNull(i)) }
+}
+
+/** One task a notification is about, and the planned time it was for. */
+data class ReminderRef(val taskId: String, val slotAt: Long?) {
+    fun encode() = if (slotAt == null) taskId else "$taskId@$slotAt"
+
+    companion object {
+        fun encodeAll(refs: List<ReminderRef>) = refs.joinToString(",") { it.encode() }
+        /** Reads "a@123,b@456" (or bare task ids from older notifications). */
+        fun decodeAll(text: String): List<ReminderRef> = text.split(',').mapNotNull { part ->
+            val id = part.substringBefore('@').trim()
+            if (id.isEmpty()) null else ReminderRef(id, part.substringAfter('@', "").toLongOrNull())
+        }
+    }
+}
 
 /**
  * Plans local notifications for open care slots. Platforms cancel everything and schedule this
@@ -60,7 +79,7 @@ object ReminderPlanner {
                 if (at > nowMs && at <= end) out += reminder(task, pet, at, false)
                 if (task.kind == TaskKind.MEDS) {
                     val nudge = at + MEDS_NUDGE_MS
-                    if (nudge > nowMs && nudge <= end) out += reminder(task, pet, nudge, true)
+                    if (nudge > nowMs && nudge <= end) out += reminder(task, pet, nudge, true, slotAt = at)
                 }
             }
             // Later cycles: every slot is open.
@@ -74,7 +93,7 @@ object ReminderPlanner {
             }
         }
         val keptHealth = bundle(health.filter { it.atMs >= quietUntil }, state).sortedBy { it.atMs }.take(MAX_HEALTH)
-        val daily = bundleDaily(out.filter { it.atMs >= quietUntil }, state).sortedBy { it.atMs }.take(MAX_PENDING - keptHealth.size)
+        val daily = bundleDaily(out.filter { it.atMs >= quietUntil }, state, clock).sortedBy { it.atMs }.take(MAX_PENDING - keptHealth.size)
         return (daily + keptHealth).sortedBy { it.atMs }
     }
 
@@ -106,7 +125,7 @@ object ReminderPlanner {
      * and fresh water, or feeding two pets) comes as one, "Mochi: feed and fresh water · Kiko: feed",
      * whose Done logs them all. Medicine always keeps its own notification and follow-up.
      */
-    private fun bundleDaily(reminders: List<Reminder>, state: AppState): List<Reminder> {
+    private fun bundleDaily(reminders: List<Reminder>, state: AppState, clock: LocalClock): List<Reminder> {
         val (meds, rest) = reminders.partition { state.task(it.taskId)?.kind == TaskKind.MEDS }
         val out = ArrayList<Reminder>(meds)
         var group = ArrayList<Reminder>()
@@ -116,7 +135,8 @@ object ReminderPlanner {
             group = ArrayList()
         }
         for (r in rest.sortedBy { it.atMs }) {
-            if (group.isNotEmpty() && r.atMs - group[0].atMs > BUNDLE_WINDOW_MS) flush()
+            // Never across midnight: a Done at 11:56 pm shouldn't log tomorrow's 12:10 am feed today.
+            if (group.isNotEmpty() && (r.atMs - group[0].atMs > BUNDLE_WINDOW_MS || clock.dayIndex(r.atMs) != clock.dayIndex(group[0].atMs))) flush()
             group += r
         }
         flush()
@@ -131,8 +151,10 @@ object ReminderPlanner {
         }
         val pets = byPet.keys.mapNotNull { state.pet(it)?.name }
         val first = group[0]
-        val ids = group.map { it.taskId }.distinct()
+        val unique = group.distinctBy { it.taskId }
+        val ids = unique.map { it.taskId }
         return first.copy(
+            slots = unique.map { it.slots.first() },
             id = stableId(ids.joinToString(","), first.atMs, false),
             title = "🐾 Care time · " + joinNames(pets),
             body = parts.joinToString(" · ") + ". Tap Done when it's all done.",
@@ -164,7 +186,7 @@ object ReminderPlanner {
                 id = stableId(group.joinToString { it.taskId }, first.atMs, false))
         }
 
-    private fun reminder(task: CareTask, pet: Pet, at: Long, nudge: Boolean): Reminder {
+    private fun reminder(task: CareTask, pet: Pet, at: Long, nudge: Boolean, slotAt: Long = at): Reminder {
         val title = "${task.kind.emoji} ${task.title} · ${pet.name}"
         val body = when {
             nudge -> "${pet.name} still needs ${task.title.lowercase()}."
@@ -173,7 +195,7 @@ object ReminderPlanner {
             task.kind == TaskKind.MEDS -> "Time for ${pet.name}'s ${task.title.lowercase()}."
             else -> "Time to ${task.title.lowercase()} for ${pet.name}."
         }
-        return Reminder(stableId(task.id, at, nudge), task.id, pet.id, at, title, body, task.exactAlarm)
+        return Reminder(stableId(task.id, at, nudge), task.id, pet.id, at, title, body, task.exactAlarm, slots = listOf(slotAt))
     }
 
     fun stableId(taskId: String, at: Long, nudge: Boolean): Int {

@@ -76,6 +76,11 @@ interface IosHost {
     fun signInWithApple(hashedNonce: String, completion: TokenCallback)
 }
 
+/** Swift's notification completion handler, called when a notification's Done is saved. */
+interface NotificationDone {
+    fun finished()
+}
+
 interface LocationCallback {
     fun onResult(found: Boolean, lat: Double, lng: Double)
 }
@@ -95,8 +100,15 @@ object IosGraph {
     fun onForeground() { MainScope().launch { repo.ingestWidgetTaps(); repo.publish(); repo.family.requestSync() } }
 
     /** "Done" tapped on a notification. */
-    /** Done on a notification: [taskId] may list several, comma-separated (a bundled reminder). */
-    fun completeTask(taskId: String) { MainScope().launch { taskId.split(',').filter { it.isNotBlank() }.forEach { repo.completeFromReminder(it) } } }
+    /**
+     * Done on a notification: [refs] is "task@slot" pairs (several for a bundled reminder). Calls
+     * [done] once it's saved, so iOS keeps the app awake until then.
+     */
+    fun completeTask(refs: String, done: NotificationDone) {
+        MainScope().launch {
+            try { repo.completeFromReminder(com.pawpixel.core.ReminderRef.decodeAll(refs)) } finally { done.finished() }
+        }
+    }
 
     internal fun host() = host
 }
@@ -145,7 +157,7 @@ class IosPlatform(private val host: IosHost) : Platform {
     override fun scheduleReminders(reminders: List<Reminder>) {
         val json = Json.arr(reminders.map {
             Json.obj("id" to it.id.toString(), "taskId" to it.taskId, "at" to it.atMs / 1000, "title" to it.title, "body" to it.body, "quickDone" to it.quickDone,
-                "taskIds" to it.taskIds.joinToString(","))
+                "taskIds" to com.pawpixel.core.ReminderRef.encodeAll(it.refs))
         }).stringify()
         host.scheduleReminders(json)
     }

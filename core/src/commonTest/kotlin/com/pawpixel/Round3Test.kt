@@ -35,6 +35,47 @@ class BundledRemindersTest {
     }
 }
 
+class BundleReviewFixesTest {
+    private val clock = LocalClock.MANILA
+    private val today = 20500L
+    private fun at(min: Int, day: Long = today) = clock.at(day, min)
+    private val mochi = Pet("mochi", "Mochi", Species.DOG, 0)
+    private val feed = CareTask("feed", "mochi", TaskKind.FEED, "Feed", listOf(7 * 60, 18 * 60), anchorDay = 0, adaptive = false)
+    private val water = CareTask("water", "mochi", TaskKind.WATER, "Fresh water", listOf(7 * 60 + 10), anchorDay = 0, adaptive = false)
+    private val base = AppState(pets = listOf(mochi), tasks = listOf(feed, water))
+
+    @Test fun aBundleDoneSkipsWhatWasAlreadyLogged() {
+        val bundle = ReminderPlanner.plan(base, at(5 * 60), clock).first { it.taskIds.size == 2 && clock.dayIndex(it.atMs) == today }
+        assertEquals(listOf(at(7 * 60), at(7 * 60 + 10)), bundle.slots)
+        // Fed in the app at 7:02, then Done on the notification at 7:15 (water done too).
+        var s = StateOps.complete(base, "feed", at(7 * 60 + 2), clock)
+        val refs = ReminderRef.decodeAll(ReminderRef.encodeAll(bundle.refs))
+        assertEquals(bundle.refs, refs)
+        s = StateOps.completeFromReminder(s, refs, at(7 * 60 + 15), clock)
+        assertEquals(1, s.completions.count { it.taskId == "feed" }, "breakfast isn't logged twice")
+        assertEquals(1, s.completions.count { it.taskId == "water" })
+        val evening = CareEngine.status(feed, s.completions, at(18 * 60 + 30), clock)
+        assertTrue(evening.isOverdue, "the evening feed is still owed")
+    }
+
+    @Test fun bundlesNeverCrossMidnight() {
+        val late = base.copy(tasks = listOf(
+            CareTask("w", "mochi", TaskKind.WATER, "Fresh water", listOf(23 * 60 + 55), anchorDay = 0, adaptive = false),
+            CareTask("f", "mochi", TaskKind.FEED, "Feed", listOf(10), anchorDay = 0, adaptive = false),
+        ))
+        assertTrue(ReminderPlanner.plan(late, at(20 * 60), clock).all { it.taskIds.size == 1 })
+    }
+
+    @Test fun pastHealthRecordsArentCareDays() {
+        val pet = mochi
+        var s = HealthPlan.addTo(AppState(pets = listOf(pet)), pet, at(12 * 60), clock)
+        for (t in s.tasks) s = StateOps.logOnDay(s, t.id, today - 30, at(12 * 60), clock)
+        assertEquals(0, Milestones.caredDays(s.pets[0]))
+        s = StateOps.logOnDay(s, s.tasks[0].id, today, at(12 * 60), clock)
+        assertEquals(1, Milestones.caredDays(s.pets[0]), "given today counts")
+    }
+}
+
 class MilestoneAndWeightTest {
     private val clock = LocalClock.MANILA
     private val pet = Pet("mochi", "Mochi", Species.DOG, 0)

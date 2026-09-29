@@ -197,8 +197,7 @@ class EndToEndTest {
 
         step("weight: log a weigh-in and see it") {
             retrying { scrollTo(By.text("+ Add today's weight")).click() }
-            val field = find(By.clazz("android.widget.EditText"))
-            retrying { field.text = "4.2" }
+            retrying { find(By.clazz("android.widget.EditText")).text = "4.2" }
             retrying { find(By.text("Save")).click() }
             waitFor("weight saved") { repo.state.value.weightsFor(petId).singleOrNull()?.grams == 4200 }
             scrollTo(By.text("4.2 kg"))
@@ -371,11 +370,17 @@ class EndToEndTest {
         }
 
         step("reminder notification with a working Done button") {
-            val task = repo.state.value.tasksFor(petId).first { it.kind.name == "WATER" }
+            // A daily task with a planned time still open today (a reminder for a covered one is skipped).
+            val st = repo.state.value
+            val (task, slot) = st.tasksFor(petId).filter { !it.kind.health }.firstNotNullOf { t ->
+                val s = com.pawpixel.core.CareEngine.status(t, st.completions, repo.now(), repo.clock)
+                s.slotTimes.getOrNull(s.done)?.let { t to it }
+            }
             val before = completions()
             ctx.sendBroadcast(
                 Intent(ctx, ReminderReceiver::class.java).setAction(ReminderReceiver.ACTION_SHOW)
                     .putExtra(ReminderReceiver.EXTRA_TASK, task.id)
+                    .putExtra(ReminderReceiver.EXTRA_REFS, "${task.id}@$slot")
                     .putExtra(ReminderReceiver.EXTRA_ID, 4242)
                     .putExtra(ReminderReceiver.EXTRA_TITLE, "${task.kind.emoji} ${task.title} · Chelsea")
                     .putExtra(ReminderReceiver.EXTRA_BODY, "Time to ${task.title.lowercase()} for Chelsea."),

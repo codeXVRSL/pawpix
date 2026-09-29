@@ -140,6 +140,9 @@ class PawRepository(val platform: Platform) {
     suspend fun complete(taskId: String) = update { StateOps.complete(it, taskId, now(), clock) }
     /** "Done" on a notification: health care only counts if it's actually due (see [StateOps.completeFromReminder]). */
     suspend fun completeFromReminder(taskId: String) = update { StateOps.completeFromReminder(it, taskId, now(), clock) }
+
+    /** "Done" on a (possibly bundled) notification: everything it's about that isn't done yet, in one change. */
+    suspend fun completeFromReminder(refs: List<com.pawpixel.core.ReminderRef>) = update { StateOps.completeFromReminder(it, refs, now(), clock) }
     /** Health records: "given N days ago" (0 = today). */
     suspend fun givenDaysAgo(taskId: String, days: Int) =
         update { StateOps.logOnDay(it, taskId, clock.dayIndex(now()) - days, now(), clock) }

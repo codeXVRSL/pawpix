@@ -53,10 +53,12 @@ final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCent
         withCompletionHandler completionHandler: @escaping () -> Void
     ) {
         if response.actionIdentifier == SwiftHost.doneAction,
-           let taskId = response.notification.request.content.userInfo["taskId"] as? String {
-            IosGraph.shared.completeTask(taskId: taskId)
+           let refs = response.notification.request.content.userInfo["taskId"] as? String {
+            // Tell iOS we're finished only once the Done is saved (a bundle logs several tasks).
+            IosGraph.shared.completeTask(refs: refs, done: NotificationDoneHandler(completionHandler))
+        } else {
+            completionHandler()
         }
-        completionHandler()
     }
 
     /** Show reminders even while the app is open. */
@@ -67,4 +69,11 @@ final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCent
     ) {
         completionHandler([.banner, .sound])
     }
+}
+
+/// Hands iOS's completion handler to Kotlin, which calls it after saving.
+final class NotificationDoneHandler: NSObject, NotificationDone {
+    private let handler: () -> Void
+    init(_ handler: @escaping () -> Void) { self.handler = handler }
+    func finished() { DispatchQueue.main.async { self.handler() } }
 }

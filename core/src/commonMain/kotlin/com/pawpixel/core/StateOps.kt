@@ -67,10 +67,15 @@ object StateOps {
     )
 
     /** Logs a task as done at [atMs] (now, or an earlier date for health records). */
-    fun complete(state: AppState, taskId: String, atMs: Long, clock: LocalClock, newId: () -> String = { Ids.newId() }): AppState {
+    fun complete(
+        state: AppState, taskId: String, atMs: Long, clock: LocalClock, newId: () -> String = { Ids.newId() },
+        /** False for records of the past ("given a year ago"): they aren't days of care logged in PawPixel. */
+        careDay: Boolean = true,
+    ): AppState {
         val task = state.task(taskId) ?: return state
         val c = Completion(taskId, atMs, clock.minuteOfDay(atMs), clock.dayIndex(atMs), id = newId())
-        return prune(markCareDays(state.copy(completions = state.completions + c), task.petId, listOf(c.localDay)))
+        val added = state.copy(completions = state.completions + c)
+        return prune(if (careDay) markCareDays(added, task.petId, listOf(c.localDay)) else added)
     }
 
     /** Adds days to a pet's care calendar (see [Pet.careDays]). */
@@ -97,10 +102,31 @@ object StateOps {
      * A "Done" from a notification. Health care counts only if it's due within a day, so tapping an
      * old notification after already logging it in the app doesn't record it twice.
      */
-    fun completeFromReminder(state: AppState, taskId: String, atMs: Long, clock: LocalClock): AppState {
-        val task = state.task(taskId) ?: return state
-        if (!HealthDue.canQuickComplete(task, state.completions, atMs, clock)) return state
-        return complete(state, taskId, atMs, clock)
+    fun completeFromReminder(state: AppState, taskId: String, atMs: Long, clock: LocalClock): AppState =
+        completeFromReminder(state, listOf(ReminderRef(taskId, null)), atMs, clock)
+
+    /**
+     * "Done" on a notification, for every task it's about, in one change. A task whose planned time
+     * is already covered (logged in the app, or by family) is skipped, so a stale Done never uses up
+     * a later slot. In a bundle, the other tasks are logged at their own planned time (if it has
+     * passed), so learning the owner's routine isn't pulled toward the first task's time.
+     */
+    fun completeFromReminder(state: AppState, refs: List<ReminderRef>, atMs: Long, clock: LocalClock): AppState =
+        refs.fold(state) { s, ref ->
+            val task = s.task(ref.taskId) ?: return@fold s
+            if (!HealthDue.canQuickComplete(task, s.completions, atMs, clock) || isCovered(s, ref, atMs, clock)) return@fold s
+            val at = if (refs.size > 1 && ref.slotAt != null && ref.slotAt <= atMs) ref.slotAt else atMs
+            complete(s, task.id, at, clock)
+        }
+
+    /** Whether the planned time a reminder was for has already been logged. */
+    fun isCovered(state: AppState, ref: ReminderRef, atMs: Long, clock: LocalClock): Boolean {
+        val task = state.task(ref.taskId) ?: return true
+        if (task.kind.health) return false
+        val slots = AdaptiveTiming.effectiveSlots(task, state.completions, atMs, clock)
+        val status = CareEngine.status(task, state.completions, atMs, clock, slots)
+        val i = ref.slotAt?.let { status.slotTimes.indexOf(it) } ?: -1
+        return if (i >= 0) status.done > i else status.allDoneThisCycle
     }
 
     /**
@@ -127,7 +153,7 @@ object StateOps {
     fun logOnDay(state: AppState, taskId: String, day: Long, nowMs: Long, clock: LocalClock): AppState {
         val task = state.task(taskId) ?: return state
         val at = minOf(clock.at(day, task.slots.firstOrNull() ?: (9 * 60)), nowMs)
-        return complete(state, taskId, at, clock)
+        return complete(state, taskId, at, clock, careDay = day == clock.dayIndex(nowMs))
     }
 
     /** Someone else is caring for the pets until [untilMs]. "I'm back" passes now, so care missed while away stays forgiven. */

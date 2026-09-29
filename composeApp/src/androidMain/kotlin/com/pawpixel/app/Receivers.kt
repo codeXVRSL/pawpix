@@ -7,6 +7,8 @@ import android.content.Context
 import android.content.Intent
 import androidx.core.app.NotificationCompat
 import com.pawpixel.core.Reminder
+import com.pawpixel.core.ReminderRef
+import com.pawpixel.core.StateOps
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -23,44 +25,33 @@ private fun BroadcastReceiver.work(block: suspend () -> Unit) {
 class ReminderReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         val taskId = intent.getStringExtra(EXTRA_TASK) ?: return
-        // A bundled reminder ("Mochi: feed and fresh water") is about several tasks; Done logs them all.
-        val taskIds = intent.getStringArrayExtra(EXTRA_TASKS)?.toList()?.ifEmpty { null } ?: listOf(taskId)
+        // What the notification is about: one task, or several when bundled ("Mochi: feed and fresh
+        // water"), each with the planned time it was for.
+        val refs = intent.getStringExtra(EXTRA_REFS)?.let(ReminderRef::decodeAll)?.ifEmpty { null } ?: listOf(ReminderRef(taskId, null))
         val id = intent.getIntExtra(EXTRA_ID, 0)
         val nm = context.getSystemService(NotificationManager::class.java)
         if (intent.action == ACTION_DONE) {
             nm.cancel(id)
-            work { taskIds.forEach { PawPixelApplication.repo(context).completeFromReminder(it) } }
+            work { PawPixelApplication.repo(context).completeFromReminder(refs) }
             return
         }
         work {
             val repo = PawPixelApplication.repo(context)
             // Family sharing: fetch the others' taps first, so nobody is told to feed a pet that was just fed.
-            if (repo.family.household != null) {
-                repo.family.syncWithin(8_000)
-                if (taskIds.all { doneByFamily(repo, it) }) return@work
+            if (repo.family.household != null) repo.family.syncWithin(8_000)
+            // Only what's still to do (by anyone); nothing left, no notification.
+            val state = repo.state.value
+            val open = refs.filter { r ->
+                val t = state.task(r.taskId)
+                t != null && t.remindersOn && !StateOps.isCovered(state, r, repo.now(), repo.clock)
             }
-            show(context, repo, intent, taskId, taskIds, id)
+            if (open.isEmpty() || !state.settings.remindersEnabled) return@work
+            show(context, intent, open.first().taskId, open, id)
         }
     }
 
-    /** True if someone else in the family already did this task, making the reminder moot. */
-    private fun doneByFamily(repo: PawRepository, taskId: String): Boolean {
-        val state = repo.state.value
-        val task = state.task(taskId) ?: return true
-        if (task.kind.health) return false
-        val now = repo.now()
-        val last = state.completions.lastOrNull { it.taskId == taskId } ?: return false
-        val byOther = last.by != null && last.by != repo.family.myUserId
-        val status = com.pawpixel.core.CareEngine.status(task, state.completions, now + 5 * 60_000, repo.clock)
-        return byOther && last.localDay == repo.clock.dayIndex(now) && !status.isOverdue
-    }
-
-    private fun show(context: Context, repo: PawRepository, intent: Intent, taskId: String, taskIds: List<String>, id: Int) {
+    private fun show(context: Context, intent: Intent, taskId: String, refs: List<ReminderRef>, id: Int) {
         val nm = context.getSystemService(NotificationManager::class.java)
-        // Completing a task reschedules (and so cancels) its reminders; this guards against settings changes.
-        val state = repo.state.value
-        val task = state.task(taskId) ?: return
-        if (!state.settings.remindersEnabled || !task.remindersOn) return
         AndroidPlatform.ensureChannel(context)
         val open = PendingIntent.getActivity(
             context, id, Intent(context, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP),
@@ -69,7 +60,7 @@ class ReminderReceiver : BroadcastReceiver() {
         val done = PendingIntent.getBroadcast(
             context, id,
             Intent(context, ReminderReceiver::class.java).setAction(ACTION_DONE).putExtra(EXTRA_TASK, taskId)
-                .putExtra(EXTRA_TASKS, taskIds.toTypedArray()).putExtra(EXTRA_ID, id),
+                .putExtra(EXTRA_REFS, ReminderRef.encodeAll(refs)).putExtra(EXTRA_ID, id),
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
         )
         val builder = NotificationCompat.Builder(context, AndroidPlatform.CHANNEL_ID)
@@ -92,14 +83,14 @@ class ReminderReceiver : BroadcastReceiver() {
         const val EXTRA_TITLE = "title"
         const val EXTRA_BODY = "body"
         const val EXTRA_QUICK_DONE = "quickDone"
-        const val EXTRA_TASKS = "tasks"
+        const val EXTRA_REFS = "refs"
 
         /** Same request code and action => same PendingIntent, so it can be cancelled later. */
         fun pendingIntent(context: Context, id: Int, r: Reminder?): PendingIntent {
             val intent = Intent(context, ReminderReceiver::class.java).setAction(ACTION_SHOW)
             if (r != null) intent.putExtra(EXTRA_TASK, r.taskId).putExtra(EXTRA_ID, r.id)
                 .putExtra(EXTRA_TITLE, r.title).putExtra(EXTRA_BODY, r.body).putExtra(EXTRA_QUICK_DONE, r.quickDone)
-                .putExtra(EXTRA_TASKS, r.taskIds.toTypedArray())
+                .putExtra(EXTRA_REFS, ReminderRef.encodeAll(r.refs))
             return PendingIntent.getBroadcast(context, id, intent, PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
         }
     }

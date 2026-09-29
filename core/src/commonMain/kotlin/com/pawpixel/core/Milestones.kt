@@ -45,7 +45,8 @@ object WeightTrend {
         if (weights.size < 2) return null
         val last = weights[weights.size - 1]; val prev = weights[weights.size - 2]
         val d = last.grams - prev.grams
-        val sign = if (d > 0) "+" else if (d < 0) "−" else "±"
+        if (kotlin.math.abs(d) < 50) return "About the same as ${LocalClock.shortDate(prev.day)}"
+        val sign = if (d > 0) "+" else "−"
         return "$sign${kg(kotlin.math.abs(d)).removeSuffix(" kg")} kg since ${LocalClock.shortDate(prev.day)}"
     }
 }
