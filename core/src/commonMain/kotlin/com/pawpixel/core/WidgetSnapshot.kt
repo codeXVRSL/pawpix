@@ -45,7 +45,7 @@ object WidgetSnapshot {
                     val after = StateOps.complete(state, s.task.id, nowMs, clock)
                     Json.obj(
                         "taskId" to s.task.id,
-                        "label" to "${s.task.kind.emoji} ${s.task.kind.verb}",
+                        "label" to "${s.task.kind.emoji} ${com.pawpixel.i18n.tr(s.task.kind.verb)}",
                         "timelineIfDone" to timelineJson(MoodEngine.timeline(after, pet.id, nowMs, clock)),
                     )
                 },

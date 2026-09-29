@@ -264,7 +264,7 @@ class PawRepository(val platform: Platform) {
             // Widget poses for each pet, drawn from its restored face.
             for (pet in contents.state.pets) {
                 val head = contents.files["sprites/${pet.id}/head.bin"]?.let { runCatching { RawImage.decode(it) }.getOrNull() } ?: continue
-                writeWidgetPoses(pet, PetArt(head, pet.species, Ears.of(pet.ears)), "$STAGING/")
+                writeWidgetPoses(pet, PetArt(head, pet.species, Ears.of(pet.ears), com.pawpixel.sprite.Accessory.of(pet.accessory)), "$STAGING/")
             }
         }
         mutex.withLock {
@@ -324,8 +324,17 @@ class PawRepository(val platform: Platform) {
      * The pet's face (its colours and markings), species and ears: everything needed to draw and
      * animate it. A pet from a family member's phone has no face file here and is drawn from its look code.
      */
-    fun art(pet: Pet): PetArt? = head(pet.id)?.let { PetArt(it, pet.species, Ears.of(pet.ears)) }
-        ?: pet.lookCode?.let { PetLook.decode(it) }?.let { PetArt(it, pet.species, Ears.of(pet.ears)) }
+    fun art(pet: Pet): PetArt? {
+        val outfit = com.pawpixel.sprite.Accessory.of(pet.accessory)
+        return head(pet.id)?.let { PetArt(it, pet.species, Ears.of(pet.ears), outfit) }
+            ?: pet.lookCode?.let { PetLook.decode(it) }?.let { PetArt(it, pet.species, Ears.of(pet.ears), outfit) }
+    }
+
+    /** Puts on (or takes off) an outfit the pet has earned, and redraws the widget poses. */
+    suspend fun wear(pet: Pet, outfit: com.pawpixel.sprite.Accessory?) {
+        val s = update { com.pawpixel.core.Milestones.wear(it, pet.id, outfit) }
+        s.pet(pet.id)?.let { writeWidgetPoses(it); platform.refreshWidgets(null) }
+    }
 
     /** Widget poses for pets whose look arrived or changed through family sharing. */
     fun redrawPoses(petIds: List<String>) {

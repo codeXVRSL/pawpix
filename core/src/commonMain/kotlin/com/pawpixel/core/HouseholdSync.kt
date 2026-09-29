@@ -105,7 +105,7 @@ object HouseholdSync {
                 changedHere && l == null -> { if (remoteAll.pets.any { it.id == id }) push.deletePetIds += id }
                 r != null -> {
                     val merged = l?.let { mergePet(it, r) } ?: r.copy(shared = true, spriteVersion = 1)
-                    if (l == null || l.lookCode != r.lookCode || l.species != r.species || l.ears != r.ears) redraw += id
+                    if (l == null || l.lookCode != r.lookCode || l.species != r.species || l.ears != r.ears || l.accessory != r.accessory) redraw += id
                     keptPets[id] = merged
                 }
                 l != null -> unshared += id // someone else removed it from the family
@@ -180,7 +180,8 @@ object HouseholdSync {
 
     /** Takes someone else's edit of a pet, keeping how this phone draws it. */
     private fun mergePet(local: Pet, remote: Pet): Pet {
-        val lookChanged = local.lookCode != remote.lookCode || local.species != remote.species || local.ears != remote.ears
+        val lookChanged = local.lookCode != remote.lookCode || local.species != remote.species || local.ears != remote.ears ||
+            local.accessory != remote.accessory
         return remote.copy(
             sprite = local.sprite, shared = true, careDays = local.careDays, milestoneSeen = local.milestoneSeen,
             spriteVersion = if (lookChanged) local.spriteVersion + 1 else local.spriteVersion,

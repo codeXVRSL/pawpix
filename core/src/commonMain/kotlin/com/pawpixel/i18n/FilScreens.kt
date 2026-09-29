@@ -189,5 +189,16 @@ object FilScreens {
         "Remind at the exact minute. Good for medicine. Android may ask for permission." to
             "Magpaalala sa eksaktong minuto. Mainam para sa gamot. Baka humingi ng permiso ang Android.",
         "Delete task" to "Burahin ang gawain",
+        // Outfits
+        "Outfits" to "Mga outfit",
+        "{0} earns pixel outfits with days of care. Nothing to buy." to "Nagkakaroon si {0} ng pixel na outfit sa bawat araw ng pag-aalaga. Walang kailangang bilhin.",
+        "None" to "Wala",
+        "Bandana" to "Bandana",
+        "Flower" to "Bulaklak",
+        "Bow tie" to "Bow tie",
+        "Party hat" to "Party hat",
+        "Sunglasses" to "Salamin sa araw",
+        "Crown" to "Korona",
+        "🔒 {0} · in {1} days" to "🔒 {0} · sa loob ng {1} araw",
     )
 }

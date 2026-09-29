@@ -121,6 +121,9 @@ fun PetScreen(app: AppScope, state: AppState, pet: Pet) {
         WeightSection(app, state, pet)
 
         Spacer(Modifier.height(8.dp))
+        OutfitSection(app, pet)
+
+        Spacer(Modifier.height(8.dp))
         Text(tr("Share & sprite"), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             Button(

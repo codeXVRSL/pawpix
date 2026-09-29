@@ -64,6 +64,8 @@ data class Pet(
     val careDays: List<Long> = emptyList(),
     /** The highest milestone already celebrated (see [Milestones]). */
     val milestoneSeen: Int = 0,
+    /** The outfit it wears ([com.pawpixel.sprite.Accessory] name), earned with days of care. */
+    val accessory: String? = null,
 )
 
 data class SpriteSettings(

@@ -124,3 +124,29 @@ class MilestoneAndWeightTest {
         assertTrue(StateOps.removePet(s, "mochi").weights.isEmpty())
     }
 }
+
+class OutfitTest {
+    private val look = "1;b0703c,f4f1ea;" + "0".repeat(40) + "1".repeat(24)
+    private val pet = com.pawpixel.core.Pet("mochi", "Mochi", com.pawpixel.core.Species.CAT, 0, lookCode = look)
+
+    @Test fun outfitsAreEarnedWithCareAndDrawnOnEveryPose() {
+        var s = com.pawpixel.core.AppState(pets = listOf(pet))
+        assertTrue(com.pawpixel.core.Milestones.unlocked(s.pets[0]).isEmpty())
+        // Not earned yet: nothing happens.
+        s = com.pawpixel.core.Milestones.wear(s, "mochi", com.pawpixel.sprite.Accessory.CROWN)
+        assertNull(s.pets[0].accessory)
+        s = com.pawpixel.core.StateOps.markCareDays(s, "mochi", (1L..30L).toList())
+        assertEquals(listOf("BANDANA", "FLOWER", "BOW_TIE", "PARTY_HAT"), com.pawpixel.core.Milestones.unlocked(s.pets[0]).map { it.name })
+        s = com.pawpixel.core.Milestones.wear(s, "mochi", com.pawpixel.sprite.Accessory.PARTY_HAT)
+        assertEquals("PARTY_HAT", s.pets[0].accessory)
+        assertEquals(2, s.pets[0].spriteVersion, "poses redraw")
+        assertEquals(s, com.pawpixel.core.StateCodec.decode(com.pawpixel.core.StateCodec.encode(s)))
+        val plain = com.pawpixel.sprite.PetArt(com.pawpixel.sprite.PetLook.decode(look)!!, com.pawpixel.core.Species.CAT)
+        val hat = com.pawpixel.sprite.PetArt(com.pawpixel.sprite.PetLook.decode(look)!!, com.pawpixel.core.Species.CAT, null, com.pawpixel.sprite.Accessory.PARTY_HAT)
+        assertTrue(!plain.still.pixels.contentEquals(hat.still.pixels))
+        assertTrue(!com.pawpixel.sprite.Chibi.sleeping(plain).pixels.contentEquals(com.pawpixel.sprite.Chibi.sleeping(hat).pixels), "also when asleep")
+        // Takes it off.
+        s = com.pawpixel.core.Milestones.wear(s, "mochi", null)
+        assertNull(s.pets[0].accessory)
+    }
+}

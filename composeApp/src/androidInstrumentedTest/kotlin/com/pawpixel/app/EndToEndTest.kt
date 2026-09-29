@@ -217,6 +217,15 @@ class EndToEndTest {
             waitFor("celebrated once") { repo.state.value.pet(petId)?.milestoneSeen == 7 }
         }
 
+        step("outfits: a week of care earns a bandana, and it shows on the pet") {
+            retrying { scrollTo(By.text("Bandana")).click() }
+            waitFor("wearing it") { repo.state.value.pet(petId)?.accessory == "BANDANA" }
+            scrollTo(By.textStartsWith("🔒 Crown"))
+            shot("outfits")
+            retrying { scrollTo(By.text("None")).click() }
+            waitFor("took it off") { repo.state.value.pet(petId)?.accessory == null }
+        }
+
         step("share animation and before/after card open the share sheet") {
             val before = choosers()
             retrying { scrollTo(By.text("Share animation")).click() }
@@ -362,6 +371,10 @@ class EndToEndTest {
             shot("family-members")
             device.pressBack(); device.pressBack()
             retrying { find(By.text("Chelsea")).click() }
+            val mine = repo.state.value
+            val today = repo.clock.dayIndex(repo.now())
+            note("litter records: " + mine.completions.filter { it.taskId == litter.id }.joinToString { "${it.id} by=${it.by} day=${it.localDay}" } +
+                " today=$today me=${repo.family.myUserId} name=${repo.family.nameOf(partnerApi.userId)}")
             scrollTo(By.textStartsWith("Done by Jamaica"))
             Thread.sleep(500)
             shot("family-done-by")
@@ -372,9 +385,10 @@ class EndToEndTest {
         step("reminder notification with a working Done button") {
             // A daily task with a planned time still open today (a reminder for a covered one is skipped).
             val st = repo.state.value
-            val (task, slot) = st.tasksFor(petId).filter { !it.kind.health }.firstNotNullOf { t ->
+            // (Late at night today's slots may all be past or done: then tomorrow's first one.)
+            val (task, slot) = st.tasksFor(petId).filter { !it.kind.health && it.remindersOn }.firstNotNullOf { t ->
                 val s = com.pawpixel.core.CareEngine.status(t, st.completions, repo.now(), repo.clock)
-                s.slotTimes.getOrNull(s.done)?.let { t to it }
+                (s.slotTimes.getOrNull(s.done) ?: s.nextDueMs)?.let { t to it }
             }
             val before = completions()
             ctx.sendBroadcast(
@@ -403,6 +417,7 @@ class EndToEndTest {
         }
 
         step("home-screen widget can be added and draws the pet") {
+            goHome()
             val awm = AppWidgetManager.getInstance(ctx)
             val provider = ComponentName(ctx, PetWidgetReceiver::class.java)
             check(awm.isRequestPinAppWidgetSupported) { "this launcher can't pin widgets" }
@@ -460,6 +475,14 @@ class EndToEndTest {
     }
 
     private fun note(msg: String) { log.appendLine("      note: $msg") }
+
+    /** Back to the home screen from wherever an earlier (failed) step left the app. */
+    private fun goHome() {
+        repeat(5) {
+            if (device.hasObject(By.text("PawPixel")) && device.hasObject(By.text("Settings"))) return
+            device.pressBack(); Thread.sleep(400)
+        }
+    }
 
     private fun shot(name: String) {
         device.takeScreenshot(File(out, "%02d-%s.png".format(++shotCount, name.substringAfter('-'))))

@@ -36,6 +36,8 @@ import androidx.glance.layout.Spacer
 import androidx.glance.layout.fillMaxSize
 import androidx.glance.layout.fillMaxWidth
 import androidx.glance.layout.height
+import androidx.glance.layout.width
+import androidx.glance.layout.fillMaxHeight
 import androidx.glance.layout.padding
 import androidx.glance.text.FontWeight
 import androidx.glance.text.Text
@@ -57,7 +59,7 @@ import java.io.File
  * mood engine. With several pets it shows whichever needs attention most.
  */
 class PetWidget : GlanceAppWidget() {
-    override val sizeMode = SizeMode.Responsive(setOf(DpSize(110.dp, 110.dp), DpSize(180.dp, 180.dp), DpSize(250.dp, 110.dp)))
+    override val sizeMode = SizeMode.Responsive(setOf(DpSize(110.dp, 110.dp), DpSize(180.dp, 180.dp), DpSize(250.dp, 110.dp), DpSize(250.dp, 180.dp)))
 
     override suspend fun provideGlance(context: Context, id: GlanceId) {
         val repo = PawPixelApplication.repo(context)
@@ -74,8 +76,35 @@ class PetWidget : GlanceAppWidget() {
     @Composable
     private fun Content(data: WidgetData?) {
         val size = LocalSize.current
-        val bg = ColorProvider(Color(0xFFFFF4E0))
-        val ink = ColorProvider(Color(0xFF2B2135))
+        // Warm paper in the day, a soft night version when the phone is in dark mode.
+        val bg = androidx.glance.color.ColorProvider(day = Color(0xFFFFF4E0), night = Color(0xFF2A2433))
+        val ink = androidx.glance.color.ColorProvider(day = Color(0xFF2B2135), night = Color(0xFFF3EAF7))
+        // Wide and short (4x1): pet on the left, mood and the Done button beside it.
+        if (data != null && size.width >= 240.dp && size.height < 150.dp) {
+            androidx.glance.layout.Row(
+                GlanceModifier.fillMaxSize().background(bg).cornerRadius(18.dp).padding(8.dp)
+                    .clickable(actionStartActivity<MainActivity>()),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                data.sprite?.let {
+                    Image(ImageProvider(it), contentDescription = "${data.name}: ${data.caption}",
+                        modifier = GlanceModifier.width(size.height - 16.dp).fillMaxHeight())
+                }
+                Column(GlanceModifier.defaultWeight().padding(start = 8.dp)) {
+                    Text(data.name, maxLines = 1, style = TextStyle(color = ink, fontSize = 14.sp, fontWeight = FontWeight.Bold))
+                    Text(data.caption, maxLines = 2, style = TextStyle(color = ink, fontSize = 12.sp))
+                    if (data.actionTaskId != null) {
+                        Spacer(GlanceModifier.height(4.dp))
+                        Button(
+                            text = data.actionLabel ?: tr("Done"),
+                            onClick = actionRunCallback<DoneAction>(actionParametersOf(DoneAction.TASK to data.actionTaskId)),
+                            colors = ButtonDefaults.buttonColors(backgroundColor = ColorProvider(Color(0xFFE8374E)), contentColor = ColorProvider(Color.White)),
+                        )
+                    }
+                }
+            }
+            return
+        }
         Column(
             GlanceModifier.fillMaxSize().background(bg).cornerRadius(18.dp).padding(8.dp)
                 .clickable(actionStartActivity<MainActivity>()),

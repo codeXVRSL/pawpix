@@ -169,9 +169,10 @@ class PetLook(val tones: List<Int>, private val patches: IntArray) {
 }
 
 /** Everything needed to draw a pet: its face (a colour source only), species and ear shape. */
-class PetArt(val look: PetLook, val species: Species, ears: Ears? = null) {
+class PetArt(val look: PetLook, val species: Species, ears: Ears? = null, val accessory: Accessory? = null) {
     /** From the pet's face in the photo (its colours and markings). */
-    constructor(head: PixelImage, species: Species, ears: Ears? = null) : this(PetLook.from(head), species, ears)
+    constructor(head: PixelImage, species: Species, ears: Ears? = null, accessory: Accessory? = null) :
+        this(PetLook.from(head), species, ears, accessory)
 
     val ears: Ears = ears ?: if (species == Species.CAT) Ears.POINTY else Ears.FLOPPY
     val fur: FurColors get() {
@@ -427,6 +428,8 @@ object Chibi {
             }
             if (best != null) res[x, y] = outlineOf(best, baseR)
         }
+        // An outfit earned with care goes on top, following the head.
+        art.accessory?.drawOn(res, hcx, hcy, eyTop)
         return res
     }
 

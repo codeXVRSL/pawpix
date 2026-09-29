@@ -18,6 +18,20 @@ object Milestones {
     /** The next one to reach, and how many days to go. */
     fun next(pet: Pet): Pair<Int, Int>? = DAYS.firstOrNull { it > caredDays(pet) }?.let { it to it - caredDays(pet) }
 
+    /** Outfits this pet has earned so far. */
+    fun unlocked(pet: Pet): List<com.pawpixel.sprite.Accessory> =
+        com.pawpixel.sprite.Accessory.entries.filter { it.unlockDays <= caredDays(pet) }
+
+    /**
+     * Puts on an outfit (null = none). Only one it has earned; the pose images are redrawn, so the
+     * sprite version moves on.
+     */
+    fun wear(state: AppState, petId: String, accessory: com.pawpixel.sprite.Accessory?): AppState =
+        state.copy(pets = state.pets.map { p ->
+            if (p.id != petId || (accessory != null && accessory !in unlocked(p)) || p.accessory == accessory?.name) p
+            else p.copy(accessory = accessory?.name, spriteVersion = p.spriteVersion + 1)
+        })
+
     fun celebrate(state: AppState, petId: String, milestone: Int): AppState =
         state.copy(pets = state.pets.map { if (it.id == petId) it.copy(milestoneSeen = maxOf(it.milestoneSeen, milestone)) else it })
 

@@ -102,7 +102,7 @@ class HouseholdClient(private val api: SupabaseApi) {
 
         fun petJson(h: String, p: Pet) = Json.obj(
             "household_id" to h, "id" to p.id, "name" to p.name.take(24), "species" to p.species.name, "ears" to p.ears,
-            "look" to (p.lookCode ?: ""), "eyes" to p.eyes.map { (x, y) -> listOf(x, y) }, "birth_day" to p.birthDay, "created_at_ms" to p.createdAtMs,
+            "look" to (p.lookCode ?: ""), "accessory" to p.accessory, "eyes" to p.eyes.map { (x, y) -> listOf(x, y) }, "birth_day" to p.birthDay, "created_at_ms" to p.createdAtMs,
         )
 
         fun taskJson(h: String, t: CareTask) = Json.obj(
@@ -129,6 +129,7 @@ class HouseholdClient(private val api: SupabaseApi) {
                 }.take(2),
                 ears = j["ears"].str, birthDay = j["birth_day"].long, shared = true,
                 lookCode = j["look"].str?.ifEmpty { null },
+                accessory = j["accessory"].str?.takeIf { com.pawpixel.sprite.Accessory.of(it) != null },
             )
         }
 
