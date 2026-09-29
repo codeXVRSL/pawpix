@@ -1,4 +1,5 @@
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+import java.util.Properties
 
 plugins {
     alias(libs.plugins.kotlinMultiplatform)
@@ -11,13 +12,13 @@ plugins {
 // From environment variables (CI secrets) or a local, git-ignored `pawpixel.properties` file.
 // Blank values build an app whose map screen says "not set up yet". See docs/MAP_SETUP.md.
 val mapFile = rootProject.file("pawpixel.properties")
-val mapProps = java.util.Properties().apply { if (mapFile.exists()) mapFile.inputStream().use { load(it) } }
+val mapProps = Properties().apply { if (mapFile.exists()) mapFile.inputStream().use { load(it) } }
 val mapKeys = listOf(
     "PAWPIXEL_SUPABASE_URL", "PAWPIXEL_SUPABASE_ANON_KEY", "PAWPIXEL_TILE_URL", "PAWPIXEL_TILE_ATTRIBUTION",
     "PAWPIXEL_GOOGLE_WEB_CLIENT_ID", "PAWPIXEL_TEST_EMAIL", "PAWPIXEL_TEST_PASSWORD",
 )
 val mapValues = mapKeys.associateWith { k ->
-    (System.getenv(k) ?: mapProps.getProperty(k) ?: "").replace("\\", "\\\\").replace("\"", "\\\"").replace("$", "\\$")
+    (System.getenv(k) ?: mapProps.getProperty(k).orEmpty()).replace("\\", "\\\\").replace("\"", "\\\"").replace("$", "\\$")
 }
 val mapConfigSource = """
     |package com.pawpixel.app
