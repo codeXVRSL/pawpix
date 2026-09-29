@@ -211,6 +211,7 @@ class EndToEndTest {
             retrying { find(By.text("Gatherings")).click() }
             find(By.textStartsWith("Sunday pet walk"), 20_000)
             retrying { scrollTo(By.text("I'm going")).click() }
+            waitFor("RSVP saved on the server", 20_000) { runBlocking { repo.map.client.gatherings() }.any { it.iAmGoing } }
             find(By.textStartsWith("Meet at: Plaza Rizal"), 20_000)
             shot("pet-map-gathering")
 

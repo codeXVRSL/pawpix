@@ -379,7 +379,8 @@ private fun Gatherings(app: AppScope, map: PetMapModel, act: (suspend () -> Unit
         }
         else -> LazyColumn(Modifier.fillMaxSize().padding(horizontal = 16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             item { Spacer(Modifier.height(4.dp)) }
-            items(items, key = { it.id }) { g ->
+            // The key includes the RSVP, so the card is rebuilt (and re-announced to screen readers) when it changes.
+            items(items, key = { "${it.id}:${it.iAmGoing}:${it.id in venues.value}" }) { g ->
                 PixelCard(Modifier.fillMaxWidth()) {
                     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                         Text(g.title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)

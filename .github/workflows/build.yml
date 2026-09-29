@@ -180,7 +180,11 @@ jobs:
         with: { distribution: temurin, java-version: "17" }
       - uses: gradle/actions/setup-gradle@v4
       - name: Compile shared Kotlin for iOS
-        run: ./gradlew :composeApp:linkDebugFrameworkIosSimulatorArm64 --stacktrace
+        run: |
+          set -o pipefail
+          mkdir -p ios-out
+          ./gradlew :composeApp:linkDebugFrameworkIosSimulatorArm64 --stacktrace 2>&1 | tee ios-out/gradle.txt || {
+            grep -n -E "^e: |error:|What went wrong" ios-out/gradle.txt | head -n 100 > ios-out/errors.txt; exit 1; }
       - name: Generate Xcode project
         run: brew install xcodegen && cd iosApp && xcodegen
       - name: Build app and widget (unsigned, simulator)
