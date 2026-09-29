@@ -21,6 +21,8 @@ object FilWidgets {
         "Some reminders didn't arrive" to "May mga paalalang hindi dumating",
         "Your {0} phone may be closing PawPixel in the background, so reminders can come late or not at all. To fix it:" to
             "Maaaring isinasara ng {0} phone mo ang PawPixel sa background, kaya puwedeng mahuli o hindi dumating ang mga paalala. Para maayos ito:",
+        "Your phone may be closing PawPixel in the background, so reminders can come late or not at all. To fix it:" to
+            "Maaaring isinasara ng phone mo ang PawPixel sa background, kaya puwedeng mahuli o hindi dumating ang mga paalala. Para maayos ito:",
         "Open settings" to "Buksan ang settings",
         "Turn on Autostart for PawPixel, then in Settings → Apps → PawPixel → Battery saver, choose “No restrictions”." to
             "I-on ang Autostart para sa PawPixel, tapos sa Settings → Apps → PawPixel → Battery saver, piliin ang “No restrictions”.",

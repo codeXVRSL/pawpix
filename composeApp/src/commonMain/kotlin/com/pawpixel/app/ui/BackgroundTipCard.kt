@@ -31,7 +31,10 @@ fun BackgroundTipCard(platform: Platform) {
     PixelCard(Modifier.fillMaxWidth()) {
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text(tr("Some reminders didn't arrive"), fontWeight = FontWeight.Bold)
-            Text(tr("Your {0} phone may be closing PawPixel in the background, so reminders can come late or not at all. To fix it:", shown.brand))
+            Text(
+                if (shown.brand != null) tr("Your {0} phone may be closing PawPixel in the background, so reminders can come late or not at all. To fix it:", shown.brand)
+                else tr("Your phone may be closing PawPixel in the background, so reminders can come late or not at all. To fix it:"),
+            )
             Text(shown.steps, style = MaterialTheme.typography.bodySmall)
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Button(onClick = { platform.openBackgroundSettings() }) { Text(tr("Open settings")) }

@@ -84,8 +84,8 @@ interface Platform {
     suspend fun signInForMap(hashedNonce: String, googleWebClientId: String): MapIdentity?
 }
 
-/** What to tell the owner: the phone's make ("Xiaomi") and where its background setting is. */
-data class BackgroundTip(val brand: String, val steps: String)
+/** What to tell the owner: the phone's make ("Xiaomi"; null if it doesn't say) and where its background setting is. */
+data class BackgroundTip(val brand: String?, val steps: String)
 
 /** An identity token from Google or Apple, exchanged for a map session by the server. */
 data class MapIdentity(val provider: String, val idToken: String)

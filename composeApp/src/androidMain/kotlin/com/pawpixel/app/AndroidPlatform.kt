@@ -143,7 +143,9 @@ class AndroidPlatform(private val context: Context) : Platform {
         val prefs = reminderPrefs(context)
         if (prefs.getBoolean(KEY_TIP_DISMISSED, false) || prefs.getInt(KEY_LOST, 0) < ReminderDelivery.TIP_AFTER) return null
         val maker = PhoneMaker.of(Build.MANUFACTURER)
-        return BackgroundTip(maker.label ?: Build.MANUFACTURER.replaceFirstChar { it.uppercase() }, maker.steps())
+        val make = maker.label ?: Build.MANUFACTURER.takeIf { it.isNotBlank() && !it.equals("unknown", ignoreCase = true) }
+            ?.replaceFirstChar { it.uppercase() }
+        return BackgroundTip(make, maker.steps())
     }
 
     override fun openBackgroundSettings() = PhoneMaker.of(Build.MANUFACTURER).openSettings(context)
