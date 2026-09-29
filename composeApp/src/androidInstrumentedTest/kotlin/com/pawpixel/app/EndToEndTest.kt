@@ -696,10 +696,11 @@ class EndToEndTest {
         }
         // Last resort: drag the page like a finger, down the middle.
         val x = device.displayWidth / 2
+        // (A pet's page with its health section open is many screens long: enough drags to cross it.)
         for (up in listOf(true, false)) {
-            repeat(12) {
+            repeat(30) {
                 device.findObject(selector)?.let { note("found by dragging after $moved accessibility scrolls: $selector"); return it }
-                val (from, to) = if (up) 0.75 to 0.35 else 0.35 to 0.75
+                val (from, to) = if (up) 0.8 to 0.25 else 0.25 to 0.8
                 device.swipe(x, (device.displayHeight * from).toInt(), x, (device.displayHeight * to).toInt(), 25)
                 Thread.sleep(500)
             }
