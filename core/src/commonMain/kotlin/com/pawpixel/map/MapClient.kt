@@ -144,13 +144,20 @@ class SupabaseApi(
             put("Content-Type", "application/json")
             if (prefer != null) put("Prefer", prefer)
         }
-        return try {
+        val r = try {
             http.send(HttpRequest(method, settings.supabaseUrl.trimEnd('/') + path, headers, body))
         } catch (e: MapException) {
             throw e
         } catch (e: Exception) {
             throw MapException(MapException.Kind.OFFLINE, tr("Can't reach PawPixel's server. Check your connection."))
         }
+        // Only a real reply goes further: a Wi-Fi login page (public hotspots) or a reply cut off
+        // mid-way becomes a plain message here, never "JSON: unexpected '<'" on the owner's screen.
+        if (r.status in 200..299 && r.body.isNotBlank() && runCatching { Json.parse(r.body) }.isFailure) {
+            throw if (r.body.trimStart().startsWith("<")) MapException(MapException.Kind.OFFLINE, tr("Can't reach PawPixel's server. Check your connection."))
+            else MapException(MapException.Kind.SERVER, tr("PawPixel's server had a problem ({0})", r.status))
+        }
+        return r
     }
 
     fun isoNow(): String {

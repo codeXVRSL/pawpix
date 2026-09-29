@@ -65,6 +65,26 @@ class QualityTest {
         assertEquals(null, StateCodec.load(deep, null).state.pets.firstOrNull())
     }
 
+    @Test fun aHotspotLoginPageOrACutOffReplyIsAPlainMessage() {
+        val saved = arrayOfNulls<String>(1)
+        val store = object : com.pawpixel.map.SessionStore {
+            override fun load() = saved[0]
+            override fun save(json: String?) { saved[0] = json }
+        }
+        var reply = com.pawpixel.map.HttpResponse(200, "<html><body>Free Wi-Fi: log in</body></html>")
+        val client = com.pawpixel.map.MapClient(
+            com.pawpixel.map.MapSettings("https://x.supabase.co", "anon", "", "", ""),
+            com.pawpixel.map.Http { reply }, store,
+        ) { 1_700_000_000_000L }
+        fun failure() = runCatching { runSync { client.signInWithIdToken("google", "t", null) } }.exceptionOrNull()
+        val login = failure()
+        assertTrue(login is com.pawpixel.map.MapException && login.kind == com.pawpixel.map.MapException.Kind.OFFLINE, "$login")
+        reply = com.pawpixel.map.HttpResponse(200, "{\"access_token\":\"tok1\",\"refresh_tok")
+        val cut = failure()
+        assertTrue(cut is com.pawpixel.map.MapException && cut.kind == com.pawpixel.map.MapException.Kind.SERVER, "$cut")
+        assertTrue(!cut.message!!.contains("JSON"), cut.message)
+    }
+
     // ---- Done tapped twice ----
 
     @Test fun aDoubleTapOnDoneLogsOnce() {
