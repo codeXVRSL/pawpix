@@ -48,6 +48,8 @@ import com.pawpixel.core.DAY_MS
 import com.pawpixel.core.HealthItem
 import com.pawpixel.core.HealthPlan
 import com.pawpixel.core.Pet
+import com.pawpixel.i18n.tr
+import com.pawpixel.i18n.trName
 
 /**
  * The pet's health care: vaccines, deworming, tick & flea, check-ups. Each row says when it's due,
@@ -61,23 +63,23 @@ fun HealthSection(app: AppScope, state: AppState, pet: Pet) {
     val health = CareStats.healthDue(state, pet.id, app.now, clock)
     var askBirthday by remember { mutableStateOf(false) }
 
-    Text("Health", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-    pet.birthDay?.let { Text("${pet.name} is ${HealthPlan.ageLabel(it, today)}.", style = MaterialTheme.typography.bodySmall) }
+    Text(tr("Health"), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+    pet.birthDay?.let { Text(tr("{0} is {1}.", pet.name, HealthPlan.ageLabel(it, today)), style = MaterialTheme.typography.bodySmall) }
     if (health.isEmpty()) {
         Text(
-            "Keep track of ${pet.name}'s anti-rabies shot, other vaccines, deworming, tick & flea care and vet check-ups. " +
-                "PawPixel reminds you a few days before each is due.",
+            tr("Keep track of {0}'s anti-rabies shot, other vaccines, deworming, tick & flea care and vet check-ups.", pet.name) + " " +
+                tr("PawPixel reminds you a few days before each is due."),
         )
-        Button(onClick = { askBirthday = true }) { Text("+ Add health reminders") }
+        Button(onClick = { askBirthday = true }) { Text(tr("+ Add health reminders")) }
     }
     // Keyed by task, so each row keeps its own dialogs and picker when the order changes.
     health.forEach { h -> key(h.task.id) { HealthRow(app, state, pet, h) } }
     if (health.isNotEmpty()) {
-        TextButton(onClick = { app.navigate(Screen.EditTask(pet.id, null, health = true)) }) { Text("+ Add health item") }
+        TextButton(onClick = { app.navigate(Screen.EditTask(pet.id, null, health = true)) }) { Text(tr("+ Add health item")) }
         Text(
             if (HealthPlan.isYoung(pet.birthDay, today))
-                "The first-year plan follows common Philippine schedules. If ${pet.name} missed a dose, ask your vet how to catch up; tap Edit to change anything."
-            else "Schedules are typical for adult pets in the Philippines. Your vet's advice comes first: tap Edit to change them.",
+                tr("The first-year plan follows common Philippine schedules. If {0} missed a dose, ask your vet how to catch up; tap Edit to change anything.", pet.name)
+            else tr("Schedules are typical for adult pets in the Philippines. Your vet's advice comes first: tap Edit to change them."),
             style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
     }
@@ -101,15 +103,15 @@ fun HealthSection(app: AppScope, state: AppState, pet: Pet) {
                         askBirthday = false
                         app.launch { app.repo.addHealthCare(pet, day) }
                     },
-                ) { Text("Use this birthday") }
+                ) { Text(tr("Use this birthday")) }
             },
             dismissButton = {
-                TextButton(onClick = { askBirthday = false; app.launch { app.repo.addHealthCare(pet, null) } }) { Text("Adult / not sure") }
+                TextButton(onClick = { askBirthday = false; app.launch { app.repo.addHealthCare(pet, null) } }) { Text(tr("Adult / not sure")) }
             },
         ) {
             DatePicker(
                 state = picker,
-                title = { Text("When was ${pet.name} born? A guess is fine.", modifier = Modifier.padding(start = 24.dp, end = 12.dp, top = 16.dp)) },
+                title = { Text(tr("When was {0} born? A guess is fine.", pet.name), modifier = Modifier.padding(start = 24.dp, end = 12.dp, top = 16.dp)) },
             )
         }
     }
@@ -127,36 +129,36 @@ private fun HealthRow(app: AppScope, state: AppState, pet: Pet, h: HealthItem) {
     val hasCard = remember(t.id, cardRevision) { app.repo.hasCard(t) }
     val pickCard = rememberPhotoPicker { bytes ->
         if (bytes != null) app.launch {
-            cardError = if (app.repo.saveCard(t, bytes)) null else "Couldn't read that photo. Try another one."
+            cardError = if (app.repo.saveCard(t, bytes)) null else tr("Couldn't read that photo. Try another one.")
         }
     }
     val given = state.completions.count { it.taskId == t.id }
-    val seriesLine = if (t.series.isNotEmpty() && given < t.series.size) "First-year series: dose ${given + 1} of ${t.series.size}" else null
+    val seriesLine = if (t.series.isNotEmpty() && given < t.series.size) tr("First-year series: dose {0} of {1}", given + 1, t.series.size) else null
 
     PixelCard(Modifier.fillMaxWidth(), color = MaterialTheme.colorScheme.background) {
         Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                    Text("${t.kind.emoji} ${t.title}", fontWeight = FontWeight.Bold)
+                    Text("${t.kind.emoji} ${trName(t.title)}", fontWeight = FontWeight.Bold)
                     Text(
                         CareStats.dueLabel(h, app.now, clock),
                         color = if (h.due) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
                     )
                     seriesLine?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.secondary) }
                     Text(
-                        (h.lastDoneMs?.let { "Last: ${formatDate(it, clock)}" } ?: "Not recorded yet") + " · then ${everyLabel(t.everyDays)}",
+                        (h.lastDoneMs?.let { tr("Last: {0}", formatDate(it, clock)) } ?: tr("Not recorded yet")) + " · " + tr("then {0}", everyLabel(t.everyDays)),
                         style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
-                Button(onClick = { askWhen = true }) { Text("Done") }
+                Button(onClick = { askWhen = true }) { Text(tr("Done")) }
             }
             Row(verticalAlignment = Alignment.CenterVertically) {
                 TextButton(onClick = { if (hasCard) showCard = true else pickCard() }) {
-                    Text(if (hasCard) "📷 View card" else "📷 Add card photo")
+                    Text(if (hasCard) tr("📷 View card") else tr("📷 Add card photo"))
                 }
                 androidx.compose.foundation.layout.Spacer(Modifier.weight(1f))
-                if (h.lastDoneMs != null) TextButton(onClick = { app.launch { app.repo.undo(t.id) } }) { Text("Undo") }
-                TextButton(onClick = { app.navigate(Screen.EditTask(pet.id, t.id)) }) { Text("Edit") }
+                if (h.lastDoneMs != null) TextButton(onClick = { app.launch { app.repo.undo(t.id) } }) { Text(tr("Undo")) }
+                TextButton(onClick = { app.navigate(Screen.EditTask(pet.id, t.id)) }) { Text(tr("Edit")) }
             }
             cardError?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
         }
@@ -164,16 +166,16 @@ private fun HealthRow(app: AppScope, state: AppState, pet: Pet, h: HealthItem) {
     if (askWhen) {
         AlertDialog(
             onDismissRequest = { askWhen = false },
-            title = { Text("When was it done?") },
+            title = { Text(tr("When was it done?")) },
             text = {
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     WHEN_CHOICES.forEach { (days, label) ->
-                        AssistChip(onClick = { askWhen = false; app.launch { app.repo.givenDaysAgo(t.id, days) } }, label = { Text(label) })
+                        AssistChip(onClick = { askWhen = false; app.launch { app.repo.givenDaysAgo(t.id, days) } }, label = { Text(tr(label)) })
                     }
                 }
             },
             confirmButton = {},
-            dismissButton = { TextButton(onClick = { askWhen = false }) { Text("Cancel") } },
+            dismissButton = { TextButton(onClick = { askWhen = false }) { Text(tr("Cancel")) } },
         )
     }
     if (showCard) {
@@ -183,24 +185,24 @@ private fun HealthRow(app: AppScope, state: AppState, pet: Pet, h: HealthItem) {
         }
         AlertDialog(
             onDismissRequest = { showCard = false },
-            title = { Text("${t.title} · ${pet.name}") },
+            title = { Text("${trName(t.title)} · ${pet.name}") },
             text = {
                 Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     val loaded = image
                     if (loaded == null) {
-                        Text("Opening…")
+                        Text(tr("Opening…"))
                     } else if (loaded.getOrNull() != null) {
-                        Image(loaded.getOrNull()!!, contentDescription = "Photo of ${pet.name}'s card for ${t.title}", contentScale = ContentScale.Fit,
+                        Image(loaded.getOrNull()!!, contentDescription = tr("Photo of {0}'s card for {1}", pet.name, trName(t.title)), contentScale = ContentScale.Fit,
                             modifier = Modifier.fillMaxWidth().heightIn(max = 480.dp))
-                    } else Text("The photo couldn't be opened.")
-                    Text("Kept only on this phone (and in your backups).", style = MaterialTheme.typography.bodySmall)
+                    } else Text(tr("The photo couldn't be opened."))
+                    Text(tr("Kept only on this phone (and in your backups)."), style = MaterialTheme.typography.bodySmall)
                 }
             },
-            confirmButton = { TextButton(onClick = { showCard = false }) { Text("Close") } },
+            confirmButton = { TextButton(onClick = { showCard = false }) { Text(tr("Close")) } },
             dismissButton = {
                 Row {
-                    TextButton(onClick = { showCard = false; app.repo.deleteCard(t) }) { Text("Remove", color = MaterialTheme.colorScheme.error) }
-                    TextButton(onClick = { showCard = false; pickCard() }) { Text("Replace") }
+                    TextButton(onClick = { showCard = false; app.repo.deleteCard(t) }) { Text(tr("Remove"), color = MaterialTheme.colorScheme.error) }
+                    TextButton(onClick = { showCard = false; pickCard() }) { Text(tr("Replace")) }
                 }
             },
         )
@@ -211,31 +213,35 @@ private fun HealthRow(app: AppScope, state: AppState, pet: Pet, h: HealthItem) {
 @Composable
 private fun LocalHelpCard() {
     var open by remember { mutableStateOf(false) }
-    PixelCard(Modifier.fillMaxWidth().clickable(onClickLabel = if (open) "Hide" else "Show", role = Role.Button) { open = !open }) {
+    PixelCard(Modifier.fillMaxWidth().clickable(onClickLabel = if (open) tr("Hide") else tr("Show"), role = Role.Button) { open = !open }) {
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("Rabies rules and where to get shots", fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
+                Text(tr("Rabies rules and where to get shots"), fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
                 Text(if (open) "▲" else "▼")
             }
             if (open) {
-                Text("The Anti-Rabies Act (RA 9482) asks every dog owner to:", style = MaterialTheme.typography.bodyMedium)
+                Text(tr("The Anti-Rabies Act (RA 9482) asks every dog owner to:"), style = MaterialTheme.typography.bodyMedium)
                 Text(
-                    "• have the dog vaccinated against rabies every year, and keep the card\n" +
-                        "• register the dog with the city or municipality\n" +
-                        "• keep it on a leash outside the home\n" +
-                        "• report a bite within 24 hours and help the person get treated",
+                    listOf(
+                        tr("have the dog vaccinated against rabies every year, and keep the card"),
+                        tr("register the dog with the city or municipality"),
+                        tr("keep it on a leash outside the home"),
+                        tr("report a bite within 24 hours and help the person get treated"),
+                    ).joinToString("\n") { "• $it" },
                     style = MaterialTheme.typography.bodySmall,
                 )
-                Text("If someone is bitten or scratched", fontWeight = FontWeight.Bold)
+                Text(tr("If someone is bitten or scratched"), fontWeight = FontWeight.Bold)
                 Text(
-                    "Wash the wound with soap and running water for 15 minutes, then go to the nearest Animal Bite Treatment Center the same day. Watch the pet for 14 days.",
+                    tr("Wash the wound with soap and running water for 15 minutes, then go to the nearest Animal Bite Treatment Center the same day.") + " " +
+                        tr("Watch the pet for 14 days."),
                     style = MaterialTheme.typography.bodySmall,
                 )
-                Text("In Naga City", fontWeight = FontWeight.Bold)
+                Text(tr("In Naga City"), fontWeight = FontWeight.Bold)
                 Text(
                     "City Veterinary Office, Maharlika Highway, Del Rosario · cvo@naga.gov.ph\n" +
-                        "Anti-rabies shots for pets 3 months and older (₱75 walk-in in the city's 2023 list; ask for current fees). " +
-                        "Free consultations; deworming and spay/neuter services. Free rabies drives are usually held in March, Rabies Awareness Month.",
+                        tr("Anti-rabies shots for pets 3 months and older (₱75 walk-in in the city's 2023 list; ask for current fees).") + " " +
+                        tr("Free consultations; deworming and spay/neuter services.") + " " +
+                        tr("Free rabies drives are usually held in March, Rabies Awareness Month."),
                     style = MaterialTheme.typography.bodySmall,
                 )
             }
@@ -247,6 +253,6 @@ private fun LocalHelpCard() {
 val WHEN_CHOICES = listOf(0 to "Today", 1 to "Yesterday", 7 to "A week ago", 30 to "A month ago", 91 to "3 months ago", 182 to "6 months ago", 365 to "A year ago")
 
 fun everyLabel(days: Int): String = when (days) {
-    1 -> "daily"; 7 -> "weekly"; 14 -> "every 2 weeks"; 30 -> "monthly"; 90 -> "every 3 months"; 180 -> "every 6 months"; 365 -> "yearly"
-    else -> "every $days days"
+    1 -> tr("daily"); 7 -> tr("weekly"); 14 -> tr("every 2 weeks"); 30 -> tr("monthly"); 90 -> tr("every 3 months"); 180 -> tr("every 6 months"); 365 -> tr("yearly")
+    else -> tr("every {0} days", days)
 }

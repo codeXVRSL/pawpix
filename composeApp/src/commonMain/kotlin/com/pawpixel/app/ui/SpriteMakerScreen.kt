@@ -52,6 +52,7 @@ import com.pawpixel.core.Mood
 import com.pawpixel.core.Species
 import com.pawpixel.core.SpriteSettings
 import com.pawpixel.core.StateOps
+import com.pawpixel.i18n.tr
 import com.pawpixel.sprite.Chibi
 import com.pawpixel.sprite.Ears
 import com.pawpixel.sprite.FaceBox
@@ -100,7 +101,7 @@ fun SpriteMakerScreen(app: AppScope, state: AppState, existingPetId: String?) {
         app.launch {
             val decoded = app.repo.platform.decodePhoto(bytes, SpritePipeline.WORKING_SIZE * 2)
             if (decoded == null) {
-                error = "Couldn't open that photo. Try another one."
+                error = tr("Couldn't open that photo. Try another one.")
             } else {
                 // The native cut-out can stall (e.g. its model still downloading): fall back after a while.
                 val mask = runCatching { withTimeoutOrNull(12_000) { app.repo.platform.segmentPet(decoded) } }.getOrNull()
@@ -121,7 +122,7 @@ fun SpriteMakerScreen(app: AppScope, state: AppState, existingPetId: String?) {
                 runCatching { SpritePipeline.generate(src.photo, settings, src.mask, face) }.getOrNull()
             }
             if (made != null) { result = made; madeFor = Triple(src, settings, face); error = null }
-            else error = "Couldn't make a pet from that photo. Try another one."
+            else error = tr("Couldn't make a pet from that photo. Try another one.")
         } finally {
             loading = false
         }
@@ -146,7 +147,7 @@ fun SpriteMakerScreen(app: AppScope, state: AppState, existingPetId: String?) {
                 app.back()
                 app.navigate(Screen.PetDetail(pet.id))
             } else {
-                error = "Your first pet is free. More pets come with PawPixel Pro (coming soon)."
+                error = tr("Your first pet is free. More pets come with PawPixel Pro (coming soon).")
             }
             saving = false
         }
@@ -160,31 +161,31 @@ fun SpriteMakerScreen(app: AppScope, state: AppState, existingPetId: String?) {
     ) {
         // Save lives in the header too, so naming and saving never need scrolling past the keyboard.
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            if (state.pets.isNotEmpty() || existing != null) TextButton(onClick = app.back) { Text("‹ Back") }
+            if (state.pets.isNotEmpty() || existing != null) TextButton(onClick = app.back) { Text(tr("‹ Back")) }
             Text(
-                if (existing != null) "Edit ${existing.name}'s look" else "Make your pixel pet",
+                if (existing != null) tr("Edit {0}'s look", existing.name) else tr("Make your pixel pet"),
                 style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f),
             )
-            if (r != null) Button(enabled = canSave, onClick = save) { Text("Save") }
+            if (r != null) Button(enabled = canSave, onClick = save) { Text(tr("Save")) }
         }
 
         if (r == null || art == null) {
             PixelCard(Modifier.fillMaxWidth()) {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("Pick a photo of your pet", fontWeight = FontWeight.Bold)
-                    Text("• Your pet's face clearly visible, looking at the camera\n• Good light; one pet per photo\n• A close-up or a full-body photo both work")
+                    Text(tr("Pick a photo of your pet"), fontWeight = FontWeight.Bold)
+                    Text(tr("• Your pet's face clearly visible, looking at the camera\n• Good light; one pet per photo\n• A close-up or a full-body photo both work"))
                     Text(
-                        "Your photo stays on this phone. PawPixel keeps only a small crop for your before/after card.",
+                        tr("Your photo stays on this phone. PawPixel keeps only a small crop for your before/after card."),
                         style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
-                    if (loading) CircularProgressIndicator() else Button(onClick = pick) { Text("Choose a photo") }
+                    if (loading) CircularProgressIndicator() else Button(onClick = pick) { Text(tr("Choose a photo")) }
                 }
             }
         } else {
             PixelCard(Modifier.fillMaxWidth()) {
                 Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     LivePet(art, emptyList(), Mood.HAPPY, seed = 7, modifier = Modifier.fillMaxWidth(), reaction = reaction)
-                    Text("Is that your pet? Tap to give pets.", fontWeight = FontWeight.Bold)
+                    Text(tr("Is that your pet? Tap to give pets."), fontWeight = FontWeight.Bold)
                     Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                         for (m in listOf(Mood.HUNGRY, Mood.RESTLESS, Mood.SLEEPY, Mood.SAD)) {
                             val img = remember(art, m) {
@@ -197,7 +198,7 @@ fun SpriteMakerScreen(app: AppScope, state: AppState, existingPetId: String?) {
                     if (!r.backgroundRemoved) {
                         // Also happens with close-ups, where the pet fills the photo: a tip, not an error.
                         Text(
-                            "Colours look off? Move the face square below, or try a photo with a plainer background.",
+                            tr("Colours look off? Move the face square below, or try a photo with a plainer background."),
                             style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
@@ -206,35 +207,35 @@ fun SpriteMakerScreen(app: AppScope, state: AppState, existingPetId: String?) {
             }
 
             if (existing == null) {
-                OutlinedTextField(name, { name = it.take(24) }, label = { Text("Pet's name") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                OutlinedTextField(name, { name = it.take(24) }, label = { Text(tr("Pet's name")) }, singleLine = true, modifier = Modifier.fillMaxWidth())
             }
 
-            Text("Body", fontWeight = FontWeight.Bold)
+            Text(tr("Body"), fontWeight = FontWeight.Bold)
             Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 listOf(Species.DOG to "Dog body", Species.CAT to "Cat body").forEach { (sp, label) ->
-                    FilterChip(species == sp || (sp == Species.DOG && species == Species.OTHER), { species = sp }, label = { Text(label) })
+                    FilterChip(species == sp || (sp == Species.DOG && species == Species.OTHER), { species = sp }, label = { Text(tr(label)) })
                 }
             }
-            Text("Ears", fontWeight = FontWeight.Bold)
+            Text(tr("Ears"), fontWeight = FontWeight.Bold)
             Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                Ears.entries.forEach { e -> FilterChip(art.ears == e, { ears = e }, label = { Text(e.label) }) }
+                Ears.entries.forEach { e -> FilterChip(art.ears == e, { ears = e }, label = { Text(tr(e.label)) }) }
             }
 
             source?.takeIf { upToDate }?.let { src ->
-                Text("Face", fontWeight = FontWeight.Bold)
-                Text("Drag the square over your pet's face. Its colours and markings go on your pixel pet.", style = MaterialTheme.typography.bodySmall)
+                Text(tr("Face"), fontWeight = FontWeight.Bold)
+                Text(tr("Drag the square over your pet's face. Its colours and markings go on your pixel pet."), style = MaterialTheme.typography.bodySmall)
                 FaceFramer(src.preview, face ?: r.face, Modifier.fillMaxWidth()) { moved -> face = moved.fitIn(src.preview.width, src.preview.height) }
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    OutlinedButton(onClick = { face = resize(face ?: r.face, 0.88).fitIn(src.preview.width, src.preview.height) }) { Text("Smaller") }
-                    OutlinedButton(onClick = { face = resize(face ?: r.face, 1.12).fitIn(src.preview.width, src.preview.height) }) { Text("Bigger") }
+                    OutlinedButton(onClick = { face = resize(face ?: r.face, 0.88).fitIn(src.preview.width, src.preview.height) }) { Text(tr("Smaller")) }
+                    OutlinedButton(onClick = { face = resize(face ?: r.face, 1.12).fitIn(src.preview.width, src.preview.height) }) { Text(tr("Bigger")) }
                 }
             }
 
-            OutlinedButton(onClick = pick) { Text(if (existing != null && source == null) "Use a new photo" else "Use a different photo") }
+            OutlinedButton(onClick = pick) { Text(if (existing != null && source == null) tr("Use a new photo") else tr("Use a different photo")) }
 
             error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
             Button(enabled = canSave, onClick = save, modifier = Modifier.fillMaxWidth()) {
-                Text(if (existing != null) "Save" else "Save ${name.ifBlank { "pet" }}")
+                Text(if (existing != null) tr("Save") else if (name.isBlank()) tr("Save pet") else tr("Save {0}", name))
             }
         }
         error?.takeIf { r == null }?.let { Text(it, color = MaterialTheme.colorScheme.error) }

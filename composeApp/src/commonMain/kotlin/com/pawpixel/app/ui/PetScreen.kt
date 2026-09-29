@@ -42,6 +42,8 @@ import com.pawpixel.core.TaskStatus
 import com.pawpixel.sprite.PetEvent
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import com.pawpixel.i18n.tr
+import com.pawpixel.i18n.trName
 
 @Composable
 fun PetScreen(app: AppScope, state: AppState, pet: Pet) {
@@ -61,9 +63,9 @@ fun PetScreen(app: AppScope, state: AppState, pet: Pet) {
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            TextButton(onClick = app.back) { Text("‹ Back") }
+            TextButton(onClick = app.back) { Text(tr("‹ Back")) }
             Spacer(Modifier.weight(1f))
-            TextButton(onClick = { renaming = true }) { Text("Edit") }
+            TextButton(onClick = { renaming = true }) { Text(tr("Edit")) }
         }
         PixelCard(Modifier.fillMaxWidth()) {
             Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
@@ -72,10 +74,10 @@ fun PetScreen(app: AppScope, state: AppState, pet: Pet) {
                 Text(reading.caption, textAlign = TextAlign.Center)
                 Text(
                     hearts(reading.score), style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.semantics { contentDescription = "Happiness ${(reading.score + 10) / 20} of 5" },
+                    modifier = Modifier.semantics { contentDescription = tr("Happiness {0} of 5", (reading.score + 10) / 20) },
                 )
                 Text(
-                    "Tap ${pet.name} to give pets",
+                    tr("Tap {0} to give pets", pet.name),
                     style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center,
                 )
             }
@@ -101,16 +103,16 @@ fun PetScreen(app: AppScope, state: AppState, pet: Pet) {
         if (pet.shared && household != null) {
             val others = household.members.filter { it.userId != app.repo.family.myUserId }.joinToString { it.name }
             TextButton(onClick = { app.navigate(Screen.Family) }) {
-                Text(if (others.isEmpty()) "Shared with ${household.name}" else "Cared for with $others", style = MaterialTheme.typography.bodySmall)
+                Text(if (others.isEmpty()) tr("Shared with {0}", household.name) else tr("Cared for with {0}", others), style = MaterialTheme.typography.bodySmall)
             }
         } else if (app.repo.family.isSetUp) {
-            TextButton(onClick = { app.navigate(Screen.Family) }) { Text("👪 Care for ${pet.name} together with family") }
+            TextButton(onClick = { app.navigate(Screen.Family) }) { Text(tr("👪 Care for {0} together with family", pet.name)) }
         }
 
-        Text("Care", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-        if (statuses.isEmpty()) Text("No care tasks yet. Add feeding, walks or medicine so ${pet.name}'s mood can follow real care.")
+        Text(tr("Care"), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+        if (statuses.isEmpty()) Text(tr("No care tasks yet. Add feeding, walks or medicine so {0}'s mood can follow real care.", pet.name))
         statuses.forEach { s -> TaskRow(app, pet, s, onDone = { react(PetEvent.Cared(s.task.kind)) }) }
-        OutlinedButton(onClick = { app.navigate(Screen.EditTask(pet.id, null)) }) { Text("+ Add care task") }
+        OutlinedButton(onClick = { app.navigate(Screen.EditTask(pet.id, null)) }) { Text(tr("+ Add care task")) }
 
         Spacer(Modifier.height(8.dp))
         HealthSection(app, state, pet)
@@ -119,7 +121,7 @@ fun PetScreen(app: AppScope, state: AppState, pet: Pet) {
         WeightSection(app, state, pet)
 
         Spacer(Modifier.height(8.dp))
-        Text("Share & sprite", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+        Text(tr("Share & sprite"), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             Button(
                 enabled = !makingGif && art != null,
@@ -138,39 +140,39 @@ fun PetScreen(app: AppScope, state: AppState, pet: Pet) {
                                 app.repo.platform.log("GIF ready: ${gif.size} bytes")
                                 app.repo.shareGif(pet, gif)
                             } else {
-                                shareError = "Couldn't make the animation. Please try again."
+                                shareError = tr("Couldn't make the animation. Please try again.")
                             }
                         } finally {
                             makingGif = false
                         }
                     }
                 },
-            ) { Text(if (makingGif) "Making GIF…" else "Share animation") }
+            ) { Text(if (makingGif) tr("Making GIF…") else tr("Share animation")) }
             // A pet from a family member's phone has no photo here, so no before/after card.
             val hasPhoto = remember(pet.id, pet.spriteVersion) { app.repo.photoCrop(pet.id) != null }
-            if (hasPhoto) OutlinedButton(onClick = { app.repo.shareReveal(pet) }) { Text("Before/after") }
+            if (hasPhoto) OutlinedButton(onClick = { app.repo.shareReveal(pet) }) { Text(tr("Before/after")) }
         }
         shareError?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
-        OutlinedButton(onClick = { app.navigate(Screen.RemakeSprite(pet.id)) }) { Text("Edit look: photo, face, ears") }
-        TextButton(onClick = { confirmDelete = true }) { Text("Delete ${pet.name}", color = MaterialTheme.colorScheme.error) }
+        OutlinedButton(onClick = { app.navigate(Screen.RemakeSprite(pet.id)) }) { Text(tr("Edit look: photo, face, ears")) }
+        TextButton(onClick = { confirmDelete = true }) { Text(tr("Delete {0}", pet.name), color = MaterialTheme.colorScheme.error) }
     }
 
     if (confirmDelete) {
         AlertDialog(
             onDismissRequest = { confirmDelete = false },
-            title = { Text("Delete ${pet.name}?") },
+            title = { Text(tr("Delete {0}?", pet.name)) },
             text = {
                 Text(
-                    "This removes the sprite, tasks and history from this phone. It can't be undone." +
-                        if (pet.shared) " Your family keeps their copy of ${pet.name}, no longer shared." else "",
+                    tr("This removes the sprite, tasks and history from this phone. It can't be undone.") +
+                        if (pet.shared) " " + tr("Your family keeps their copy of {0}, no longer shared.", pet.name) else "",
                 )
             },
             confirmButton = {
                 TextButton(onClick = { confirmDelete = false; app.launch { app.repo.deletePet(pet.id) } }) {
-                    Text("Delete", color = MaterialTheme.colorScheme.error)
+                    Text(tr("Delete"), color = MaterialTheme.colorScheme.error)
                 }
             },
-            dismissButton = { TextButton(onClick = { confirmDelete = false }) { Text("Cancel") } },
+            dismissButton = { TextButton(onClick = { confirmDelete = false }) { Text(tr("Cancel")) } },
         )
     }
     if (renaming) RenameDialog(app, pet) { renaming = false }
@@ -186,37 +188,37 @@ private fun TaskRow(app: AppScope, pet: Pet, s: TaskStatus, onDone: () -> Unit) 
     val clock = app.repo.clock
     val t = s.task
     val detail = when {
-        s.isOverdue -> "Waiting since ${formatTime(s.overdueSinceMs!!, clock)}"
-        s.allDoneThisCycle && t.everyDays > 1 -> "Done · next ${s.nextDueMs?.let { relativeDay(it, app.now, clock) } ?: "-"}"
-        s.allDoneThisCycle -> "All done today ✓"
-        else -> "Next ${s.nextDueMs?.let { relativeDay(it, app.now, clock) } ?: "-"}"
+        s.isOverdue -> tr("Waiting since {0}", formatTime(s.overdueSinceMs!!, clock))
+        s.allDoneThisCycle && t.everyDays > 1 -> tr("Done · next {0}", s.nextDueMs?.let { relativeDay(it, app.now, clock) } ?: "-")
+        s.allDoneThisCycle -> tr("All done today ✓")
+        else -> tr("Next {0}", s.nextDueMs?.let { relativeDay(it, app.now, clock) } ?: "-")
     }
     val times = s.slotTimes.joinToString(" · ") { formatTime(it, clock) } +
-        if (t.everyDays > 1) "  (every ${t.everyDays} days)" else ""
+        if (t.everyDays > 1) "  " + tr("(every {0} days)", t.everyDays) else ""
     PixelCard(Modifier.fillMaxWidth(), color = MaterialTheme.colorScheme.background) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                Text("${t.kind.emoji} ${t.title}", fontWeight = FontWeight.Bold)
+                Text("${t.kind.emoji} ${trName(t.title)}", fontWeight = FontWeight.Bold)
                 Text(detail, color = if (s.isOverdue) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface)
                 Text(times, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 // Family sharing: "Done by Jamaica · 7:02 AM" when someone else did it today.
                 val today = clock.dayIndex(app.now)
                 app.repo.state.value.completions.lastOrNull { it.taskId == t.id && it.localDay == today }?.let { c ->
                     app.repo.family.nameOf(c.by)?.let { who ->
-                        Text("Done by $who · ${formatTime(c.atMs, clock)}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.secondary)
+                        Text(tr("Done by {0} · {1}", who, formatTime(c.atMs, clock)), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.secondary)
                     }
                 }
                 if (t.adaptive && AdaptiveTiming.effectiveSlots(t, app.repo.state.value.completions, app.now, clock) != t.slots.sorted()) {
-                    Text("Adjusted to your routine", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.secondary)
+                    Text(tr("Adjusted to your routine"), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.secondary)
                 }
             }
             Column(horizontalAlignment = Alignment.End) {
                 if (!s.allDoneThisCycle) {
-                    Button(onClick = { onDone(); app.launch { app.repo.complete(t.id) } }) { Text("Done") }
+                    Button(onClick = { onDone(); app.launch { app.repo.complete(t.id) } }) { Text(tr("Done")) }
                 }
                 Row {
-                    if (s.logged > 0) TextButton(onClick = { app.launch { app.repo.undo(t.id) } }) { Text("Undo") }
-                    TextButton(onClick = { app.navigate(Screen.EditTask(pet.id, t.id)) }) { Text("Edit") }
+                    if (s.logged > 0) TextButton(onClick = { app.launch { app.repo.undo(t.id) } }) { Text(tr("Undo")) }
+                    TextButton(onClick = { app.navigate(Screen.EditTask(pet.id, t.id)) }) { Text(tr("Edit")) }
                 }
             }
         }
@@ -229,18 +231,18 @@ private fun RenameDialog(app: AppScope, pet: Pet, onClose: () -> Unit) {
     var species by remember { mutableStateOf(pet.species) }
     AlertDialog(
         onDismissRequest = onClose,
-        title = { Text("Edit pet") },
+        title = { Text(tr("Edit pet")) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                OutlinedTextField(name, { name = it.take(24) }, label = { Text("Name") }, singleLine = true)
+                OutlinedTextField(name, { name = it.take(24) }, label = { Text(tr("Name")) }, singleLine = true)
                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     Species.entries.forEach { sp ->
-                        FilterChip(selected = species == sp, onClick = { species = sp }, label = { Text(sp.label) })
+                        FilterChip(selected = species == sp, onClick = { species = sp }, label = { Text(tr(sp.label)) })
                     }
                 }
             }
         },
-        confirmButton = { TextButton(onClick = { app.launch { app.repo.renamePet(pet, name, species) }; onClose() }) { Text("Save") } },
-        dismissButton = { TextButton(onClick = onClose) { Text("Cancel") } },
+        confirmButton = { TextButton(onClick = { app.launch { app.repo.renamePet(pet, name, species) }; onClose() }) { Text(tr("Save")) } },
+        dismissButton = { TextButton(onClick = onClose) { Text(tr("Cancel")) } },
     )
 }

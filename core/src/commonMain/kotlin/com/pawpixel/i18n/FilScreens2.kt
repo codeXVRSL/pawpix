@@ -1,6 +1,151 @@
 package com.pawpixel.i18n
 
-/** Filipino for app screens (filled in with the screens' own words). */
+/**
+ * Filipino for Settings, Family sharing, the sprite maker and shared components.
+ * Everyday Filipino; loanwords kept where people use them ("backup", "sync", "invite code", "Done").
+ */
 object FilScreens2 {
-    val map: Map<String, String> = mapOf()
+    val map: Map<String, String> = mapOf(
+        // Shared
+        "‹ Back" to "‹ Bumalik",
+        "Cancel" to "Kanselahin",
+        "Save" to "I-save",
+        "Delete" to "Burahin",
+        "Remove" to "Alisin",
+
+        // Settings
+        "Settings" to "Mga Setting",
+        "Reminders" to "Mga paalala",
+        "Notifications for care tasks." to "Mga notification para sa pag-aalaga.",
+        "Language" to "Wika",
+        "Phone's language" to "Wika ng phone",
+        "Filipino translations are new: tell us if something sounds off." to "Bago pa lang ang salin sa Filipino: sabihan mo kami kung may parang mali o kakaiba.",
+        "Family sharing" to "Pagbabahagi sa pamilya",
+        "You're in {0} ({1} people)." to "Kasama ka sa {0} ({1} tao).",
+        "Care for your pets together: everyone's Done taps show on every phone." to "Sabay-sabay ninyong alagaan ang mga alaga: makikita sa bawat phone ang Done ng lahat.",
+        "Open family sharing" to "Buksan ang pagbabahagi sa pamilya",
+        "Away from home" to "Wala sa bahay",
+        "Care reminders are paused until {0}. Your pets won't fret over care missed while you're away." to "Naka-pause ang mga paalala hanggang {0}. Hindi mag-aalala ang mga alaga mo sa mga hindi nagawang pag-aalaga habang wala ka.",
+        "I'm back" to "Nandito na ako",
+        "Travelling, or a pet-sitter in charge? Pause care reminders, and your pixel pet won't fret over care it missed." to "Aalis ka ba, o may pet-sitter na bahala? I-pause ang mga paalala, at hindi mag-aalala ang pixel pet mo sa mga hindi nagawang pag-aalaga.",
+        "Away 1 day" to "Aalis nang 1 araw",
+        "Away 3 days" to "Aalis nang 3 araw",
+        "Away 1 week" to "Aalis nang 1 linggo",
+        "Away 2 weeks" to "Aalis nang 2 linggo",
+        "Bedtime" to "Oras ng tulog",
+        "Your pixel pet sleeps between these times unless something important is overdue." to "Natutulog ang pixel pet mo sa pagitan ng mga oras na ito, maliban kung may mahalagang lampas na sa oras.",
+        "Sleeps at" to "Matutulog nang",
+        "Wakes at" to "Gigising nang",
+        "PawPixel Pro" to "PawPixel Pro",
+        "Your first pet is free forever. Pro (coming soon) adds more pets, AI-enhanced sprites and hand-finished sprites by a pixel artist." to "Libre habambuhay ang una mong alaga. Ang Pro (malapit na) ay may dagdag na alaga, mga sprite na pinaganda ng AI, at mga sprite na tinapos ng kamay ng isang pixel artist.",
+        "Test build: unlock Pro features" to "Test build: buksan ang mga Pro feature",
+        "Only in test builds, until in-app purchases are connected." to "Sa mga test build lang, hangga't hindi pa konektado ang in-app purchases.",
+        "Backup" to "Backup",
+        "Changing phones? Save a backup file (to Google Drive, Files or email) and restore it on your new phone, Android or iPhone. It holds your pets, their pixel looks, care tasks and history." to "Magpapalit ng phone? Mag-save ng backup file (sa Google Drive, Files o email) at i-restore ito sa bago mong phone, Android man o iPhone. Nandito ang mga alaga mo, ang pixel na itsura nila, mga gawain sa pag-aalaga at history.",
+        "Save backup file" to "I-save ang backup file",
+        "Restore" to "I-restore",
+        "Couldn't read that file." to "Hindi mabasa ang file na iyan.",
+        "Your backup is too big to save as one file. Remove some card photos and try again." to "Masyadong malaki ang backup mo para i-save bilang isang file. Mag-alis ng ilang litrato sa card at subukan ulit.",
+        "Couldn't restore: your phone may be out of space. Nothing was changed." to "Hindi ma-restore: baka puno na ang storage ng phone mo. Walang nabago.",
+        "Privacy" to "Privacy",
+        "Everything stays on this phone: no account, no uploads, no tracking. (Your phone's own backup may include it, and backup files go only where you save them.) Your photo is turned into a sprite on the device, " +
+            "and only a small crop is kept for your before/after card. Deleting the app deletes what's on the phone (Android's own Google backup may keep a copy until you remove it in Google Drive). " +
+            "The pet map is optional: only if you join it, your pixel pets, their names and your rough area (about 1 km, never " +
+            "your exact location) go to PawPixel's map server, with the Google or Apple account you sign in with. " +
+            "On Android, Google's on-device pet detector (ML Kit) sends Google anonymous performance data, never your photos." to
+            "Nananatili ang lahat sa phone na ito: walang account, walang ina-upload, walang tracking. (Maaaring kasama ito sa sariling backup ng phone mo, at napupunta lang ang mga backup file kung saan mo ito ise-save.) " +
+            "Ginagawang sprite ang litrato mo sa mismong device, at maliit na crop lang ang itinatabi para sa before/after card mo. " +
+            "Kapag binura mo ang app, mabubura ang nasa phone (maaaring may kopyang itabi ang sariling Google backup ng Android hangga't hindi mo ito binubura sa Google Drive). " +
+            "Opsyonal ang pet map: kung sasali ka lang, mapupunta sa map server ng PawPixel ang mga pixel pet mo, ang pangalan nila at ang tinatayang lugar mo (mga 1 km, hindi kailanman ang eksaktong lokasyon mo), " +
+            "kasama ang Google o Apple account na ginamit mo sa pag-sign in. " +
+            "Sa Android, nagpapadala sa Google ang pet detector ng Google na nasa device mismo (ML Kit) ng anonymous na performance data, hindi kailanman ang mga litrato mo.",
+        "Privacy policy" to "Privacy policy",
+        "Contact support" to "Makipag-ugnayan sa support",
+        "Delete all my data" to "Burahin lahat ng data ko",
+        "Restore this backup?" to "I-restore ang backup na ito?",
+        "1 pet" to "1 alaga",
+        "{0} pets" to "{0} alaga",
+        ", saved {0}" to ", na-save noong {0}",
+        "It has {0} ({1}){2}. Pets, tasks and history on this phone will be replaced." to "May {0} ito ({1}){2}. Papalitan ang mga alaga, gawain at history sa phone na ito.",
+        "Restored 1 pet." to "Na-restore ang 1 alaga.",
+        "Restored {0} pets." to "Na-restore ang {0} alaga.",
+        "Couldn't restore that backup." to "Hindi ma-restore ang backup na iyan.",
+        "Replace with backup" to "Palitan ng backup",
+        "Delete everything?" to "Burahin lahat?",
+        "All pets, sprites, tasks and history will be removed from this phone, and your pet map account (if you joined) from the server. This can't be undone." to "Mabubura sa phone na ito ang lahat ng alaga, sprite, gawain at history, at sa server naman ang pet map account mo (kung sumali ka). Hindi na ito maibabalik.",
+
+        // Family sharing
+        "Something went wrong. Please try again." to "May nangyaring mali. Pakisubukan ulit.",
+        "Family sharing is coming soon: this build isn't connected to PawPixel's server yet. Everything else works on this phone as usual." to "Malapit na ang pagbabahagi sa pamilya: hindi pa konektado ang build na ito sa server ng PawPixel. Gumagana pa rin gaya ng dati ang lahat ng iba pa sa phone na ito.",
+        " (you)" to " (ikaw)",
+        " · started the family" to " · nagsimula ng pamilya",
+        "Sync now" to "I-sync ngayon",
+        "Pets you care for together" to "Mga alagang sabay ninyong inaalagaan",
+        "Pets your family shares appear here after the next sync." to "Lalabas dito ang mga alagang ibinabahagi ng pamilya mo pagkatapos ng susunod na sync.",
+        "Shared: care, health and records sync" to "Shared: naka-sync ang pag-aalaga, kalusugan at mga record",
+        "Only on this phone" to "Sa phone na ito lang",
+        "Invite someone" to "Mag-imbita",
+        "Send a code to the people you care for your pets with (up to 8). It works for 7 days. They sign in, tap Join with a code, and see your shared pets." to "Magpadala ng code sa mga kasama mong nag-aalaga sa mga alaga mo (hanggang 8). Gagana ito nang 7 araw. Magsa-sign in sila, ita-tap ang Sumali gamit ang code, at makikita na nila ang mga shared na alaga mo.",
+        "Get an invite code" to "Kumuha ng invite code",
+        "All invite codes are cancelled." to "Kinansela na ang lahat ng invite code.",
+        "Cancel all invite codes" to "Kanselahin lahat ng invite code",
+        "Leave {0}" to "Umalis sa {0}",
+        "What's shared: pet names, their pixel looks, care tasks, health dates and who tapped Done. Never photos (card photos stay on your phone) and never your location. Reminder settings stay your own." to "Ang ibinabahagi: pangalan ng mga alaga, ang pixel na itsura nila, mga gawain sa pag-aalaga, mga petsa sa kalusugan at kung sino ang nag-tap ng Done. Hindi kailanman ang mga litrato (nananatili sa phone mo ang mga litrato sa card) at hindi kailanman ang lokasyon mo. Sa iyo lang ang mga setting ng paalala mo.",
+        "Remove {0}?" to "Alisin si {0}?",
+        "{0} stops seeing your family's pets and taps. Their phone keeps its own copy, no longer shared." to "Hindi na makikita ni {0} ang mga alaga at tap ng pamilya mo. May sariling kopya pa rin ang phone niya, pero hindi na shared.",
+        "Leave the family?" to "Umalis sa pamilya?",
+        "Shared pets stay on this phone with their history, no longer shared. The others keep theirs." to "Mananatili sa phone na ito ang mga shared na alaga kasama ang history nila, pero hindi na shared. Mananatili rin sa iba ang kanila.",
+        "Leave" to "Umalis",
+        "Care for your pets together" to "Sabay-sabay na alagaan ang mga alaga",
+        "When someone at home feeds or walks your pet, it shows on everyone's phone and widget, with who did it. No more double breakfasts." to "Kapag may nagpakain o nagpalakad sa alaga mo sa bahay, makikita ito sa phone at widget ng lahat, kasama kung sino ang gumawa. Wala nang dobleng almusal.",
+        "Family sharing needs an account, so PawPixel's server can pass your Done taps between phones. Everything else keeps working on this phone without one." to "Kailangan ng account ang pagbabahagi sa pamilya, para maipasa ng server ng PawPixel ang mga Done tap ninyo sa bawat phone. Gumagana pa rin ang lahat ng iba pa sa phone na ito kahit wala nito.",
+        "Sign in with Google" to "Mag-sign in gamit ang Google",
+        "Sign in with Apple" to "Mag-sign in gamit ang Apple",
+        "Sign in (test account)" to "Mag-sign in (test account)",
+        "Your name (what your family sees)" to "Pangalan mo (ito ang makikita ng pamilya mo)",
+        "New family" to "Bagong pamilya",
+        "Family name, e.g. The Cruz home" to "Pangalan ng pamilya, hal. Pamilya Cruz",
+        "Our family" to "Ang aming pamilya",
+        "Start a family" to "Magsimula ng pamilya",
+        "Join with a code" to "Sumali gamit ang code",
+        "Invite code" to "Invite code",
+        "Join" to "Sumali",
+        "Add your name first." to "Ilagay muna ang pangalan mo.",
+        "Valid for 7 days" to "Gagana nang 7 araw",
+        "Join {0} on PawPixel, so we can care for our pets together. Open PawPixel → Family sharing → Join with a code: {1}" to "Sumali sa {0} sa PawPixel, para sabay nating maalagaan ang mga alaga natin. Buksan ang PawPixel → Pagbabahagi sa pamilya → Sumali gamit ang code: {1}",
+        "Share the code" to "I-share ang code",
+        "Syncing…" to "Nagsi-sync…",
+        "Not synced: {0} Your changes wait on this phone." to "Hindi na-sync: {0} Naghihintay sa phone na ito ang mga binago mo.",
+        "Not synced yet" to "Hindi pa na-sync",
+        "Synced just now" to "Na-sync ngayon lang",
+        "Synced {0}" to "Na-sync {0}",
+
+        // Sprite maker
+        "Couldn't open that photo. Try another one." to "Hindi mabuksan ang litratong iyan. Subukan ang iba.",
+        "Couldn't make a pet from that photo. Try another one." to "Hindi makagawa ng alaga mula sa litratong iyan. Subukan ang iba.",
+        "Your first pet is free. More pets come with PawPixel Pro (coming soon)." to "Libre ang una mong alaga. Kasama sa PawPixel Pro (malapit na) ang dagdag na alaga.",
+        "Edit {0}'s look" to "Baguhin ang itsura ni {0}",
+        "Make your pixel pet" to "Gawin ang pixel pet mo",
+        "Pick a photo of your pet" to "Pumili ng litrato ng alaga mo",
+        "• Your pet's face clearly visible, looking at the camera\n• Good light; one pet per photo\n• A close-up or a full-body photo both work" to "• Malinaw na kita ang mukha ng alaga mo, nakatingin sa camera\n• Maliwanag; isang alaga lang bawat litrato\n• Puwede ang close-up o ang buong katawan",
+        "Your photo stays on this phone. PawPixel keeps only a small crop for your before/after card." to "Nananatili sa phone na ito ang litrato mo. Maliit na crop lang ang itinatabi ng PawPixel para sa before/after card mo.",
+        "Choose a photo" to "Pumili ng litrato",
+        "Is that your pet? Tap to give pets." to "Ito ba ang alaga mo? I-tap para haplusin.",
+        "Colours look off? Move the face square below, or try a photo with a plainer background." to "Parang mali ang kulay? Ilipat ang parisukat sa mukha sa ibaba, o subukan ang litratong mas simple ang background.",
+        "Pet's name" to "Pangalan ng alaga",
+        "Body" to "Katawan",
+        "Dog body" to "Katawang aso",
+        "Cat body" to "Katawang pusa",
+        "Ears" to "Tainga",
+        "Pointy ears" to "Tayong tainga",
+        "Floppy ears" to "Laylay na tainga",
+        "Face" to "Mukha",
+        "Drag the square over your pet's face. Its colours and markings go on your pixel pet." to "I-drag ang parisukat sa mukha ng alaga mo. Ang mga kulay at marka nito ang ilalagay sa pixel pet mo.",
+        "Smaller" to "Paliitin",
+        "Bigger" to "Palakihin",
+        "Use a new photo" to "Gumamit ng bagong litrato",
+        "Use a different photo" to "Gumamit ng ibang litrato",
+        "Save pet" to "I-save ang alaga",
+        "Save {0}" to "I-save si {0}",
+    )
 }

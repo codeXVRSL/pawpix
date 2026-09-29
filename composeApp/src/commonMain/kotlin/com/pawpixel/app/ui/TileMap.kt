@@ -46,6 +46,7 @@ import androidx.compose.ui.unit.sp
 import com.pawpixel.app.Platform
 import com.pawpixel.app.decodeImage
 import com.pawpixel.core.LocationGrid
+import com.pawpixel.i18n.tr
 import com.pawpixel.map.MapArea
 import com.pawpixel.map.MapSettings
 import com.pawpixel.map.WebMercator
@@ -171,7 +172,7 @@ fun TileMap(
             MapButton("−") { setZoom(zoom - 1) }
             MapButton("◎") { recenter() }
         }
-        val credit = if (settings.hasTiles) settings.tileAttribution else "Street map not set up in this build"
+        val credit = if (settings.hasTiles) settings.tileAttribution else tr("Street map not set up in this build")
         if (credit.isNotBlank()) {
             Text(
                 credit, style = MaterialTheme.typography.labelSmall, color = Ink,

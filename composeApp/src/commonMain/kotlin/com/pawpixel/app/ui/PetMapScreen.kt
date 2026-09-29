@@ -49,6 +49,7 @@ import com.pawpixel.core.AppState
 import com.pawpixel.core.LocalClock
 import com.pawpixel.core.Pet
 import com.pawpixel.core.Species
+import com.pawpixel.i18n.tr
 import com.pawpixel.map.Gathering
 import com.pawpixel.map.IsoTime
 import com.pawpixel.map.MapArea
@@ -100,7 +101,7 @@ fun PetMapScreen(app: AppScope, state: AppState) {
                 if (e.kind == MapException.Kind.NOT_SET_UP) phase = MapPhase.NotSetUp
                 app.repo.platform.log("Map: ${e.kind} ${e.message}")
             } catch (e: Exception) {
-                message = e.message ?: "Something went wrong. Please try again."
+                message = e.message ?: tr("Something went wrong. Please try again.")
                 app.repo.platform.log("Map error: ${e.stackTraceToString()}")
             } finally {
                 busy = false
@@ -118,8 +119,8 @@ fun PetMapScreen(app: AppScope, state: AppState) {
 
     Column(Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding()) {
         Row(Modifier.fillMaxWidth().padding(horizontal = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-            TextButton(onClick = app.back) { Text("‹ Back") }
-            Text("Pet map", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
+            TextButton(onClick = app.back) { Text(tr("‹ Back")) }
+            Text(tr("Pet map"), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
             if (phase is MapPhase.Ready) MapMenu(app, map, state, onChanged = { act { load() } }, onLeft = { phase = MapPhase.Join }, act = ::act)
         }
         message?.let {
@@ -132,7 +133,7 @@ fun PetMapScreen(app: AppScope, state: AppState) {
                 act {
                     if (!map.signIn()) return@act
                     val area = map.locate() ?: throw IllegalStateException(
-                        "PawPixel needs your approximate location to show your area. You can allow it in your phone's settings.",
+                        tr("PawPixel needs your approximate location to show your area. You can allow it in your phone's settings."),
                     )
                     map.join(chosen, { app.repo.art(it) }, area)
                     phase = MapPhase.Ready(map.client.nearbyAreas(area))
@@ -147,8 +148,8 @@ fun PetMapScreen(app: AppScope, state: AppState) {
 private fun NotSetUp() {
     PixelCard(Modifier.fillMaxWidth().padding(16.dp)) {
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text("The pet map is coming soon", fontWeight = FontWeight.Bold)
-            Text("Meet other pet owners in Naga at public pet walks. The map isn't switched on in this version of the app yet.")
+            Text(tr("The pet map is coming soon"), fontWeight = FontWeight.Bold)
+            Text(tr("Meet other pet owners in Naga at public pet walks. The map isn't switched on in this version of the app yet."))
         }
     }
 }
@@ -165,30 +166,30 @@ private fun JoinMap(app: AppScope, map: PetMapModel, state: AppState, busy: Bool
     ) {
         PixelCard(Modifier.fillMaxWidth()) {
             Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                Text("Meet pet owners near you", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                Text("• Other owners see your pixel pets and their names. Never your photos.")
-                Text("• Your area shows as a square about 1 km wide. Your exact location never leaves your phone.")
-                Text("• An area only appears once 3 or more owners are in it.")
-                Text("• Gatherings are at public places. The venue shows after you say you're going.")
-                Text("• Leave any time, and delete your map account from this screen.")
+                Text(tr("Meet pet owners near you"), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                Text(tr("• Other owners see your pixel pets and their names. Never your photos."))
+                Text(tr("• Your area shows as a square about 1 km wide. Your exact location never leaves your phone."))
+                Text(tr("• An area only appears once 3 or more owners are in it."))
+                Text(tr("• Gatherings are at public places. The venue shows after you say you're going."))
+                Text(tr("• Leave any time, and delete your map account from this screen."))
             }
         }
-        Text("Pets to show", fontWeight = FontWeight.Bold)
+        Text(tr("Pets to show"), fontWeight = FontWeight.Bold)
         FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             state.pets.forEach { pet ->
                 FilterChip(pet.id in chosen, { chosen = if (pet.id in chosen) chosen - pet.id else chosen + pet.id }, label = { Text(pet.name) })
             }
         }
-        CheckRow("I'm 18 or older", adult) { adult = it }
-        CheckRow("Show my pixel pets, their names and my rough area to other PawPixel owners", consent) { consent = it }
-        TextButton(onClick = { app.repo.platform.openUrl(PRIVACY_URL) }) { Text("Privacy policy") }
+        CheckRow(tr("I'm 18 or older"), adult) { adult = it }
+        CheckRow(tr("Show my pixel pets, their names and my rough area to other PawPixel owners"), consent) { consent = it }
+        TextButton(onClick = { app.repo.platform.openUrl(PRIVACY_URL) }) { Text(tr("Privacy policy")) }
         Button(
             enabled = adult && consent && chosen.isNotEmpty() && !busy,
             onClick = { onJoin(state.pets.filter { it.id in chosen }) },
             modifier = Modifier.fillMaxWidth(),
-        ) { Text(if (busy) "Joining…" else "${map.signInLabel} and join") }
+        ) { Text(if (busy) tr("Joining…") else tr("{0} and join", map.signInLabel)) }
         Text(
-            "Pilot: the map starts in Naga City. Signing in lets us remove people who break the rules.",
+            tr("Pilot: the map starts in Naga City. Signing in lets us remove people who break the rules."),
             style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
     }
@@ -210,34 +211,34 @@ private fun MapMenu(
     var open by remember { mutableStateOf(false) }
     var confirm by remember { mutableStateOf<String?>(null) }
     Box {
-        TextButton(onClick = { open = true }) { Text("More") }
+        TextButton(onClick = { open = true }) { Text(tr("More")) }
         DropdownMenu(open, { open = false }) {
-            DropdownMenuItem({ Text("Update my area") }, onClick = {
+            DropdownMenuItem({ Text(tr("Update my area")) }, onClick = {
                 open = false
-                act { map.locate() ?: throw IllegalStateException("Couldn't get your approximate location."); onChanged() }
+                act { map.locate() ?: throw IllegalStateException(tr("Couldn't get your approximate location.")); onChanged() }
             })
-            DropdownMenuItem({ Text("Choose pets to show") }, onClick = { open = false; onLeft() })
-            DropdownMenuItem({ Text("Leave the map") }, onClick = { open = false; confirm = "leave" })
-            DropdownMenuItem({ Text("Delete my map account") }, onClick = { open = false; confirm = "delete" })
+            DropdownMenuItem({ Text(tr("Choose pets to show")) }, onClick = { open = false; onLeft() })
+            DropdownMenuItem({ Text(tr("Leave the map")) }, onClick = { open = false; confirm = "leave" })
+            DropdownMenuItem({ Text(tr("Delete my map account")) }, onClick = { open = false; confirm = "delete" })
         }
     }
     confirm?.let { what ->
         AlertDialog(
             onDismissRequest = { confirm = null },
-            title = { Text(if (what == "leave") "Leave the pet map?" else "Delete your map account?") },
+            title = { Text(if (what == "leave") tr("Leave the pet map?") else tr("Delete your map account?")) },
             text = {
                 Text(
-                    if (what == "leave") "Your pets and area are removed from the map. You can join again later."
-                    else "Your map account, pets on the map, RSVPs and blocks are deleted from the server. Your pets stay on this phone.",
+                    if (what == "leave") tr("Your pets and area are removed from the map. You can join again later.")
+                    else tr("Your map account, pets on the map, RSVPs and blocks are deleted from the server. Your pets stay on this phone."),
                 )
             },
             confirmButton = {
                 TextButton(onClick = {
                     confirm = null
                     act { if (what == "leave") map.leave() else map.deleteAccount(); onLeft() }
-                }) { Text(if (what == "leave") "Leave" else "Delete", color = MaterialTheme.colorScheme.error) }
+                }) { Text(if (what == "leave") tr("Leave") else tr("Delete"), color = MaterialTheme.colorScheme.error) }
             },
-            dismissButton = { TextButton(onClick = { confirm = null }) { Text("Cancel") } },
+            dismissButton = { TextButton(onClick = { confirm = null }) { Text(tr("Cancel")) } },
         )
     }
 }
@@ -248,8 +249,8 @@ private fun ReadyMap(app: AppScope, map: PetMapModel, areas: List<MapArea>, act:
     var selected by remember { mutableStateOf<MapArea?>(null) }
     Column(Modifier.fillMaxSize()) {
         Row(Modifier.padding(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            FilterChip(tab == 0, { tab = 0 }, label = { Text("Nearby") })
-            FilterChip(tab == 1, { tab = 1 }, label = { Text("Gatherings") })
+            FilterChip(tab == 0, { tab = 0 }, label = { Text(tr("Nearby")) })
+            FilterChip(tab == 1, { tab = 1 }, label = { Text(tr("Gatherings")) })
         }
         if (tab == 0) {
             Box(Modifier.weight(1f).fillMaxWidth().padding(top = 8.dp)) {
@@ -262,7 +263,7 @@ private fun ReadyMap(app: AppScope, map: PetMapModel, areas: List<MapArea>, act:
                 )
                 if (areas.isEmpty()) {
                     PixelCard(Modifier.align(Alignment.TopCenter).padding(12.dp)) {
-                        Text("No areas with 3+ owners near you yet. Invite pet friends in your area to PawPixel!")
+                        Text(tr("No areas with 3+ owners near you yet. Invite pet friends in your area to PawPixel!"))
                     }
                 }
                 selected?.let { a -> AreaPets(app, map, a, act, onClose = { selected = null }, modifier = Modifier.align(Alignment.BottomCenter)) }
@@ -283,12 +284,12 @@ private fun AreaPets(
     var reportFor by remember { mutableStateOf<MapPet?>(null) }
     var blockFor by remember { mutableStateOf<MapPet?>(null) }
     LaunchedEffect(area.cellId) { act { pets = map.client.petsInArea(area.cellId) } }
-    val label = map.myArea?.let { if (it.id == area.cellId) "Your area" else null } ?: "An area near you"
+    val label = map.myArea?.let { if (it.id == area.cellId) tr("Your area") else null } ?: tr("An area near you")
     PixelCard(modifier.fillMaxWidth().padding(8.dp)) {
         Column {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("$label · ${area.pets} pets", fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
-                TextButton(onClick = onClose) { Text("Close") }
+                Text(tr("{0} · {1} pets", label, area.pets), fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
+                TextButton(onClick = onClose) { Text(tr("Close")) }
             }
             val list = pets
             if (list == null) CircularProgressIndicator(Modifier.padding(8.dp))
@@ -298,12 +299,12 @@ private fun AreaPets(
                         val img = remember(pet.id) { pet.look?.let { PetArt(it, speciesOf(pet.species), Ears.of(pet.ears)).still } }
                         SpriteView(img, Modifier.size(72.dp), animate = false)
                         Text(pet.name, fontWeight = FontWeight.Bold, maxLines = 1)
-                        if (pet.mine) Text("Yours", style = MaterialTheme.typography.bodySmall)
+                        if (pet.mine) Text(tr("Yours"), style = MaterialTheme.typography.bodySmall)
                         else Box {
                             TextButton(onClick = { menuFor = pet }) { Text("⋯") }
                             DropdownMenu(menuFor == pet, { menuFor = null }) {
-                                DropdownMenuItem({ Text("Block owner") }, onClick = { menuFor = null; blockFor = pet })
-                                DropdownMenuItem({ Text("Report") }, onClick = { menuFor = null; reportFor = pet })
+                                DropdownMenuItem({ Text(tr("Block owner")) }, onClick = { menuFor = null; blockFor = pet })
+                                DropdownMenuItem({ Text(tr("Report")) }, onClick = { menuFor = null; reportFor = pet })
                             }
                         }
                     }
@@ -314,15 +315,15 @@ private fun AreaPets(
     blockFor?.let { pet ->
         AlertDialog(
             onDismissRequest = { blockFor = null },
-            title = { Text("Block ${pet.name}'s owner?") },
-            text = { Text("You won't see each other's pets on the map any more.") },
+            title = { Text(tr("Block {0}'s owner?", pet.name)) },
+            text = { Text(tr("You won't see each other's pets on the map any more.")) },
             confirmButton = {
                 TextButton(onClick = {
                     blockFor = null
                     act { map.client.blockOwnerOf(pet.id); pets = pets?.filterNot { it.id == pet.id } }
-                }) { Text("Block", color = MaterialTheme.colorScheme.error) }
+                }) { Text(tr("Block"), color = MaterialTheme.colorScheme.error) }
             },
-            dismissButton = { TextButton(onClick = { blockFor = null }) { Text("Cancel") } },
+            dismissButton = { TextButton(onClick = { blockFor = null }) { Text(tr("Cancel")) } },
         )
     }
     reportFor?.let { pet -> ReportDialog(pet, onDone = { reportFor = null }) { reason, details -> act { map.client.report(pet.id, reason, details) } } }
@@ -332,31 +333,31 @@ private fun speciesOf(name: String) = Species.entries.firstOrNull { it.name == n
 
 @Composable
 private fun ReportDialog(pet: MapPet, onDone: () -> Unit, send: (String, String?) -> Unit) {
-    val reasons = listOf("spam" to "Spam or fake", "harassment" to "Harassment", "unsafe" to "Unsafe behaviour",
-        "child_safety" to "Child safety", "other" to "Something else")
+    val reasons = listOf("spam" to tr("Spam or fake"), "harassment" to tr("Harassment"), "unsafe" to tr("Unsafe behaviour"),
+        "child_safety" to tr("Child safety"), "other" to tr("Something else"))
     var reason by remember { mutableStateOf("spam") }
     var details by remember { mutableStateOf("") }
     var sent by remember { mutableStateOf(false) }
     AlertDialog(
         onDismissRequest = onDone,
-        title = { Text(if (sent) "Thanks for telling us" else "Report ${pet.name}") },
+        title = { Text(if (sent) tr("Thanks for telling us") else tr("Report {0}", pet.name)) },
         text = {
-            if (sent) Text("We'll look at it. If someone is in danger, contact the police (911 in the Philippines).")
+            if (sent) Text(tr("We'll look at it. If someone is in danger, contact the police (911 in the Philippines)."))
             else Column {
                 reasons.forEach { (key, label) ->
                     Row(Modifier.fillMaxWidth().clickable { reason = key }, verticalAlignment = Alignment.CenterVertically) {
                         RadioButton(reason == key, { reason = key }); Text(label)
                     }
                 }
-                OutlinedTextField(details, { details = it.take(500) }, label = { Text("Details (optional)") }, modifier = Modifier.fillMaxWidth())
+                OutlinedTextField(details, { details = it.take(500) }, label = { Text(tr("Details (optional)")) }, modifier = Modifier.fillMaxWidth())
             }
         },
         confirmButton = {
             TextButton(onClick = { if (sent) onDone() else { send(reason, details.ifBlank { null }); sent = true } }) {
-                Text(if (sent) "OK" else "Send report")
+                Text(if (sent) tr("OK") else tr("Send report"))
             }
         },
-        dismissButton = { if (!sent) TextButton(onClick = onDone) { Text("Cancel") } },
+        dismissButton = { if (!sent) TextButton(onClick = onDone) { Text(tr("Cancel")) } },
     )
 }
 
@@ -375,7 +376,7 @@ private fun Gatherings(app: AppScope, map: PetMapModel, act: (suspend () -> Unit
     when {
         items == null -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
         items.isEmpty() -> PixelCard(Modifier.fillMaxWidth().padding(16.dp)) {
-            Text("No gatherings yet. The first Naga pet walk will be announced here.")
+            Text(tr("No gatherings yet. The first Naga pet walk will be announced here."))
         }
         else -> LazyColumn(Modifier.fillMaxSize().padding(horizontal = 16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             item { Spacer(Modifier.height(4.dp)) }
@@ -387,13 +388,13 @@ private fun Gatherings(app: AppScope, map: PetMapModel, act: (suspend () -> Unit
                         Text(IsoTime.parseMs(g.startsAt)?.let { formatDateTime(it, app.repo.clock) } ?: g.startsAt)
                         Text(g.areaLabel, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         val left = (g.capacity - g.going).coerceAtLeast(0)
-                        Text("${g.going} going · ${if (left == 0) "full" else "$left spots left"}", style = MaterialTheme.typography.bodySmall)
+                        Text(tr("{0} going · {1}", g.going, if (left == 0) tr("full") else tr("{0} spots left", left)), style = MaterialTheme.typography.bodySmall)
                         val venue = venues.value[g.id]
                         if (g.iAmGoing && venue != null) {
-                            Text("Meet at: ${venue.name}", fontWeight = FontWeight.Bold)
+                            Text(tr("Meet at: {0}", venue.name), fontWeight = FontWeight.Bold)
                             OutlinedButton(onClick = {
                                 app.repo.platform.openUrl("https://www.google.com/maps/search/?api=1&query=${venue.lat},${venue.lng}")
-                            }) { Text("Open in maps") }
+                            }) { Text(tr("Open in maps")) }
                         }
                         Button(
                             enabled = g.iAmGoing || left > 0,
@@ -406,7 +407,7 @@ private fun Gatherings(app: AppScope, map: PetMapModel, act: (suspend () -> Unit
                                         else venues.value - g.id
                                 }
                             },
-                        ) { Text(if (g.iAmGoing) "Can't make it" else "I'm going") }
+                        ) { Text(if (g.iAmGoing) tr("Can't make it") else tr("I'm going")) }
                     }
                 }
             }
@@ -429,5 +430,5 @@ fun formatDateTime(ms: Long, clock: LocalClock): String {
     val mp = (5 * doy + 2) / 153
     val d = doy - (153 * mp + 2) / 5 + 1
     val m = if (mp < 10) mp + 3 else mp - 9
-    return "${WEEKDAYS[day.mod(7L).toInt()]}, ${MONTHS[(m - 1).toInt()]} $d · ${formatTime(ms, clock)}"
+    return "${tr(WEEKDAYS[day.mod(7L).toInt()])}, ${tr(MONTHS[(m - 1).toInt()])} $d · ${formatTime(ms, clock)}"
 }

@@ -38,6 +38,8 @@ import com.pawpixel.core.MoodEngine
 import com.pawpixel.core.Pet
 import com.pawpixel.core.StateOps
 import com.pawpixel.core.TaskStatus
+import com.pawpixel.i18n.tr
+import com.pawpixel.i18n.trName
 
 @Composable
 fun HomeScreen(app: AppScope, state: AppState) {
@@ -45,15 +47,15 @@ fun HomeScreen(app: AppScope, state: AppState) {
     Column(Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding().padding(horizontal = 16.dp)) {
         Row(Modifier.fillMaxWidth().padding(vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
             Text("PawPixel", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Black, modifier = Modifier.weight(1f))
-            if (state.pets.isNotEmpty()) TextButton(onClick = { app.navigate(Screen.PetMap) }) { Text("Pet map") }
-            TextButton(onClick = { app.navigate(Screen.Settings) }) { Text("Settings") }
+            if (state.pets.isNotEmpty()) TextButton(onClick = { app.navigate(Screen.PetMap) }) { Text(tr("Pet map")) }
+            TextButton(onClick = { app.navigate(Screen.Settings) }) { Text(tr("Settings")) }
         }
         if (state.pets.isEmpty()) {
             PixelCard(Modifier.fillMaxWidth()) {
                 Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Text("Turn your pet into pixel art", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-                    Text("Your pixel pet lives on your home screen and gets hungry, restless or sleepy based on the real care you give. Done a task? Tap it and watch them cheer up.")
-                    Button(onClick = { app.navigate(Screen.CreatePet) }) { Text("Choose a photo") }
+                    Text(tr("Turn your pet into pixel art"), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                    Text(tr("Your pixel pet lives on your home screen and gets hungry, restless or sleepy based on the real care you give. Done a task? Tap it and watch them cheer up."))
+                    Button(onClick = { app.navigate(Screen.CreatePet) }) { Text(tr("Choose a photo")) }
                 }
             }
         } else {
@@ -62,7 +64,7 @@ fun HomeScreen(app: AppScope, state: AppState) {
                 item {
                     TextButton(onClick = {
                         if (StateOps.canAddPet(state)) app.navigate(Screen.CreatePet) else showProDialog = true
-                    }) { Text("+ Add another pet") }
+                    }) { Text(tr("+ Add another pet")) }
                 }
                 item {
                     WidgetTip(app, state)
@@ -74,9 +76,9 @@ fun HomeScreen(app: AppScope, state: AppState) {
     if (showProDialog) {
         AlertDialog(
             onDismissRequest = { showProDialog = false },
-            title = { Text("More pets with Pro") },
-            text = { Text("Your first pet is free forever. Extra pets are part of PawPixel Pro, which is coming soon.") },
-            confirmButton = { TextButton(onClick = { showProDialog = false }) { Text("OK") } },
+            title = { Text(tr("More pets with Pro")) },
+            text = { Text(tr("Your first pet is free forever. Extra pets are part of PawPixel Pro, which is coming soon.")) },
+            confirmButton = { TextButton(onClick = { showProDialog = false }) { Text(tr("OK")) } },
         )
     }
 }
@@ -104,13 +106,13 @@ private fun PetCard(app: AppScope, state: AppState, pet: Pet) {
                 Text(reading.caption)
                 if (next != null) {
                     Text(
-                        "Next: ${next.first.task.kind.emoji} ${next.first.task.title} · ${relativeDay(next.second, app.now, app.repo.clock)}",
+                        tr("Next: {0} {1} · {2}", next.first.task.kind.emoji, trName(next.first.task.title), relativeDay(next.second, app.now, app.repo.clock)),
                         style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
                 if (urgent != null) {
                     Button(onClick = { app.launch { app.repo.complete(urgent.task.id) } }) {
-                        Text("${urgent.task.kind.emoji} ${urgent.task.kind.verb}")
+                        Text("${urgent.task.kind.emoji} ${tr(urgent.task.kind.verb)}")
                     }
                 }
             }
@@ -134,19 +136,19 @@ private fun WidgetTip(app: AppScope, state: AppState) {
     if (installed == true || state.settings.widgetTipDismissed) return
     PixelCard(Modifier.fillMaxWidth()) {
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text("Put your pet on your home screen", fontWeight = FontWeight.Bold)
-            Text("See their mood at a glance and tap Done right from the widget.")
+            Text(tr("Put your pet on your home screen"), fontWeight = FontWeight.Bold)
+            Text(tr("See their mood at a glance and tap Done right from the widget."))
             if (manual) {
                 Text(
-                    if (installed == null) "Touch and hold your home screen, tap Edit → Add Widget, search PawPixel, and pick a size."
-                    else "Touch and hold your home screen, tap Widgets, find PawPixel, and drag it in.",
+                    if (installed == null) tr("Touch and hold your home screen, tap Edit → Add Widget, search PawPixel, and pick a size.")
+                    else tr("Touch and hold your home screen, tap Widgets, find PawPixel, and drag it in."),
                     style = MaterialTheme.typography.bodySmall,
                 )
             }
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                if (!manual) Button(onClick = { if (!platform.pinWidget()) manual = true }) { Text("Add widget") }
+                if (!manual) Button(onClick = { if (!platform.pinWidget()) manual = true }) { Text(tr("Add widget")) }
                 TextButton(onClick = { app.launch { app.repo.setSettings(state.settings.copy(widgetTipDismissed = true)) } }) {
-                    Text(if (manual) "Got it" else "Not now")
+                    Text(if (manual) tr("Got it") else tr("Not now"))
                 }
             }
         }

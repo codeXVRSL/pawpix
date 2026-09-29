@@ -3,6 +3,7 @@ package com.pawpixel.app
 import com.pawpixel.core.AppState
 import com.pawpixel.i18n.I18n
 import com.pawpixel.i18n.Lang
+import com.pawpixel.i18n.tr
 import com.pawpixel.core.Backup
 import com.pawpixel.core.HealthPlan
 import com.pawpixel.core.Ids
@@ -232,7 +233,7 @@ class PawRepository(val platform: Platform) {
             val data = state.pets.flatMap { Backup.filesFor(state, it.id) }.mapNotNull { path -> files.readBytes(path)?.let { path to it } }.toMap()
             Backup.encode(state, data, now()).encodeToByteArray()
         }
-        if (bytes.size > Backup.MAX_BYTES) return "Your backup is too big to save as one file. Remove some card photos and try again."
+        if (bytes.size > Backup.MAX_BYTES) return tr("Your backup is too big to save as one file. Remove some card photos and try again.")
         platform.shareFile(bytes, "pawpixel-backup-${LocalClock.isoDate(clock.dayIndex(now()))}.json", "application/json")
         return null
     }
@@ -242,7 +243,7 @@ class PawRepository(val platform: Platform) {
         if (bytes.isEmpty() || bytes.size > Backup.MAX_BYTES) throw Backup.NotABackup("That file is too big to be a PawPixel backup.")
         val contents = Backup.decode(bytes.decodeToString())
         val missing = contents.state.pets.filter { "sprites/${it.id}/head.bin" !in contents.files }
-        if (missing.isNotEmpty()) throw Backup.NotABackup("This backup is missing ${missing.first().name}'s pixel look.")
+        if (missing.isNotEmpty()) throw Backup.NotABackup(tr("This backup is missing {0}'s pixel look.", missing.first().name))
         contents
     }
 
@@ -257,7 +258,7 @@ class PawRepository(val platform: Platform) {
             for ((path, data) in contents.files) {
                 if (!files.writeBytes("$STAGING/$path", data)) {
                     files.delete(STAGING)
-                    throw Backup.NotABackup("Couldn't restore: your phone may be out of space. Nothing was changed.")
+                    throw Backup.NotABackup(tr("Couldn't restore: your phone may be out of space. Nothing was changed."))
                 }
             }
             // Widget poses for each pet, drawn from its restored face.
@@ -294,7 +295,7 @@ class PawRepository(val platform: Platform) {
         return contents.state.pets.size
     }
 
-    private fun fail(): Nothing = throw Backup.NotABackup("Couldn't restore: your phone may be out of space. Nothing was changed.")
+    private fun fail(): Nothing = throw Backup.NotABackup(tr("Couldn't restore: your phone may be out of space. Nothing was changed."))
 
     // ---- Sprite files ----
     // Each pet keeps a small pixelated copy of its face (head.bin), used only for its fur colours and

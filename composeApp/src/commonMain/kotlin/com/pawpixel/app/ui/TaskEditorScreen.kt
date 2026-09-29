@@ -40,6 +40,7 @@ import com.pawpixel.core.Pet
 import com.pawpixel.core.StateOps
 import com.pawpixel.core.TaskDefaults
 import com.pawpixel.core.TaskKind
+import com.pawpixel.i18n.tr
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -83,28 +84,28 @@ fun TaskEditorScreen(app: AppScope, state: AppState, pet: Pet, taskId: String?, 
     ) {
         // Save sits in the top bar, always visible; the form below can be long.
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            TextButton(onClick = app.back) { Text("‹ Back") }
+            TextButton(onClick = app.back) { Text(tr("‹ Back")) }
             Text(
                 when {
-                    original == null && health -> "New health item"
-                    original == null -> "New care task"
-                    health -> "Edit health item"
-                    else -> "Edit care task"
+                    original == null && health -> tr("New health item")
+                    original == null -> tr("New care task")
+                    health -> tr("Edit health item")
+                    else -> tr("Edit care task")
                 },
                 style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f),
             )
-            Button(onClick = save) { Text("Save") }
+            Button(onClick = save) { Text(tr("Save")) }
         }
 
         // All kinds visible at once (wrapping), so Medicine or Litter aren't hidden off-screen.
         FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             TaskKind.entries.filter { it.health == health }.forEach { k ->
-                FilterChip(task.kind == k, { setKind(k) }, label = { Text("${k.emoji} ${k.label}") })
+                FilterChip(task.kind == k, { setKind(k) }, label = { Text("${k.emoji} ${tr(k.label)}") })
             }
         }
-        OutlinedTextField(task.title, { task = task.copy(title = it.take(30)) }, label = { Text("Name") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+        OutlinedTextField(task.title, { task = task.copy(title = it.take(30)) }, label = { Text(tr("Name")) }, singleLine = true, modifier = Modifier.fillMaxWidth())
 
-        Text(if (health) "Reminder time on the day" else "Times", fontWeight = FontWeight.Bold)
+        Text(if (health) tr("Reminder time on the day") else tr("Times"), fontWeight = FontWeight.Bold)
         task.slots.forEachIndexed { i, minute ->
             // Time first, never wrapped; compact steppers so a row fits a small phone with the ✕.
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -129,10 +130,10 @@ fun TaskEditorScreen(app: AppScope, state: AppState, pet: Pet, taskId: String?, 
             TextButton(onClick = {
                 val last = task.slots.maxOrNull() ?: (8 * 60)
                 task = task.copy(slots = (task.slots + ((last + 4 * 60) % MINUTES_PER_DAY)).distinct())
-            }) { Text("+ Add a time") }
+            }) { Text(tr("+ Add a time")) }
         }
 
-        Text("Repeat", fontWeight = FontWeight.Bold)
+        Text(tr("Repeat"), fontWeight = FontWeight.Bold)
         FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             val choices = if (health) listOf(14 to "Every 2 weeks", 30 to "Monthly", 90 to "Every 3 months", 180 to "Every 6 months", 365 to "Yearly")
             else listOf(1 to "Daily", 2 to "Every 2 days", 7 to "Weekly", 14 to "Every 2 weeks", 30 to "Monthly")
@@ -140,34 +141,34 @@ fun TaskEditorScreen(app: AppScope, state: AppState, pet: Pet, taskId: String?, 
             choices.forEach { (d, label) ->
                 FilterChip(task.everyDays == d, {
                     task = task.copy(everyDays = d, anchorDay = if (health) task.anchorDay else today, slots = if (d > 1) task.slots.take(1) else task.slots)
-                }, label = { Text(label) })
+                }, label = { Text(tr(label)) })
             }
         }
 
         if (health && original == null) {
-            Text("Last done", fontWeight = FontWeight.Bold)
+            Text(tr("Last done"), fontWeight = FontWeight.Bold)
             FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                FilterChip(lastDoneDaysAgo == null, { lastDoneDaysAgo = null }, label = { Text("Never / not sure") })
+                FilterChip(lastDoneDaysAgo == null, { lastDoneDaysAgo = null }, label = { Text(tr("Never / not sure")) })
                 WHEN_CHOICES.forEach { (days, label) ->
-                    FilterChip(lastDoneDaysAgo == days, { lastDoneDaysAgo = days }, label = { Text(label) })
+                    FilterChip(lastDoneDaysAgo == days, { lastDoneDaysAgo = days }, label = { Text(tr(label)) })
                 }
             }
             Text(
-                if (lastDoneDaysAgo == null) "It'll show as due now. Tap Done once it's given." else "The next one is counted from then.",
+                if (lastDoneDaysAgo == null) tr("It'll show as due now. Tap Done once it's given.") else tr("The next one is counted from then."),
                 style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
 
-        SwitchRow("Reminders", if (health) "A heads-up 3 days before, and on the day." else "Get a notification when it's time.", task.remindersOn) {
+        SwitchRow(tr("Reminders"), if (health) tr("A heads-up 3 days before, and on the day.") else tr("Get a notification when it's time."), task.remindersOn) {
             task = task.copy(remindersOn = it)
         }
-        if (!health) SwitchRow("Learn my routine", "Moves reminders toward when you actually do this (up to 2 hours).", task.adaptive) { task = task.copy(adaptive = it) }
-        if (!health) SwitchRow("Exact time", "Remind at the exact minute. Good for medicine. Android may ask for permission.", task.exactAlarm) { task = task.copy(exactAlarm = it) }
+        if (!health) SwitchRow(tr("Learn my routine"), tr("Moves reminders toward when you actually do this (up to 2 hours)."), task.adaptive) { task = task.copy(adaptive = it) }
+        if (!health) SwitchRow(tr("Exact time"), tr("Remind at the exact minute. Good for medicine. Android may ask for permission."), task.exactAlarm) { task = task.copy(exactAlarm = it) }
 
-        Button(onClick = save, modifier = Modifier.fillMaxWidth()) { Text("Save") }
+        Button(onClick = save, modifier = Modifier.fillMaxWidth()) { Text(tr("Save")) }
         if (original != null) {
             TextButton(onClick = { app.launch { app.repo.deleteTask(original); app.back() } }) {
-                Text("Delete task", color = MaterialTheme.colorScheme.error)
+                Text(tr("Delete task"), color = MaterialTheme.colorScheme.error)
             }
         }
     }

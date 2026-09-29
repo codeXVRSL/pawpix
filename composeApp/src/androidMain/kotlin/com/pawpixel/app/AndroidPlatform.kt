@@ -21,6 +21,7 @@ import com.google.mlkit.vision.segmentation.subject.SubjectSegmenterOptions
 import com.pawpixel.app.widget.PetWidget
 import com.pawpixel.core.HOUR_MS
 import com.pawpixel.core.Reminder
+import com.pawpixel.i18n.tr
 import com.pawpixel.map.Http
 import com.pawpixel.map.HttpResponse
 import com.pawpixel.sprite.Mask
@@ -160,15 +161,15 @@ class AndroidPlatform(private val context: Context) : Platform {
             type = mimeType
             putExtra(Intent.EXTRA_STREAM, uri)
             clipData = ClipData.newRawUri(null, uri) // lets the share sheet show a preview
-            if (mimeType.startsWith("image/")) putExtra(Intent.EXTRA_TEXT, "Meet my pet in pixels! Made with PawPixel")
+            if (mimeType.startsWith("image/")) putExtra(Intent.EXTRA_TEXT, tr("Meet my pet in pixels! Made with PawPixel"))
             addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
         }
-        context.startActivity(Intent.createChooser(send, "Share").addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+        context.startActivity(Intent.createChooser(send, tr("Share")).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
     }
 
     override fun shareText(text: String) {
         val send = Intent(Intent.ACTION_SEND).apply { type = "text/plain"; putExtra(Intent.EXTRA_TEXT, text) }
-        context.startActivity(Intent.createChooser(send, "Share").addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+        context.startActivity(Intent.createChooser(send, tr("Share")).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
     }
 
     override fun log(message: String) { android.util.Log.w("PawPixel", message) }
@@ -243,11 +244,11 @@ class AndroidPlatform(private val context: Context) : Platform {
             .maxByOrNull { it.time }?.let { it.latitude to it.longitude }
     }
 
-    override val mapSignInLabel = "Sign in with Google"
+    override val mapSignInLabel: String get() = tr("Sign in with Google")
 
     override suspend fun signInForMap(hashedNonce: String, googleWebClientId: String): MapIdentity? {
-        if (googleWebClientId.isBlank()) throw IllegalStateException("Google sign-in isn't set up in this build yet.")
-        val act = activity?.get() ?: throw IllegalStateException("Open PawPixel to sign in.")
+        if (googleWebClientId.isBlank()) throw IllegalStateException(tr("Google sign-in isn't set up in this build yet."))
+        val act = activity?.get() ?: throw IllegalStateException(tr("Open PawPixel to sign in."))
         val option = com.google.android.libraries.identity.googleid.GetSignInWithGoogleOption.Builder(googleWebClientId)
             .setNonce(hashedNonce).build()
         val request = androidx.credentials.GetCredentialRequest.Builder().addCredentialOption(option).build()
@@ -258,14 +259,14 @@ class AndroidPlatform(private val context: Context) : Platform {
             ) {
                 MapIdentity("google", com.google.android.libraries.identity.googleid.GoogleIdTokenCredential.createFrom(credential.data).idToken)
             } else {
-                throw IllegalStateException("Google sign-in returned something unexpected.")
+                throw IllegalStateException(tr("Google sign-in returned something unexpected."))
             }
         } catch (e: androidx.credentials.exceptions.GetCredentialCancellationException) {
             null
         } catch (e: androidx.credentials.exceptions.NoCredentialException) {
-            throw IllegalStateException("Add a Google account to this phone to sign in.")
+            throw IllegalStateException(tr("Add a Google account to this phone to sign in."))
         } catch (e: androidx.credentials.exceptions.GetCredentialException) {
-            throw IllegalStateException("Google sign-in didn't work: ${e.message ?: e.type}")
+            throw IllegalStateException(tr("Google sign-in didn't work: {0}", e.message ?: e.type))
         }
     }
 

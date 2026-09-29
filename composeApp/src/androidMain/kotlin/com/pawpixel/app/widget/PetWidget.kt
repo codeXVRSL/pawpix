@@ -47,6 +47,7 @@ import com.pawpixel.app.PawPixelApplication
 import com.pawpixel.core.Json
 import com.pawpixel.core.Mood
 import com.pawpixel.core.WidgetSnapshot
+import com.pawpixel.i18n.tr
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
@@ -83,7 +84,7 @@ class PetWidget : GlanceAppWidget() {
         ) {
             if (data == null) {
                 Text(
-                    "Open PawPixel to make your pixel pet",
+                    tr("Open PawPixel to make your pixel pet"),
                     style = TextStyle(color = ink, fontSize = 13.sp, textAlign = TextAlign.Center),
                 )
                 return@Column
@@ -99,7 +100,7 @@ class PetWidget : GlanceAppWidget() {
             if (data.actionTaskId != null && size.height >= 150.dp) {
                 Spacer(GlanceModifier.height(4.dp))
                 Button(
-                    text = data.actionLabel ?: "Done",
+                    text = data.actionLabel ?: tr("Done"),
                     onClick = actionRunCallback<DoneAction>(actionParametersOf(DoneAction.TASK to data.actionTaskId)),
                     colors = ButtonDefaults.buttonColors(backgroundColor = ColorProvider(Color(0xFFE8374E)), contentColor = ColorProvider(Color.White)),
                 )

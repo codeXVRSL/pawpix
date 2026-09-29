@@ -2,6 +2,7 @@ package com.pawpixel.map
 
 import com.pawpixel.core.Json
 import com.pawpixel.core.LocationGrid
+import com.pawpixel.i18n.tr
 import com.pawpixel.sprite.PetLook
 
 /** Build-time settings for the map (see docs/MAP_SETUP.md). Blank values mean "not set up". */
@@ -87,7 +88,7 @@ class SupabaseApi(
 
     private suspend fun auth(path: String, body: String): Json {
         val r = send("POST", path, body, bearer = settings.anonKey)
-        if (r.status !in 200..299) throw MapException(MapException.Kind.REFUSED, "Sign-in failed (${r.status})")
+        if (r.status !in 200..299) throw MapException(MapException.Kind.REFUSED, tr("Sign-in failed ({0})", r.status))
         return Json.parse(r.body)
     }
 
@@ -109,12 +110,12 @@ class SupabaseApi(
 
     /** A fresh access token, refreshing it if it's about to expire. */
     private suspend fun token(): String {
-        val s = session ?: throw MapException(MapException.Kind.SIGNED_OUT, "Please sign in")
+        val s = session ?: throw MapException(MapException.Kind.SIGNED_OUT, tr("Please sign in"))
         if (s.expiresAtMs - nowMs() > 60_000) return s.accessToken
         val r = send("POST", "/auth/v1/token?grant_type=refresh_token", Json.obj("refresh_token" to s.refreshToken).stringify(), bearer = settings.anonKey)
         if (r.status !in 200..299) {
             signOutLocally()
-            throw MapException(MapException.Kind.SIGNED_OUT, "Please sign in again")
+            throw MapException(MapException.Kind.SIGNED_OUT, tr("Please sign in again"))
         }
         acceptSession(Json.parse(r.body))
         return session!!.accessToken
@@ -126,17 +127,17 @@ class SupabaseApi(
         val r = send(method, path, body, bearer = token(), prefer = prefer)
         when {
             r.status in 200..299 -> return r.body
-            r.status == 401 -> { signOutLocally(); throw MapException(MapException.Kind.SIGNED_OUT, "Please sign in again") }
-            r.body.contains("gathering is full") -> throw MapException(MapException.Kind.FULL, "This gathering is full")
-            r.status in 400..499 -> throw MapException(MapException.Kind.REFUSED, errorMessage(r.body) ?: "Not allowed (${r.status})")
-            else -> throw MapException(MapException.Kind.SERVER, "PawPixel's server had a problem (${r.status})")
+            r.status == 401 -> { signOutLocally(); throw MapException(MapException.Kind.SIGNED_OUT, tr("Please sign in again")) }
+            r.body.contains("gathering is full") -> throw MapException(MapException.Kind.FULL, tr("This gathering is full"))
+            r.status in 400..499 -> throw MapException(MapException.Kind.REFUSED, errorMessage(r.body) ?: tr("Not allowed ({0})", r.status))
+            else -> throw MapException(MapException.Kind.SERVER, tr("PawPixel's server had a problem ({0})", r.status))
         }
     }
 
     private fun errorMessage(body: String): String? = runCatching { Json.parse(body)["message"].str }.getOrNull()
 
     private suspend fun send(method: String, path: String, body: String?, bearer: String, prefer: String? = null): HttpResponse {
-        if (!settings.isConfigured) throw MapException(MapException.Kind.NOT_SET_UP, "This build isn't connected to PawPixel's server yet")
+        if (!settings.isConfigured) throw MapException(MapException.Kind.NOT_SET_UP, tr("This build isn't connected to PawPixel's server yet"))
         val headers = buildMap {
             put("apikey", settings.anonKey)
             put("Authorization", "Bearer $bearer")
@@ -148,7 +149,7 @@ class SupabaseApi(
         } catch (e: MapException) {
             throw e
         } catch (e: Exception) {
-            throw MapException(MapException.Kind.OFFLINE, "Can't reach PawPixel's server. Check your connection.")
+            throw MapException(MapException.Kind.OFFLINE, tr("Can't reach PawPixel's server. Check your connection."))
         }
     }
 
@@ -186,7 +187,7 @@ class MapClient(
 
     /** Joins (or updates): confirms 18+ and consent, replaces your pets on the map, and sets your area. */
     suspend fun join(pets: List<SharedPet>, cell: LocationGrid.Cell) {
-        val me = userId ?: throw MapException(MapException.Kind.SIGNED_OUT, "Please sign in")
+        val me = userId ?: throw MapException(MapException.Kind.SIGNED_OUT, tr("Please sign in"))
         rest("POST", "/rest/v1/map_profiles", Json.obj("user_id" to me, "confirmed_adult" to true).stringify(), prefer = "resolution=merge-duplicates")
         rest("DELETE", "/rest/v1/map_pets?owner_id=eq.$me")
         if (pets.isNotEmpty()) {
@@ -201,7 +202,7 @@ class MapClient(
 
     /** Refreshes your area (presence expires after 14 days without opening the map). */
     suspend fun setArea(cell: LocationGrid.Cell) {
-        val me = userId ?: throw MapException(MapException.Kind.SIGNED_OUT, "Please sign in")
+        val me = userId ?: throw MapException(MapException.Kind.SIGNED_OUT, tr("Please sign in"))
         val body = Json.obj("owner_id" to me, "cell_id" to cell.id, "cell_lat" to cell.centerLat, "cell_lng" to cell.centerLng,
             "updated_at" to isoNow()).stringify()
         rest("POST", "/rest/v1/map_presence", body, prefer = "resolution=merge-duplicates")

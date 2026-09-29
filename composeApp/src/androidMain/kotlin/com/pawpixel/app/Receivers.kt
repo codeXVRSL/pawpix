@@ -9,6 +9,7 @@ import androidx.core.app.NotificationCompat
 import com.pawpixel.core.Reminder
 import com.pawpixel.core.ReminderRef
 import com.pawpixel.core.StateOps
+import com.pawpixel.i18n.tr
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -70,7 +71,7 @@ class ReminderReceiver : BroadcastReceiver() {
             .setStyle(NotificationCompat.BigTextStyle().bigText(intent.getStringExtra(EXTRA_BODY)))
             .setContentIntent(open)
             .setAutoCancel(true)
-        if (intent.getBooleanExtra(EXTRA_QUICK_DONE, true)) builder.addAction(0, "Done", done)
+        if (intent.getBooleanExtra(EXTRA_QUICK_DONE, true)) builder.addAction(0, tr("Done"), done)
         val notification = builder.build()
         runCatching { nm.notify(id, notification) } // no-op if notification permission was denied
     }

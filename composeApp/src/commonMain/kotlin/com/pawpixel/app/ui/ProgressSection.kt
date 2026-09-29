@@ -34,6 +34,7 @@ import com.pawpixel.core.LocalClock
 import com.pawpixel.core.Milestones
 import com.pawpixel.core.Pet
 import com.pawpixel.core.WeightTrend
+import com.pawpixel.i18n.tr
 
 /** "100 days of care!" once, when a milestone is reached, with a card to share. */
 @Composable
@@ -42,10 +43,10 @@ fun MilestoneBanner(app: AppScope, pet: Pet) {
     PixelCard(Modifier.fillMaxWidth(), color = MaterialTheme.colorScheme.primaryContainer) {
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text("🎉 ${Milestones.title(days)}!", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-            Text("You've looked after ${pet.name} on $days different days. That's a lot of love.")
+            Text(tr("You've looked after {0} on {1} different days.", pet.name, days) + " " + tr("That's a lot of love."))
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Button(onClick = { app.repo.shareMilestone(pet, days) }) { Text("Share the card") }
-                TextButton(onClick = { app.launch { app.repo.celebrate(pet.id, days) } }) { Text("Nice!") }
+                Button(onClick = { app.repo.shareMilestone(pet, days) }) { Text(tr("Share the card")) }
+                TextButton(onClick = { app.launch { app.repo.celebrate(pet.id, days) } }) { Text(tr("Nice!")) }
             }
         }
     }
@@ -53,7 +54,7 @@ fun MilestoneBanner(app: AppScope, pet: Pet) {
 
 /** The next milestone, as a quiet line under the weekly dots. */
 fun nextMilestoneLine(pet: Pet): String? = Milestones.next(pet)?.let { (at, left) ->
-    if (Milestones.caredDays(pet) == 0) null else "${Milestones.caredDays(pet)} days of care so far · $left to go to ${Milestones.title(at)}"
+    if (Milestones.caredDays(pet) == 0) null else tr("{0} days of care so far · {1} to go to {2}", Milestones.caredDays(pet), left, Milestones.title(at))
 }
 
 /** Weigh-ins and a small chart, for spotting slow gains or losses (vets ask about both). */
@@ -61,19 +62,19 @@ fun nextMilestoneLine(pet: Pet): String? = Milestones.next(pet)?.let { (at, left
 fun WeightSection(app: AppScope, state: AppState, pet: Pet) {
     val weights = state.weightsFor(pet.id)
     var adding by remember { mutableStateOf(false) }
-    Text("Weight", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+    Text(tr("Weight"), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
     if (weights.isEmpty()) {
-        Text("Weigh ${pet.name} now and then (a bathroom scale works: weigh yourself holding them, then subtract).", style = MaterialTheme.typography.bodySmall)
+        Text(tr("Weigh {0} now and then (a bathroom scale works: weigh yourself holding them, then subtract).", pet.name), style = MaterialTheme.typography.bodySmall)
     } else {
         val last = weights.last()
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(WeightTrend.kg(last.grams), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-            Text("  on ${LocalClock.shortDate(last.day)}", style = MaterialTheme.typography.bodySmall)
+            Text("  " + tr("on {0}", LocalClock.shortDate(last.day)), style = MaterialTheme.typography.bodySmall)
         }
         WeightTrend.change(weights)?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
         if (weights.size >= 2) WeightChart(weights.takeLast(12).map { it.grams })
     }
-    OutlinedButton(onClick = { adding = true }) { Text("+ Add today's weight") }
+    OutlinedButton(onClick = { adding = true }) { Text(tr("+ Add today's weight")) }
     if (adding) WeightDialog(pet.name, onDismiss = { adding = false }) { grams -> adding = false; app.launch { app.repo.logWeight(pet.id, grams) } }
 }
 
@@ -81,7 +82,7 @@ fun WeightSection(app: AppScope, state: AppState, pet: Pet) {
 private fun WeightChart(grams: List<Int>) {
     val line = MaterialTheme.colorScheme.primary
     val grid = MaterialTheme.colorScheme.outlineVariant
-    val desc = "Weight over the last ${grams.size} weigh-ins, from ${WeightTrend.kg(grams.first())} to ${WeightTrend.kg(grams.last())}"
+    val desc = tr("Weight over the last {0} weigh-ins, from {1} to {2}", grams.size, WeightTrend.kg(grams.first()), WeightTrend.kg(grams.last()))
     Canvas(Modifier.fillMaxWidth().height(96.dp).semantics { contentDescription = desc }) {
         val lo = grams.min(); val hi = grams.max()
         val pad = maxOf(100, (hi - lo) / 5)
@@ -108,15 +109,15 @@ private fun WeightDialog(name: String, onDismiss: () -> Unit, onSave: (Int) -> U
     val grams = WeightTrend.parseKg(text)
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("$name's weight") },
+        title = { Text(tr("{0}'s weight", name)) },
         text = {
             OutlinedTextField(
-                text, { text = it.take(8) }, label = { Text("Kilograms, e.g. 4.2") }, singleLine = true,
+                text, { text = it.take(8) }, label = { Text(tr("Kilograms, e.g. 4.2")) }, singleLine = true,
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                 isError = text.isNotBlank() && grams == null,
             )
         },
-        confirmButton = { TextButton(enabled = grams != null, onClick = { grams?.let(onSave) }) { Text("Save") } },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
+        confirmButton = { TextButton(enabled = grams != null, onClick = { grams?.let(onSave) }) { Text(tr("Save")) } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(tr("Cancel")) } },
     )
 }

@@ -109,6 +109,7 @@ object FilCore {
         "That file isn't a PawPixel backup." to "Hindi backup ng PawPixel ang file na iyan.",
         "This backup is from a newer PawPixel. Update the app, then try again." to "Galing ang backup sa mas bagong PawPixel. I-update ang app, saka subukan ulit.",
         "This backup has no pets in it." to "Walang alaga sa backup na ito.",
+        "This backup is missing {0}'s pixel look." to "Kulang ang backup na ito: wala ang pixel look ni {0}.",
         "Can't reach PawPixel's server. Check your connection." to "Hindi maabot ang server ng PawPixel. Tingnan ang koneksyon mo.",
         "Please sign in" to "Mag-sign in muna",
         "Please sign in again" to "Mag-sign in ulit",
