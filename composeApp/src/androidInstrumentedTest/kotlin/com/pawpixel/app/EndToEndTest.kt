@@ -587,17 +587,29 @@ class EndToEndTest {
      */
     private fun scrollTo(selector: BySelector): UiObject2 {
         runCatching { find(selector, 3_000) }.getOrNull()?.let { return it }
+        var moved = 0
         for (forward in listOf(true, false)) {
             // Just after a dialog closes the app's window may not be the active one yet, and a scroll
             // fails: wait for it rather than giving up at once. A few failures in a row = the end.
             var stuck = 0
             for (i in 0 until 15) {
                 device.findObject(selector)?.let { return it }
-                if (accessibilityScroll(forward)) stuck = 0 else if (++stuck >= 4) break
+                if (accessibilityScroll(forward)) { stuck = 0; moved++ } else if (++stuck >= 4) break
                 Thread.sleep(if (stuck > 0) 600L else 400L)
             }
         }
-        return device.findObject(selector) ?: throw AssertionError("not found after scrolling: $selector")
+        // Last resort: swipe like a finger, along the right-hand margin (away from photos and maps).
+        val x = device.displayWidth - 12
+        for (up in listOf(true, false)) {
+            repeat(12) {
+                device.findObject(selector)?.let { note("found by swiping after $moved accessibility scrolls: $selector"); return it }
+                val (from, to) = if (up) 0.75 to 0.3 else 0.3 to 0.75
+                device.swipe(x, (device.displayHeight * from).toInt(), x, (device.displayHeight * to).toInt(), 20)
+                Thread.sleep(500)
+            }
+        }
+        val seen = device.findObjects(By.textContains(" ")).mapNotNull { runCatching { it.text }.getOrNull() }.take(12)
+        return device.findObject(selector) ?: throw AssertionError("not found after scrolling ($moved scrolls): $selector; on screen: $seen")
     }
 
     /** Scrolls the first scrollable container of the app one page. False when it can't move. */
