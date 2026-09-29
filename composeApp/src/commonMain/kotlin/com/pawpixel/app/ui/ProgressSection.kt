@@ -54,7 +54,11 @@ fun MilestoneBanner(app: AppScope, pet: Pet) {
 
 /** The next milestone, as a quiet line under the weekly dots. */
 fun nextMilestoneLine(pet: Pet): String? = Milestones.next(pet)?.let { (at, left) ->
-    if (Milestones.caredDays(pet) == 0) null else tr("{0} days of care so far · {1} to go to {2}", Milestones.caredDays(pet), left, Milestones.title(at))
+    when (Milestones.caredDays(pet)) {
+        0 -> null
+        1 -> tr("1 day of care so far · {0} to go to {1}", left, Milestones.title(at))
+        else -> tr("{0} days of care so far · {1} to go to {2}", Milestones.caredDays(pet), left, Milestones.title(at))
+    }
 }
 
 /** Weigh-ins and a small chart, for spotting slow gains or losses (vets ask about both). */

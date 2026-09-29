@@ -61,7 +61,7 @@ class TranslationTest {
             assertEquals("Gutom na si Mochi", MoodEngine.read(s, "p1", clock.at(20000, 9 * 60 + 30), clock).caption)
             assertEquals("Set 29, 2026", LocalClock.shortDate(20725))
             val r = ReminderPlanner.plan(s, clock.at(20000, 5 * 60), clock).first()
-            assertEquals("🍖 Pakain · Mochi", r.title)
+            assertEquals("🍖 Pagpapakain · Mochi", r.title)
             assertEquals(Lang.FIL, Lang.resolve("", "tl"))
             assertEquals(Lang.EN, Lang.resolve("en", "fil"))
             assertEquals("Ayos lang si {0}".replace("{0}", "Mochi"), tr("{0} is doing fine", "Mochi"))

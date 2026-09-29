@@ -95,7 +95,7 @@ fun SettingsScreen(app: AppScope, state: AppState) {
 
         Text(tr("Family sharing"), fontWeight = FontWeight.Bold)
         Text(
-            app.repo.family.household?.let { tr("You're in {0} ({1} people).", it.name, it.members.size) }
+            app.repo.family.household?.let { if (it.members.size == 1) tr("You're in {0} (just you so far).", it.name) else tr("You're in {0} ({1} people).", it.name, it.members.size) }
                 ?: tr("Care for your pets together: everyone's Done taps show on every phone."),
             style = MaterialTheme.typography.bodySmall,
         )

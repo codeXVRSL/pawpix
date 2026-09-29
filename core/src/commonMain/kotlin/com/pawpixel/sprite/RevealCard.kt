@@ -92,7 +92,7 @@ object RevealCard {
         for (x in 0 until w) for (t in 0 until 6) { card[x, t] = INK; card[x, h - 1 - t] = INK }
         for (y in 0 until h) for (t in 0 until 6) { card[t, y] = INK; card[w - 1 - t, y] = INK }
 
-        val title = "MEET " + petName.trim().ifEmpty { "MY PET" }
+        val title = com.pawpixel.i18n.tr("MEET {0}", petName.trim().ifEmpty { com.pawpixel.i18n.tr("MY PET") })
         val fitted = PixelFont.fit(title, TEXT_SCALE, w - 2 * MARGIN)
         PixelFont.draw(card, fitted, (w - PixelFont.textWidth(fitted, TEXT_SCALE)) / 2, MARGIN, TEXT_SCALE, INK)
 
@@ -131,7 +131,7 @@ object RevealCard {
         card.draw(panel, rightX, top)
         border(card, rightX, top, PANEL, PANEL)
 
-        val footer = "MADE WITH PAWPIXEL"
+        val footer = com.pawpixel.i18n.tr("MADE WITH PAWPIXEL")
         val fy = top + PANEL + 20
         PixelFont.draw(card, footer, (w - PixelFont.textWidth(footer, TEXT_SCALE)) / 2, fy, TEXT_SCALE, ACCENT)
         return card

@@ -79,7 +79,7 @@ class FamilyModel(private val repo: PawRepository, private val map: PetMapModel)
     suspend fun removeMember(userId: String) { client.removeMember(userId); refresh() }
     suspend fun revokeInvites() = client.revokeInvites()
 
-    suspend fun invite(): String = client.invite(household?.id ?: throw MapException(MapException.Kind.REFUSED, "Start or join a family first"))
+    suspend fun invite(): String = client.invite(household?.id ?: throw MapException(MapException.Kind.REFUSED, com.pawpixel.i18n.tr("Start or join a family first")))
 
     /** Leaves the family. Shared pets stay on this phone, with their history, no longer shared. */
     suspend fun leave() {
@@ -162,7 +162,7 @@ class FamilyModel(private val repo: PawRepository, private val map: PetMapModel)
             _status.value = _status.value.copy(syncing = false, error = e.message)
             false
         } catch (e: Exception) {
-            _status.value = _status.value.copy(syncing = false, error = "Couldn't sync: ${e.message}")
+            _status.value = _status.value.copy(syncing = false, error = com.pawpixel.i18n.tr("Couldn't sync: {0}", e.message ?: ""))
             false
         }
     }

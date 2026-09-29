@@ -22,6 +22,7 @@ enum class Lang(val code: String, val label: String) {
  * [lang] is set by the app from the owner's setting (Settings → Language), before drawing anything.
  */
 object I18n {
+    @kotlin.concurrent.Volatile
     var lang: Lang = Lang.EN
 
     val filipino: Map<String, String> by lazy { FilCore.map + FilScreens.map + FilScreens2.map + FilScreens3.map }
@@ -40,6 +41,13 @@ object I18n {
         return out
     }
 }
+
+/**
+ * A name inside a sentence: first letter lower-cased ("Feed" -> "feed"), acronyms left alone
+ * ("FVRCP vaccine" stays as is).
+ */
+fun inSentence(name: String): String =
+    if (name.length > 1 && name[1].isUpperCase()) name else name.replaceFirstChar { it.lowercase() }
 
 /** The owner's language version of [en], with {0}, {1}... filled in. */
 fun tr(en: String, vararg args: Any?): String = I18n.format(I18n.lookup(en), args)

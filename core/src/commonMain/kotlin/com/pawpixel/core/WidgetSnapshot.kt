@@ -52,7 +52,13 @@ object WidgetSnapshot {
                 "next" to next?.let { (s, at) -> Json.obj("title" to s.task.title, "emoji" to s.task.kind.emoji, "at" to at) },
             )
         }
-        return Json.obj("version" to VERSION, "generatedAt" to nowMs, "pets" to pets)
+        // The widgets' own words, in the owner's language (the iOS widget can't run Kotlin).
+        val labels = Json.obj(
+            "done" to com.pawpixel.i18n.tr("Done"),
+            "yourPet" to com.pawpixel.i18n.tr("Your pet"),
+            "empty" to com.pawpixel.i18n.tr("Open PawPixel to make your pixel pet"),
+        )
+        return Json.obj("version" to VERSION, "generatedAt" to nowMs, "pets" to pets, "labels" to labels)
     }
 
     /**

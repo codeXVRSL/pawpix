@@ -39,7 +39,8 @@ final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCent
         IosGraph.shared.start(host: SwiftHost.shared)
         let center = UNUserNotificationCenter.current()
         center.delegate = self
-        let done = UNNotificationAction(identifier: SwiftHost.doneAction, title: "Done", options: [])
+        // In the owner's language (Settings → Language, or the phone's).
+        let done = UNNotificationAction(identifier: SwiftHost.doneAction, title: IosGraph.shared.doneLabel(), options: [])
         center.setNotificationCategories([
             UNNotificationCategory(identifier: SwiftHost.careCategory, actions: [done], intentIdentifiers: [], options: [])
         ])

@@ -8,6 +8,7 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -95,6 +96,8 @@ fun App(repo: PawRepository, registerBack: ((() -> Boolean) -> (() -> Unit))? = 
             back = { back() },
         )
 
+        // A new language redraws everything (remembered texts included).
+        key(com.pawpixel.i18n.I18n.lang, state.settings.language) {
         Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
             when (val screen = stack.last()) {
                 Screen.Home -> HomeScreen(app, state)
@@ -112,6 +115,7 @@ fun App(repo: PawRepository, registerBack: ((() -> Boolean) -> (() -> Unit))? = 
                 Screen.PetMap -> PetMapScreen(app, state)
                 Screen.Family -> FamilyScreen(app, state)
             }
+        }
         }
     }
 }

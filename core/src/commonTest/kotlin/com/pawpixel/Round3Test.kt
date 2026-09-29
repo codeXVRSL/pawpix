@@ -150,3 +150,24 @@ class OutfitTest {
         assertNull(s.pets[0].accessory)
     }
 }
+
+class StaleDoneTest {
+    private val clock = com.pawpixel.core.LocalClock.MANILA
+    private val feed = com.pawpixel.core.CareTask("feed", "p", com.pawpixel.core.TaskKind.FEED, "Feed", listOf(420, 1080), anchorDay = 0, adaptive = false)
+    private val s0 = com.pawpixel.core.AppState(pets = listOf(com.pawpixel.core.Pet("p", "Mochi", com.pawpixel.core.Species.DOG, 0)), tasks = listOf(feed))
+
+    @Test fun yesterdaysNotificationTappedTodayLogsNothing() {
+        val yesterdayBreakfast = clock.at(20499, 420)
+        val s = com.pawpixel.core.StateOps.completeFromReminder(s0, listOf(com.pawpixel.core.ReminderRef("feed", yesterdayBreakfast)), clock.at(20500, 9 * 60), clock)
+        assertTrue(s.completions.isEmpty(), "the evening feed isn't used up by an old tap")
+    }
+
+    @Test fun tomorrowsTappedEarlyCountsAndAMovedSlotStillMatches() {
+        val tomorrow = clock.at(20501, 420)
+        val s = com.pawpixel.core.StateOps.completeFromReminder(s0, listOf(com.pawpixel.core.ReminderRef("feed", tomorrow)), clock.at(20500, 22 * 60), clock)
+        assertEquals(1, s.completions.size)
+        // Breakfast planned at 7:00 but the slot has since moved to 7:30: the 7:00 tap still means breakfast.
+        val done = com.pawpixel.core.StateOps.complete(s0, "feed", clock.at(20500, 7 * 60 + 35), clock)
+        assertTrue(com.pawpixel.core.StateOps.isCovered(done, com.pawpixel.core.ReminderRef("feed", clock.at(20500, 450)), clock.at(20500, 8 * 60), clock))
+    }
+}

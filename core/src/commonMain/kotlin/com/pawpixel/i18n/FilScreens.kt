@@ -27,7 +27,6 @@ object FilScreens {
 
         // Home
         "Pet map" to "Mapa ng alaga",
-        "Settings" to "Settings",
         "Turn your pet into pixel art" to "Gawing pixel art ang alaga mo",
         "Your pixel pet lives on your home screen and gets hungry, restless or sleepy based on the real care you give. Done a task? Tap it and watch them cheer up." to
             "Nakatira ang pixel pet mo sa home screen at nagugutom, naiinip o inaantok depende sa totoong pag-aalaga mo. Tapos na ang isang gawain? I-tap ito at panoorin siyang sumaya.",
@@ -52,11 +51,11 @@ object FilScreens {
         "Shared with {0}" to "Naka-share sa {0}",
         "Cared for with {0}" to "Kasamang nag-aalaga: {0}",
         "👪 Care for {0} together with family" to "👪 Alagaan si {0} kasama ang pamilya",
-        "Care" to "Alaga",
+        "Care" to "Pag-aalaga",
         "No care tasks yet. Add feeding, walks or medicine so {0}'s mood can follow real care." to
             "Wala pang gawain. Magdagdag ng pagpapakain, paglalakad o gamot para sumunod ang mood ni {0} sa totoong pag-aalaga.",
         "+ Add care task" to "+ Magdagdag ng gawain",
-        "Share & sprite" to "I-share at sprite",
+        "Share & sprite" to "Pag-share at sprite",
         "Couldn't make the animation. Please try again." to "Hindi nagawa ang animation. Pakisubukan ulit.",
         "Making GIF…" to "Ginagawa ang GIF…",
         "Share animation" to "I-share ang animation",
@@ -128,11 +127,11 @@ object FilScreens {
         // "When was it done?" choices
         "Today" to "Ngayon",
         "Yesterday" to "Kahapon",
-        "A week ago" to "Isang linggo na",
-        "A month ago" to "Isang buwan na",
-        "3 months ago" to "3 buwan na",
-        "6 months ago" to "6 na buwan na",
-        "A year ago" to "Isang taon na",
+        "A week ago" to "Isang linggo na ang nakalipas",
+        "A month ago" to "Isang buwan na ang nakalipas",
+        "3 months ago" to "3 buwan na ang nakalipas",
+        "6 months ago" to "6 na buwan na ang nakalipas",
+        "A year ago" to "Isang taon na ang nakalipas",
 
         // Repeat labels
         "daily" to "araw-araw",
@@ -191,7 +190,7 @@ object FilScreens {
         "Delete task" to "Burahin ang gawain",
         // Outfits
         "Outfits" to "Mga outfit",
-        "{0} earns pixel outfits with days of care. Nothing to buy." to "Nagkakaroon si {0} ng pixel na outfit sa bawat araw ng pag-aalaga. Walang kailangang bilhin.",
+        "{0} earns pixel outfits with days of care. Nothing to buy." to "Habang dumarami ang araw ng pag-aalaga, may bagong pixel outfit si {0}. Walang bibilhin.",
         "None" to "Wala",
         "Bandana" to "Bandana",
         "Flower" to "Bulaklak",
@@ -199,6 +198,7 @@ object FilScreens {
         "Party hat" to "Party hat",
         "Sunglasses" to "Salamin sa araw",
         "Crown" to "Korona",
-        "🔒 {0} · in {1} days" to "🔒 {0} · sa loob ng {1} araw",
+        "🔒 {0} · in {1} days" to "🔒 {0} · {1} araw pa",
+        "1 day of care so far · {0} to go to {1}" to "1 araw ng pag-aalaga sa ngayon · {0} pa bago ang {1}",
     )
 }

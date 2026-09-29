@@ -2,6 +2,7 @@ package com.pawpixel.core
 
 import com.pawpixel.i18n.tr
 import com.pawpixel.i18n.trName
+import com.pawpixel.i18n.inSentence
 
 data class Reminder(
     /** Stable positive id, so rescheduling replaces rather than duplicates. */
@@ -109,7 +110,7 @@ object ReminderPlanner {
         if (!status.known) return emptyList()
         val due = status.slotTimes.firstOrNull() ?: return emptyList()
         val shown = trName(task.title)
-        val what = shown.lowercase()
+        val what = inSentence(shown)
         val title = "${task.kind.emoji} $shown · ${pet.name}"
         val list = listOf(
             Reminder(stableId(task.id, due - HEALTH_HEADS_UP_MS, false), task.id, pet.id, due - HEALTH_HEADS_UP_MS,
@@ -152,7 +153,7 @@ object ReminderPlanner {
         val byPet = group.groupBy { it.petId }
         val parts = byPet.map { (petId, rs) ->
             val name = state.pet(petId)?.name ?: tr("Your pet")
-            name + ": " + joinNames(rs.mapNotNull { state.task(it.taskId)?.title?.let(::trName)?.lowercase() }.distinct())
+            name + ": " + joinNames(rs.mapNotNull { state.task(it.taskId)?.title?.let(::trName)?.let(::inSentence) }.distinct())
         }
         val pets = byPet.keys.mapNotNull { state.pet(it)?.name }
         val first = group[0]
@@ -180,7 +181,7 @@ object ReminderPlanner {
             if (group.size == 1) return@map group[0]
             val first = group[0]
             val pet = state.pet(first.petId)?.name ?: tr("Your pet")
-            val names = group.mapNotNull { state.task(it.taskId)?.title?.let(::trName)?.lowercase() }
+            val names = group.mapNotNull { state.task(it.taskId)?.title?.let(::trName)?.let(::inSentence) }
             val list = joinNames(names)
             val body = when (first.slots.firstOrNull()?.let { first.atMs - it } ?: 0L) {
                 -HEALTH_HEADS_UP_MS -> tr("{0}'s {1} are due in 3 days. A good time to book the vet.", pet, list)
@@ -195,11 +196,16 @@ object ReminderPlanner {
         val name = trName(task.title)
         val title = "${task.kind.emoji} $name · ${pet.name}"
         val body = when {
-            nudge -> tr("{0} still needs {1}.", pet.name, name.lowercase())
+            nudge -> tr("{0} still needs their {1}.", pet.name, inSentence(name))
             task.kind == TaskKind.FEED -> tr("{0} is getting hungry. Tap Done after feeding.", pet.name)
             task.kind == TaskKind.WALK -> tr("{0} is ready for a walk!", pet.name)
-            task.kind == TaskKind.MEDS -> tr("Time for {0}'s {1}.", pet.name, name.lowercase())
-            else -> tr("Time to {0} for {1}.", name.lowercase(), pet.name)
+            task.kind == TaskKind.MEDS -> tr("Time for {0}'s {1}.", pet.name, inSentence(name))
+            // Whole sentences per kind, so they read naturally in every language.
+            task.kind == TaskKind.WATER -> tr("{0}'s water bowl needs a refill.", pet.name)
+            task.kind == TaskKind.PLAY -> tr("{0} wants to play!", pet.name)
+            task.kind == TaskKind.GROOM -> tr("Time to groom {0}.", pet.name)
+            task.kind == TaskKind.LITTER -> tr("Time to clean {0}'s litter.", pet.name)
+            else -> tr("Reminder for {0}: {1}.", pet.name, name)
         }
         return Reminder(stableId(task.id, at, nudge), task.id, pet.id, at, title, body, task.exactAlarm, slots = listOf(slotAt))
     }

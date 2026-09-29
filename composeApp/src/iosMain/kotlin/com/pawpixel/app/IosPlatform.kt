@@ -100,6 +100,9 @@ object IosGraph {
     fun onForeground() { MainScope().launch { repo.ingestWidgetTaps(); repo.publish(); repo.family.requestSync() } }
 
     /** "Done" tapped on a notification. */
+    /** "Done" in the owner's language, for the notification button (loads the app's settings first). */
+    fun doneLabel(): String { repo.state; return com.pawpixel.i18n.tr("Done") }
+
     /**
      * Done on a notification: [refs] is "task@slot" pairs (several for a bundled reminder). Calls
      * [done] once it's saved, so iOS keeps the app awake until then.

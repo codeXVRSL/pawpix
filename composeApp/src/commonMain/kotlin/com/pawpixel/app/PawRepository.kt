@@ -95,6 +95,7 @@ class PawRepository(val platform: Platform) {
     suspend fun publish() = mutex.withLock { publishLocked(_state.value) }
 
     private fun publishLocked(state: AppState) {
+        applyLanguage(state) // the phone's language may have changed while PawPixel was running
         val now = now()
         files.writeText(WidgetSnapshot.FILE_NAME, WidgetSnapshot.build(state, now, clock).stringify())
         _widgetRevision.value = _widgetRevision.value + 1

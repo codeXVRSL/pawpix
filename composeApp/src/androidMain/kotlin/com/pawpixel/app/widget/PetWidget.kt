@@ -59,7 +59,10 @@ import java.io.File
  * mood engine. With several pets it shows whichever needs attention most.
  */
 class PetWidget : GlanceAppWidget() {
-    override val sizeMode = SizeMode.Responsive(setOf(DpSize(110.dp, 110.dp), DpSize(180.dp, 180.dp), DpSize(250.dp, 110.dp), DpSize(250.dp, 180.dp)))
+    override val sizeMode = SizeMode.Responsive(setOf(
+        DpSize(110.dp, 60.dp), DpSize(250.dp, 60.dp), // one row high
+        DpSize(110.dp, 110.dp), DpSize(180.dp, 180.dp), DpSize(250.dp, 110.dp), DpSize(250.dp, 180.dp),
+    ))
 
     override suspend fun provideGlance(context: Context, id: GlanceId) {
         val repo = PawPixelApplication.repo(context)
@@ -80,7 +83,8 @@ class PetWidget : GlanceAppWidget() {
         val bg = androidx.glance.color.ColorProvider(day = Color(0xFFFFF4E0), night = Color(0xFF2A2433))
         val ink = androidx.glance.color.ColorProvider(day = Color(0xFF2B2135), night = Color(0xFFF3EAF7))
         // Wide and short (4x1): pet on the left, mood and the Done button beside it.
-        if (data != null && size.width >= 240.dp && size.height < 150.dp) {
+        if (data != null && (size.height < 100.dp || (size.width >= 240.dp && size.height < 150.dp))) {
+            val short = size.height < 100.dp
             androidx.glance.layout.Row(
                 GlanceModifier.fillMaxSize().background(bg).cornerRadius(18.dp).padding(8.dp)
                     .clickable(actionStartActivity<MainActivity>()),
@@ -92,8 +96,9 @@ class PetWidget : GlanceAppWidget() {
                 }
                 Column(GlanceModifier.defaultWeight().padding(start = 8.dp)) {
                     Text(data.name, maxLines = 1, style = TextStyle(color = ink, fontSize = 14.sp, fontWeight = FontWeight.Bold))
-                    Text(data.caption, maxLines = 2, style = TextStyle(color = ink, fontSize = 12.sp))
-                    if (data.actionTaskId != null) {
+                    if (size.width >= 240.dp || !short) Text(data.caption, maxLines = if (short) 1 else 2, style = TextStyle(color = ink, fontSize = 12.sp))
+                    // A one-row widget has room for the button only when it's wide.
+                    if (data.actionTaskId != null && (!short || size.width >= 240.dp)) {
                         Spacer(GlanceModifier.height(4.dp))
                         Button(
                             text = data.actionLabel ?: tr("Done"),

@@ -14,6 +14,8 @@ and a map-tile key. Then you put six values into the build.
    supabase link --project-ref <your-project-ref>
    supabase db push          # applies every file in supabase/migrations (map, name filter, family sharing)
    ```
+   Always run `supabase db push` **before** releasing an app update that uses a new migration (the
+   app sends the new columns, e.g. a pet's outfit; an older database would refuse them).
 3. Note **Project URL** and the **anon / publishable key** (Project Settings → API).
    Never put the service/secret key in the app.
 

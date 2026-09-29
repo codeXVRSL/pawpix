@@ -15,6 +15,8 @@ struct Snapshot: Decodable {
     let version: Int
     let generatedAt: Double
     let pets: [SnapshotPet]
+    /// The widget's own words in the owner's language (Done, the empty message).
+    let labels: [String: String]?
 }
 
 struct SnapshotPet: Decodable {
@@ -82,9 +84,16 @@ struct PetEntry: TimelineEntry {
     let image: UIImage?
     let action: DoneOption?
     let empty: Bool
+    var doneLabel: String = "Done"
 
     static let placeholder = PetEntry(date: .now, name: "Your pet", caption: "Open PawPixel to make your pixel pet",
                                       mood: "content", image: nil, action: nil, empty: true)
+
+    /// The empty state, in the owner's language when the app has written its words.
+    static func empty(_ labels: [String: String]?) -> PetEntry {
+        PetEntry(date: .now, name: labels?["yourPet"] ?? "Your pet", caption: labels?["empty"] ?? "Open PawPixel to make your pixel pet",
+                 mood: "content", image: nil, action: nil, empty: true, doneLabel: labels?["done"] ?? "Done")
+    }
 }
 
 struct Provider: TimelineProvider {
@@ -100,7 +109,7 @@ struct Provider: TimelineProvider {
     func getTimeline(in context: Context, completion: @escaping (Timeline<PetEntry>) -> Void) {
         let entries = makeEntries(now: .now)
         let refresh = entries.last.map { $0.date.addingTimeInterval(3600) } ?? Date().addingTimeInterval(3600)
-        completion(Timeline(entries: entries.isEmpty ? [.placeholder] : entries, policy: .after(refresh)))
+        completion(Timeline(entries: entries.isEmpty ? [.empty(WidgetStore.snapshot()?.labels)] : entries, policy: .after(refresh)))
     }
 
     private func current(_ points: [MoodPoint], nowMs: Double) -> MoodPoint? {
@@ -133,7 +142,8 @@ struct Provider: TimelineProvider {
             let date = max(now, Date(timeIntervalSince1970: p.at / 1000))
             result.append(PetEntry(date: date, name: ranked.name, caption: p.caption, mood: p.mood,
                                    image: WidgetStore.image(ranked.sprites[p.mood]),
-                                   action: (p.mood == "happy" || p.mood == "sleepy") ? nil : action, empty: false))
+                                   action: (p.mood == "happy" || p.mood == "sleepy") ? nil : action, empty: false,
+                                   doneLabel: snap.labels?["done"] ?? "Done"))
         }
         return result
     }
@@ -201,7 +211,7 @@ struct PetWidgetView: View {
 
     private func doneButton(_ action: DoneOption, compact: Bool) -> some View {
         Button(intent: DoneIntent(taskId: action.taskId)) {
-            Text(compact ? "Done" : action.label).font(.caption.bold())
+            Text(compact ? entry.doneLabel : action.label).font(.caption.bold())
         }
         .tint(berry)
     }

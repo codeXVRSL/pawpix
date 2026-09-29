@@ -2,6 +2,7 @@ package com.pawpixel.core
 
 import com.pawpixel.i18n.tr
 import com.pawpixel.i18n.trName
+import com.pawpixel.i18n.inSentence
 
 /** The poses a sprite can show. Each has its own pre-rendered PNG so widgets never render anything. */
 enum class Mood(val key: String) {
@@ -116,9 +117,9 @@ object MoodEngine {
                 TaskKind.PLAY -> Mood.RESTLESS to tr("{0} wants to play", name)
                 TaskKind.LITTER -> Mood.RESTLESS to tr("The litter needs cleaning")
                 TaskKind.GROOM -> Mood.RESTLESS to tr("{0} needs grooming", name)
-                TaskKind.MEDS -> Mood.NEEDS_MEDS to tr("Time for {0}'s {1}", name, trName(task.title).lowercase())
+                TaskKind.MEDS -> Mood.NEEDS_MEDS to tr("Time for {0}'s {1}", name, inSentence(trName(task.title)))
                 TaskKind.VACCINE, TaskKind.DEWORM, TaskKind.FLEA_TICK, TaskKind.VET ->
-                    Mood.NEEDS_MEDS to tr("{0}'s {1} is due", name, trName(task.title).lowercase())
+                    Mood.NEEDS_MEDS to tr("{0}'s {1} is due", name, inSentence(trName(task.title)))
             }
             return MoodReading(mood, caption, score, task.id)
         }

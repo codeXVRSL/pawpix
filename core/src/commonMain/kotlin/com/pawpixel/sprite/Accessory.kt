@@ -62,7 +62,8 @@ enum class Accessory(val label: String, val unlockDays: Int, private val rows: L
     fun origin(hcx: Double, hcy: Double, eyeTop: Int): Pair<Int, Int> = when (anchor) {
         Anchor.NECK -> kotlin.math.round(hcx - width / 2.0).toInt() to kotlin.math.round(hcy + 6.6).toInt()
         Anchor.EAR -> kotlin.math.round(hcx + 4.5).toInt() to kotlin.math.round(hcy - 8.4).toInt()
-        Anchor.TOP -> kotlin.math.round(hcx - width / 2.0).toInt() to kotlin.math.round(hcy - 12.6).toInt()
+        // Clamped to the canvas: in bobbing walk frames the hat sits a pixel lower rather than losing its tip.
+        Anchor.TOP -> kotlin.math.round(hcx - width / 2.0).toInt() to maxOf(0, kotlin.math.round(hcy - 12.6).toInt())
         Anchor.EYES -> kotlin.math.round(hcx - 7.5).toInt() to eyeTop - 1
     }
 

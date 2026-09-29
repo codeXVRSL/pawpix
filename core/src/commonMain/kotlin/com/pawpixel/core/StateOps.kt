@@ -125,8 +125,15 @@ object StateOps {
         if (task.kind.health) return false
         val slots = AdaptiveTiming.effectiveSlots(task, state.completions, atMs, clock)
         val status = CareEngine.status(task, state.completions, atMs, clock, slots)
-        val i = ref.slotAt?.let { status.slotTimes.indexOf(it) } ?: -1
-        return if (i >= 0) status.done > i else status.allDoneThisCycle
+        val slotAt = ref.slotAt ?: return status.allDoneThisCycle
+        // A notification from an earlier cycle (yesterday's breakfast tapped today): nothing to log.
+        if (slotAt < clock.startOfDay(status.cycleStartDay)) return true
+        // A later cycle (tomorrow's, tapped early) is never "already done".
+        if (slotAt >= clock.startOfDay(status.cycleStartDay + task.everyDays.coerceAtLeast(1))) return false
+        // This cycle: the planned time it was for, or the nearest one if learning moved it since.
+        val i = status.slotTimes.indices.minByOrNull { kotlin.math.abs(status.slotTimes[it] - slotAt) }
+            ?.takeIf { kotlin.math.abs(status.slotTimes[it] - slotAt) <= AdaptiveTiming.MAX_SHIFT_MIN * MINUTE_MS }
+        return if (i != null) status.done > i else status.allDoneThisCycle
     }
 
     /**

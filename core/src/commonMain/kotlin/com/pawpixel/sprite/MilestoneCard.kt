@@ -36,7 +36,7 @@ object MilestoneCard {
         val name = PixelFont.fit(petName.trim().ifEmpty { "My pet" }.uppercase(), 4, SIZE - 2 * MARGIN)
         val ny = panelTop + panelH + 20
         PixelFont.draw(card, name, (SIZE - PixelFont.textWidth(name, 4)) / 2, ny, 4, INK)
-        val footer = "MADE WITH PAWPIXEL"
+        val footer = com.pawpixel.i18n.tr("MADE WITH PAWPIXEL")
         PixelFont.draw(card, footer, (SIZE - PixelFont.textWidth(footer, 3)) / 2, ny + PixelFont.H * 4 + 16, 3, ACCENT)
         return card
     }

@@ -175,7 +175,11 @@ class EndToEndTest {
             shot("health-when")
             retrying { find(By.text("A month ago")).click() }
             waitFor("shot recorded") { repo.state.value.completions.any { it.taskId == vaccine.id } }
-            scrollTo(By.text("Due in 11 months"))
+            val item = com.pawpixel.core.CareStats.healthDue(repo.state.value, petId, repo.now(), repo.clock).first { it.task.id == vaccine.id }
+            val label = com.pawpixel.core.CareStats.dueLabel(item, repo.now(), repo.clock)
+            note("anti-rabies after 'a month ago': $label")
+            check(label == "Due in 11 months") { "expected 'Due in 11 months', got '$label'" }
+            scrollTo(By.text(label))
             Thread.sleep(500)
             shot("health-section")
             // Photo of the vaccination card (the stubbed picker returns the test photo).
@@ -369,8 +373,11 @@ class EndToEndTest {
             waitFor("her Done arrives", 30_000) { repo.state.value.completions.any { it.id == "partnerlitter1" && it.by == partnerApi.userId } }
             find(By.textContains("Jamaica"))
             shot("family-members")
-            device.pressBack(); device.pressBack()
+            // Back to Home (wait for it: the family screen also lists "Chelsea"), then her page.
+            goHome()
+            find(By.text("Pet map"))
             retrying { find(By.text("Chelsea")).click() }
+            scrollTo(By.text("+ Add care task")) // her page is open
             val mine = repo.state.value
             val today = repo.clock.dayIndex(repo.now())
             note("litter records: " + mine.completions.filter { it.taskId == litter.id }.joinToString { "${it.id} by=${it.by} day=${it.localDay}" } +
