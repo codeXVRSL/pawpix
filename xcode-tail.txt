@@ -1,0 +1,200 @@
+    t =   233.63s Checking existence of `"‹ Back" Button`
+    t =   233.67s Find the "‹ Back" Button
+    t =   233.74s Checking existence of `"‹ Back" Button`
+    t =   233.77s Find the "‹ Back" Button
+    t =   233.84s Checking existence of `"‹ Back" Button`
+    t =   233.87s Find the "‹ Back" Button
+    t =   233.91s Press Target Application 'com.pawpixel.app'[0.98, 0.70] for 0.1 seconds, then drag to Target Application 'com.pawpixel.app'[0.98, 0.30] with velocity of 500.00 pixels per second, and then hold for 0.0 seconds 
+    t =   233.91s     Wait for com.pawpixel.app to idle
+    t =   233.92s     Find the Target Application 'com.pawpixel.app'
+    t =   233.97s     Check for interrupting elements affecting "PawPixel" Application
+    t =   234.02s     Synthesize event
+    t =   234.03s         Find the Target Application 'com.pawpixel.app'
+    t =   234.06s         Find the Target Application 'com.pawpixel.app'
+    t =   234.09s         Find the Target Application 'com.pawpixel.app'
+    t =   234.13s         Find the Target Application 'com.pawpixel.app'
+    t =   234.16s         Find the Target Application 'com.pawpixel.app'
+    t =   235.25s     Wait for com.pawpixel.app to idle
+    t =   235.68s Checking existence of `"‹ Back" Button`
+    t =   235.72s Checking existence of `"‹ Back" Button`
+    t =   235.77s Find the "‹ Back" Button
+    t =   235.82s Checking existence of `"‹ Back" Button`
+    t =   235.89s Find the "‹ Back" Button
+    t =   235.97s Checking existence of `"‹ Back" Button`
+    t =   236.01s Find the "‹ Back" Button
+    t =   236.08s Press Target Application 'com.pawpixel.app'[0.98, 0.70] for 0.1 seconds, then drag to Target Application 'com.pawpixel.app'[0.98, 0.30] with velocity of 500.00 pixels per second, and then hold for 0.3 seconds 
+    t =   236.08s     Wait for com.pawpixel.app to idle
+    t =   236.09s     Find the Target Application 'com.pawpixel.app'
+    t =   236.13s     Check for interrupting elements affecting "PawPixel" Application
+    t =   236.19s     Synthesize event
+    t =   236.21s         Find the Target Application 'com.pawpixel.app'
+    t =   236.23s         Find the Target Application 'com.pawpixel.app'
+    t =   236.26s         Find the Target Application 'com.pawpixel.app'
+    t =   236.28s         Find the Target Application 'com.pawpixel.app'
+    t =   236.32s         Find the Target Application 'com.pawpixel.app'
+    t =   237.70s     Wait for com.pawpixel.app to idle
+    t =   238.15s Checking existence of `"‹ Back" Button`
+    t =   238.24s Find the "‹ Back" Button
+    t =   238.37s Press Target Application 'com.pawpixel.app'[0.98, 0.70] for 0.1 seconds, then drag to Target Application 'com.pawpixel.app'[0.98, 0.30] with velocity of 500.00 pixels per second, and then hold for 0.0 seconds 
+    t =   238.37s     Wait for com.pawpixel.app to idle
+    t =   238.38s     Find the Target Application 'com.pawpixel.app'
+    t =   238.44s     Check for interrupting elements affecting "PawPixel" Application
+    t =   238.49s     Synthesize event
+    t =   238.49s         Find the Target Application 'com.pawpixel.app'
+    t =   238.52s         Find the Target Application 'com.pawpixel.app'
+    t =   238.56s         Find the Target Application 'com.pawpixel.app'
+    t =   238.58s         Find the Target Application 'com.pawpixel.app'
+    t =   238.59s         Find the Target Application 'com.pawpixel.app'
+    t =   239.71s     Wait for com.pawpixel.app to idle
+    t =   240.17s Checking existence of `"‹ Back" Button`
+    t =   240.23s Find the "‹ Back" Button
+    t =   240.32s Press Target Application 'com.pawpixel.app'[0.98, 0.70] for 0.1 seconds, then drag to Target Application 'com.pawpixel.app'[0.98, 0.30] with velocity of 500.00 pixels per second, and then hold for 0.3 seconds 
+    t =   240.32s     Wait for com.pawpixel.app to idle
+    t =   240.34s     Find the Target Application 'com.pawpixel.app'
+    t =   240.37s     Check for interrupting elements affecting "PawPixel" Application
+    t =   240.41s     Synthesize event
+    t =   240.43s         Find the Target Application 'com.pawpixel.app'
+    t =   240.48s         Find the Target Application 'com.pawpixel.app'
+    t =   240.51s         Find the Target Application 'com.pawpixel.app'
+    t =   240.54s         Find the Target Application 'com.pawpixel.app'
+    t =   240.57s         Find the Target Application 'com.pawpixel.app'
+    t =   241.96s     Wait for com.pawpixel.app to idle
+    t =   242.39s Checking existence of `"‹ Back" Button`
+    t =   242.42s Find the "‹ Back" Button
+    t =   242.48s Press Target Application 'com.pawpixel.app'[0.98, 0.70] for 0.1 seconds, then drag to Target Application 'com.pawpixel.app'[0.98, 0.30] with velocity of 500.00 pixels per second, and then hold for 0.0 seconds 
+    t =   242.48s     Wait for com.pawpixel.app to idle
+    t =   242.49s     Find the Target Application 'com.pawpixel.app'
+    t =   242.51s     Check for interrupting elements affecting "PawPixel" Application
+    t =   242.54s     Synthesize event
+    t =   242.54s         Find the Target Application 'com.pawpixel.app'
+    t =   242.58s         Find the Target Application 'com.pawpixel.app'
+    t =   242.60s         Find the Target Application 'com.pawpixel.app'
+    t =   242.62s         Find the Target Application 'com.pawpixel.app'
+    t =   242.65s         Find the Target Application 'com.pawpixel.app'
+    t =   243.73s     Wait for com.pawpixel.app to idle
+    t =   244.16s Checking existence of `"‹ Back" Button`
+    t =   244.23s Find the "‹ Back" Button
+    t =   244.32s Press Target Application 'com.pawpixel.app'[0.98, 0.70] for 0.1 seconds, then drag to Target Application 'com.pawpixel.app'[0.98, 0.30] with velocity of 500.00 pixels per second, and then hold for 0.3 seconds 
+    t =   244.32s     Wait for com.pawpixel.app to idle
+    t =   244.33s     Find the Target Application 'com.pawpixel.app'
+    t =   244.36s     Check for interrupting elements affecting "PawPixel" Application
+    t =   244.42s     Synthesize event
+    t =   244.42s         Find the Target Application 'com.pawpixel.app'
+    t =   244.46s         Find the Target Application 'com.pawpixel.app'
+    t =   244.50s         Find the Target Application 'com.pawpixel.app'
+    t =   244.52s         Find the Target Application 'com.pawpixel.app'
+    t =   244.54s         Find the Target Application 'com.pawpixel.app'
+    t =   245.93s     Wait for com.pawpixel.app to idle
+    t =   246.35s Checking existence of `"‹ Back" Button`
+    t =   246.39s Find the "‹ Back" Button
+    t =   246.47s Press Target Application 'com.pawpixel.app'[0.98, 0.30] for 0.1 seconds, then drag to Target Application 'com.pawpixel.app'[0.98, 0.70] with velocity of 500.00 pixels per second, and then hold for 0.0 seconds 
+    t =   246.47s     Wait for com.pawpixel.app to idle
+    t =   246.47s     Find the Target Application 'com.pawpixel.app'
+    t =   246.50s     Check for interrupting elements affecting "PawPixel" Application
+    t =   246.53s     Synthesize event
+    t =   246.55s         Find the Target Application 'com.pawpixel.app'
+    t =   246.57s         Find the Target Application 'com.pawpixel.app'
+    t =   246.62s         Find the Target Application 'com.pawpixel.app'
+    t =   246.64s         Find the Target Application 'com.pawpixel.app'
+    t =   246.69s         Find the Target Application 'com.pawpixel.app'
+    t =   247.78s     Wait for com.pawpixel.app to idle
+    t =   248.20s Checking existence of `"‹ Back" Button`
+    t =   248.26s Checking existence of `"‹ Back" Button`
+    t =   248.32s Find the "‹ Back" Button
+    t =   248.42s Checking existence of `"‹ Back" Button`
+    t =   248.47s Find the "‹ Back" Button
+    t =   248.57s Checking existence of `"‹ Back" Button`
+    t =   248.64s Find the "‹ Back" Button
+    t =   248.76s Press Target Application 'com.pawpixel.app'[0.98, 0.30] for 0.1 seconds, then drag to Target Application 'com.pawpixel.app'[0.98, 0.70] with velocity of 500.00 pixels per second, and then hold for 0.3 seconds 
+    t =   248.76s     Wait for com.pawpixel.app to idle
+    t =   248.77s     Find the Target Application 'com.pawpixel.app'
+    t =   248.84s     Check for interrupting elements affecting "PawPixel" Application
+    t =   248.89s     Synthesize event
+    t =   248.90s         Find the Target Application 'com.pawpixel.app'
+    t =   248.97s         Find the Target Application 'com.pawpixel.app'
+    t =   249.03s         Find the Target Application 'com.pawpixel.app'
+    t =   249.10s         Find the Target Application 'com.pawpixel.app'
+    t =   249.16s         Find the Target Application 'com.pawpixel.app'
+    t =   250.62s     Wait for com.pawpixel.app to idle
+    t =   251.04s Checking existence of `"‹ Back" Button`
+    t =   251.12s Checking existence of `"‹ Back" Button`
+    t =   251.20s Find the "‹ Back" Button
+    t =   251.35s Checking existence of `"‹ Back" Button`
+    t =   251.45s Find the "‹ Back" Button
+    t =   251.58s Checking existence of `"‹ Back" Button`
+    t =   251.64s Find the "‹ Back" Button
+    t =   251.76s Press Target Application 'com.pawpixel.app'[0.98, 0.30] for 0.1 seconds, then drag to Target Application 'com.pawpixel.app'[0.98, 0.70] with velocity of 500.00 pixels per second, and then hold for 0.0 seconds 
+    t =   251.76s     Wait for com.pawpixel.app to idle
+    t =   251.79s     Find the Target Application 'com.pawpixel.app'
+    t =   251.83s     Check for interrupting elements affecting "PawPixel" Application
+    t =   251.86s     Synthesize event
+    t =   251.86s         Find the Target Application 'com.pawpixel.app'
+    t =   251.92s         Find the Target Application 'com.pawpixel.app'
+    t =   251.96s         Find the Target Application 'com.pawpixel.app'
+    t =   251.98s         Find the Target Application 'com.pawpixel.app'
+    t =   252.01s         Find the Target Application 'com.pawpixel.app'
+    t =   253.13s     Wait for com.pawpixel.app to idle
+    t =   253.58s Checking existence of `"‹ Back" Button`
+    t =   253.63s Checking existence of `"‹ Back" Button`
+    t =   253.71s Find the "‹ Back" Button
+    t =   253.85s Checking existence of `"‹ Back" Button`
+    t =   253.93s Find the "‹ Back" Button
+    t =   254.07s Checking existence of `"‹ Back" Button`
+    t =   254.16s Find the "‹ Back" Button
+    t =   254.29s Find the "‹ Back" Button
+    t =   254.66s Find the "‹ Back" Button
+    t =   254.73s Tap "‹ Back" Button
+    t =   254.73s     Wait for com.pawpixel.app to idle
+    t =   254.74s     Find the "‹ Back" Button
+    t =   254.80s     Check for interrupting elements affecting "‹ Back" Button
+    t =   254.91s     Synthesize event
+    t =   255.22s     Wait for com.pawpixel.app to idle
+    t =   255.24s Waiting 15.0s for Any (First Match) to exist
+    t =   256.27s     Checking `Expect predicate `existsNoRetry == 1` for object Any (First Match)`
+    t =   256.27s         Checking existence of `Any (First Match)`
+    t =   256.31s Tap Any (First Match)
+    t =   256.31s     Wait for com.pawpixel.app to idle
+    t =   256.31s     Find the Any (First Match)
+    t =   256.35s     Check for interrupting elements affecting "Pet map" Button
+    t =   256.54s     Synthesize event
+    t =   256.86s     Wait for com.pawpixel.app to idle
+    t =   256.86s Waiting 10.0s for Any (First Match) to exist
+    t =   257.89s     Checking `Expect predicate `existsNoRetry == 1` for object Any (First Match)`
+    t =   257.89s         Checking existence of `Any (First Match)`
+    t =   258.15s Added attachment named 'pet-map'
+    t =   258.15s Waiting 15.0s for Any (First Match) to exist
+    t =   259.19s     Checking `Expect predicate `existsNoRetry == 1` for object Any (First Match)`
+    t =   259.19s         Checking existence of `Any (First Match)`
+    t =   259.23s Tap Any (First Match)
+    t =   259.23s     Wait for com.pawpixel.app to idle
+    t =   259.24s     Find the Any (First Match)
+    t =   259.30s     Check for interrupting elements affecting "‹ Back" Button
+    t =   259.39s     Synthesize event
+    t =   259.74s     Wait for com.pawpixel.app to idle
+    t =   259.74s Terminate com.pawpixel.app:27038
+    t =   260.78s Open com.pawpixel.app
+    t =   260.78s     Launch com.pawpixel.app
+    t =   264.04s         Setting up automation session
+    t =   268.09s         Wait for com.pawpixel.app to idle
+    t =   270.76s Waiting 30.0s for Any (First Match) to exist
+    t =   271.83s     Checking `Expect predicate `existsNoRetry == 1` for object Any (First Match)`
+    t =   271.83s         Checking existence of `Any (First Match)`
+    t =   272.90s Added attachment named 'after-relaunch'
+    t =   273.14s Tear Down
+Test Case '-[PawPixelUITests.OwnerJourneyTests testOwnerJourney]' passed (274.343 seconds).
+Test Suite 'OwnerJourneyTests' passed at 2026-09-29 18:54:17.945.
+	 Executed 1 test, with 0 failures (0 unexpected) in 274.343 (274.347) seconds
+Test Suite 'PawPixelUITests.xctest' passed at 2026-09-29 18:54:17.946.
+	 Executed 1 test, with 0 failures (0 unexpected) in 274.343 (274.348) seconds
+Test Suite 'All tests' passed at 2026-09-29 18:54:17.947.
+	 Executed 1 test, with 0 failures (0 unexpected) in 274.343 (274.350) seconds
+2026-09-29 18:54:20.707 xcodebuild[16938:50844] [MT] IDETestOperationsObserverDebug: 337.974 elapsed -- Testing started completed.
+2026-09-29 18:54:20.708 xcodebuild[16938:50844] [MT] IDETestOperationsObserverDebug: 0.000 sec, +0.000 sec -- start
+2026-09-29 18:54:20.708 xcodebuild[16938:50844] [MT] IDETestOperationsObserverDebug: 337.974 sec, +337.974 sec -- end
+
+Test session results, code coverage, and logs:
+	/Users/runner/work/_temp/PawPixel.xcresult
+
+** TEST SUCCEEDED **
+
+Testing started
