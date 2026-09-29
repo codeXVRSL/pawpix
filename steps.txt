@@ -1,0 +1,34 @@
+PASS  first open goes straight to making a pet  (1370 ms)
+PASS  photo becomes a pixel pet  (8243 ms)
+PASS  cat body and ears  (8378 ms)
+      typed on attempt 1
+PASS  name and save  (70163 ms)
+PASS  Done on a care task  (4434 ms)
+      scroll down #0 for + Add care task: exists=true frame=(16.0, 603.0, 155.3333282470703, 48.0) hittable=true
+      scroll down #0 for medicine task in the list: exists=true frame=(30.0, 639.0, 98.0, 24.33331298828125) hittable=true
+PASS  add a medicine task  (20063 ms)
+      scroll down #0 for + Add health reminders: exists=true frame=(16.0, 477.0, 208.0, 48.0) hittable=true
+PASS  health: a kitten's birthday gives her the first-year plan  (16623 ms)
+      scroll down #0 for + Add weight: exists=true frame=(16.0, 1087.3333740234375, 138.3333282470703, 40.0) hittable=false
+      scroll down #1 for + Add weight: exists=true frame=(16.0, 685.0, 138.3333282470703, 48.0) hittable=true
+PASS  weight: two weigh-ins draw the chart  (34759 ms)
+      scroll down #0 for Before/after: exists=true frame=(182.6666717529297, 823.3333129882812, 130.6666717529297, 48.0) hittable=true
+PASS  before/after card opens the share sheet  (25945 ms)
+PASS  share animation opens the share sheet  (12561 ms)
+      scroll down #0 for ‹ Back: exists=true frame=(16.0, -2329.0, 68.0, 40.0) hittable=false
+      scroll down #1 for ‹ Back: exists=true frame=(16.0, -2327.666748046875, 68.0, 40.0) hittable=false
+      scroll down #2 for ‹ Back: exists=true frame=(16.0, -2329.666748046875, 68.0, 40.0) hittable=false
+      scroll up #0 for ‹ Back: exists=true frame=(16.0, -1868.6666259765625, 68.0, 40.0) hittable=false
+      scroll up #1 for ‹ Back: exists=true frame=(16.0, -1458.6666259765625, 68.0, 40.0) hittable=false
+      scroll up #2 for ‹ Back: exists=true frame=(16.0, -1001.6666870117188, 68.0, 40.0) hittable=false
+      scroll down #0 for Save backup file: exists=true frame=(16.0, 702.6666870117188, 160.3333282470703, 48.0) hittable=true
+      scroll down #0 for ‹ Back: exists=true frame=(16.0, -869.6666870117188, 68.0, 40.0) hittable=false
+      scroll down #1 for ‹ Back: exists=true frame=(16.0, -974.0, 68.0, 40.0) hittable=false
+      scroll down #2 for ‹ Back: exists=true frame=(16.0, -977.0, 68.0, 40.0) hittable=false
+      scroll up #0 for ‹ Back: exists=true frame=(16.0, -515.0, 68.0, 40.0) hittable=false
+      scroll up #1 for ‹ Back: exists=true frame=(16.0, -112.33333587646484, 68.0, 40.0) hittable=false
+      scroll up #2 for ‹ Back: exists=true frame=(16.0, 80.0, 68.0, 48.0) hittable=true
+PASS  home lists the pet, settings open  (77478 ms)
+PASS  pet map opens (this CI build has no map server: it says so)  (4229 ms)
+PASS  share with your household (no server in this CI build: says it's not available yet)  (9975 ms)
+PASS  relaunch keeps the pet  (9548 ms)
