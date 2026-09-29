@@ -270,7 +270,7 @@ class EndToEndTest {
             val before = choosers()
             retrying { scrollTo(By.text("Share the card")).click() }
             waitFor("milestone share sheet") { choosers() == before + 1 }
-            find(By.textStartsWith("🎉 7 days of care"))
+            scrollTo(By.textStartsWith("🎉 7 days of care"))
             shot("milestone")
             retrying { find(By.text("Nice!")).click() }
             waitFor("celebrated once") { repo.state.value.pet(petId)?.milestoneSeen == 7 }
@@ -522,8 +522,12 @@ class EndToEndTest {
                 listOf((minute - 30).coerceAtLeast(0)), anchorDay = 0, adaptive = false, createdAtMs = 0)
             runBlocking { repo.update { com.pawpixel.core.StateOps.upsertTask(it, water) } }
             val face = widgetFace()
-            val label = face?.actionLabel ?: throw AssertionError("no Done on the widget: $face")
+            if (face?.actionTaskId == null) throw AssertionError("no Done on the widget: $face")
+            val label = "${face.actionEmoji} Done"
             note("widget button: $label for ${face.actionTaskId}")
+            renderWidget("4x1-due", 250, 50, dark = false)
+            renderWidget("2x3-due", 120, 200, dark = false)
+            renderWidget("4x2-due", 250, 120, dark = true)
             device.pressHome()
             val button = find(By.text(label), 20_000)
             Thread.sleep(1_000)
@@ -533,13 +537,15 @@ class EndToEndTest {
             waitFor("Done from the widget", 20_000) { repo.state.value.completions.count { it.taskId == face.actionTaskId } == before + 1 }
             // The widget redraws from the new file (the pet cheers up; another task may be due next).
             val after = widgetFace()
-            note("widget after Done: ${after?.caption}, button ${after?.actionLabel}")
+            note("widget after Done: ${after?.caption}, button for ${after?.actionTitle}")
             if (after?.actionTaskId != face.actionTaskId) check(device.wait(Until.gone(By.text(label)), 15_000)) { "the widget still offers '$label'" }
             Thread.sleep(1_500)
             shot("widget-after-done")
         }
 
         step("widget: tapping it opens the pet's page") {
+            // From the app, Home shows the widget's page (Home on the launcher would switch pages).
+            goHome()
             device.pressHome()
             retrying { find(By.desc(Pattern.compile("Chelsea: .*"))).click() }
             check(device.wait(Until.hasObject(By.pkg(ctx.packageName)), 15_000)) { "the app didn't open" }
@@ -563,6 +569,7 @@ class EndToEndTest {
             Thread.sleep(500)
             shot("widget-pick-pet")
             retrying { find(By.text("Kiko")).click() }
+            goHome()
             device.pressHome()
             find(By.desc(Pattern.compile("Kiko: .*")), 20_000)
             Thread.sleep(1_000)

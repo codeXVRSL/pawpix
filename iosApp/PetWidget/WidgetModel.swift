@@ -51,7 +51,8 @@ struct MoodPoint: Decodable {
 struct ActionPoint: Decodable {
     let at: Double
     let taskId: String?
-    let label: String?
+    let emoji: String?
+    let title: String?
     let ifDone: Track?
 }
 
@@ -76,7 +77,8 @@ struct PetFace {
     let caption: String
     let sprite: String?
     let actionTaskId: String?
-    let actionLabel: String?
+    let actionEmoji: String?
+    let actionTitle: String?
     let nextEmoji: String?
     let nextTitle: String?
     let nextAt: Date?
@@ -135,7 +137,7 @@ extension Snapshot {
         }
         return PetFace(
             petId: pet.id, name: pet.name, mood: mood, caption: caption, sprite: pet.sprites[mood],
-            actionTaskId: action?.taskId, actionLabel: action?.label,
+            actionTaskId: action?.taskId, actionEmoji: action?.emoji, actionTitle: action?.title,
             nextEmoji: next?.emoji, nextTitle: next?.title,
             nextAt: next?.dueAt.map { Date(timeIntervalSince1970: ($0 + shift) / 1000) })
     }

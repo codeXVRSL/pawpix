@@ -24,7 +24,7 @@ struct PetEntry: TimelineEntry {
     static let sample = PetEntry(
         date: .now,
         face: PetFace(petId: "", name: "Mochi", mood: "happy", caption: "Mochi is happy!", sprite: nil,
-                      actionTaskId: nil, actionLabel: nil, nextEmoji: "🍖", nextTitle: "Feed",
+                      actionTaskId: nil, actionEmoji: nil, actionTitle: nil, nextEmoji: "🍖", nextTitle: "Feed",
                       nextAt: Calendar.current.date(bySettingHour: 17, minute: 30, second: 0, of: .now)),
         image: WidgetImages.sample, labels: [:])
 
@@ -90,7 +90,7 @@ struct PetWidgetView: View {
                 Text(face.caption).font(.caption.bold()).foregroundStyle(ink)
                     .lineLimit(2).multilineTextAlignment(.center).minimumScaleFactor(0.8)
                 if let action = face.actionTaskId {
-                    doneButton(action, face.actionLabel ?? entry.label("done", "Done"))
+                    doneButton(action, face)
                 } else if let next = nextLine(face) {
                     Text(next).font(.caption2).foregroundStyle(soft).lineLimit(1).minimumScaleFactor(0.7)
                 }
@@ -120,7 +120,7 @@ struct PetWidgetView: View {
             Text(face.name).font(.headline).foregroundStyle(ink).lineLimit(1)
             Text(face.caption).font(.subheadline).foregroundStyle(ink.opacity(0.85)).lineLimit(2)
             if let action = face.actionTaskId {
-                doneButton(action, face.actionLabel ?? entry.label("done", "Done")).padding(.top, 2)
+                doneButton(action, face).padding(.top, 2)
             } else if let next = nextLine(face) {
                 Text(next).font(.caption).foregroundStyle(soft).lineLimit(2)
             }
@@ -155,7 +155,7 @@ struct PetWidgetView: View {
                 if let face = entry.face {
                     Text(face.name).font(.headline).widgetAccentable().lineLimit(1)
                     Text(face.caption).font(.caption).lineLimit(1)
-                    if let label = face.actionLabel ?? nextLine(face) { Text(label).font(.caption2).lineLimit(1) }
+                    if let label = dueLine(face) ?? nextLine(face) { Text(label).font(.caption2).lineLimit(1) }
                 } else {
                     Text(entry.label("makePet", "Make your pixel pet")).font(.caption).lineLimit(2)
                 }
@@ -167,7 +167,7 @@ struct PetWidgetView: View {
     /// One line beside the clock: the mood, and what's due or next.
     private var inlineText: String {
         guard let face = entry.face else { return entry.label("makePet", "Make your pixel pet") }
-        if let label = face.actionLabel { return "\(face.caption) · \(label)" }
+        if let due = dueLine(face) { return "\(face.caption) · \(due)" }
         if let at = face.nextAt, let emoji = face.nextEmoji { return "\(face.caption) · \(emoji) \(Self.shortTime(at))" }
         return face.caption
     }
@@ -175,7 +175,7 @@ struct PetWidgetView: View {
     /// What's due now (its emoji) or the next care's time, under the pet in the circle.
     private var badge: String? {
         guard let face = entry.face else { return nil }
-        if let label = face.actionLabel { return String(label.split(separator: " ").first ?? "") }
+        if face.actionTaskId != nil { return face.actionEmoji }
         return face.nextAt.map(Self.shortTime)
     }
 
@@ -191,13 +191,20 @@ struct PetWidgetView: View {
         }
     }
 
-    private func doneButton(_ taskId: String, _ label: String) -> some View {
+    /// "🍖 Done"
+    private func doneButton(_ taskId: String, _ face: PetFace) -> some View {
         Button(intent: DoneIntent(taskId: taskId)) {
-            Text(label).font(.caption.bold()).lineLimit(1).minimumScaleFactor(0.8).frame(maxWidth: .infinity)
+            Text("\(face.actionEmoji ?? "") \(entry.label("done", "Done"))").font(.caption.bold()).lineLimit(1).minimumScaleFactor(0.8).frame(maxWidth: .infinity)
         }
         .buttonStyle(.borderedProminent)
         .tint(showsBackground ? Palette.berry : .accentColor)
         .foregroundStyle(showsBackground ? Palette.onBerry : .white)
+    }
+
+    /// What's due now: "🍖 Feed".
+    private func dueLine(_ face: PetFace) -> String? {
+        guard face.actionTaskId != nil, let emoji = face.actionEmoji, let title = face.actionTitle else { return nil }
+        return "\(emoji) \(title)"
     }
 
     /// "Next: 🍖 Feed · 5:30 PM"

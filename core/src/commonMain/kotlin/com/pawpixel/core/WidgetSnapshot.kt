@@ -16,7 +16,7 @@ import com.pawpixel.i18n.trName
  *   "pets":[ { "id","name","spriteVersion",
  *     "sprites": { "happy":"sprites/<id>/happy.png", ... },
  *     "timeline":[ {"at","mood","caption"} ],
- *     "actions":[ {"at"} | {"at","taskId","label","ifDone":{"timeline","actions","next"}} ],
+ *     "actions":[ {"at"} | {"at","taskId","emoji","title","ifDone":{"timeline","actions","next"}} ],
  *     "next":[ {"at"} | {"at","taskId","dueAt","emoji","title"} ] } ] }
  * ```
  * An action is the one-tap Done: the most urgent everyday task (overdue, or due within
@@ -96,7 +96,7 @@ object WidgetSnapshot {
         }
         val actions = changes(samples, { it.action?.task?.id }) { s ->
             val task = s.action?.task ?: return@changes Json.obj("at" to s.at)
-            val entry = Json.obj("at" to s.at, "taskId" to task.id, "label" to "${task.kind.emoji} ${tr(task.kind.verb)}")
+            val entry = Json.obj("at" to s.at, "taskId" to task.id, "emoji" to task.kind.emoji, "title" to trName(task.title))
             if (!withIfDone) return@changes entry
             val after = StateOps.complete(state, task.id, s.at, clock)
             Json.Obj(entry.fields + ("ifDone" to track(after, pet, s.at, end, clock, withIfDone = false)))
@@ -185,7 +185,8 @@ object WidgetSnapshot {
             caption = caption,
             sprite = pet["sprites"][mood.key].str,
             actionTaskId = action?.get("taskId")?.str,
-            actionLabel = action?.get("label")?.str,
+            actionEmoji = action?.get("emoji")?.str,
+            actionTitle = action?.get("title")?.str,
             nextEmoji = next?.get("emoji")?.str,
             nextTitle = next?.get("title")?.str,
             nextAtMs = next?.get("dueAt")?.long?.plus(shift),
@@ -238,9 +239,10 @@ data class WidgetFace(
     val caption: String,
     /** The mood's pose, relative to the shared folder. */
     val sprite: String?,
-    /** The one-tap Done ("🍖 Fed"), when something is due now. */
+    /** The one-tap Done ("🍖 Done"), when something is due now, and what it's for ("🍖", "Feed"). */
     val actionTaskId: String?,
-    val actionLabel: String?,
+    val actionEmoji: String?,
+    val actionTitle: String?,
     /** The next planned everyday care, when there is one. */
     val nextEmoji: String?,
     val nextTitle: String?,

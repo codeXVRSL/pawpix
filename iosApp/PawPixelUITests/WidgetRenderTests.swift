@@ -25,7 +25,8 @@ final class WidgetRenderTests: XCTestCase {
         XCTAssertEqual(nine.petId, "mochi")
         XCTAssertEqual(nine.mood, "hungry")
         XCTAssertEqual(nine.actionTaskId, "feed")
-        XCTAssertEqual(nine.actionLabel, "🍖 Fed")
+        XCTAssertEqual(nine.actionEmoji, "🍖")
+        XCTAssertEqual(nine.actionTitle, "Feed")
         // Done on the widget at 9:10: happy at once, no button; dinner's button comes back at 4 PM.
         let taps = [PendingTap(taskId: "feed", at: t0 + 3.2 * 3_600_000)]
         let after = try XCTUnwrap(snap.face(at: at(3.25), choice: nil, taps: taps, timeZone: manila))

@@ -31,7 +31,8 @@ class WidgetTimelineTest {
         val morning = WidgetSnapshot.face(snap, at(9 * 60, today + 1))!!
         assertEquals(Mood.HUNGRY, morning.mood)
         assertEquals("feed", morning.actionTaskId)
-        assertEquals("🍖 Fed", morning.actionLabel)
+        assertEquals("Feed", morning.actionTitle)
+        assertEquals("🍖", morning.actionEmoji)
         // Two days on, breakfast still not logged: still a real mood, not a stale happy face.
         val later = WidgetSnapshot.face(snap, at(16 * 60 + 30, today + 2))!!
         assertEquals(Mood.HUNGRY, later.mood)

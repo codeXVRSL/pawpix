@@ -16,8 +16,6 @@ import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.datastore.preferences.core.stringPreferencesKey
-import androidx.glance.Button
-import androidx.glance.ButtonDefaults
 import androidx.glance.GlanceId
 import androidx.glance.GlanceModifier
 import androidx.glance.GlanceTheme
@@ -42,6 +40,9 @@ import androidx.glance.state.PreferencesGlanceStateDefinition
 import androidx.glance.background
 import androidx.glance.currentState
 import androidx.glance.layout.Alignment
+import androidx.glance.layout.Box
+import androidx.glance.semantics.contentDescription
+import androidx.glance.semantics.semantics
 import androidx.glance.layout.Column
 import androidx.glance.layout.Row
 import androidx.glance.layout.Spacer
@@ -188,11 +189,12 @@ private fun Content(shown: Shown) {
 
     when {
         // One cell high (4x1, 2x1): pet, name and mood; Done when there's room beside them.
-        size.height < 100.dp -> Row(frame.padding(horizontal = 10.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-            sprite(GlanceModifier.width(size.height * 1.2f).fillMaxHeight())
-            Column(GlanceModifier.defaultWeight().padding(start = 6.dp)) {
-                Text(face.name, maxLines = 1, style = TextStyle(color = ink, fontSize = 14.sp, fontWeight = FontWeight.Bold))
-                Text(face.caption, maxLines = 1, style = TextStyle(color = soft, fontSize = 12.sp))
+        size.height < 100.dp -> Row(frame.padding(horizontal = if (size.width < 180.dp) 6.dp else 10.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+            sprite(GlanceModifier.width(if (size.width < 180.dp) size.height - 8.dp else size.height * 1.2f).fillMaxHeight())
+            Column(GlanceModifier.defaultWeight().padding(start = 4.dp)) {
+                Text(face.name, maxLines = 1, style = TextStyle(color = ink, fontSize = 13.sp, fontWeight = FontWeight.Bold))
+                // A two-cell strip only has room for the name; the picture shows the mood.
+                if (size.width >= 180.dp) Text(face.caption, maxLines = 1, style = TextStyle(color = soft, fontSize = 12.sp))
             }
             if (face.actionTaskId != null && size.width >= 250.dp) DoneButton(face)
         }
@@ -222,22 +224,29 @@ private fun Content(shown: Shown) {
                 Spacer(GlanceModifier.height(4.dp))
                 DoneButton(face, GlanceModifier.fillMaxWidth())
             } else if (next != null && size.height >= 170.dp) {
-                Text(next, maxLines = 1, style = TextStyle(color = soft, fontSize = 11.sp, textAlign = TextAlign.Center))
+                Text(next, maxLines = 2, style = TextStyle(color = soft, fontSize = 11.sp, textAlign = TextAlign.Center))
             }
         }
     }
 }
 
-/** One tap logs the care that's due; the widget redraws with the happy pet as soon as it's saved. */
+/**
+ * "🍖 Done": one tap logs the care that's due; the widget redraws with the happy pet as soon as it's
+ * saved. Drawn by hand rather than Glance's Button, which some launchers show in capitals. 48dp high.
+ */
 @Composable
 private fun DoneButton(face: WidgetFace, modifier: GlanceModifier = GlanceModifier) {
-    Button(
-        text = face.actionLabel ?: tr("Done"),
-        onClick = actionRunCallback<DoneAction>(actionParametersOf(DoneAction.TASK to face.actionTaskId!!)),
-        modifier = modifier.height(48.dp),
-        colors = ButtonDefaults.buttonColors(backgroundColor = GlanceTheme.colors.primary, contentColor = GlanceTheme.colors.onPrimary),
-        maxLines = 1,
-    )
+    val label = "${face.actionEmoji ?: ""} ${tr("Done")}".trim()
+    val shape = if (Build.VERSION.SDK_INT >= 31) GlanceModifier.background(GlanceTheme.colors.primary).cornerRadius(24.dp)
+    else GlanceModifier.background(ImageProvider(R.drawable.widget_button))
+    Box(
+        modifier.height(48.dp).then(shape).padding(horizontal = 14.dp)
+            .clickable(actionRunCallback<DoneAction>(actionParametersOf(DoneAction.TASK to face.actionTaskId!!)))
+            .semantics { contentDescription = "${face.actionTitle ?: ""}: ${tr("Done")}" },
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(label, maxLines = 1, style = TextStyle(color = GlanceTheme.colors.onPrimary, fontSize = 14.sp, fontWeight = FontWeight.Bold))
+    }
 }
 
 class PetWidgetReceiver : GlanceAppWidgetReceiver() {
@@ -286,7 +295,7 @@ internal class Shown(val face: WidgetFace?, val bitmap: Bitmap?, private val nex
             val bitmap = BitmapFactory.decodeResource(context.resources, R.drawable.widget_sample_pet)
             val face = WidgetFace(
                 petId = "", name = "Mochi", mood = com.pawpixel.core.Mood.HAPPY, caption = tr("{0} is happy!", "Mochi"),
-                sprite = null, actionTaskId = null, actionLabel = null,
+                sprite = null, actionTaskId = null, actionEmoji = null, actionTitle = null,
                 nextEmoji = "🍖", nextTitle = trName("Feed"), nextAtMs = null,
             )
             return Shown(face, bitmap, tr("Next: {0} {1} · {2}"))
