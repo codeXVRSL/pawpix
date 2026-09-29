@@ -22,9 +22,9 @@ Android and iOS, with one Kotlin codebase (Compose Multiplatform) plus a native 
 | Shareable before/after "reveal card" with a PawPixel watermark (the growth loop) | `core/.../sprite/RevealCard.kt` |
 | First pet free, more pets gated for Pro (beta toggle until billing is wired) | `StateOps.canAddPet` |
 | Privacy by design: no account, no uploads, delete-all in Settings | whole app |
-| **Map backend, ready for the Phase 3 Naga pilot (not in the app yet):** grid-snapped locations, cells need 3+ owners before showing, venue revealed only after RSVP, blocking, reporting | `supabase/migrations/0001_gatherings_map.sql`, `core/.../core/LocationGrid.kt` |
+| **Pet map (opt-in, Naga pilot):** Google/Apple sign-in, 18+ and consent, your area as a ~1 km square (location snapped on the phone), areas shown only with 3+ owners, pixel pets redrawn from look codes (never photos), block/report by pet, gatherings with RSVP and venue revealed after RSVP, leave and account deletion. Pixel-style street map with paw pins | `composeApp/.../ui/PetMapScreen.kt`, `TileMap.kt`, `core/.../map/MapClient.kt`, `supabase/migrations/`, setup: `docs/MAP_SETUP.md` |
 
-Why the map isn't in the app yet: the research showed "approximate distance" features leak exact locations (dating apps were pinpointed to <5 m). The map needs accounts, moderation and Data Privacy Act paperwork, and it only works once enough Naga pets are on the app. The privacy-safe backend is built and tested, so it's ready when you are. See `docs/MAP_SAFETY.md`.
+The map is off until you add your server and sign-in settings (`docs/MAP_SETUP.md`); until then it shows "coming soon". Why it's built this way: "approximate distance" features leak exact locations (dating apps were pinpointed to <5 m), so no coordinate ever leaves the phone. See `docs/MAP_SAFETY.md`.
 
 ## Phase 0: the web Pet Maker
 `web/` is a phone-friendly page where anyone uploads a pet photo and watches it become a living pixel pet, using the same Kotlin engine as the apps (compiled to JavaScript) plus an in-browser pet detector (U²-Net-p). Photos never leave the device. It has:

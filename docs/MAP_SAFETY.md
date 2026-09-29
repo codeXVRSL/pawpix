@@ -1,6 +1,8 @@
 # Pet gatherings map: safety design
 
-Status: the backend is written and tested (`supabase/migrations/0001_gatherings_map.sql`); the app UI is not built yet. It's planned for the Phase 3 Naga pilot, after the single-player app retains users.
+Status: **built.** Backend in `supabase/migrations/` (0001 + 0002), app screens in `composeApp/.../ui/PetMapScreen.kt`. Every CI run plays owners through each rule below on a real Supabase stack (`supabase/tests/map_test.py`) and runs the Android app against it. It switches on once you fill in the settings in `docs/MAP_SETUP.md`. Pilot scope: Naga, gatherings you create and approve.
+
+Pets on the map are **pixel pets only**: the app sends a short look code (colours and markings), never a photo. Owner ids are never returned to other users; blocking and reporting work by pet.
 
 ## The threat
 "Approximate distance" features leak exact locations. Researchers pinpointed dating-app users (Grindr, Hornet, Bumble, Hinge) to within 2–5 m by faking their own position and measuring distances from several points. Hornet's randomized distances were defeated too, partly because the *order* of results leaked distance. Pet theft mostly happens at owners' homes, and a map of real pet photos near where people live is exactly what a thief would want.

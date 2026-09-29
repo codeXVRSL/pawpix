@@ -110,9 +110,16 @@ final class OwnerJourneyTests: XCTestCase {
         }
 
         step("before/after card opens the share sheet") {
-            try scrollTo("Before/after").tap()
+            let button = try scrollTo("Before/after")
+            sleep(1) // let the list settle after scrolling, or the tap can miss
+            button.tap()
             let close = app.buttons["Close"]
-            let appeared = app.otherElements["ActivityListView"].waitForExistence(timeout: 20) || close.waitForExistence(timeout: 1)
+            var appeared = app.otherElements["ActivityListView"].waitForExistence(timeout: 15) || close.waitForExistence(timeout: 1)
+            if !appeared {
+                log.append("      first tap didn't open the sheet; tapping again")
+                button.tap()
+                appeared = app.otherElements["ActivityListView"].waitForExistence(timeout: 15) || close.waitForExistence(timeout: 1)
+            }
             shot("share-card")
             guard appeared else { throw Failure("share sheet didn't appear for the card") }
             dismissShareSheet()

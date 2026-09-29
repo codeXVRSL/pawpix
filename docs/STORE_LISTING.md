@@ -43,12 +43,17 @@ Your first pet is free. PawPixel Pro (coming soon) adds more pets and hand-finis
 Made in Naga City, Philippines.
 
 **Category:** Lifestyle · **Tags:** Pets, Widgets
-**Content rating:** Everyone (no user-generated content, no ads, no purchases in v1)
+**Content rating:** Everyone, with **user interaction** (the optional pet map lets users see other users' pet names and meet at events; there's reporting and blocking). The map is 18+ inside the app.
 **Data safety form:** PawPixel itself collects nothing, but the Android build uses Google ML Kit (pet cut-out), and Google says ML Kit collects diagnostic data. Per [Google's ML Kit disclosure guide](https://developers.google.com/ml-kit/android-data-disclosure), declare:
 - **Device or other IDs** (a per-installation ID): collected, not shared, for analytics.
 - **App info and performance: diagnostics** (device model, OS version, app version, latency, error codes): collected, not shared, for analytics.
 - Encrypted in transit: yes. Users can request deletion: no (not tied to an account).
 - Photos, pet data and care history: **not collected** (they never leave the device).
+- **If the pet map is switched on in your build**, also declare (all optional for the user, tied to their account, deletable in the app):
+  - **Location → Approximate location**: collected, shared with other users (as a ~1 km square), for app functionality.
+  - **Personal info → Email address** and **User IDs**: collected (from Google sign-in), for account management.
+  - **Personal info → Other info** (pet names) and **App activity → Other user-generated content** (RSVPs, reports): collected, shared with other users (names only), for app functionality.
+  - Users can request deletion: **yes** (in the app).
 Re-check the guide before submitting; it's Google's list and can change.
 
 ## Apple App Store
@@ -68,7 +73,7 @@ virtual pet,pet care,reminder,feed,walk,pixel art,dog,cat,puppy,kitten,sprite,8b
 **Description:** use the Google Play full description above (Apple doesn't render bullets specially; plain line breaks are fine).
 
 **Category:** Lifestyle (secondary: Entertainment) · **Age rating:** 4+
-**App Privacy:** Data Not Collected (the iOS build uses Apple's Vision framework on-device, with no third-party SDKs). Re-check if you add any SDK such as RevenueCat or analytics.
+**App Privacy:** without the pet map: Data Not Collected (the iOS build uses Apple's Vision framework on-device, with no third-party SDKs). **With the pet map switched on**, declare as "Data Linked to You", not used for tracking: **Coarse Location**, **User ID**, **Email Address** (if the user shares it via Sign in with Apple), and **Other User Content** (pet names, RSVPs, reports), all for App Functionality. Re-check if you add any SDK such as RevenueCat or analytics.
 
 ## Screenshots (captured from the real app by CI)
 Ready to upload, taken from the end-to-end runs (only the photo picker is stubbed):

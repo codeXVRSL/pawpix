@@ -104,6 +104,12 @@ jobs:
           PAWPIXEL_KEYSTORE_PASSWORD: ${{ secrets.PAWPIXEL_KEYSTORE_PASSWORD }}
           PAWPIXEL_KEY_ALIAS: ${{ secrets.PAWPIXEL_KEY_ALIAS }}
           PAWPIXEL_KEY_PASSWORD: ${{ secrets.PAWPIXEL_KEY_PASSWORD }}
+          # Pet map (docs/MAP_SETUP.md). Unset = the map says "coming soon".
+          PAWPIXEL_SUPABASE_URL: ${{ secrets.PAWPIXEL_SUPABASE_URL }}
+          PAWPIXEL_SUPABASE_ANON_KEY: ${{ secrets.PAWPIXEL_SUPABASE_ANON_KEY }}
+          PAWPIXEL_GOOGLE_WEB_CLIENT_ID: ${{ secrets.PAWPIXEL_GOOGLE_WEB_CLIENT_ID }}
+          PAWPIXEL_TILE_URL: ${{ secrets.PAWPIXEL_TILE_URL }}
+          PAWPIXEL_TILE_ATTRIBUTION: ${{ secrets.PAWPIXEL_TILE_ATTRIBUTION }}
         run: ./gradlew :composeApp:bundleRelease :composeApp:assembleRelease --stacktrace
       - name: Check native libraries are 16 KB aligned (Play requirement)
         run: |
