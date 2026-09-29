@@ -102,8 +102,10 @@ final class OwnerJourneyTests: XCTestCase {
         }
 
         step("Done on a care task") {
-            try scrollTo(query: app.buttons.matching(label: "Done").firstMatch, "Done").tap()
-            try find("Undo", timeout: 10)
+            // Screen readers hear what the button does: "Mark Feed done for mochi".
+            let done = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@ AND label ENDSWITH %@", "Mark ", "done for \(petName)")).firstMatch
+            try scrollTo(query: done, "Done").tap()
+            guard element(containing: "Undo").waitForExistence(timeout: 10) else { throw Failure("no Undo after Done") }
             sleep(1)
             shot("after-done")
         }
@@ -183,7 +185,7 @@ final class OwnerJourneyTests: XCTestCase {
         }
 
         step("home lists the pet, settings open") {
-            try scrollTo("‹ Back").tap()
+            try scrollTo("Back").tap()
             try find("PawPixel")
             guard element(containing: petName).waitForExistence(timeout: 15) else { throw Failure("pet not listed") }
             sleep(1)
@@ -194,7 +196,7 @@ final class OwnerJourneyTests: XCTestCase {
             try scrollTo("Away 3 days").tap()
             try find("I'm back").tap()
             try scrollTo("Save backup file")
-            try scrollTo("‹ Back").tap() // the screen is scrolled down to the backup section
+            try scrollTo("Back").tap() // the screen is scrolled down to the backup section
         }
 
         step("pet map opens (this CI build has no map server: it says so)") {
@@ -203,7 +205,7 @@ final class OwnerJourneyTests: XCTestCase {
                 || element("I'm 18 or older").waitForExistence(timeout: 2)
             shot("pet-map")
             guard ready else { throw Failure("pet map screen didn't open") }
-            try find("‹ Back").tap()
+            try find("Back").tap()
         }
 
         step("share with your household (no server in this CI build: says it's not available yet)") {
@@ -214,8 +216,8 @@ final class OwnerJourneyTests: XCTestCase {
             let ready = element("Coming soon").waitForExistence(timeout: 10)
             shot("household")
             guard ready else { throw Failure("household screen didn't say it's not available yet") }
-            try find("‹ Back").tap()
-            try scrollTo("‹ Back").tap() // the pet's page is scrolled down to the share button
+            try find("Back").tap()
+            try scrollTo("Back").tap() // the pet's page is scrolled down to the share button
             try find("Settings")
         }
 

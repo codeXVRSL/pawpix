@@ -29,6 +29,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.pawpixel.core.AdaptiveTiming
@@ -46,7 +49,7 @@ fun HomeScreen(app: AppScope, state: AppState) {
     var showProDialog by remember { mutableStateOf(false) }
     Column(Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding().padding(horizontal = 16.dp)) {
         Row(Modifier.fillMaxWidth().padding(vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
-            Text("PawPixel", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Black, modifier = Modifier.weight(1f))
+            Text("PawPixel", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Black, modifier = Modifier.weight(1f).semantics { heading() })
             if (state.pets.isNotEmpty()) TextButton(onClick = { app.navigate(Screen.PetMap) }) { Text(tr("Pet map")) }
             TextButton(onClick = { app.navigate(Screen.Settings) }) { Text(tr("Settings")) }
         }
@@ -101,16 +104,16 @@ fun statusesFor(app: AppScope, state: AppState, petId: String): List<TaskStatus>
 @Composable
 private fun PetCard(app: AppScope, state: AppState, pet: Pet) {
     val reading = MoodEngine.read(state, pet.id, app.now, app.repo.clock)
-    val pose = remember(pet.id, pet.spriteVersion, pet.species, pet.ears, reading.mood) { app.repo.pose(pet, reading.mood) }
+    val pose = remember(pet.lookKey, reading.mood) { app.repo.pose(pet, reading.mood) }
     // Quick Done is for daily care; health care (a vaccine, a vet visit) is recorded on the pet's page.
     val statuses = statusesFor(app, state, pet.id).filter { !it.task.kind.health }
     val urgent = statuses.filter { it.isOverdue }.takeIf { !state.isAway(app.now) }
         ?.maxByOrNull { MoodEngine.penalty(it, app.now, state.settings.awayUntilMs) }
     val next = statuses.filter { !it.isOverdue }.mapNotNull { s -> s.nextDueMs?.let { s to it } }.minByOrNull { it.second }
 
-    PixelCard(Modifier.fillMaxWidth().clickable { app.navigate(Screen.PetDetail(pet.id)) }) {
+    PixelCard(Modifier.fillMaxWidth().clickable(onClickLabel = tr("Open {0}'s page", pet.name)) { app.navigate(Screen.PetDetail(pet.id)) }) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            SpriteView(pose, Modifier.size(104.dp))
+            SpriteView(pose, Modifier.size(104.dp), description = MoodEngine.describe(pet.name, reading.mood))
             Column(Modifier.padding(start = 12.dp).weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Text(pet.name, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
                 Text(reading.caption)
@@ -121,7 +124,8 @@ private fun PetCard(app: AppScope, state: AppState, pet: Pet) {
                     )
                 }
                 if (urgent != null) {
-                    Button(onClick = { app.launch { app.repo.complete(urgent.task.id) } }) {
+                    val label = tr("Mark {0} done for {1}", trName(urgent.task.title), pet.name)
+                    Button(onClick = { app.launch { app.repo.complete(urgent.task.id) } }, modifier = Modifier.semantics { contentDescription = label }) {
                         Text("${urgent.task.kind.emoji} ${tr(urgent.task.kind.verb)}")
                     }
                 }

@@ -5,6 +5,7 @@ import CoreVideo
 import UserNotifications
 import WidgetKit
 import UniformTypeIdentifiers
+import ImageIO
 import CoreLocation
 import AuthenticationServices
 import ComposeApp
@@ -69,16 +70,16 @@ final class SwiftHost: NSObject, IosHost {
     }
 
     func decodePhoto(data: Data, maxSide: Int32) -> Data? {
-        guard let image = UIImage(data: data), image.size.width > 0, image.size.height > 0 else { return nil }
-        let longest = max(image.size.width, image.size.height)
-        let scale = min(1.0, CGFloat(maxSide) / longest)
-        let size = CGSize(width: max(1, (image.size.width * scale).rounded()), height: max(1, (image.size.height * scale).rounded()))
-        // Drawing through UIImage applies EXIF orientation.
-        let format = UIGraphicsImageRendererFormat()
-        format.scale = 1
-        format.opaque = true
-        let upright = UIGraphicsImageRenderer(size: size, format: format).image { _ in image.draw(in: CGRect(origin: .zero, size: size)) }
-        guard let cg = upright.cgImage else { return nil }
+        // ImageIO shrinks the photo while decoding it and turns it upright (EXIF orientation), so a
+        // 48 MP photo never sits in memory at full size (UIImage would decode all of it first).
+        guard let source = CGImageSourceCreateWithData(data as CFData, [kCGImageSourceShouldCache: false] as CFDictionary) else { return nil }
+        let options: [CFString: Any] = [
+            kCGImageSourceCreateThumbnailFromImageAlways: true,
+            kCGImageSourceCreateThumbnailWithTransform: true,
+            kCGImageSourceShouldCacheImmediately: true,
+            kCGImageSourceThumbnailMaxPixelSize: Int(max(1, maxSide)),
+        ]
+        guard let cg = CGImageSourceCreateThumbnailAtIndex(source, 0, options as CFDictionary), cg.width > 0, cg.height > 0 else { return nil }
         return RawImageBytes.encode(cg)
     }
 
@@ -158,7 +159,20 @@ final class SwiftHost: NSObject, IosHost {
     }
 
     func requestNotificationPermission() {
-        UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound, .badge]) { _, _ in }
+        UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound, .badge]) { granted, _ in
+            DispatchQueue.main.async { self.cachedNotificationStatus = granted ? 1 : 0 }
+        }
+    }
+
+    /// iOS answers asynchronously: return the last known answer (-1 = not known yet) and refresh it.
+    private var cachedNotificationStatus: Int32 = -1
+
+    func notificationStatus() -> Int32 {
+        UNUserNotificationCenter.current().getNotificationSettings { settings in
+            let allowed = [UNAuthorizationStatus.authorized, .provisional, .ephemeral].contains(settings.authorizationStatus)
+            DispatchQueue.main.async { self.cachedNotificationStatus = allowed ? 1 : 0 }
+        }
+        return cachedNotificationStatus
     }
 
     // MARK: Widgets, sharing, links

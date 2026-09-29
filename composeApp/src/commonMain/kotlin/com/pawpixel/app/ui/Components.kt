@@ -18,9 +18,14 @@ import androidx.compose.material3.Shapes
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.FilterQuality
@@ -71,33 +76,61 @@ fun PawTheme(content: @Composable () -> Unit) {
     )
 }
 
-/** Crisp (nearest-neighbour) pixel sprite with an optional two-frame idle bob. */
+/**
+ * Crisp (nearest-neighbour) pixel sprite with an optional two-frame idle bob. [description] is what a
+ * screen reader says (the pet's name and mood, see [com.pawpixel.core.MoodEngine.describe]); null
+ * when the text next to it already says it all.
+ */
 @Composable
-fun SpriteView(image: PixelImage?, modifier: Modifier = Modifier, animate: Boolean = true) {
+fun SpriteView(image: PixelImage?, modifier: Modifier = Modifier, animate: Boolean = true, description: String? = null) {
     if (image == null) {
         Box(modifier.background(MaterialTheme.colorScheme.surfaceVariant, MaterialTheme.shapes.medium))
         return
     }
     val bitmap = remember(image) { image.toImageBitmap() }
+    // Read only while drawing the layer: the bob moves the picture without recomposing the screen every frame.
     val bob = if (animate) {
-        val t = rememberInfiniteTransition(label = "bob")
-        val v by t.animateFloat(
+        rememberInfiniteTransition(label = "bob").animateFloat(
             initialValue = 0f, targetValue = 1f,
             animationSpec = infiniteRepeatable(tween(1000, easing = LinearEasing), RepeatMode.Restart),
             label = "bob",
         )
-        if (v < 0.5f) 0f else 1f // two-frame step, like classic sprite animation
-    } else 0f
+    } else null
     Image(
         bitmap = bitmap,
-        contentDescription = null,
+        contentDescription = description,
         filterQuality = FilterQuality.None,
         contentScale = ContentScale.Fit,
         modifier = modifier.graphicsLayer {
-            // Move by exactly one sprite pixel so the bob stays on the pixel grid.
-            translationY = -bob * (size.height / image.height)
+            // Two-frame step, like classic sprite animation; one sprite pixel, so it stays on the pixel grid.
+            val up = if ((bob?.value ?: 0f) < 0.5f) 0f else 1f
+            translationY = -up * (size.height / image.height)
         },
     )
+}
+
+/** A section title, marked as a heading so screen readers can jump between sections. */
+@Composable
+fun SectionTitle(text: String, modifier: Modifier = Modifier) {
+    Text(text, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, modifier = modifier.semantics { heading() })
+}
+
+/** A bold label over a group of settings or choices, also a heading for screen readers. */
+@Composable
+fun GroupLabel(text: String, modifier: Modifier = Modifier) {
+    Text(text, fontWeight = FontWeight.Bold, modifier = modifier.semantics { heading() })
+}
+
+/** The title in a screen's top bar ("Settings", "Pet map"). */
+@Composable
+fun ScreenTitle(text: String, modifier: Modifier = Modifier) {
+    Text(text, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, modifier = modifier.semantics { heading() })
+}
+
+/** "‹ Back" in a screen's top bar; screen readers hear just "Back". */
+@Composable
+fun BackButton(app: AppScope) {
+    TextButton(onClick = app.back, modifier = Modifier.semantics { contentDescription = tr("Back") }) { Text(tr("‹ Back")) }
 }
 
 /** Chunky pixel-style card. */

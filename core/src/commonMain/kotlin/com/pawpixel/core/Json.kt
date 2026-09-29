@@ -91,10 +91,15 @@ sealed class Json {
         }
 
         fun parse(text: String): Json = Parser(text).parseDocument()
+
+        /** Deeper than anything PawPixel writes or its server sends. */
+        const val MAX_DEPTH = 64
     }
 
     private class Parser(private val s: String) {
         private var i = 0
+        /** Arrays and objects open right now: a hostile or broken reply can't nest deep enough to overflow the stack. */
+        private var depth = 0
 
         fun parseDocument(): Json {
             val v = value()
@@ -111,8 +116,10 @@ sealed class Json {
             ws()
             if (i >= s.length) fail("unexpected end")
             return when (val c = s[i]) {
-                '{' -> obj()
-                '[' -> arr()
+                '{', '[' -> {
+                    if (++depth > MAX_DEPTH) fail("nested too deep")
+                    (if (c == '{') obj() else arr()).also { depth-- }
+                }
                 '"' -> Str(string())
                 't' -> literal("true", Bool(true))
                 'f' -> literal("false", Bool(false))

@@ -13,6 +13,7 @@ object StateCodec {
             "pro" to state.settings.pro,
             "nightStart" to state.settings.nightStart,
             "nightEnd" to state.settings.nightEnd,
+            "remindersAsked" to state.settings.remindersAsked,
         ),
         "pets" to state.pets.map { p ->
             Json.obj(
@@ -49,8 +50,39 @@ object StateCodec {
         },
     ).stringify()
 
-    fun decode(text: String): AppState {
+    fun decode(text: String): AppState = decode(Json.parse(text))
+
+    /** Where the state [load] returns came from. */
+    enum class Source {
+        /** The saved file. */
+        SAVED,
+        /** The saved file was damaged; this is the last good copy. */
+        BACKUP,
+        /** Nothing saved yet: a new install (or everything was deleted). */
+        NEW,
+        /** Something was saved but neither copy can be read: keep the files aside, never write over them. */
+        UNREADABLE,
+    }
+
+    class Loaded(val state: AppState, val source: Source)
+
+    /**
+     * The state to start with, from the saved file and its last good copy (either may be missing).
+     * A damaged save never becomes an empty app silently: the caller hears which copy was used.
+     */
+    fun load(saved: String?, backup: String?): Loaded {
+        saved?.let(::decodeSaved)?.let { return Loaded(it, Source.SAVED) }
+        backup?.let(::decodeSaved)?.let { return Loaded(it, Source.BACKUP) }
+        return Loaded(AppState(), if (saved.isNullOrEmpty() && backup.isNullOrEmpty()) Source.NEW else Source.UNREADABLE)
+    }
+
+    /** A saved state file, or null if it isn't one (cut short, empty, not JSON, not an object). */
+    fun decodeSaved(text: String): AppState? = runCatching {
         val root = Json.parse(text)
+        if (root is Json.Obj && root.fields.containsKey("settings")) decode(root) else null
+    }.getOrNull()
+
+    private fun decode(root: Json): AppState {
         val s = root["settings"]
         val defaults = Settings()
         val settings = Settings(
@@ -61,6 +93,7 @@ object StateCodec {
             pro = s["pro"].bool ?: defaults.pro,
             nightStart = s["nightStart"].int ?: defaults.nightStart,
             nightEnd = s["nightEnd"].int ?: defaults.nightEnd,
+            remindersAsked = s["remindersAsked"].bool ?: defaults.remindersAsked,
         )
         val spriteDefaults = SpriteSettings()
         val pets = root["pets"].list.mapNotNull { p ->

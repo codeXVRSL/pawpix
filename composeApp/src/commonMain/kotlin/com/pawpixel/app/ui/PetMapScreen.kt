@@ -42,7 +42,15 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.selectableGroup
+import androidx.compose.foundation.selection.toggleable
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
+
 import androidx.compose.ui.unit.dp
 import com.pawpixel.app.PetMapModel
 import com.pawpixel.core.AppState
@@ -119,8 +127,8 @@ fun PetMapScreen(app: AppScope, state: AppState) {
 
     Column(Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding()) {
         Row(Modifier.fillMaxWidth().padding(horizontal = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-            TextButton(onClick = app.back) { Text(tr("‹ Back")) }
-            Text(tr("Pet map"), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
+            BackButton(app)
+            ScreenTitle(tr("Pet map"), Modifier.weight(1f))
             if (phase is MapPhase.Ready) MapMenu(app, map, state, onChanged = { act { load() } }, onLeft = { phase = MapPhase.Join }, act = ::act)
         }
         message?.let {
@@ -195,10 +203,14 @@ private fun JoinMap(app: AppScope, map: PetMapModel, state: AppState, busy: Bool
     }
 }
 
+/** One checkbox with its label: a single control for screen readers, and the whole row is the touch target. */
 @Composable
 private fun CheckRow(label: String, checked: Boolean, onChange: (Boolean) -> Unit) {
-    Row(Modifier.fillMaxWidth().clickable { onChange(!checked) }, verticalAlignment = Alignment.CenterVertically) {
-        Checkbox(checked, onChange)
+    Row(
+        Modifier.fillMaxWidth().heightIn(min = 48.dp).toggleable(value = checked, role = Role.Checkbox, onValueChange = onChange),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Checkbox(checked, onCheckedChange = null, modifier = Modifier.padding(horizontal = 12.dp))
         Text(label, Modifier.padding(start = 4.dp))
     }
 }
@@ -297,11 +309,12 @@ private fun AreaPets(
                 items(list, key = { it.id }) { pet ->
                     Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.width(84.dp)) {
                         val img = remember(pet.id) { pet.look?.let { PetArt(it, speciesOf(pet.species), Ears.of(pet.ears)).still } }
-                        SpriteView(img, Modifier.size(72.dp), animate = false)
+                        SpriteView(img, Modifier.size(72.dp), animate = false, description = tr("Pixel {0}", pet.name))
                         Text(pet.name, fontWeight = FontWeight.Bold, maxLines = 1)
                         if (pet.mine) Text(tr("Yours"), style = MaterialTheme.typography.bodySmall)
                         else Box {
-                            TextButton(onClick = { menuFor = pet }) { Text("⋯") }
+                            val moreLabel = tr("More for {0}", pet.name)
+                            TextButton(onClick = { menuFor = pet }, modifier = Modifier.semantics { contentDescription = moreLabel }) { Text("⋯") }
                             DropdownMenu(menuFor == pet, { menuFor = null }) {
                                 DropdownMenuItem({ Text(tr("Block owner")) }, onClick = { menuFor = null; blockFor = pet })
                                 DropdownMenuItem({ Text(tr("Report")) }, onClick = { menuFor = null; reportFor = pet })
@@ -344,9 +357,14 @@ private fun ReportDialog(pet: MapPet, onDone: () -> Unit, send: (String, String?
         text = {
             if (sent) Text(tr("We'll look at it. If someone is in danger, contact the police (911 in the Philippines)."))
             else Column {
-                reasons.forEach { (key, label) ->
-                    Row(Modifier.fillMaxWidth().clickable { reason = key }, verticalAlignment = Alignment.CenterVertically) {
-                        RadioButton(reason == key, { reason = key }); Text(label)
+                Column(Modifier.selectableGroup()) {
+                    reasons.forEach { (key, label) ->
+                        Row(
+                            Modifier.fillMaxWidth().heightIn(min = 48.dp).selectable(reason == key, role = Role.RadioButton) { reason = key },
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            RadioButton(reason == key, onClick = null, modifier = Modifier.padding(horizontal = 12.dp)); Text(label)
+                        }
                     }
                 }
                 OutlinedTextField(details, { details = it.take(500) }, label = { Text(tr("Details (optional)")) }, modifier = Modifier.fillMaxWidth())

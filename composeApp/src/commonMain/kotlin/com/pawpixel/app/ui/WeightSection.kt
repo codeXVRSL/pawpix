@@ -59,7 +59,7 @@ fun WeightSection(app: AppScope, state: AppState, pet: Pet) {
     var editing by remember { mutableStateOf<Weight?>(null) }
     var showAll by remember { mutableStateOf(false) }
 
-    Text(tr("Weight"), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+    SectionTitle(tr("Weight"))
     if (weights.isEmpty()) {
         Text(tr("Weigh {0} now and then (a bathroom scale works: weigh yourself holding them, then subtract).", pet.name), style = MaterialTheme.typography.bodySmall)
     } else {
@@ -86,7 +86,8 @@ fun WeightSection(app: AppScope, state: AppState, pet: Pet) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text(LocalClock.shortDate(w.day), modifier = Modifier.weight(1f))
                         Text(WeightTrend.kg(w.grams), fontWeight = FontWeight.Bold)
-                        TextButton(onClick = { editing = w }) { Text(tr("Edit")) }
+                        val editLabel = tr("Edit the weigh-in on {0}", LocalClock.shortDate(w.day))
+                        TextButton(onClick = { editing = w }, modifier = Modifier.semantics { contentDescription = editLabel }) { Text(tr("Edit")) }
                     }
                 }
             }

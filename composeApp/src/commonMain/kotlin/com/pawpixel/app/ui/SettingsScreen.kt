@@ -27,6 +27,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.pawpixel.app.rememberFilePicker
@@ -71,8 +73,8 @@ fun SettingsScreen(app: AppScope, state: AppState) {
         verticalArrangement = Arrangement.spacedBy(14.dp),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            TextButton(onClick = app.back) { Text(tr("‹ Back")) }
-            Text(tr("Settings"), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+            BackButton(app)
+            ScreenTitle(tr("Settings"), Modifier.weight(1f))
         }
 
         SwitchRow(tr("Reminders"), tr("Notifications for care tasks."), s.remindersEnabled) { on ->
@@ -80,7 +82,7 @@ fun SettingsScreen(app: AppScope, state: AppState) {
             app.launch { app.repo.setSettings(s.copy(remindersEnabled = on)) }
         }
 
-        Text(tr("Language"), fontWeight = FontWeight.Bold)
+        GroupLabel(tr("Language"))
         FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             // The language names themselves stay as they are, so anyone can find their own.
             listOf("" to tr("Phone's language"), "en" to "English", "fil" to "Filipino").forEach { (code, label) ->
@@ -93,7 +95,7 @@ fun SettingsScreen(app: AppScope, state: AppState) {
         }
         Text(tr("Filipino translations are new: tell us if something sounds off."), style = MaterialTheme.typography.bodySmall)
 
-        Text(tr("Household"), fontWeight = FontWeight.Bold)
+        GroupLabel(tr("Household"))
         val household = app.repo.family.household
         Text(
             household?.let { if (it.members.size == 1) tr("You're in {0} (just you so far).", it.name) else tr("You're in {0} ({1} people).", it.name, it.members.size) }
@@ -106,7 +108,7 @@ fun SettingsScreen(app: AppScope, state: AppState) {
             OutlinedButton(onClick = { app.navigate(Screen.Family(join = true)) }) { Text(tr("Join a household")) }
         }
 
-        Text(tr("Away from home"), fontWeight = FontWeight.Bold)
+        GroupLabel(tr("Away from home"))
         if (state.isAway(app.now)) {
             Text(tr("Care reminders are paused until {0}. Your pets won't fret over care missed while you're away.", formatDate(s.awayUntilMs, app.repo.clock)))
             OutlinedButton(onClick = { app.launch { app.repo.setAway(0) } }) { Text(tr("I'm back")) }
@@ -122,12 +124,12 @@ fun SettingsScreen(app: AppScope, state: AppState) {
             }
         }
 
-        Text(tr("Bedtime"), fontWeight = FontWeight.Bold)
+        GroupLabel(tr("Bedtime"))
         Text(tr("Your pixel pet sleeps between these times unless something important is overdue."), style = MaterialTheme.typography.bodySmall)
         TimeStepper(tr("Sleeps at"), s.nightStart) { app.launch { app.repo.setSettings(s.copy(nightStart = it)) } }
         TimeStepper(tr("Wakes at"), s.nightEnd) { app.launch { app.repo.setSettings(s.copy(nightEnd = it)) } }
 
-        Text(tr("PawPixel Pro"), fontWeight = FontWeight.Bold)
+        GroupLabel(tr("PawPixel Pro"))
         Text(tr("Your first pet is free forever. Pro (coming soon) adds more pets, AI-enhanced sprites and hand-finished sprites by a pixel artist."))
         if (app.repo.platform.isDebugBuild) {
             SwitchRow(tr("Test build: unlock Pro features"), tr("Only in test builds, until in-app purchases are connected."), s.pro) {
@@ -135,7 +137,7 @@ fun SettingsScreen(app: AppScope, state: AppState) {
             }
         }
 
-        Text(tr("Backup"), fontWeight = FontWeight.Bold)
+        GroupLabel(tr("Backup"))
         Text(
             tr(
                 "Changing phones? Save a backup file (to Google Drive, Files or email) and restore it on your new phone, Android or iPhone. " +
@@ -152,7 +154,7 @@ fun SettingsScreen(app: AppScope, state: AppState) {
         }
         backupMessage?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.secondary) }
 
-        Text(tr("Privacy"), fontWeight = FontWeight.Bold)
+        GroupLabel(tr("Privacy"))
         Text(
             tr(
                 "Everything stays on this phone: no account, no uploads, no tracking. (Your phone's own backup may include it, and backup files go only where you save them.) Your photo is turned into a sprite on the device, " +
@@ -218,10 +220,13 @@ fun SettingsScreen(app: AppScope, state: AppState) {
 
 @Composable
 private fun TimeStepper(label: String, minute: Int, onChange: (Int) -> Unit) {
+    val time = formatMinute(minute)
+    val earlier = tr("{0}: 30 minutes earlier than {1}", label, time)
+    val later = tr("{0}: 30 minutes later than {1}", label, time)
     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         Text(label, Modifier.weight(1f))
-        OutlinedButton(onClick = { onChange((minute - 30).mod(MINUTES_PER_DAY)) }) { Text("−30") }
-        Text(formatMinute(minute), fontWeight = FontWeight.Bold)
-        OutlinedButton(onClick = { onChange((minute + 30).mod(MINUTES_PER_DAY)) }) { Text("+30") }
+        OutlinedButton(onClick = { onChange((minute - 30).mod(MINUTES_PER_DAY)) }, modifier = Modifier.semantics { contentDescription = earlier }) { Text("−30") }
+        Text(time, fontWeight = FontWeight.Bold, maxLines = 1, softWrap = false)
+        OutlinedButton(onClick = { onChange((minute + 30).mod(MINUTES_PER_DAY)) }, modifier = Modifier.semantics { contentDescription = later }) { Text("+30") }
     }
 }

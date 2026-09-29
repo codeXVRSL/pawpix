@@ -45,6 +45,8 @@ interface Platform {
     /** Replaces all scheduled reminders with [reminders]. */
     fun scheduleReminders(reminders: List<Reminder>)
     fun requestNotificationPermission()
+    /** Whether the system lets PawPixel show notifications; null when it can't say (yet). */
+    fun notificationsAllowed(): Boolean? = null
     /** Reload widgets now, and again at [nextChangeMs] when the mood is due to change. */
     fun refreshWidgets(nextChangeMs: Long?)
     /** Whether a PawPixel widget is on the home screen; null when the system can't say (iOS). */

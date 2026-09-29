@@ -52,9 +52,21 @@ class PawRepository(val platform: Platform) {
     val clock = LocalClock { platform.utcOffsetMs(it) }
     private val files get() = platform.files
     private val mutex = Mutex()
+
+    /**
+     * Set when the saved data couldn't be read at start (see [load]): what happened, in words for
+     * the owner. The app shows it once; [dismissStartNotice] clears it.
+     */
+    private val _startNotice = MutableStateFlow<String?>(null)
+    val startNotice: StateFlow<String?> = _startNotice.asStateFlow()
+    fun dismissStartNotice() { _startNotice.value = null }
+
     private val _state = MutableStateFlow(load())
     val state: StateFlow<AppState> = _state.asStateFlow()
-    private val headCache = HashMap<String, PixelImage>()
+
+    /** Pets' faces, read once. Replaced, never changed in place: screens and background work read it at once. */
+    @kotlin.concurrent.Volatile
+    private var headCache: Map<String, PixelImage> = emptyMap()
 
     /** Bumped after every widget.json write, so a live widget session re-reads it. */
     private val _widgetRevision = MutableStateFlow(0L)
@@ -68,12 +80,31 @@ class PawRepository(val platform: Platform) {
     /** Family sharing (same sign-in as the map). */
     val family: FamilyModel by lazy { FamilyModel(this, map) }
 
+    /**
+     * The saved state. A damaged save is never replaced by an empty app: the last good copy
+     * ([STATE_BACKUP], refreshed at every start) takes over, and the damaged file is kept aside.
+     */
     private fun load(): AppState {
         // A restore interrupted between its two renames: put the pets' files back.
         if (!files.exists("sprites") && files.exists(OLD_SPRITES)) files.rename(OLD_SPRITES, "sprites")
-        val state = files.readText(STATE_FILE)?.let { runCatching { StateCodec.decode(it) }.getOrNull() } ?: AppState()
-        applyLanguage(state)
-        return state
+        val saved = runCatching { files.readText(STATE_FILE) }.getOrNull()
+        val loaded = StateCodec.load(saved, runCatching { files.readText(STATE_BACKUP) }.getOrNull())
+        when (loaded.source) {
+            StateCodec.Source.SAVED -> files.writeText(STATE_BACKUP, saved!!)
+            StateCodec.Source.NEW -> Unit
+            StateCodec.Source.BACKUP, StateCodec.Source.UNREADABLE -> {
+                // Keep what couldn't be read (support may recover it), and never write over the good copy.
+                if (!saved.isNullOrEmpty()) { files.delete(STATE_DAMAGED); files.rename(STATE_FILE, STATE_DAMAGED) }
+                platform.log("state.json unreadable (${saved?.length ?: -1} chars); using ${loaded.source}")
+            }
+        }
+        applyLanguage(loaded.state)
+        _startNotice.value = when (loaded.source) {
+            StateCodec.Source.BACKUP -> tr("PawPixel couldn't read its latest save, so it opened the copy from when you last started the app. Care logged after that may be missing.")
+            StateCodec.Source.UNREADABLE -> tr("PawPixel couldn't read its saved pets. The file is kept on this phone; if you have a backup file, restore it from Settings.")
+            else -> null
+        }
+        return loaded.state
     }
 
     /** Everything drawn after this speaks the owner's language (Settings → Language, or the phone's). */
@@ -86,20 +117,23 @@ class PawRepository(val platform: Platform) {
      * tasks get the time of the edit (the later edit wins between household phones); false for what
      * a household sync brought in.
      */
-    suspend fun update(stamp: Boolean = true, change: (AppState) -> AppState): AppState = mutex.withLock {
-        val n = change(_state.value).let { if (stamp) HouseholdSync.stamp(_state.value, it, now()) else it }
-        if (n != _state.value) {
-            files.writeText(STATE_FILE, StateCodec.encode(n))
-            if (n.settings.language != _state.value.settings.language) applyLanguage(n)
-            _state.value = n
+    suspend fun update(stamp: Boolean = true, change: (AppState) -> AppState): AppState = withContext(Dispatchers.Default) {
+        // Off the main thread: saving, the widget snapshot and scheduling alarms take a while on a budget phone.
+        mutex.withLock {
+            val n = change(_state.value).let { if (stamp) HouseholdSync.stamp(_state.value, it, now()) else it }
+            if (n != _state.value) {
+                if (!files.writeText(STATE_FILE, StateCodec.encode(n))) platform.log("Couldn't save state.json (phone full?)")
+                if (n.settings.language != _state.value.settings.language) applyLanguage(n)
+                _state.value = n
+            }
+            // Inside the lock, so concurrent updates (UI, widget, notification) publish in order.
+            publishLocked(n)
+            n
         }
-        // Inside the lock, so concurrent updates (UI, widget, notification) publish in order.
-        publishLocked(n)
-        n
     }
 
     /** Rebuilds widget data and reminders from the current state. Safe to call any time (e.g. app start). */
-    suspend fun publish() = mutex.withLock { publishLocked(_state.value) }
+    suspend fun publish() = withContext(Dispatchers.Default) { mutex.withLock { publishLocked(_state.value) } }
 
     private fun publishLocked(state: AppState) {
         applyLanguage(state) // the phone's language may have changed while PawPixel was running
@@ -117,26 +151,28 @@ class PawRepository(val platform: Platform) {
         files.delete(WidgetSnapshot.PENDING_FILE_NAME)
         val taps = WidgetSnapshot.parsePending(text)
         if (taps.isEmpty()) return
-        update { s -> taps.fold(s) { acc, (taskId, at) -> StateOps.complete(acc, taskId, at, clock) } }
+        update { s -> taps.fold(s) { acc, (taskId, at) -> StateOps.completeTap(acc, taskId, at, clock) } }
     }
 
     // ---- Pets ----
 
     suspend fun addPet(name: String, species: Species, settings: SpriteSettings, result: SpriteResult, ears: Ears?, birthDay: Long? = null): Pet {
         val draft = Pet(Ids.newId(), name.trim().ifEmpty { "My pet" }, species, now(), settings, ears = ears?.name, birthDay = birthDay)
-        saveHead(draft.id, result.head, result.photoCrop)
-        val pet = draft.copy(lookCode = art(draft)?.look?.encode())
-        writeWidgetPoses(pet)
+        val pet = withContext(Dispatchers.Default) {
+            saveHead(draft.id, result.head, result.photoCrop)
+            draft.copy(lookCode = art(draft)?.look?.encode()).also { writeWidgetPoses(it) }
+        }
         update { StateOps.addPet(it, pet, now(), clock) }
         return pet
     }
 
     suspend fun updateSprite(pet: Pet, settings: SpriteSettings, result: SpriteResult, ears: Ears?) {
         val drawn = pet.copy(sprite = settings, eyes = emptyList(), ears = ears?.name, spriteVersion = pet.spriteVersion + 1)
-        saveHead(pet.id, result.head, result.photoCrop)
-        // The look code travels to family phones, so keep it in step with the face.
-        val updated = drawn.copy(lookCode = art(drawn)?.look?.encode() ?: pet.lookCode)
-        writeWidgetPoses(updated)
+        val updated = withContext(Dispatchers.Default) {
+            saveHead(pet.id, result.head, result.photoCrop)
+            // The look code travels to family phones, so keep it in step with the face.
+            drawn.copy(lookCode = art(drawn)?.look?.encode() ?: pet.lookCode).also { writeWidgetPoses(it) }
+        }
         update { StateOps.updatePet(it, updated) }
     }
 
@@ -146,17 +182,18 @@ class PawRepository(val platform: Platform) {
             name = name.trim().ifEmpty { pet.name }, species = species, birthDay = birthDay,
             spriteVersion = if (species != pet.species) pet.spriteVersion + 1 else pet.spriteVersion,
         )
-        if (species != pet.species) writeWidgetPoses(updated)
+        if (species != pet.species) withContext(Dispatchers.Default) { writeWidgetPoses(updated) }
         update { StateOps.updatePet(it, updated) }
     }
 
     suspend fun deletePet(petId: String) {
         update { StateOps.removePet(it, petId) }
-        headCache.remove(petId)
+        headCache = headCache - petId
         files.delete("sprites/$petId")
     }
 
-    suspend fun complete(taskId: String) = update { StateOps.complete(it, taskId, now(), clock) }
+    /** Done tapped in the app or on the widget (a double tap logs it once, see [StateOps.completeTap]). */
+    suspend fun complete(taskId: String) = update { StateOps.completeTap(it, taskId, now(), clock) }
     /** "Done" on a notification: health care only counts if it's actually due (see [StateOps.completeFromReminder]). */
     suspend fun completeFromReminder(taskId: String) = update { StateOps.completeFromReminder(it, taskId, now(), clock) }
 
@@ -267,7 +304,9 @@ class PawRepository(val platform: Platform) {
             files.delete("sprites")
             files.delete(STATE_FILE)
             files.delete(WidgetSnapshot.PENDING_FILE_NAME)
-            headCache.clear()
+            files.delete(STATE_BACKUP)
+            files.delete(STATE_DAMAGED)
+            headCache = emptyMap()
             _state.value = AppState()
             publishLocked(_state.value)
         }
@@ -324,29 +363,33 @@ class PawRepository(val platform: Platform) {
                 writeWidgetPoses(pet, art, "$STAGING/")
             }
         }
-        mutex.withLock {
+        withContext(Dispatchers.Default) { mutex.withLock {
             // Restored pets come back unshared: the family's copy may have moved on since the backup, and
             // re-sharing (Family sharing) merges them without deleting anyone's newer records.
             val restored = contents.state.copy(
                 settings = contents.state.settings.copy(pro = _state.value.settings.pro),
                 pets = contents.state.pets.map { it.copy(shared = false) },
             )
+            val encoded = StateCodec.encode(restored)
             files.delete(OLD_SPRITES)
             val hadSprites = files.exists("sprites")
             if (hadSprites && !files.rename("sprites", OLD_SPRITES)) fail()
-            if (!files.rename("$STAGING/sprites", "sprites") || !files.writeText(STATE_FILE, StateCodec.encode(restored))) {
+            if (!files.rename("$STAGING/sprites", "sprites") || !files.writeText(STATE_FILE, encoded)) {
                 // Put the old pets back.
                 files.delete("sprites")
                 if (hadSprites) files.rename(OLD_SPRITES, "sprites")
                 fail()
             }
+            // The restored pets are now the last good copy (the one from this start is of the old pets).
+            files.writeText(STATE_BACKUP, encoded)
             files.delete(OLD_SPRITES)
             files.delete(STAGING)
-            headCache.clear()
+            headCache = emptyMap()
             // Keep this phone's own "Pro" (purchases belong to the store account, not the file).
             _state.value = restored
             publishLocked(restored)
-        }
+        } }
+
         family.forgetBase()
         _cardRevision.value = _cardRevision.value + 1
         return contents.state.pets.size
@@ -362,7 +405,7 @@ class PawRepository(val platform: Platform) {
     private fun saveHead(petId: String, head: PixelImage, photoCrop: PixelImage) {
         files.writeBytes("sprites/$petId/head.bin", RawImage.encode(head))
         files.writeBytes("sprites/$petId/photo.bin", RawImage.encode(photoCrop))
-        headCache[petId] = head
+        headCache = headCache + (petId to head)
     }
 
     /** Pre-rendered mood poses for the widgets, pre-scaled so widgets that smooth when scaling stay crisp. */
@@ -375,7 +418,7 @@ class PawRepository(val platform: Platform) {
     }
 
     fun head(petId: String): PixelImage? = headCache[petId]
-        ?: files.readBytes("sprites/$petId/head.bin")?.let(RawImage::decode)?.also { headCache[petId] = it }
+        ?: files.readBytes("sprites/$petId/head.bin")?.let(RawImage::decode)?.also { headCache = headCache + (petId to it) }
 
     /**
      * The pet's face (its colours and markings), species and ears: everything needed to draw and
@@ -390,12 +433,12 @@ class PawRepository(val platform: Platform) {
     /** Puts on (or takes off) an outfit the pet has earned, and redraws the widget poses. */
     suspend fun wear(pet: Pet, outfit: com.pawpixel.sprite.Accessory?) {
         val s = update { com.pawpixel.core.Milestones.wear(it, pet.id, outfit) }
-        s.pet(pet.id)?.let { writeWidgetPoses(it); platform.refreshWidgets(null) }
+        s.pet(pet.id)?.let { withContext(Dispatchers.Default) { writeWidgetPoses(it) }; platform.refreshWidgets(null) }
     }
 
     /** Widget poses for pets whose look arrived or changed through family sharing. */
     fun redrawPoses(petIds: List<String>) {
-        for (id in petIds) state.value.pet(id)?.let { pet -> headCache.remove(id); writeWidgetPoses(pet) }
+        for (id in petIds) state.value.pet(id)?.let { pet -> headCache = headCache - id; writeWidgetPoses(pet) }
         if (petIds.isNotEmpty()) platform.refreshWidgets(null)
     }
 
@@ -412,11 +455,14 @@ class PawRepository(val platform: Platform) {
         return SpriteResult(head, head.pixels.filter { Argb.alpha(it) > 0 }.distinct(), photo, backgroundRemoved = true, face = FaceBox(0.5, 0.5, 1.0))
     }
 
-    fun shareReveal(pet: Pet) {
-        val art = art(pet) ?: return
-        val photo = photoCrop(pet.id) ?: return
-        val card = RevealCard.render(photo, art.still, pet.name)
-        platform.shareFile(Png.encode(card), "${fileStem(pet)}.png", "image/png")
+    /** The before/after card: drawn off the main thread, then the share sheet. */
+    suspend fun shareReveal(pet: Pet) {
+        val png = withContext(Dispatchers.Default) {
+            val art = art(pet) ?: return@withContext null
+            val photo = photoCrop(pet.id) ?: return@withContext null
+            Png.encode(RevealCard.render(photo, art.still, pet.name))
+        } ?: return
+        platform.shareFile(png, "${fileStem(pet)}.png", "image/png")
     }
 
     /**
@@ -427,10 +473,13 @@ class PawRepository(val platform: Platform) {
         AnimatedExport.clip(art, emptyList(), pet.name)
 
     /** Shares a milestone card ("100 days of care"). */
-    fun shareMilestone(pet: Pet, days: Int) {
-        val art = art(pet) ?: return
-        val card = com.pawpixel.sprite.MilestoneCard.render(art.still, pet.name, com.pawpixel.core.Milestones.title(days))
-        platform.shareFile(Png.encode(card), "${fileStem(pet)}-$days-days.png", "image/png")
+    /** A milestone card: drawn off the main thread, then the share sheet. */
+    suspend fun shareMilestone(pet: Pet, days: Int) {
+        val png = withContext(Dispatchers.Default) {
+            val art = art(pet) ?: return@withContext null
+            Png.encode(com.pawpixel.sprite.MilestoneCard.render(art.still, pet.name, com.pawpixel.core.Milestones.title(days)))
+        } ?: return
+        platform.shareFile(png, "${fileStem(pet)}-$days-days.png", "image/png")
     }
 
     suspend fun celebrate(petId: String, days: Int) = update { com.pawpixel.core.Milestones.celebrate(it, petId, days) }
@@ -444,6 +493,11 @@ class PawRepository(val platform: Platform) {
 
     companion object {
         const val STATE_FILE = "state.json"
+        /** The last good state.json, from when the app last started (see [load]). */
+        const val STATE_BACKUP = "state-backup.json"
+        /** A state.json that couldn't be read, kept aside (never sent anywhere) in case it can be recovered. */
+        private const val STATE_DAMAGED = "state-damaged.json"
+
         const val WIDGET_SCALE = 4
         /** Health photos: big enough to read a vaccination card, small enough for backups (~250 KB). */
         const val CARD_MAX_SIDE = 1280

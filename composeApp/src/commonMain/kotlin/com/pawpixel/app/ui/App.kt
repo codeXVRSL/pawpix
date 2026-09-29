@@ -1,8 +1,15 @@
 package com.pawpixel.app.ui
 
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.saveable.Saver
+import androidx.compose.runtime.saveable.rememberSaveable
+import com.pawpixel.i18n.tr
+import kotlinx.coroutines.CancellationException
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -33,6 +40,42 @@ sealed interface Screen {
     data class Family(val sharePetId: String? = null, val join: Boolean = false) : Screen
 }
 
+/**
+ * A screen as a short string, so the back stack survives the phone rotating, dark mode or a bigger
+ * font (Android re-creates the screen) and the app being reclaimed in the background.
+ */
+internal fun Screen.code(): String = when (this) {
+    Screen.Home -> "home"
+    Screen.CreatePet -> "create"
+    is Screen.PetDetail -> "pet:$petId"
+    is Screen.RemakeSprite -> "remake:$petId"
+    is Screen.EditTask -> "task:$petId:${taskId ?: "-"}:${if (health) 1 else 0}"
+    Screen.Settings -> "settings"
+    Screen.PetMap -> "map"
+    is Screen.Family -> "family:${sharePetId ?: "-"}:${if (join) 1 else 0}"
+}
+
+internal fun screenOf(code: String): Screen? {
+    val p = code.split(':')
+    fun id(i: Int) = p.getOrNull(i)?.takeIf { it != "-" && it.isNotEmpty() }
+    return when (p[0]) {
+        "home" -> Screen.Home
+        "create" -> Screen.CreatePet
+        "pet" -> id(1)?.let { Screen.PetDetail(it) }
+        "remake" -> id(1)?.let { Screen.RemakeSprite(it) }
+        "task" -> id(1)?.let { Screen.EditTask(it, id(2), p.getOrNull(3) == "1") }
+        "settings" -> Screen.Settings
+        "map" -> Screen.PetMap
+        "family" -> Screen.Family(id(1), p.getOrNull(2) == "1")
+        else -> null
+    }
+}
+
+private val StackSaver = Saver<List<Screen>, ArrayList<String>>(
+    save = { stack -> ArrayList(stack.map { it.code() }) },
+    restore = { codes -> codes.mapNotNull(::screenOf).ifEmpty { listOf(Screen.Home) } },
+)
+
 /** Shared state handed to every screen. */
 class AppScope(
     val repo: PawRepository,
@@ -40,8 +83,21 @@ class AppScope(
     val now: Long,
     val navigate: (Screen) -> Unit,
     val back: () -> Unit,
+    /** Something went wrong in [launch]: tell the owner rather than closing the app. */
+    private val onError: (Throwable) -> Unit = {},
 ) {
-    fun launch(block: suspend () -> Unit) { scope.launch { block() } }
+    fun launch(block: suspend () -> Unit) {
+        scope.launch {
+            try {
+                block()
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                repo.platform.log("Action failed: ${e.stackTraceToString()}")
+                onError(e)
+            }
+        }
+    }
 }
 
 /**
@@ -53,8 +109,10 @@ fun App(repo: PawRepository, registerBack: ((() -> Boolean) -> (() -> Unit))? = 
     PawTheme {
         val state by repo.state.collectAsState()
         val scope = rememberCoroutineScope()
-        var stack by remember { mutableStateOf(listOf<Screen>(Screen.Home)) }
+        var stack by rememberSaveable(stateSaver = StackSaver) { mutableStateOf(listOf<Screen>(Screen.Home)) }
         var now by remember { mutableLongStateOf(repo.now()) }
+        var failed by remember { mutableStateOf(false) }
+        val startNotice by repo.startNotice.collectAsState()
 
         // Anything just logged (Done, Undo) happened "now": refresh the clock with every change,
         // or a completion would look like it's in the future until the next tick.
@@ -75,9 +133,9 @@ fun App(repo: PawRepository, registerBack: ((() -> Boolean) -> (() -> Unit))? = 
             }
         }
         LaunchedEffect(state) { repo.family.onLocalChange(state) }
-        // First open: straight to "make your pixel pet".
+        // First open: straight to "make your pixel pet" (not again when the screen is re-created).
         LaunchedEffect(Unit) {
-            if (repo.state.value.pets.isEmpty()) stack = listOf(Screen.Home, Screen.CreatePet)
+            if (repo.state.value.pets.isEmpty() && stack == listOf(Screen.Home)) stack = listOf(Screen.Home, Screen.CreatePet)
         }
 
         val back: () -> Boolean = {
@@ -88,16 +146,22 @@ fun App(repo: PawRepository, registerBack: ((() -> Boolean) -> (() -> Unit))? = 
             onDispose { unregister?.invoke() }
         }
 
+        val current = stack.last()
         val app = AppScope(
             repo = repo, scope = scope, now = now,
-            navigate = { stack = stack + it },
-            back = { back() },
+            // A double tap opens a screen once.
+            navigate = { if (stack.last() != it) stack = stack + it },
+            // Only from the screen on top: a double tap on Back or Save doesn't also close the screen below.
+            back = { if (stack.last() == current) back() },
+            onError = { failed = true },
         )
 
         // A new language redraws everything (remembered texts included).
         key(com.pawpixel.i18n.I18n.lang, state.settings.language) {
         Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
-            when (val screen = stack.last()) {
+            // Each screen on the stack gets its own state (two pets' pages never share scroll or dialogs).
+            key(stack.size, current) {
+            when (val screen = current) {
                 Screen.Home -> HomeScreen(app, state)
                 Screen.CreatePet -> SpriteMakerScreen(app, state, existingPetId = null)
                 is Screen.RemakeSprite -> SpriteMakerScreen(app, state, existingPetId = screen.petId)
@@ -113,7 +177,23 @@ fun App(repo: PawRepository, registerBack: ((() -> Boolean) -> (() -> Unit))? = 
                 Screen.PetMap -> PetMapScreen(app, state)
                 is Screen.Family -> FamilyScreen(app, state, screen.sharePetId, screen.join)
             }
+            }
         }
+        }
+        startNotice?.let { text ->
+            AlertDialog(
+                onDismissRequest = repo::dismissStartNotice,
+                title = { Text(tr("Your pets are safe")) },
+                text = { Text(text) },
+                confirmButton = { TextButton(onClick = repo::dismissStartNotice) { Text(tr("OK")) } },
+            )
+        }
+        if (failed) {
+            AlertDialog(
+                onDismissRequest = { failed = false },
+                text = { Text(tr("Something went wrong. Please try again.")) },
+                confirmButton = { TextButton(onClick = { failed = false }) { Text(tr("OK")) } },
+            )
         }
     }
 }

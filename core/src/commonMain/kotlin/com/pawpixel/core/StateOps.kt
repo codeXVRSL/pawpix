@@ -78,6 +78,18 @@ object StateOps {
         return prune(if (careDay) markCareDays(added, task.petId, listOf(c.localDay)) else added)
     }
 
+    /**
+     * A tap on Done (in the app or on the widget). A second tap on the same task within
+     * [DOUBLE_TAP_MS] is the same tap landing twice (an impatient finger, a slow phone): it must not
+     * also log the evening feed.
+     */
+    fun completeTap(state: AppState, taskId: String, atMs: Long, clock: LocalClock): AppState {
+        if (state.completions.any { it.taskId == taskId && atMs - it.atMs in 0 until DOUBLE_TAP_MS }) return state
+        return complete(state, taskId, atMs, clock)
+    }
+
+    const val DOUBLE_TAP_MS = 3_000L
+
     /** Adds days to a pet's care calendar (see [Pet.careDays]). */
     fun markCareDays(state: AppState, petId: String, days: Collection<Long>): AppState {
         if (days.isEmpty()) return state

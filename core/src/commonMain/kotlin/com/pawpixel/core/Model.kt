@@ -68,7 +68,13 @@ data class Pet(
     val accessory: String? = null,
     /** When this phone last changed something the household shares (name, look, ...): the later edit wins. */
     val editedAtMs: Long = 0,
-)
+) {
+    /**
+     * Everything the pixel pet is drawn from. A screen that keeps a drawing of the pet keys it by
+     * this, so a new outfit, ears or a look from the household shows at once (a name change doesn't redraw).
+     */
+    val lookKey: List<Any?> get() = listOf(id, spriteVersion, species, ears, accessory, lookCode)
+}
 
 data class SpriteSettings(
     /** Width/height of the pet sprite in pixels before outline and effects. */
@@ -149,6 +155,11 @@ data class Settings(
     val nightStart: Int = 22 * 60,
     /** Local minute to end night mode. */
     val nightEnd: Int = 6 * 60,
+    /**
+     * The owner answered "turn on reminders?" on a pet's page (either way). PawPixel asks for the
+     * notification permission there, once, where it's clear what the reminders are for.
+     */
+    val remindersAsked: Boolean = false,
 )
 
 data class AppState(

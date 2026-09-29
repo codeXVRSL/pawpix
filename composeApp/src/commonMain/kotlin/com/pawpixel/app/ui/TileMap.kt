@@ -35,7 +35,12 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.foundation.layout.offset
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.onClick
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
+
 import androidx.compose.ui.text.drawText
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.rememberTextMeasurer
@@ -138,9 +143,11 @@ fun TileMap(
         }
     }
 
+    val mapLabel = tr("Map around your area. Drag to move, pinch to zoom.")
     Box(modifier) {
         Canvas(
             Modifier.fillMaxSize()
+                .semantics { contentDescription = mapLabel }
                 .clipToBounds() // pins near the edge must not draw over the header
                 .onSizeChanged { size = it }
                 .pointerInput(Unit) {
@@ -167,10 +174,27 @@ fun TileMap(
             for (a in areas) drawPin(toScreen(a.lat, a.lng), a.pets, density, text)
         }
 
+        // The pins, for screen readers: drawn on the map above, listed here where they are, each
+        // opening its pets. Semantics only, so touches still reach the map (drag, pinch, tap a pin).
+        val showPets = tr("Show pets")
+        for (a in areas) {
+            val label = if (myArea?.id == a.cellId) tr("Your area: {0} pets", a.pets) else tr("An area near you: {0} pets", a.pets)
+            Box(
+                Modifier
+                    .offset {
+                        val p = toScreen(a.lat, a.lng)
+                        val half = 24.dp.roundToPx()
+                        IntOffset(p.x.roundToInt() - half, p.y.roundToInt() - 2 * half)
+                    }
+                    .size(48.dp)
+                    .semantics { contentDescription = label; onClick(label = showPets) { onAreaTap(a); true } },
+            )
+        }
+
         Column(Modifier.align(Alignment.TopEnd).padding(8.dp)) {
-            MapButton("+") { setZoom(zoom + 1) }
-            MapButton("−") { setZoom(zoom - 1) }
-            MapButton("◎") { recenter() }
+            MapButton("+", tr("Zoom in")) { setZoom(zoom + 1) }
+            MapButton("−", tr("Zoom out")) { setZoom(zoom - 1) }
+            MapButton("◎", tr("Back to your area")) { recenter() }
         }
         val credit = if (settings.hasTiles) settings.tileAttribution else tr("Street map not set up in this build")
         if (credit.isNotBlank()) {
@@ -183,9 +207,13 @@ fun TileMap(
 }
 
 @Composable
-private fun MapButton(label: String, onClick: () -> Unit) {
-    OutlinedButton(onClick = onClick, modifier = Modifier.padding(bottom = 4.dp).size(44.dp),
-        contentPadding = androidx.compose.foundation.layout.PaddingValues(0.dp)) {
+private fun MapButton(label: String, description: String, onClick: () -> Unit) {
+    OutlinedButton(
+        onClick = onClick, modifier = Modifier.padding(bottom = 4.dp).size(48.dp).semantics { contentDescription = description },
+        contentPadding = androidx.compose.foundation.layout.PaddingValues(0.dp),
+        // Readable over any street map, light or dark mode.
+        colors = androidx.compose.material3.ButtonDefaults.outlinedButtonColors(containerColor = Cream, contentColor = Ink),
+    ) {
         Text(label, fontWeight = FontWeight.Bold)
     }
 }

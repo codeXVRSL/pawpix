@@ -66,6 +66,8 @@ interface IosHost {
     /** JSON array of {id, taskId, at (epoch seconds), title, body}. Replaces all pending reminders. */
     fun scheduleReminders(json: String)
     fun requestNotificationPermission()
+    /** 1 = notifications allowed, 0 = not (yet), -1 = not known yet (the answer arrives asynchronously; ask again later). */
+    fun notificationStatus(): Int
     fun reloadWidgets()
     fun shareFile(data: NSData, fileName: String)
     fun shareText(text: String)
@@ -97,7 +99,10 @@ object IosGraph {
     fun start(host: IosHost) { this.host = host }
 
     /** Call when the app comes to the foreground: applies widget taps and refreshes everything. */
-    fun onForeground() { MainScope().launch { repo.ingestWidgetTaps(); repo.publish(); repo.family.requestSync() } }
+    fun onForeground() {
+        host.notificationStatus() // refreshes the cached answer for the reminders card
+        MainScope().launch { repo.ingestWidgetTaps(); repo.publish(); repo.family.requestSync() }
+    }
 
     /** "Done" tapped on a notification. */
     /** "Done" in the owner's language, for the notification button (loads the app's settings first). */
@@ -167,6 +172,7 @@ class IosPlatform(private val host: IosHost) : Platform {
     }
 
     override fun requestNotificationPermission() = host.requestNotificationPermission()
+    override fun notificationsAllowed(): Boolean? = when (host.notificationStatus()) { 1 -> true; 0 -> false; else -> null }
     // WidgetKit timelines already contain future mood changes, so only a reload is needed.
     override fun refreshWidgets(nextChangeMs: Long?) = host.reloadWidgets()
     override fun shareFile(bytes: ByteArray, fileName: String, mimeType: String) = host.shareFile(bytes.toNSData(), fileName)
@@ -269,7 +275,16 @@ class IosFileStore(private val root: String) : FileStore {
 actual fun decodeImage(bytes: ByteArray): ImageBitmap? =
     runCatching { Image.makeFromEncoded(bytes).toComposeImageBitmap() }.getOrNull()
 
-actual fun PixelImage.toImageBitmap(): ImageBitmap = Image.makeFromEncoded(Png.encode(this)).toComposeImageBitmap()
+/** Straight from the pixels (no PNG round trip): the living pet builds dozens of these per mood. */
+actual fun PixelImage.toImageBitmap(): ImageBitmap {
+    val bytes = ByteArray(width * height * 4)
+    for (i in pixels.indices) {
+        val p = pixels[i]; val o = i * 4
+        bytes[o] = p.toByte(); bytes[o + 1] = (p shr 8).toByte(); bytes[o + 2] = (p shr 16).toByte(); bytes[o + 3] = (p ushr 24).toByte()
+    }
+    val info = org.jetbrains.skia.ImageInfo(width, height, org.jetbrains.skia.ColorType.BGRA_8888, org.jetbrains.skia.ColorAlphaType.UNPREMUL)
+    return Image.makeRaster(info, bytes, width * 4).toComposeImageBitmap()
+}
 
 @Composable
 actual fun rememberPhotoPicker(onResult: (ByteArray?) -> Unit): () -> Unit = {

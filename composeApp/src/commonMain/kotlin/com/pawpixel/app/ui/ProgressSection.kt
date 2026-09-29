@@ -25,7 +25,7 @@ fun MilestoneBanner(app: AppScope, pet: Pet) {
             Text("🎉 ${Milestones.title(days)}!", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
             Text(tr("You've looked after {0} on {1} different days.", pet.name, days) + " " + tr("That's a lot of love."))
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Button(onClick = { app.repo.shareMilestone(pet, days) }) { Text(tr("Share the card")) }
+                Button(onClick = { app.launch { app.repo.shareMilestone(pet, days) } }) { Text(tr("Share the card")) }
                 TextButton(onClick = { app.launch { app.repo.celebrate(pet.id, days) } }) { Text(tr("Nice!")) }
             }
         }
@@ -47,7 +47,7 @@ fun nextMilestoneLine(pet: Pet): String? = Milestones.next(pet)?.let { (at, left
 fun OutfitSection(app: AppScope, pet: Pet) {
     val earned = Milestones.unlocked(pet)
     val days = Milestones.caredDays(pet)
-    Text(tr("Outfits"), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+    SectionTitle(tr("Outfits"))
     Text(tr("{0} earns pixel outfits with days of care. Nothing to buy.", pet.name), style = MaterialTheme.typography.bodySmall)
     androidx.compose.foundation.layout.FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
         androidx.compose.material3.FilterChip(pet.accessory == null, { app.launch { app.repo.wear(pet, null) } }, label = { Text(tr("None")) })

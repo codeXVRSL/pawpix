@@ -30,7 +30,11 @@ actual fun rememberPhotoPicker(onResult: (ByteArray?) -> Unit): () -> Unit {
         scope.launch {
             // Cloud-backed photos can be slow to read: do it off the main thread.
             val bytes = withContext(Dispatchers.IO) {
-                runCatching { context.contentResolver.openInputStream(uri)?.use { it.readBytes() } }.getOrNull()
+                runCatching {
+                    // A photo, not a 200 MB panorama or video: those would run a 3 GB phone out of memory.
+                    context.contentResolver.openInputStream(uri)?.use { it.readNBytesCompat(PHOTO_MAX_BYTES + 1) }
+                        ?.takeIf { it.size <= PHOTO_MAX_BYTES }
+                }.getOrNull()
             }
             onResult(bytes)
         }
@@ -61,6 +65,9 @@ actual fun rememberFilePicker(onResult: (ByteArray?) -> Unit): () -> Unit {
     }
     return { launcher.launch(arrayOf("application/json", "text/plain", "application/octet-stream")) }
 }
+
+/** Bigger than any phone camera's photo (a 200 MP JPEG is ~40 MB). */
+private const val PHOTO_MAX_BYTES = 60_000_000
 
 private fun java.io.InputStream.readNBytesCompat(limit: Int): ByteArray {
     val out = java.io.ByteArrayOutputStream()

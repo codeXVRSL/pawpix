@@ -41,7 +41,11 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.FilterQuality
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
+import com.pawpixel.core.MoodEngine
+
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
@@ -140,19 +144,22 @@ fun SpriteMakerScreen(app: AppScope, state: AppState, existingPetId: String?) {
         val made = r ?: return@save
         saving = true
         app.launch {
-            if (existing != null) {
-                val latest = app.repo.state.value.pet(existing.id) ?: existing
-                app.repo.updateSprite(latest.copy(species = species), settings, made, ears)
-                app.back()
-            } else if (StateOps.canAddPet(app.repo.state.value)) {
-                val pet = app.repo.addPet(name, species, settings, made, ears, birthDay)
-                app.repo.platform.requestNotificationPermission()
-                app.back()
-                app.navigate(Screen.PetDetail(pet.id))
-            } else {
-                error = tr("Your first pet is free. More pets come with PawPixel Pro (coming soon).")
+            try {
+                if (existing != null) {
+                    val latest = app.repo.state.value.pet(existing.id) ?: existing
+                    app.repo.updateSprite(latest.copy(species = species), settings, made, ears)
+                    app.back()
+                } else if (StateOps.canAddPet(app.repo.state.value)) {
+                    // Notifications are offered on the pet's page, next to the care they're for.
+                    val pet = app.repo.addPet(name, species, settings, made, ears, birthDay)
+                    app.back()
+                    app.navigate(Screen.PetDetail(pet.id))
+                } else {
+                    error = tr("Your first pet is free. More pets come with PawPixel Pro (coming soon).")
+                }
+            } finally {
+                saving = false
             }
-            saving = false
         }
     }
 
@@ -164,10 +171,10 @@ fun SpriteMakerScreen(app: AppScope, state: AppState, existingPetId: String?) {
     ) {
         // Save lives in the header too, so naming and saving never need scrolling past the keyboard.
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            if (state.pets.isNotEmpty() || existing != null) TextButton(onClick = app.back) { Text(tr("‹ Back")) }
-            Text(
+            if (state.pets.isNotEmpty() || existing != null) BackButton(app)
+            ScreenTitle(
                 if (existing != null) tr("Edit {0}'s look", existing.name) else tr("Make your pixel pet"),
-                style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f),
+                modifier = Modifier.weight(1f),
             )
             if (r != null) Button(enabled = canSave, onClick = save) { Text(tr("Save")) }
         }
@@ -191,7 +198,11 @@ fun SpriteMakerScreen(app: AppScope, state: AppState, existingPetId: String?) {
         } else {
             PixelCard(Modifier.fillMaxWidth()) {
                 Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    LivePet(art, emptyList(), Mood.HAPPY, seed = 7, modifier = Modifier.fillMaxWidth(), reaction = reaction)
+                    val shownName = name.trim().ifEmpty { existing?.name ?: tr("your pet") }
+                    LivePet(
+                        art, emptyList(), Mood.HAPPY, seed = 7, modifier = Modifier.fillMaxWidth(), reaction = reaction,
+                        description = MoodEngine.describe(shownName, Mood.HAPPY),
+                    )
                     Text(tr("Is that your pet? Tap to give pets."), fontWeight = FontWeight.Bold)
                     Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                         for (m in listOf(Mood.HUNGRY, Mood.RESTLESS, Mood.SLEEPY, Mood.SAD)) {
@@ -199,7 +210,7 @@ fun SpriteMakerScreen(app: AppScope, state: AppState, existingPetId: String?) {
                                 if (m == Mood.SLEEPY) Poses.render(Chibi.sleeping(art), m)
                                 else Poses.render(art.still, m)
                             }
-                            SpriteView(img, Modifier.size(64.dp), animate = false)
+                            SpriteView(img, Modifier.size(64.dp), animate = false, description = MoodEngine.describe(shownName, m))
                         }
                     }
                     if (!r.backgroundRemoved) {
@@ -218,24 +229,32 @@ fun SpriteMakerScreen(app: AppScope, state: AppState, existingPetId: String?) {
                 BirthdayRow(birthDay, app.repo.clock.dayIndex(app.now)) { askBirthday = true }
             }
 
-            Text(tr("Body"), fontWeight = FontWeight.Bold)
+            GroupLabel(tr("Body"))
             Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 listOf(Species.DOG to "Dog body", Species.CAT to "Cat body").forEach { (sp, label) ->
                     FilterChip(species == sp || (sp == Species.DOG && species == Species.OTHER), { species = sp }, label = { Text(tr(label)) })
                 }
             }
-            Text(tr("Ears"), fontWeight = FontWeight.Bold)
+            GroupLabel(tr("Ears"))
             Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 Ears.entries.forEach { e -> FilterChip(art.ears == e, { ears = e }, label = { Text(tr(e.label)) }) }
             }
 
             source?.takeIf { upToDate }?.let { src ->
-                Text(tr("Face"), fontWeight = FontWeight.Bold)
+                GroupLabel(tr("Face"))
                 Text(tr("Drag the square over your pet's face. Its colours and markings go on your pixel pet."), style = MaterialTheme.typography.bodySmall)
                 FaceFramer(src.preview, face ?: r.face, Modifier.fillMaxWidth()) { moved -> face = moved.fitIn(src.preview.width, src.preview.height) }
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    OutlinedButton(onClick = { face = resize(face ?: r.face, 0.88).fitIn(src.preview.width, src.preview.height) }) { Text(tr("Smaller")) }
-                    OutlinedButton(onClick = { face = resize(face ?: r.face, 1.12).fitIn(src.preview.width, src.preview.height) }) { Text(tr("Bigger")) }
+                    val smaller = tr("Make the face square smaller")
+                    val bigger = tr("Make the face square bigger")
+                    OutlinedButton(
+                        onClick = { face = resize(face ?: r.face, 0.88).fitIn(src.preview.width, src.preview.height) },
+                        modifier = Modifier.semantics { contentDescription = smaller },
+                    ) { Text(tr("Smaller")) }
+                    OutlinedButton(
+                        onClick = { face = resize(face ?: r.face, 1.12).fitIn(src.preview.width, src.preview.height) },
+                        modifier = Modifier.semantics { contentDescription = bigger },
+                    ) { Text(tr("Bigger")) }
                 }
             }
 
@@ -266,8 +285,10 @@ private fun FaceFramer(photo: PixelImage, face: FaceBox, modifier: Modifier, onM
     val current by rememberUpdatedState(face)
     val move by rememberUpdatedState(onMove)
     val accent = MaterialTheme.colorScheme.primary
+    val described = tr("Your photo, with a square on your pet's face. Drag it to move it; the Smaller and Bigger buttons resize it.")
     Canvas(
         modifier.aspectRatio(photo.width.toFloat() / photo.height)
+            .semantics { contentDescription = described }
             .clipToBounds()
             .pointerInput(photo) {
                 // Accumulate within a gesture so fast moves between redraws aren't lost.

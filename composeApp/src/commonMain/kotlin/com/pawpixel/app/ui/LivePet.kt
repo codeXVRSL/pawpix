@@ -20,6 +20,10 @@ import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.scale
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.onClick
+import androidx.compose.ui.semantics.semantics
+import com.pawpixel.i18n.tr
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
 import com.pawpixel.app.toImageBitmap
@@ -50,6 +54,8 @@ fun LivePet(
     seed: Int,
     modifier: Modifier = Modifier,
     reaction: Reaction? = null,
+    /** What a screen reader says: the pet's name and mood (see [com.pawpixel.core.MoodEngine.describe]). */
+    description: String? = null,
     onPetted: () -> Unit = {},
 ) {
     if (art == null) return
@@ -75,9 +81,15 @@ fun LivePet(
 
     val floorColor = PawColors.Sand
     val floorLine = Color(0xFFE9C99A)
+    val petLabel = tr("Give pets")
     Canvas(
         modifier
             .aspectRatio(layout.stageWidth.toFloat() / layout.stageHeight)
+            // A picture only shows the mood: say it, and let screen-reader users give pets too.
+            .semantics {
+                if (description != null) contentDescription = description
+                onClick(label = petLabel) { brain.react(PetEvent.Petted, now); petted(); true }
+            }
             .pointerInput(brain) {
                 detectTapGestures { tap ->
                     val pose = lastPose[0] ?: return@detectTapGestures

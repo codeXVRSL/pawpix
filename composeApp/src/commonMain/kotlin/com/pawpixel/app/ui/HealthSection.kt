@@ -28,7 +28,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
+
 import androidx.compose.ui.unit.dp
 import com.pawpixel.app.rememberPhotoPicker
 import com.pawpixel.core.AppState
@@ -54,7 +57,7 @@ fun HealthSection(app: AppScope, state: AppState, pet: Pet) {
     val health = CareStats.healthDue(state, pet.id, app.now, app.repo.clock)
     var askBirthday by remember { mutableStateOf(false) }
 
-    Text(tr("Health"), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+    SectionTitle(tr("Health"))
     if (health.isEmpty()) {
         Text(
             tr("Keep track of {0}'s anti-rabies shot, other vaccines, deworming, tick & flea care and vet check-ups.", pet.name) + " " +
@@ -126,7 +129,8 @@ private fun HealthRow(app: AppScope, state: AppState, pet: Pet, h: HealthItem) {
                         style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
-                Button(onClick = { recording = true }) { Text(tr("Done")) }
+                val recordLabel = tr("Record {0} for {1}", name, pet.name)
+                Button(onClick = { recording = true }, modifier = Modifier.semantics { contentDescription = recordLabel }) { Text(tr("Done")) }
             }
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 if (latest != null && latestHasPhoto) {
@@ -136,7 +140,8 @@ private fun HealthRow(app: AppScope, state: AppState, pet: Pet, h: HealthItem) {
                     TextButton(onClick = { history = true }) { Text(tr("History ({0})", records.size)) }
                 }
                 Spacer(Modifier.weight(1f))
-                TextButton(onClick = { app.navigate(Screen.EditTask(pet.id, t.id)) }) { Text(tr("Edit")) }
+                val editLabel = tr("Edit {0}", name)
+                TextButton(onClick = { app.navigate(Screen.EditTask(pet.id, t.id)) }, modifier = Modifier.semantics { contentDescription = editLabel }) { Text(tr("Edit")) }
             }
             message?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
         }

@@ -25,6 +25,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
@@ -52,9 +55,10 @@ fun PhotoThumb(app: AppScope, photo: HealthPhoto, description: String, size: Dp 
     val base = Modifier.size(size).clip(shape).border(2.dp, MaterialTheme.colorScheme.outline, shape)
         .background(MaterialTheme.colorScheme.surfaceVariant)
     val box = if (onClick != null) base.clickable(onClickLabel = tr("Open photo"), role = Role.Image, onClick = onClick) else base
-    Box(box, contentAlignment = Alignment.Center) {
-        image?.let { Image(it, contentDescription = description, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize()) }
-            ?: Text("📷", modifier = Modifier.padding(4.dp))
+    // Described while it's still loading too (a bare "📷" would be read out as "camera").
+    Box(box.semantics(mergeDescendants = true) { contentDescription = description }, contentAlignment = Alignment.Center) {
+        image?.let { Image(it, contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize()) }
+            ?: Text("📷", modifier = Modifier.padding(4.dp).clearAndSetSemantics {})
     }
 }
 

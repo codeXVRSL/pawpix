@@ -65,17 +65,26 @@ class AndroidPlatform(private val context: Context) : Platform {
                 val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
                 BitmapFactory.decodeByteArray(bytes, 0, bytes.size, bounds)
                 var sample = 1
+                // Decoded at most ~2x the size needed: a 48 MP photo never becomes a 190 MB bitmap.
                 while (max(bounds.outWidth, bounds.outHeight) / (sample * 2) >= maxSide) sample *= 2
                 BitmapFactory.decodeByteArray(bytes, 0, bytes.size, BitmapFactory.Options().apply { inSampleSize = sample })
             }
-            bitmap.toPixelImage().fitWithin(maxSide)
+            // Copy the pixels out, then free the bitmap's memory now rather than at the next GC.
+            val pixels = try { bitmap.toPixelImage() } finally { bitmap.recycle() }
+            val small = pixels.fitWithin(maxSide)
+            // Android 8 doesn't turn photos by their EXIF orientation while decoding (9+ does).
+            if (Build.VERSION.SDK_INT >= 28) small else com.pawpixel.sprite.Exif.upright(small, com.pawpixel.sprite.Exif.orientation(bytes))
         }.getOrNull()
     }
 
     override suspend fun encodeJpeg(image: PixelImage, quality: Int): ByteArray? = withContext(Dispatchers.Default) {
         runCatching {
             val bitmap = Bitmap.createBitmap(image.pixels, image.width, image.height, Bitmap.Config.ARGB_8888)
-            java.io.ByteArrayOutputStream().also { bitmap.compress(Bitmap.CompressFormat.JPEG, quality, it) }.toByteArray()
+            try {
+                java.io.ByteArrayOutputStream().also { bitmap.compress(Bitmap.CompressFormat.JPEG, quality, it) }.toByteArray()
+            } finally {
+                bitmap.recycle()
+            }
         }.getOrNull()
     }
 
@@ -99,6 +108,7 @@ class AndroidPlatform(private val context: Context) : Platform {
                     .addOnFailureListener { cont.resume(null) }
             }
         } finally {
+            // (The bitmap isn't recycled: after a timeout ML Kit may still be reading it.)
             segmenter.close()
         }
     }
@@ -125,6 +135,9 @@ class AndroidPlatform(private val context: Context) : Platform {
         ensureChannel(context)
         permissionRequester?.invoke()
     }
+
+    override fun notificationsAllowed(): Boolean =
+        runCatching { androidx.core.app.NotificationManagerCompat.from(context).areNotificationsEnabled() }.getOrDefault(true)
 
     // ---- Widgets ----
 
@@ -297,15 +310,17 @@ fun Bitmap.toPixelImage(): PixelImage {
 class AndroidFileStore(private val root: File) : FileStore {
     private fun f(path: String) = File(root, path)
 
-    override fun readText(path: String): String? = f(path).takeIf { it.isFile }?.readText()
-    override fun readBytes(path: String): ByteArray? = f(path).takeIf { it.isFile }?.readBytes()
+    // A file that can't be read (I/O error, permissions after a restore) is "missing", never a crash.
+    override fun readText(path: String): String? = runCatching { f(path).takeIf { it.isFile }?.readText() }.getOrNull()
+    override fun readBytes(path: String): ByteArray? = runCatching { f(path).takeIf { it.isFile }?.readBytes() }.getOrNull()
     override fun writeText(path: String, text: String) = writeBytes(path, text.encodeToByteArray())
 
     override fun writeBytes(path: String, bytes: ByteArray): Boolean = runCatching {
         val target = f(path)
         target.parentFile?.mkdirs()
         val tmp = File(target.parentFile, target.name + ".tmp")
-        tmp.writeBytes(bytes)
+        // On disk before the rename: after a power cut the file is the old one or the new one, never empty.
+        java.io.FileOutputStream(tmp).use { out -> out.write(bytes); out.fd.sync() }
         if (!tmp.renameTo(target)) { target.delete(); tmp.renameTo(target) }
         target.isFile && target.length() == bytes.size.toLong()
     }.getOrDefault(false)

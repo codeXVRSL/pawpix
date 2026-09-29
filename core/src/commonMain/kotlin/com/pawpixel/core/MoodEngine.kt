@@ -158,6 +158,20 @@ object MoodEngine {
         return points
     }
 
+    /**
+     * What a screen reader says for a drawing of the pet: "Pixel Mochi, hungry". The drawing alone
+     * shows the mood only as a picture, so this is the words for it.
+     */
+    fun describe(name: String, mood: Mood): String = tr("Pixel {0}, {1}", name, when (mood) {
+        Mood.HAPPY -> tr("happy")
+        Mood.CONTENT -> tr("doing fine")
+        Mood.HUNGRY -> tr("hungry")
+        Mood.RESTLESS -> tr("restless")
+        Mood.NEEDS_MEDS -> tr("needs care")
+        Mood.SLEEPY -> tr("sleepy")
+        Mood.SAD -> tr("missing you")
+    })
+
     /** First time after [nowMs] when the mood or caption changes, or null within the horizon. */
     fun nextChangeMs(state: AppState, petId: String, nowMs: Long, clock: LocalClock): Long? =
         timeline(state, petId, nowMs, clock).getOrNull(1)?.atMs

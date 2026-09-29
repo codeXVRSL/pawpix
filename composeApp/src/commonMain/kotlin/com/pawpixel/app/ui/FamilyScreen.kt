@@ -101,8 +101,8 @@ fun FamilyScreen(app: AppScope, state: AppState, sharePetId: String?, join: Bool
         verticalArrangement = Arrangement.spacedBy(14.dp),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            TextButton(onClick = app.back) { Text(tr("‹ Back")) }
-            Text(tr("Your household"), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+            BackButton(app)
+            ScreenTitle(tr("Your household"), Modifier.weight(1f))
         }
         status.notice?.let { Text(it, style = MaterialTheme.typography.bodyMedium) }
         message?.let { Text(it, color = MaterialTheme.colorScheme.error) }
@@ -140,11 +140,11 @@ fun FamilyScreen(app: AppScope, state: AppState, sharePetId: String?, join: Bool
                 MembersCard(app, h, status.syncing, status.lastSyncMs, status.error, busy, iAmOwner,
                     onRemove = { removing = it }, onSync = { act { family.refresh(); family.sync() } })
 
-                Text(tr("Pets you care for together"), fontWeight = FontWeight.Bold)
+                GroupLabel(tr("Pets you care for together"))
                 if (state.pets.isEmpty()) Text(tr("Pets your household shares appear here after the next sync."))
                 state.pets.forEach { pet ->
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        val pose = remember(pet.id, pet.spriteVersion, pet.species) { app.repo.pose(pet, Mood.CONTENT) }
+                        val pose = remember(pet.lookKey) { app.repo.pose(pet, Mood.CONTENT) }
                         SpriteView(pose, Modifier.size(48.dp), animate = false)
                         Column(Modifier.weight(1f).padding(start = 8.dp)) {
                             Text(pet.name, fontWeight = FontWeight.Bold)
@@ -161,7 +161,7 @@ fun FamilyScreen(app: AppScope, state: AppState, sharePetId: String?, join: Bool
                 }
 
                 if (inviteCode == null) {
-                    Text(tr("Invite someone"), fontWeight = FontWeight.Bold)
+                    GroupLabel(tr("Invite someone"))
                     Text(tr("Send a code to the people you care for your pets with (up to 8 in a household)."), style = MaterialTheme.typography.bodySmall)
                     OutlinedButton(enabled = !busy, onClick = { act { inviteCode = family.invite() } }) { Text(tr("New invite code")) }
                 }
@@ -227,8 +227,8 @@ private fun ConfirmDialog(title: String, text: String, confirm: String, onDismis
 private fun Pitch(app: AppScope, pet: Pet?) {
     Row(verticalAlignment = Alignment.CenterVertically) {
         if (pet != null) {
-            val pose = remember(pet.id, pet.spriteVersion) { app.repo.pose(pet, Mood.HAPPY) }
-            SpriteView(pose, Modifier.size(72.dp), animate = false)
+            val pose = remember(pet.lookKey) { app.repo.pose(pet, Mood.HAPPY) }
+            SpriteView(pose, Modifier.size(72.dp), animate = false, description = tr("Pixel {0}", pet.name))
         }
         Column(Modifier.weight(1f).padding(start = if (pet != null) 10.dp else 0.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Text(
@@ -268,7 +268,7 @@ private fun StartOrJoin(
     val start = @Composable {
         PixelCard(Modifier.fillMaxWidth()) {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text(tr("Start a household"), fontWeight = FontWeight.Bold)
+                GroupLabel(tr("Start a household"))
                 Text(tr("You'll get a code to send to the people you care for your pets with."), style = MaterialTheme.typography.bodySmall)
                 Button(enabled = !busy && named, onClick = { onStart(you.trim()) }) { Text(tr("Create household")) }
             }
@@ -277,7 +277,7 @@ private fun StartOrJoin(
     val join = @Composable {
         PixelCard(Modifier.fillMaxWidth()) {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text(tr("Join a household"), fontWeight = FontWeight.Bold)
+                GroupLabel(tr("Join a household"))
                 Text(tr("Got a code from someone at home? Enter it here, and their pets appear on this phone."), style = MaterialTheme.typography.bodySmall)
                 OutlinedTextField(
                     code, { code = it.uppercase().take(12) }, label = { Text(tr("Invite code")) }, singleLine = true, modifier = Modifier.fillMaxWidth(),
@@ -304,7 +304,7 @@ private fun InviteCard(app: AppScope, code: String, sharedPets: List<Pet>) {
     var copied by remember(code) { mutableStateOf(false) }
     PixelCard(Modifier.fillMaxWidth()) {
         Column(verticalArrangement = Arrangement.spacedBy(8.dp), horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
-            Text(tr("Your invite code"), fontWeight = FontWeight.Bold)
+            GroupLabel(tr("Your invite code"))
             Text(
                 pretty, fontFamily = FontFamily.Monospace, fontSize = 34.sp, fontWeight = FontWeight.Bold, letterSpacing = 2.sp,
                 modifier = Modifier.semantics { contentDescription = tr("Invite code {0}", code.toList().joinToString(" ")) },

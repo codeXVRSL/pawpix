@@ -101,6 +101,12 @@ class EndToEndTest {
             shot("02-your-pixel-pet")
         }
 
+        step("memory just after turning the photo into a pet") {
+            val mem = shell("dumpsys meminfo ${ctx.packageName}")
+            File(out, "meminfo-sprite.txt").writeText(mem)
+            note("memory: " + memorySummary(mem))
+        }
+
         step("cat body, floppy ears, then back to pointy") {
             retrying { scrollTo(By.text("Cat body")).click() }
             retrying { scrollTo(By.text("Floppy ears")).click() }
@@ -499,6 +505,93 @@ class EndToEndTest {
             check(!device.hasObject(By.textContains("Problem loading widget"))) { "the widget failed to load" }
         }
 
+        step("performance: frame times on Chelsea's page (living pet idle, then scrolling)") {
+            goHome()
+            retrying { find(By.text("Chelsea")).click() }
+            scrollTo(By.text("+ Add care task"))
+            accessibilityScroll(false); accessibilityScroll(false) // back to the top, where the pet lives
+            Thread.sleep(1_000)
+            shell("dumpsys gfxinfo ${ctx.packageName} reset")
+            Thread.sleep(5_000) // nothing but the pet breathing, blinking and wandering
+            val idle = shell("dumpsys gfxinfo ${ctx.packageName}")
+            File(out, "gfxinfo-idle.txt").writeText(idle)
+            note("idle 5 s: " + frameSummary(idle))
+            shell("dumpsys gfxinfo ${ctx.packageName} reset")
+            val x = device.displayWidth / 2
+            repeat(4) { device.swipe(x, (device.displayHeight * 0.75).toInt(), x, (device.displayHeight * 0.3).toInt(), 15); Thread.sleep(400) }
+            repeat(4) { device.swipe(x, (device.displayHeight * 0.3).toInt(), x, (device.displayHeight * 0.75).toInt(), 15); Thread.sleep(400) }
+            val scrolling = shell("dumpsys gfxinfo ${ctx.packageName}")
+            File(out, "gfxinfo-scroll.txt").writeText(scrolling)
+            note("scrolling: " + frameSummary(scrolling))
+            val mem = shell("dumpsys meminfo ${ctx.packageName}")
+            File(out, "meminfo-pet-page.txt").writeText(mem)
+            note("memory: " + memorySummary(mem))
+            device.pressBack()
+            find(By.text("Settings"))
+        }
+
+        step("large text (200%) on a small phone: the main screens still fit") {
+            try {
+                // A 360 x 720 dp screen, like a budget Oppo, Realme or Vivo, with the biggest font.
+                shell("wm size 720x1440")
+                shell("wm density 320")
+                shell("settings put system font_scale 2.0")
+                Thread.sleep(3_000) // the app redraws for the new size and font
+                goHome()
+                find(By.text("Chelsea"))
+                Thread.sleep(800)
+                shot("large-home")
+                retrying { find(By.text("Chelsea")).click() }
+                Thread.sleep(1_500)
+                shot("large-pet")
+                repeat(3) { i -> accessibilityScroll(true); Thread.sleep(700); shot("large-pet-${i + 2}") }
+                retrying { scrollTo(By.text("+ Add care task")).click() }
+                Thread.sleep(1_000)
+                shot("large-task-editor")
+                accessibilityScroll(true); Thread.sleep(700)
+                shot("large-task-editor-2")
+                device.pressBack()
+                scrollTo(By.text("+ Add care task"))
+                device.pressBack()
+                retrying { find(By.text("Settings")).click() }
+                Thread.sleep(800)
+                shot("large-settings")
+                accessibilityScroll(true); Thread.sleep(700)
+                shot("large-settings-2")
+                device.pressBack()
+                find(By.text("Chelsea"))
+            } finally {
+                shell("settings put system font_scale 1.0")
+                shell("wm size reset")
+                shell("wm density reset")
+                Thread.sleep(3_000)
+            }
+        }
+
+        step("dark mode: the main screens") {
+            try {
+                shell("cmd uimode night yes")
+                Thread.sleep(3_000)
+                goHome()
+                find(By.text("Chelsea"))
+                Thread.sleep(800)
+                shot("dark-home")
+                retrying { find(By.text("Chelsea")).click() }
+                Thread.sleep(1_500)
+                shot("dark-pet")
+                repeat(2) { i -> accessibilityScroll(true); Thread.sleep(700); shot("dark-pet-${i + 2}") }
+                device.pressBack()
+                retrying { find(By.text("Settings")).click() }
+                Thread.sleep(800)
+                shot("dark-settings")
+                device.pressBack()
+                find(By.text("Chelsea"))
+            } finally {
+                shell("cmd uimode night no")
+                Thread.sleep(3_000)
+            }
+        }
+
         step("reopening the app keeps the pet") {
             scenario?.close()
             scenario = ActivityScenario.launch(MainActivity::class.java)
@@ -638,4 +731,23 @@ class EndToEndTest {
     }
 
     private fun choosers() = Intents.getIntents().count { it.action == Intent.ACTION_CHOOSER }
+
+    /** Runs a shell command as the shell user (settings, wm, dumpsys) and returns its output. */
+    private fun shell(command: String): String =
+        android.os.ParcelFileDescriptor.AutoCloseInputStream(instr.uiAutomation.executeShellCommand(command)).use { it.readBytes().decodeToString() }
+
+    /** "120 frames, 3 janky (2.5%), p50 8 ms, p90 12 ms, p99 30 ms" from `dumpsys gfxinfo`. */
+    private fun frameSummary(gfx: String): String {
+        fun line(prefix: String) = gfx.lineSequence().map { it.trim() }.firstOrNull { it.startsWith(prefix) }?.substringAfter(':')?.trim() ?: "?"
+        return "${line("Total frames rendered")} frames, ${line("Janky frames")} janky, p50 ${line("50th percentile")}, " +
+            "p90 ${line("90th percentile")}, p99 ${line("99th percentile")}"
+    }
+
+    /** Total, Java heap, native heap and graphics from `dumpsys meminfo`'s App Summary (kB). */
+    private fun memorySummary(mem: String): String {
+        // "Java Heap:   12345   23456" (the summary has colons; the table above it doesn't).
+        fun kb(label: String) = mem.lineSequence().map { it.trim() }.firstOrNull { it.startsWith("$label:") }
+            ?.substringAfter(':')?.trim()?.split(Regex("\\s+"))?.firstOrNull() ?: "?"
+        return "total PSS ${kb("TOTAL PSS")} kB, Java heap ${kb("Java Heap")} kB, native heap ${kb("Native Heap")} kB, graphics ${kb("Graphics")} kB"
+    }
 }

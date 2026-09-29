@@ -42,6 +42,13 @@ import com.pawpixel.core.StateOps
 import com.pawpixel.core.TaskDefaults
 import com.pawpixel.core.TaskKind
 import com.pawpixel.i18n.tr
+import com.pawpixel.i18n.trName
+import androidx.compose.foundation.selection.toggleable
+import androidx.compose.material3.AlertDialog
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -54,6 +61,8 @@ fun TaskEditorScreen(app: AppScope, state: AppState, pet: Pet, taskId: String?, 
     }
     /** New health items: when it was last done (days ago), or null for never / don't know. */
     var lastDoneDaysAgo by remember { mutableStateOf<Int?>(null) }
+    var saving by remember { mutableStateOf(false) }
+    var confirmDelete by remember { mutableStateOf(false) }
 
     fun setKind(kind: TaskKind) {
         val keepTitle = task.title != task.kind.defaultTitle
@@ -66,14 +75,20 @@ fun TaskEditorScreen(app: AppScope, state: AppState, pet: Pet, taskId: String?, 
         )
     }
 
-    val save: () -> Unit = {
+    val save: () -> Unit = save@{
+        if (saving) return@save // a double tap saves once
+        saving = true
         app.launch {
-            app.repo.update { s ->
-                val saved = StateOps.upsertTask(s, task)
-                val ago = lastDoneDaysAgo
-                if (original == null && ago != null) StateOps.logOnDay(saved, task.id, today - ago, app.repo.now(), app.repo.clock) else saved
+            try {
+                app.repo.update { s ->
+                    val saved = StateOps.upsertTask(s, task)
+                    val ago = lastDoneDaysAgo
+                    if (original == null && ago != null) StateOps.logOnDay(saved, task.id, today - ago, app.repo.now(), app.repo.clock) else saved
+                }
+                app.back()
+            } finally {
+                saving = false
             }
-            app.back()
         }
     }
 
@@ -85,17 +100,17 @@ fun TaskEditorScreen(app: AppScope, state: AppState, pet: Pet, taskId: String?, 
     ) {
         // Save sits in the top bar, always visible; the form below can be long.
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            TextButton(onClick = app.back) { Text(tr("‹ Back")) }
-            Text(
+            BackButton(app)
+            ScreenTitle(
                 when {
                     original == null && health -> tr("New health item")
                     original == null -> tr("New care task")
                     health -> tr("Edit health item")
                     else -> tr("Edit care task")
                 },
-                style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f),
+                modifier = Modifier.weight(1f),
             )
-            Button(onClick = save) { Text(tr("Save")) }
+            Button(onClick = save, enabled = !saving) { Text(tr("Save")) }
         }
 
         // All kinds visible at once (wrapping), so Medicine or Litter aren't hidden off-screen.
@@ -106,23 +121,28 @@ fun TaskEditorScreen(app: AppScope, state: AppState, pet: Pet, taskId: String?, 
         }
         OutlinedTextField(task.title, { task = task.copy(title = it.take(30)) }, label = { Text(tr("Name")) }, singleLine = true, modifier = Modifier.fillMaxWidth())
 
-        Text(if (health) tr("Reminder time on the day") else tr("Times"), fontWeight = FontWeight.Bold)
+        GroupLabel(if (health) tr("Reminder time on the day") else tr("Times"))
         task.slots.forEachIndexed { i, minute ->
+            val time = formatMinute(minute)
             // Time first, never wrapped; compact steppers so a row fits a small phone with the ✕.
-            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+            // With very large text the steppers move under the time instead of squeezing it.
+            FlowRow(
+                Modifier.fillMaxWidth(), verticalArrangement = Arrangement.Center, horizontalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
                 Text(
-                    formatMinute(minute), fontWeight = FontWeight.Bold, maxLines = 1, softWrap = false,
-                    modifier = Modifier.weight(1f),
+                    time, fontWeight = FontWeight.Bold, maxLines = 1, softWrap = false,
+                    modifier = Modifier.weight(1f).align(Alignment.CenterVertically).padding(end = 4.dp),
                 )
-                StepButton("−1h") { task = task.copy(slots = task.slots.shift(i, -60)) }
-                StepButton("−15") { task = task.copy(slots = task.slots.shift(i, -15)) }
-                StepButton("+15") { task = task.copy(slots = task.slots.shift(i, 15)) }
-                StepButton("+1h") { task = task.copy(slots = task.slots.shift(i, 60)) }
+                StepButton("−1h", tr("1 hour earlier than {0}", time)) { task = task.copy(slots = task.slots.shift(i, -60)) }
+                StepButton("−15", tr("15 minutes earlier than {0}", time)) { task = task.copy(slots = task.slots.shift(i, -15)) }
+                StepButton("+15", tr("15 minutes later than {0}", time)) { task = task.copy(slots = task.slots.shift(i, 15)) }
+                StepButton("+1h", tr("1 hour later than {0}", time)) { task = task.copy(slots = task.slots.shift(i, 60)) }
                 if (task.slots.size > 1) {
+                    val removeLabel = tr("Remove {0}", time)
                     TextButton(
                         onClick = { task = task.copy(slots = task.slots.filterIndexed { j, _ -> j != i }) },
                         contentPadding = PaddingValues(horizontal = 6.dp),
-                        modifier = Modifier.defaultMinSize(minWidth = 1.dp),
+                        modifier = Modifier.defaultMinSize(minWidth = 48.dp).semantics { contentDescription = removeLabel },
                     ) { Text("✕") }
                 }
             }
@@ -134,7 +154,7 @@ fun TaskEditorScreen(app: AppScope, state: AppState, pet: Pet, taskId: String?, 
             }) { Text(tr("+ Add a time")) }
         }
 
-        Text(tr("Repeat"), fontWeight = FontWeight.Bold)
+        GroupLabel(tr("Repeat"))
         FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             val choices = if (health) listOf(14 to "Every 2 weeks", 30 to "Monthly", 90 to "Every 3 months", 180 to "Every 6 months", 365 to "Yearly")
             else listOf(1 to "Daily", 2 to "Every 2 days", 7 to "Weekly", 14 to "Every 2 weeks", 30 to "Monthly")
@@ -154,7 +174,7 @@ fun TaskEditorScreen(app: AppScope, state: AppState, pet: Pet, taskId: String?, 
         }
 
         if (health && original == null) {
-            Text(tr("Last done"), fontWeight = FontWeight.Bold)
+            GroupLabel(tr("Last done"))
             FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 FilterChip(lastDoneDaysAgo == null, { lastDoneDaysAgo = null }, label = { Text(tr("Never / not sure")) })
                 WHEN_CHOICES.forEach { (days, label) ->
@@ -173,34 +193,59 @@ fun TaskEditorScreen(app: AppScope, state: AppState, pet: Pet, taskId: String?, 
         if (!health) SwitchRow(tr("Learn my routine"), tr("Moves reminders toward when you actually do this (up to 2 hours)."), task.adaptive) { task = task.copy(adaptive = it) }
         if (!health) SwitchRow(tr("Exact time"), tr("Remind at the exact minute. Good for medicine. Android may ask for permission."), task.exactAlarm) { task = task.copy(exactAlarm = it) }
 
-        Button(onClick = save, modifier = Modifier.fillMaxWidth()) { Text(tr("Save")) }
+        Button(onClick = save, enabled = !saving, modifier = Modifier.fillMaxWidth()) { Text(tr("Save")) }
         if (original != null) {
-            TextButton(onClick = { app.launch { app.repo.deleteTask(original); app.back() } }) {
+            TextButton(onClick = { confirmDelete = true }) {
                 Text(tr("Delete task"), color = MaterialTheme.colorScheme.error)
             }
         }
+    }
+    if (confirmDelete && original != null) {
+        // Deleting takes the task's history with it (and for health care, its card photos): ask first.
+        val records = state.completionsFor(original.id).size
+        AlertDialog(
+            onDismissRequest = { confirmDelete = false },
+            title = { Text(tr("Delete {0} from {1}'s care?", trName(original.title), pet.name)) },
+            text = {
+                Text(
+                    if (records == 0) tr("This can't be undone.")
+                    else tr("Its history goes with it ({0} records, and any card photos). This can't be undone.", records),
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = { confirmDelete = false; app.launch { app.repo.deleteTask(original); app.back() } }) {
+                    Text(tr("Delete"), color = MaterialTheme.colorScheme.error)
+                }
+            },
+            dismissButton = { TextButton(onClick = { confirmDelete = false }) { Text(tr("Cancel")) } },
+        )
     }
 }
 
 private fun List<Int>.shift(i: Int, by: Int): List<Int> =
     mapIndexed { j, m -> if (j == i) (m + by).mod(MINUTES_PER_DAY) else m }
 
+/** A setting with an on/off switch. The whole row is one switch for screen readers, and tapping anywhere on it toggles. */
 @Composable
 fun SwitchRow(title: String, subtitle: String, checked: Boolean, onChange: (Boolean) -> Unit) {
-    Row(verticalAlignment = Alignment.CenterVertically) {
-        Column(Modifier.weight(1f)) {
+    Row(
+        Modifier.fillMaxWidth().toggleable(value = checked, role = Role.Switch, onValueChange = onChange),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column(Modifier.weight(1f).padding(end = 8.dp)) {
             Text(title, fontWeight = FontWeight.Bold)
             Text(subtitle, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
-        Switch(checked, onChange)
+        Switch(checked, onCheckedChange = null)
     }
 }
 
+/** A time stepper ("+15"): its [description] says what it does ("15 minutes later than 8:00 AM"). */
 @Composable
-private fun StepButton(label: String, onClick: () -> Unit) {
+private fun StepButton(label: String, description: String, onClick: () -> Unit) {
     OutlinedButton(
         onClick = onClick,
         contentPadding = PaddingValues(horizontal = 8.dp),
-        modifier = Modifier.defaultMinSize(minWidth = 1.dp).height(36.dp),
+        modifier = Modifier.defaultMinSize(minWidth = 48.dp).semantics { contentDescription = description },
     ) { Text(label, maxLines = 1, softWrap = false) }
 }
