@@ -205,7 +205,7 @@ class EndToEndTest {
             waitFor("photo saved with it", 20_000) { repo.recordPhoto(petId, record.id) != null }
             check(repo.recordPhoto(petId, record.id)!!.let { it[0] == 0xFF.toByte() && it[1] == 0xD8.toByte() }) { "record photo isn't a JPEG" }
             scrollTo(By.text("💉 FVRCP vaccine"))
-            find(By.textStartsWith("Dose 2 of 3"))
+            scrollTo(By.textStartsWith("Dose 2 of 3")) // the row moved down the list (next due later)
             val thumb = By.desc("Photo of Chelsea's card for FVRCP vaccine")
             find(thumb, 20_000)
             Thread.sleep(800) // the thumbnail decodes in the background

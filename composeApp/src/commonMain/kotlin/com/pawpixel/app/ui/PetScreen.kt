@@ -128,10 +128,8 @@ fun PetScreen(app: AppScope, state: AppState, pet: Pet) {
         if (statuses.isEmpty()) Text(tr("No care tasks yet. Add feeding, walks or medicine so {0}'s mood can follow real care.", pet.name))
         statuses.forEach { s -> TaskRow(app, state, pet, s, onDone = { react(PetEvent.Cared(s.task.kind)) }) }
         OutlinedButton(onClick = { app.navigate(Screen.EditTask(pet.id, null)) }) { Text(tr("+ Add care task")) }
-        // A new owner lands here after making their pet: reminders for the care just above, then
-        // the next step, the home screen.
+        // Reminders are offered here, under the care they're for.
         RemindersCard(app, state, pet)
-        WidgetTip(app, state, pet)
 
         Spacer(Modifier.height(8.dp))
         HealthSection(app, state, pet)
