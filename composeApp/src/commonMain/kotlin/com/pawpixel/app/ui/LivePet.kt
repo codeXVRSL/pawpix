@@ -2,8 +2,13 @@ package com.pawpixel.app.ui
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.produceState
+import com.pawpixel.sprite.AnimationSet
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableLongStateOf
@@ -59,13 +64,30 @@ fun LivePet(
     onPetted: () -> Unit = {},
 ) {
     if (art == null) return
-    val set = remember(art, eyes) { Chibi.build(art) }
-    val layout = remember(set) { StageLayout(set) }
-    val moodSet = remember(set, mood) { set.forMood(mood) }
-    val frames: Map<Frame, ImageBitmap> = remember(moodSet) { Frame.entries.associateWith { moodSet[it].toImageBitmap() } }
-    val icons: Map<EffectKind, ImageBitmap> = remember(layout) {
-        EffectKind.entries.associateWith { Icons.forEffect(it).scaled(layout.iconScale).toImageBitmap() }
+    // Drawing every frame of the pet takes a budget phone a noticeable moment: do it off the main
+    // thread (the screen opens at once), keeping what's shown until the new drawings are ready.
+    val built by produceState<Built?>(null, art, eyes) {
+        value = withContext(Dispatchers.Default) {
+            val set = Chibi.build(art)
+            val layout = StageLayout(set)
+            Built(set, layout, EffectKind.entries.associateWith { Icons.forEffect(it).scaled(layout.iconScale).toImageBitmap() })
+        }
     }
+    val drawn by produceState<MoodFrames?>(null, built, mood) {
+        val b = built ?: return@produceState
+        value = withContext(Dispatchers.Default) {
+            val moodSet = b.set.forMood(mood)
+            MoodFrames(b.set, Frame.entries.associateWith { moodSet[it].toImageBitmap() })
+        }
+    }
+    val current = built
+    if (current == null) {
+        // The stage's usual shape, so nothing jumps when the pet appears.
+        Box(modifier.aspectRatio(PLACEHOLDER_ASPECT).semantics { if (description != null) contentDescription = description })
+        return
+    }
+    val layout = current.layout
+    val icons = current.icons
     val brain = remember(layout, seed) { layout.brain(seed) }
     /** Last pose drawn, for tap hit-testing (plain holder: must not trigger recomposition). */
     val lastPose = remember(brain) { arrayOfNulls<PetPose>(1) }
@@ -129,7 +151,8 @@ fun LivePet(
         val cx = pose.x + (layout.body[0] + layout.body[2]) / 2.0
         drawOval(Color(0x40000000), Offset(sx(cx - half), sy(layout.floorY - 1.0)), Size((half * 2 * px).toFloat(), 2 * px))
 
-        // Pet
+        // Pet (once its drawings for this look and mood are ready)
+        val frames = drawn?.takeIf { it.set === current.set }?.frames ?: return@Canvas
         val img = frames.getValue(pose.frame)
         val ix = sx(pose.x).roundToInt()
         val iy = sy(layout.petTop + pose.lift.toDouble()).roundToInt()
@@ -154,6 +177,15 @@ fun LivePet(
         }
     }
 }
+
+/** A pet's drawings for one look: its animation frames for every mood, stage and effect icons. */
+private class Built(val set: AnimationSet, val layout: StageLayout, val icons: Map<EffectKind, ImageBitmap>)
+
+/** The frames of one mood, and which drawings they came from. */
+private class MoodFrames(val set: AnimationSet, val frames: Map<Frame, ImageBitmap>)
+
+/** Width / height of the stage for most looks (between 1.53 and 1.60). */
+private const val PLACEHOLDER_ASPECT = 1.55f
 
 /** Whole-number scale when there's room, so every sprite pixel is the same size on screen. */
 private fun pixelScale(widthPx: Float, stageWidth: Int): Float {

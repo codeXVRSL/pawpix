@@ -98,7 +98,8 @@ fun PetScreen(app: AppScope, state: AppState, pet: Pet) {
         }
 
         MilestoneBanner(app, pet)
-        RemindersCard(app, state, pet)
+        // Where a new owner lands after making their pet: the next step is the home screen.
+        WidgetTip(app, state, pet)
 
         // Gentle progress: days cared for this week, never a streak that breaks.
         val week = CareStats.week(state, pet.id, app.now, app.repo.clock)
@@ -127,6 +128,7 @@ fun PetScreen(app: AppScope, state: AppState, pet: Pet) {
         SectionTitle(tr("Care"))
         if (statuses.isEmpty()) Text(tr("No care tasks yet. Add feeding, walks or medicine so {0}'s mood can follow real care.", pet.name))
         statuses.forEach { s -> TaskRow(app, state, pet, s, onDone = { react(PetEvent.Cared(s.task.kind)) }) }
+        RemindersCard(app, state, pet)
         OutlinedButton(onClick = { app.navigate(Screen.EditTask(pet.id, null)) }) { Text(tr("+ Add care task")) }
 
         Spacer(Modifier.height(8.dp))
@@ -211,7 +213,7 @@ private fun RemindersCard(app: AppScope, state: AppState, pet: Pet) {
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text(tr("🔔 Reminders for {0}?", pet.name), fontWeight = FontWeight.Bold, modifier = Modifier.semantics { heading() })
             Text(
-                tr("A gentle nudge when it's time for {0}'s care, only for the tasks you set. Change them any time.", pet.name),
+                tr("A gentle nudge when it's time for these, only for the tasks you set. Change them any time."),
                 style = MaterialTheme.typography.bodySmall,
             )
             FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {

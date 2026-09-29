@@ -136,10 +136,12 @@ private fun PetCard(app: AppScope, state: AppState, pet: Pet) {
 
 /**
  * The widget is the heart of PawPixel (people who add a widget keep using an app far longer), so the
- * home screen offers it until one is added. Android can add it in one tap; iOS gets the steps.
+ * home screen offers it until one is added, and so does a pet's page (where a new owner lands after
+ * making their pet). Android can add it in one tap; iOS gets the steps.
  */
+@OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 @Composable
-private fun WidgetTip(app: AppScope, state: AppState) {
+fun WidgetTip(app: AppScope, state: AppState, pet: Pet? = null) {
     val platform = app.repo.platform
     // Asks the system once per screen visit (and every few minutes), not on every clock tick.
     val first = remember { platform.widgetInstalled() }
@@ -150,7 +152,7 @@ private fun WidgetTip(app: AppScope, state: AppState) {
     if (installed == true || state.settings.widgetTipDismissed) return
     PixelCard(Modifier.fillMaxWidth()) {
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text(tr("Put your pet on your home screen"), fontWeight = FontWeight.Bold)
+            Text(pet?.let { tr("Put {0} on your home screen", it.name) } ?: tr("Put your pet on your home screen"), fontWeight = FontWeight.Bold)
             Text(tr("See their mood at a glance and tap Done right from the widget."))
             if (manual) {
                 Text(
@@ -159,7 +161,7 @@ private fun WidgetTip(app: AppScope, state: AppState) {
                     style = MaterialTheme.typography.bodySmall,
                 )
             }
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            androidx.compose.foundation.layout.FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 if (!manual) Button(onClick = { if (!platform.pinWidget()) manual = true }) { Text(tr("Add widget")) }
                 TextButton(onClick = { app.launch { app.repo.setSettings(state.settings.copy(widgetTipDismissed = true)) } }) {
                     Text(if (manual) tr("Got it") else tr("Not now"))

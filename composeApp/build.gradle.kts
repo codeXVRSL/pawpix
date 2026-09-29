@@ -108,6 +108,9 @@ android {
         versionCode = System.getenv("VERSION_CODE")?.toIntOrNull() ?: 1
         versionName = "1.0.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        // PawPixel speaks English and Filipino: drop the libraries' strings in 80+ other languages.
+        @Suppress("DEPRECATION")
+        resourceConfigurations += listOf("en", "fil", "tl")
     }
     // Release signing comes from environment variables (CI secrets), never from the repo.
     val keystore = System.getenv("PAWPIXEL_KEYSTORE")?.takeIf { it.isNotBlank() && file(it).exists() }
