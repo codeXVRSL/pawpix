@@ -98,8 +98,6 @@ fun PetScreen(app: AppScope, state: AppState, pet: Pet) {
         }
 
         MilestoneBanner(app, pet)
-        // Where a new owner lands after making their pet: the next step is the home screen.
-        WidgetTip(app, state, pet)
 
         // Gentle progress: days cared for this week, never a streak that breaks.
         val week = CareStats.week(state, pet.id, app.now, app.repo.clock)
@@ -129,8 +127,11 @@ fun PetScreen(app: AppScope, state: AppState, pet: Pet) {
         SectionTitle(tr("Care"))
         if (statuses.isEmpty()) Text(tr("No care tasks yet. Add feeding, walks or medicine so {0}'s mood can follow real care.", pet.name))
         statuses.forEach { s -> TaskRow(app, state, pet, s, onDone = { react(PetEvent.Cared(s.task.kind)) }) }
-        RemindersCard(app, state, pet)
         OutlinedButton(onClick = { app.navigate(Screen.EditTask(pet.id, null)) }) { Text(tr("+ Add care task")) }
+        // A new owner lands here after making their pet: reminders for the care just above, then
+        // the next step, the home screen.
+        RemindersCard(app, state, pet)
+        WidgetTip(app, state, pet)
 
         Spacer(Modifier.height(8.dp))
         HealthSection(app, state, pet)

@@ -150,7 +150,7 @@ class EndToEndTest {
             val before = completions()
             retrying { scrollTo(By.text("Done")).click() }
             waitFor("completion recorded") { completions() == before + 1 }
-            find(By.text("Undo"))
+            scrollTo(By.text("Undo"))
             Thread.sleep(1_200) // the eating reaction
             shot("06-after-done")
         }
