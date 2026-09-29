@@ -140,6 +140,15 @@ final class OwnerJourneyTests: XCTestCase {
             try find("‹ Back").tap()
         }
 
+        step("pet map opens (this CI build has no map server: it says so)") {
+            try find("Pet map").tap()
+            let ready = element("The pet map is coming soon").waitForExistence(timeout: 10)
+                || element("I'm 18 or older").waitForExistence(timeout: 2)
+            shot("pet-map")
+            guard ready else { throw Failure("pet map screen didn't open") }
+            try find("‹ Back").tap()
+        }
+
         step("relaunch keeps the pet") {
             app.terminate()
             app.launchEnvironment["PAWPIXEL_TEST_RESET"] = "0"

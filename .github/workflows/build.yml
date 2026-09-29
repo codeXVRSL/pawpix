@@ -14,12 +14,22 @@ jobs:
   core:
     name: Core tests (care, mood, sprites, animation)
     runs-on: ubuntu-latest
+    permissions:
+      contents: write   # on failure, pushes the Gradle log to the ci-results/core branch
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4
         with: { distribution: temurin, java-version: "17" }
       - uses: gradle/actions/setup-gradle@v4
-      - run: ./gradlew :core:jvmTest --stacktrace
+      - run: |
+          set -o pipefail
+          mkdir -p diag
+          ./gradlew :core:jvmTest --stacktrace 2>&1 | tee diag/gradle.txt
+      - name: Publish the Gradle log (failures only)
+        if: failure()
+        run: |
+          grep -n -E "^e: |error:|What went wrong|Exception|FAILED|\.kts:" diag/gradle.txt | head -n 200 > diag/errors.txt || true
+          bash scripts/publish-results.sh diag ci-results/core "${{ github.token }}"
       - uses: actions/upload-artifact@v4
         if: failure()
         with: { name: core-test-report, path: core/build/reports/tests }
