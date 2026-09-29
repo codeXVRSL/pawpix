@@ -1,0 +1,61 @@
+Applications Memory Usage (in Kilobytes):
+Uptime: 317581 Realtime: 317581
+
+** MEMINFO in pid 2529 [com.pawpixel.app] **
+                   Pss  Private  Private     Swap      Rss     Heap     Heap     Heap
+                 Total    Dirty    Clean    Dirty    Total     Size    Alloc     Free
+                ------   ------   ------   ------   ------   ------   ------   ------
+  Native Heap    27828    27772        0        0    30932    40192    28317     8118
+  Dalvik Heap    14965    14800        0        0    22628    17992     8996     8996
+ Dalvik Other    11478     6876        0        0    16660                           
+        Stack     3428     3428        0        0     3432                           
+       Ashmem       14        0        0        0      564                           
+    Other dev       28        0       24        0      360                           
+     .so mmap     3515      528      224        0    43320                           
+    .jar mmap     3705        0      132        0    41748                           
+    .apk mmap      239        0        4        0     2196                           
+    .ttf mmap     1905        0     1368        0     3092                           
+    .dex mmap       50        8       24        0      868                           
+    .oat mmap       34        0        0        0     1732                           
+    .art mmap     6523     6016       32        0    27140                           
+   Other mmap      324       20       64        0     2788                           
+      Unknown    72742    72736        0        0    73296                           
+        TOTAL   146778   132184     1872        0   270756    58184    37313    17114
+ 
+ App Summary
+                       Pss(KB)                        Rss(KB)
+                        ------                         ------
+           Java Heap:    20848                          49768
+         Native Heap:    27772                          30932
+                Code:     2312                         102180
+               Stack:     3428                           3432
+            Graphics:        0                              0
+       Private Other:    79696
+              System:    12722
+             Unknown:                                   84444
+ 
+           TOTAL PSS:   146778            TOTAL RSS:   270756      TOTAL SWAP (KB):        0
+ 
+ Objects
+               Views:       11         ViewRootImpl:        1
+         AppContexts:       20           Activities:        1
+              Assets:        7        AssetManagers:        0
+       Local Binders:       43        Proxy Binders:       49
+       Parcel memory:       20         Parcel count:       80
+    Death Recipients:        1             WebViews:        0
+ 
+ SQL
+         MEMORY_USED:      493
+  PAGECACHE_OVERFLOW:      198          MALLOC_SIZE:       46
+ 
+ DATABASES
+      pgsz     dbsz   Lookaside(b) cache hits cache misses cache size  Dbname
+PER CONNECTION STATS
+         4       96             67   331   268    25  /data/user/0/com.pawpixel.app/no_backup/androidx.work.workdb
+         4        8                    0     0     0    (attached) temp
+         4       96             52     4    20     5  /data/user/0/com.pawpixel.app/no_backup/androidx.work.workdb (3)
+         4       40            116   150    98    15  /data/user/0/com.pawpixel.app/databases/com.google.android.datatransport.events
+POOL STATS
+     cache hits  cache misses    cache size  Dbname
+            337           320           657  /data/user/0/com.pawpixel.app/no_backup/androidx.work.workdb
+            150            99           249  /data/user/0/com.pawpixel.app/databases/com.google.android.datatransport.events

@@ -1,0 +1,55 @@
+PASS  first open goes straight to making a pet  (1504 ms)
+PASS  photo becomes a pixel pet  (4559 ms)
+      note: memory: total PSS 164143 kB, Java heap 36256 kB, native heap 16984 kB, graphics 0 kB
+PASS  memory just after turning the photo into a pet  (364 ms)
+PASS  cat body, floppy ears, then back to pointy  (2060 ms)
+PASS  face square is shown and can be resized  (11071 ms)
+PASS  name and save  (16797 ms)
+PASS  Done on a care task counts and cheers the pet up  (1870 ms)
+PASS  add a medicine task  (5178 ms)
+PASS  health: a kitten's birthday gives her the first-year plan  (21560 ms)
+PASS  health: record a dose with a photo of the vaccination card  (13494 ms)
+      note: anti-rabies after 'a month ago': Due in 11 months
+PASS  health: an anti-rabies shot given a month ago is next due in 11 months  (9440 ms)
+PASS  weight: two weigh-ins draw the chart; the list opens  (7664 ms)
+PASS  milestone: 7 days of care is celebrated and shareable  (21896 ms)
+PASS  outfits: a week of care earns a bandana, and it shows on the pet  (9101 ms)
+PASS  share animation and before/after card open the share sheet  (2514 ms)
+PASS  home screen lists the pet  (2039 ms)
+PASS  settings open and close  (1521 ms)
+PASS  away mode pauses care and comes back  (2038 ms)
+      note: record photo restored for rqdtlpkcib1x
+PASS  backup: save a file, then restore one  (7656 ms)
+PASS  pet map: join, see the pixel pets nearby, report, RSVP, leave  (20605 ms)
+      note: on Chelsea's page: Litter cleaned by Jamaica · 11:33 PM
+PASS  household: share Chelsea, a partner joins, her Done and her Undo show on this phone  (11563 ms)
+      note: pressed Done on the notification
+PASS  reminder notification with a working Done button  (4440 ms)
+PASS  home-screen widget can be added and draws the pet  (7104 ms)
+      note: widget 2x1: [Chelsea]
+      note: widget 4x1: [Chelsea, Chelsea is sleeping]
+      note: widget 2x2: [Chelsea]
+      note: widget 2x3: [Chelsea, Next: 🍖 Feed · 7:00 AM]
+      note: widget 3x2: [Chelsea, Chelsea is sleeping, Next: 🍖 Feed · 7:00 AM]
+      note: widget 4x2: [Chelsea, Chelsea is sleeping, Next: 🍖 Feed · 7:00 AM]
+      note: widget 4x3: [Chelsea, Chelsea is sleeping, Next: 🍖 Feed · 7:00 AM]
+      note: widget 2x2 dark: [Chelsea]
+      note: widget 4x2 dark: [Chelsea, Chelsea is sleeping, Next: 🍖 Feed · 7:00 AM]
+PASS  widget: good layouts from a one-row strip to 4x3, light and dark  (2185 ms)
+      note: widget button: 💧 Done for e2ewater
+      note: widget 4x1-due: [Chelsea, Chelsea is sleeping, 💧 Done]
+      note: widget 2x3-due: [Chelsea, 💧 Done]
+      note: widget 4x2-due dark: [Chelsea, Chelsea is sleeping, 💧 Done]
+      note: widget after Done: Chelsea is sleeping, button for Fresh water
+PASS  widget: Done on the widget logs care and cheers the pet up  (8719 ms)
+PASS  widget: tapping it opens the pet's page  (12161 ms)
+PASS  widget: each widget can show a different pet  (7435 ms)
+PASS  bundled reminder: one notification, and its Done logs everything in it  (4983 ms)
+PASS  reminders that never arrived: a one-time tip for this phone's background setting  (6249 ms)
+      note: idle 5 s: 17 frames, 17 (100.00%) janky, p50 32ms, p90 32ms, p99 32ms
+      note: scrolling: 135 frames, 116 (85.93%) janky, p50 65ms, p90 101ms, p99 150ms
+      note: memory: total PSS 146778 kB, Java heap 20848 kB, native heap 27772 kB, graphics 0 kB
+PASS  performance: frame times on Chelsea's page (living pet idle, then scrolling)  (19315 ms)
+PASS  large text (200%) on a small phone: the main screens still fit  (31673 ms)
+PASS  dark mode: the main screens  (17146 ms)
+PASS  reopening the app keeps the pet  (47385 ms)
