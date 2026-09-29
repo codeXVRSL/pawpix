@@ -248,7 +248,8 @@ private final class DocumentDelegate: NSObject, UIDocumentPickerDelegate {
         guard let url = urls.first else { done(nil); return }
         // Backups are small; don't read anything huge into memory.
         let size = (try? url.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0
-        done(size > 40_000_000 ? nil : try? Data(contentsOf: url))
+        // Same limit as Backup.MAX_BYTES; empty data tells the app the file was too big.
+        done(size > 40_000_000 ? Data() : try? Data(contentsOf: url))
     }
 
     func documentPickerWasCancelled(_ controller: UIDocumentPickerViewController) { done(nil) }

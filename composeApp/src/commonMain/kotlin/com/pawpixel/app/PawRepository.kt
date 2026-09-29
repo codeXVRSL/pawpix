@@ -59,8 +59,11 @@ class PawRepository(val platform: Platform) {
     /** The opt-in pet map (sign-in session, shared pets, your ~1 km area). */
     val map: PetMapModel by lazy { PetMapModel(platform, files) }
 
-    private fun load(): AppState =
-        files.readText(STATE_FILE)?.let { runCatching { StateCodec.decode(it) }.getOrNull() } ?: AppState()
+    private fun load(): AppState {
+        // A restore interrupted between its two renames: put the pets' files back.
+        if (!files.exists("sprites") && files.exists(OLD_SPRITES)) files.rename(OLD_SPRITES, "sprites")
+        return files.readText(STATE_FILE)?.let { runCatching { StateCodec.decode(it) }.getOrNull() } ?: AppState()
+    }
 
     suspend fun update(change: (AppState) -> AppState): AppState = mutex.withLock {
         val n = change(_state.value)
@@ -128,6 +131,8 @@ class PawRepository(val platform: Platform) {
     }
 
     suspend fun complete(taskId: String) = update { StateOps.complete(it, taskId, now(), clock) }
+    /** "Done" on a notification: health care only counts if it's actually due (see [StateOps.completeFromReminder]). */
+    suspend fun completeFromReminder(taskId: String) = update { StateOps.completeFromReminder(it, taskId, now(), clock) }
     /** Health records: "given N days ago" (0 = today). */
     suspend fun givenDaysAgo(taskId: String, days: Int) =
         update { StateOps.logOnDay(it, taskId, clock.dayIndex(now()) - days, now(), clock) }
@@ -161,6 +166,7 @@ class PawRepository(val platform: Platform) {
     }
 
     fun card(task: com.pawpixel.core.CareTask): ByteArray? = files.readBytes(Backup.cardPath(task.petId, task.id))
+    fun hasCard(task: com.pawpixel.core.CareTask): Boolean = files.exists(Backup.cardPath(task.petId, task.id))
 
     fun deleteCard(task: com.pawpixel.core.CareTask) {
         files.delete(Backup.cardPath(task.petId, task.id))
@@ -171,9 +177,9 @@ class PawRepository(val platform: Platform) {
     private val _cardRevision = MutableStateFlow(0L)
     val cardRevision: StateFlow<Long> = _cardRevision.asStateFlow()
 
-    /** Someone else is caring for the pets for [days] days (0 = I'm back). */
+    /** Someone else is caring for the pets for [days] days. 0 = "I'm back": away ends now, and what was missed stays forgiven. */
     suspend fun setAway(days: Int) = update {
-        StateOps.setAway(it, if (days <= 0) 0 else clock.at(clock.dayIndex(now()) + days, 12 * 60))
+        StateOps.setAway(it, if (days <= 0) now() else clock.at(clock.dayIndex(now()) + days, 12 * 60))
     }
     suspend fun undo(taskId: String) = update { StateOps.undoLast(it, taskId) }
     suspend fun setSettings(settings: Settings) = update { StateOps.setSettings(it, settings) }
@@ -194,31 +200,73 @@ class PawRepository(val platform: Platform) {
 
     // ---- Backup ----
 
-    /** Everything on this phone as one file, shared to wherever the owner keeps it (Drive, Files, email). */
-    fun exportBackup() {
+    /**
+     * Everything on this phone as one file, shared to wherever the owner keeps it (Drive, Files,
+     * email). Built off the main thread. Returns a message for the owner if it can't be made.
+     */
+    suspend fun exportBackup(): String? {
         val state = _state.value
-        val files = state.pets.flatMap { Backup.filesFor(state, it.id) }.mapNotNull { path -> files.readBytes(path)?.let { path to it } }.toMap()
-        val bytes = Backup.encode(state, files, now()).encodeToByteArray()
-        val day = clock.dayIndex(now())
-        platform.shareFile(bytes, "pawpixel-backup-${LocalClock.isoDate(day)}.json", "application/json")
+        val bytes = withContext(Dispatchers.Default) {
+            val data = state.pets.flatMap { Backup.filesFor(state, it.id) }.mapNotNull { path -> files.readBytes(path)?.let { path to it } }.toMap()
+            Backup.encode(state, data, now()).encodeToByteArray()
+        }
+        if (bytes.size > Backup.MAX_BYTES) return "Your backup is too big to save as one file. Remove some card photos and try again."
+        platform.shareFile(bytes, "pawpixel-backup-${LocalClock.isoDate(clock.dayIndex(now()))}.json", "application/json")
+        return null
+    }
+
+    /** Reads a picked file as a backup, off the main thread. Throws [Backup.NotABackup] with a message for the owner. */
+    suspend fun readBackup(bytes: ByteArray): Backup.Contents = withContext(Dispatchers.Default) {
+        if (bytes.isEmpty() || bytes.size > Backup.MAX_BYTES) throw Backup.NotABackup("That file is too big to be a PawPixel backup.")
+        val contents = Backup.decode(bytes.decodeToString())
+        val missing = contents.state.pets.filter { "sprites/${it.id}/head.bin" !in contents.files }
+        if (missing.isNotEmpty()) throw Backup.NotABackup("This backup is missing ${missing.first().name}'s pixel look.")
+        contents
     }
 
     /**
-     * Replaces everything on this phone with a backup. Throws [Backup.NotABackup] (with a message for
-     * the owner) if the file isn't one. The pet map sign-in is left as it is.
+     * Replaces everything on this phone with a backup, all or nothing: the new files are written to
+     * a staging folder first, then swapped in with the new state. If anything fails, the phone keeps
+     * what it had. The pet map sign-in is left as it is. Returns the number of pets restored.
      */
-    suspend fun restoreBackup(bytes: ByteArray): Int {
-        val contents = Backup.decode(bytes.decodeToString())
-        mutex.withLock {
-            files.delete("sprites")
-            headCache.clear()
-            for ((path, data) in contents.files) files.writeBytes(path, data)
+    suspend fun restoreBackup(contents: Backup.Contents): Int {
+        withContext(Dispatchers.Default) {
+            files.delete(STAGING)
+            for ((path, data) in contents.files) {
+                if (!files.writeBytes("$STAGING/$path", data)) {
+                    files.delete(STAGING)
+                    throw Backup.NotABackup("Couldn't restore: your phone may be out of space. Nothing was changed.")
+                }
+            }
+            // Widget poses for each pet, drawn from its restored face.
+            for (pet in contents.state.pets) {
+                val head = contents.files["sprites/${pet.id}/head.bin"]?.let { runCatching { RawImage.decode(it) }.getOrNull() } ?: continue
+                writeWidgetPoses(pet, PetArt(head, pet.species, Ears.of(pet.ears)), "$STAGING/")
+            }
         }
-        for (pet in contents.state.pets) writeWidgetPoses(pet)
-        // Keep this phone's own "Pro" (purchases belong to the store account, not the file).
-        update { current -> contents.state.copy(settings = contents.state.settings.copy(pro = current.settings.pro)) }
+        mutex.withLock {
+            val restored = contents.state.copy(settings = contents.state.settings.copy(pro = _state.value.settings.pro))
+            files.delete(OLD_SPRITES)
+            val hadSprites = files.exists("sprites")
+            if (hadSprites && !files.rename("sprites", OLD_SPRITES)) fail()
+            if (!files.rename("$STAGING/sprites", "sprites") || !files.writeText(STATE_FILE, StateCodec.encode(restored))) {
+                // Put the old pets back.
+                files.delete("sprites")
+                if (hadSprites) files.rename(OLD_SPRITES, "sprites")
+                fail()
+            }
+            files.delete(OLD_SPRITES)
+            files.delete(STAGING)
+            headCache.clear()
+            // Keep this phone's own "Pro" (purchases belong to the store account, not the file).
+            _state.value = restored
+            publishLocked(restored)
+        }
+        _cardRevision.value = _cardRevision.value + 1
         return contents.state.pets.size
     }
+
+    private fun fail(): Nothing = throw Backup.NotABackup("Couldn't restore: your phone may be out of space. Nothing was changed.")
 
     // ---- Sprite files ----
     // Each pet keeps a small pixelated copy of its face (head.bin), used only for its fur colours and
@@ -232,11 +280,11 @@ class PawRepository(val platform: Platform) {
     }
 
     /** Pre-rendered mood poses for the widgets, pre-scaled so widgets that smooth when scaling stay crisp. */
-    private fun writeWidgetPoses(pet: Pet) {
-        val art = art(pet) ?: return
+    private fun writeWidgetPoses(pet: Pet, art: PetArt? = art(pet), root: String = "") {
+        art ?: return
         val sleeping = Chibi.sleeping(art)
         for ((mood, img) in Poses.renderAll(art.still, sleeping)) {
-            files.writeBytes(WidgetSnapshot.spritePath(pet.id, mood), Png.encode(img.scaled(WIDGET_SCALE)))
+            files.writeBytes(root + WidgetSnapshot.spritePath(pet.id, mood), Png.encode(img.scaled(WIDGET_SCALE)))
         }
     }
 
@@ -281,5 +329,7 @@ class PawRepository(val platform: Platform) {
         const val STATE_FILE = "state.json"
         const val WIDGET_SCALE = 4
         const val CARD_MAX_SIDE = 1600
+        private const val STAGING = "restore"
+        private const val OLD_SPRITES = "sprites.old"
     }
 }

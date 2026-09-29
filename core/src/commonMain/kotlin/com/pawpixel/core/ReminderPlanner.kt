@@ -35,8 +35,10 @@ object ReminderPlanner {
         if (!state.settings.remindersEnabled) return emptyList()
         val out = ArrayList<Reminder>()
         val health = ArrayList<Reminder>()
-        // While someone else is looking after the pets, daily reminders stay quiet.
+        // While someone else is looking after the pets, reminders stay quiet; plan from their return,
+        // so reminders are ready even if the app isn't opened in between.
         val quietUntil = state.settings.awayUntilMs
+        @Suppress("NAME_SHADOWING") val nowMs = maxOf(nowMs, quietUntil)
         val end = nowMs + horizonMs
         for (task in state.tasks) {
             if (!task.remindersOn) continue
@@ -69,7 +71,7 @@ object ReminderPlanner {
                 cycle += n
             }
         }
-        val keptHealth = health.filter { it.atMs >= quietUntil }.sortedBy { it.atMs }.take(MAX_HEALTH)
+        val keptHealth = bundle(health.filter { it.atMs >= quietUntil }, state).sortedBy { it.atMs }.take(MAX_HEALTH)
         val daily = out.filter { it.atMs >= quietUntil }.sortedBy { it.atMs }.take(MAX_PENDING - keptHealth.size)
         return (daily + keptHealth).sortedBy { it.atMs }
     }
@@ -79,9 +81,9 @@ object ReminderPlanner {
      * a heads-up a few days before, one on the day, and a follow-up if it's still not done.
      */
     private fun healthReminders(task: CareTask, pet: Pet, status: TaskStatus, nowMs: Long, clock: LocalClock): List<Reminder> {
-        val due = if (status.allDoneThisCycle || status.slotTimes.size <= status.done) status.nextDueMs
-        else status.slotTimes[status.done]
-        due ?: return emptyList()
+        // Nothing recorded yet: the date is a guess, so no reminders until the owner records it.
+        if (!status.known) return emptyList()
+        val due = status.slotTimes.firstOrNull() ?: return emptyList()
         val what = task.title.lowercase()
         val list = listOf(
             Reminder(stableId(task.id, due - HEALTH_HEADS_UP_MS, false), task.id, pet.id, due - HEALTH_HEADS_UP_MS,
@@ -93,6 +95,26 @@ object ReminderPlanner {
         )
         return list.filter { it.atMs > nowMs }
     }
+
+    /**
+     * Several health items for the same pet at the same moment (deworming and tick & flea due the
+     * same day) become one notification: "Mochi's deworming and tick & flea prevention are due today."
+     */
+    private fun bundle(reminders: List<Reminder>, state: AppState): List<Reminder> =
+        reminders.groupBy { it.petId to it.atMs }.values.map { group ->
+            if (group.size == 1) return@map group[0]
+            val first = group[0]
+            val pet = state.pet(first.petId)?.name ?: "Your pet"
+            val names = group.mapNotNull { state.task(it.taskId)?.title?.lowercase() }
+            val list = if (names.size <= 2) names.joinToString(" and ") else names.dropLast(1).joinToString(", ") + " and " + names.last()
+            val body = when {
+                first.body.contains("in 3 days") -> "$pet's $list are due in 3 days. A good time to book the vet."
+                first.body.contains("still due") -> "$pet's $list are still due. Tap Done in PawPixel once they're given."
+                else -> "$pet's $list are due today."
+            }
+            first.copy(title = "🩺 Health care · $pet", body = body, quickDone = false,
+                id = stableId(group.joinToString { it.taskId }, first.atMs, false))
+        }
 
     private fun reminder(task: CareTask, pet: Pet, at: Long, nudge: Boolean): Reminder {
         val title = "${task.kind.emoji} ${task.title} · ${pet.name}"

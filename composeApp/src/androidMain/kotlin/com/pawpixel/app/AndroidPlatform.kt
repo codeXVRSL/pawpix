@@ -293,13 +293,16 @@ class AndroidFileStore(private val root: File) : FileStore {
     override fun readBytes(path: String): ByteArray? = f(path).takeIf { it.isFile }?.readBytes()
     override fun writeText(path: String, text: String) = writeBytes(path, text.encodeToByteArray())
 
-    override fun writeBytes(path: String, bytes: ByteArray) {
+    override fun writeBytes(path: String, bytes: ByteArray): Boolean = runCatching {
         val target = f(path)
         target.parentFile?.mkdirs()
         val tmp = File(target.parentFile, target.name + ".tmp")
         tmp.writeBytes(bytes)
         if (!tmp.renameTo(target)) { target.delete(); tmp.renameTo(target) }
-    }
+        target.isFile && target.length() == bytes.size.toLong()
+    }.getOrDefault(false)
 
     override fun delete(path: String) { f(path).deleteRecursively() }
+    override fun exists(path: String): Boolean = f(path).exists()
+    override fun rename(from: String, to: String): Boolean = !f(to).exists() && f(from).renameTo(f(to))
 }

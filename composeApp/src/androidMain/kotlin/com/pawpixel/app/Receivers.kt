@@ -27,7 +27,7 @@ class ReminderReceiver : BroadcastReceiver() {
         val nm = context.getSystemService(NotificationManager::class.java)
         if (intent.action == ACTION_DONE) {
             nm.cancel(id)
-            work { PawPixelApplication.repo(context).complete(taskId) }
+            work { PawPixelApplication.repo(context).completeFromReminder(taskId) }
             return
         }
         val repo = PawPixelApplication.repo(context)

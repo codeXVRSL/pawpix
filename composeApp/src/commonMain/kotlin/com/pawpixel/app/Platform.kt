@@ -13,12 +13,15 @@ import com.pawpixel.sprite.PixelImage
  */
 interface FileStore {
     fun readText(path: String): String?
-    /** Atomic: writes a temp file then renames, so a widget never reads half a file. */
-    fun writeText(path: String, text: String)
+    /** Atomic: writes a temp file then renames, so a widget never reads half a file. False if it failed (e.g. disk full). */
+    fun writeText(path: String, text: String): Boolean
     fun readBytes(path: String): ByteArray?
-    fun writeBytes(path: String, bytes: ByteArray)
+    fun writeBytes(path: String, bytes: ByteArray): Boolean
     /** Deletes a file or a folder recursively. Missing paths are ignored. */
     fun delete(path: String)
+    fun exists(path: String): Boolean
+    /** Moves a file or folder; [to] must not exist. False if it failed. */
+    fun rename(from: String, to: String): Boolean
 }
 
 /** Everything the shared app needs from Android or iOS. */

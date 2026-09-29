@@ -26,6 +26,11 @@ import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
+import androidx.compose.runtime.produceState
+import androidx.compose.ui.graphics.ImageBitmap
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -65,7 +70,8 @@ fun HealthSection(app: AppScope, state: AppState, pet: Pet) {
         )
         Button(onClick = { askBirthday = true }) { Text("+ Add health reminders") }
     }
-    health.forEach { h -> HealthRow(app, state, pet, h) }
+    // Keyed by task, so each row keeps its own dialogs and picker when the order changes.
+    health.forEach { h -> key(h.task.id) { HealthRow(app, state, pet, h) } }
     if (health.isNotEmpty()) {
         TextButton(onClick = { app.navigate(Screen.EditTask(pet.id, null, health = true)) }) { Text("+ Add health item") }
         Text(
@@ -118,7 +124,7 @@ private fun HealthRow(app: AppScope, state: AppState, pet: Pet, h: HealthItem) {
     var showCard by remember { mutableStateOf(false) }
     var cardError by remember { mutableStateOf<String?>(null) }
     val cardRevision by app.repo.cardRevision.collectAsState()
-    val hasCard = remember(t.id, cardRevision) { app.repo.card(t) != null }
+    val hasCard = remember(t.id, cardRevision) { app.repo.hasCard(t) }
     val pickCard = rememberPhotoPicker { bytes ->
         if (bytes != null) app.launch {
             cardError = if (app.repo.saveCard(t, bytes)) null else "Couldn't read that photo. Try another one."
@@ -171,14 +177,20 @@ private fun HealthRow(app: AppScope, state: AppState, pet: Pet, h: HealthItem) {
         )
     }
     if (showCard) {
-        val image = remember(t.id, cardRevision) { app.repo.card(t)?.let { decodeImage(it) } }
+        // Read and decode the photo off the main thread; null until ready.
+        val image by produceState<Result<ImageBitmap?>?>(null, t.id, cardRevision) {
+            value = withContext(Dispatchers.Default) { runCatching { app.repo.card(t)?.let { decodeImage(it) } } }
+        }
         AlertDialog(
             onDismissRequest = { showCard = false },
             title = { Text("${t.title} · ${pet.name}") },
             text = {
                 Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    if (image != null) {
-                        Image(image, contentDescription = "Photo of ${pet.name}'s card for ${t.title}", contentScale = ContentScale.Fit,
+                    val loaded = image
+                    if (loaded == null) {
+                        Text("Opening…")
+                    } else if (loaded.getOrNull() != null) {
+                        Image(loaded.getOrNull()!!, contentDescription = "Photo of ${pet.name}'s card for ${t.title}", contentScale = ContentScale.Fit,
                             modifier = Modifier.fillMaxWidth().heightIn(max = 480.dp))
                     } else Text("The photo couldn't be opened.")
                     Text("Kept only on this phone (and in your backups).", style = MaterialTheme.typography.bodySmall)

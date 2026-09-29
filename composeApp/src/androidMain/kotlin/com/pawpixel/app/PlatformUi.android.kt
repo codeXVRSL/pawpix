@@ -52,7 +52,7 @@ actual fun rememberFilePicker(onResult: (ByteArray?) -> Unit): () -> Unit {
                         // A backup is small; refuse anything absurd rather than running out of memory.
                         val limit = com.pawpixel.core.Backup.MAX_BYTES + 1
                         val data = input.readNBytesCompat(limit)
-                        if (data.size >= limit) null else data
+                        if (data.size >= limit) ByteArray(0) else data // empty = too big, so the app can say so
                     }
                 }.getOrNull()
             }

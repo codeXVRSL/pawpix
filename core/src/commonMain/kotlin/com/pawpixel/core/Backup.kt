@@ -12,8 +12,11 @@ object Backup {
     const val VERSION = 1
     /** The only files a backup may carry, so a crafted file can't write anywhere else. */
     private val FILE_PATH = Regex("sprites/([a-z0-9]{1,40})/(head\\.bin|photo\\.bin|card-[a-z0-9]{1,40}\\.jpg)")
-    /** Much larger than any real backup (a pet is ~100 KB, a card photo ~1 MB), to refuse junk early. */
-    const val MAX_BYTES = 60_000_000
+    /**
+     * Much larger than any real backup (a pet is ~100 KB, a card photo ~300 KB), to refuse junk early.
+     * The iOS document picker uses the same limit (SwiftHost.swift).
+     */
+    const val MAX_BYTES = 40_000_000
 
     class Contents(val state: AppState, val files: Map<String, ByteArray>, val createdAtMs: Long)
 
@@ -41,6 +44,7 @@ object Backup {
         if (root == null || root["format"].str != FORMAT) throw NotABackup("That file isn't a PawPixel backup.")
         if ((root["version"].int ?: 0) > VERSION) throw NotABackup("This backup is from a newer PawPixel. Update the app, then try again.")
         val state = StateCodec.decode(root["state"].stringify())
+        if (state.pets.isEmpty()) throw NotABackup("This backup has no pets in it.")
         val petIds = state.pets.map { it.id }.toSet()
         val files = (root["files"] as? Json.Obj)?.fields.orEmpty().mapNotNull { (path, v) ->
             val m = FILE_PATH.matchEntire(path) ?: return@mapNotNull null

@@ -73,7 +73,7 @@ class HealthPlanTest {
         val s = planFor(Species.CAT, 50)
         val fvrcp = s.byTitle("FVRCP vaccine")
         assertEquals(listOf(today + 6, today + 34, today + 62), fvrcp.series)
-        val r = ReminderPlanner.plan(s, now, clock).filter { it.taskId == fvrcp.id }
+        val r = ReminderPlanner.plan(s, now, clock).filter { it.body.contains("fvrcp") }
         assertEquals(listOf(clock.at(today + 3, 540), clock.at(today + 6, 540), clock.at(today + 9, 540)), r.map { it.atMs })
         val back = StateCodec.decode(StateCodec.encode(s))
         assertEquals(s, back)

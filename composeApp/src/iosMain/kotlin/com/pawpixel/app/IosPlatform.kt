@@ -94,7 +94,7 @@ object IosGraph {
     fun onForeground() { MainScope().launch { repo.ingestWidgetTaps(); repo.publish() } }
 
     /** "Done" tapped on a notification. */
-    fun completeTask(taskId: String) { MainScope().launch { repo.complete(taskId) } }
+    fun completeTask(taskId: String) { MainScope().launch { repo.completeFromReminder(taskId) } }
 
     internal fun host() = host
 }
@@ -227,17 +227,23 @@ class IosFileStore(private val root: String) : FileStore {
     override fun writeText(path: String, text: String) = writeBytes(path, text.encodeToByteArray())
 
     @OptIn(ExperimentalForeignApi::class)
-    override fun writeBytes(path: String, bytes: ByteArray) {
+    override fun writeBytes(path: String, bytes: ByteArray): Boolean {
         val full = p(path)
         val dir = full.substringBeforeLast('/')
         fm.createDirectoryAtPath(dir, withIntermediateDirectories = true, attributes = null, error = null)
-        bytes.toNSData().writeToFile(full, atomically = true)
+        return bytes.toNSData().writeToFile(full, atomically = true)
     }
 
     @OptIn(ExperimentalForeignApi::class)
     override fun delete(path: String) {
         fm.removeItemAtPath(p(path), error = null)
     }
+
+    override fun exists(path: String): Boolean = fm.fileExistsAtPath(p(path))
+
+    @OptIn(ExperimentalForeignApi::class)
+    override fun rename(from: String, to: String): Boolean =
+        !fm.fileExistsAtPath(p(to)) && fm.moveItemAtPath(p(from), toPath = p(to), error = null)
 }
 
 actual fun decodeImage(bytes: ByteArray): ImageBitmap? =

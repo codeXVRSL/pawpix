@@ -65,31 +65,28 @@ object StateOps {
         completions = state.completions.filterNot { it.taskId == taskId },
     )
 
-    /**
-     * Logs a task as done at [atMs] (now, or an earlier date for health records).
-     *
-     * Health care is due N days after it was last done, not on a fixed calendar: a rabies shot given
-     * on 3 March is next due on 3 March next year, however late it was. So completing a health task
-     * moves its cycle to start on the day of its latest completion.
-     */
+    /** Logs a task as done at [atMs] (now, or an earlier date for health records). */
     fun complete(state: AppState, taskId: String, atMs: Long, clock: LocalClock): AppState {
-        val task = state.task(taskId) ?: return state
+        state.task(taskId) ?: return state
         val c = Completion(taskId, atMs, clock.minuteOfDay(atMs), clock.dayIndex(atMs))
-        val next = prune(state.copy(completions = state.completions + c))
-        return if (task.kind.health) reanchor(next, taskId) else next
+        return prune(state.copy(completions = state.completions + c))
     }
 
-    /** Removes the most recent completion of a task (undo). */
+    /**
+     * A "Done" from a notification. Health care counts only if it's due within a day, so tapping an
+     * old notification after already logging it in the app doesn't record it twice.
+     */
+    fun completeFromReminder(state: AppState, taskId: String, atMs: Long, clock: LocalClock): AppState {
+        val task = state.task(taskId) ?: return state
+        if (!HealthDue.canQuickComplete(task, state.completions, atMs, clock)) return state
+        return complete(state, taskId, atMs, clock)
+    }
+
+    /** Removes the most recently *added* completion of a task (undo), even if it was for an earlier date. */
     fun undoLast(state: AppState, taskId: String): AppState {
-        val last = state.completions.filter { it.taskId == taskId }.maxByOrNull { it.atMs } ?: return state
-        val next = state.copy(completions = state.completions - last)
-        return if (state.task(taskId)?.kind?.health == true) reanchor(next, taskId) else next
-    }
-
-    /** Health tasks: the cycle starts on the day of the latest completion (if there is one). */
-    private fun reanchor(state: AppState, taskId: String): AppState {
-        val latest = state.completions.filter { it.taskId == taskId }.maxByOrNull { it.atMs } ?: return state
-        return state.copy(tasks = state.tasks.map { if (it.id == taskId) it.copy(anchorDay = latest.localDay) else it })
+        val i = state.completions.indexOfLast { it.taskId == taskId }
+        if (i < 0) return state
+        return state.copy(completions = state.completions.filterIndexed { j, _ -> j != i })
     }
 
     /**
@@ -102,14 +99,21 @@ object StateOps {
         return complete(state, taskId, at, clock)
     }
 
-    /** Someone else is caring for the pets until [untilMs] (0 = back now). */
+    /** Someone else is caring for the pets until [untilMs]. "I'm back" passes now, so care missed while away stays forgiven. */
     fun setAway(state: AppState, untilMs: Long): AppState =
         state.copy(settings = state.settings.copy(awayUntilMs = untilMs))
 
+    /** Keeps the latest [AppState.MAX_COMPLETIONS_PER_TASK] per task, in the order they were added. */
     fun prune(state: AppState): AppState {
-        val kept = state.completions.groupBy { it.taskId }.values.flatMap { list ->
-            list.sortedBy { it.atMs }.takeLast(AppState.MAX_COMPLETIONS_PER_TASK)
-        }.sortedBy { it.atMs }
+        val dropped = state.completions.groupBy { it.taskId }.values.flatMap { list ->
+            list.sortedBy { it.atMs }.dropLast(AppState.MAX_COMPLETIONS_PER_TASK)
+        }
+        if (dropped.isEmpty()) return state
+        val drop = dropped.groupingBy { it }.eachCount().toMutableMap()
+        val kept = state.completions.filter { c ->
+            val n = drop[c] ?: 0
+            if (n > 0) { drop[c] = n - 1; false } else true
+        }
         return state.copy(completions = kept)
     }
 

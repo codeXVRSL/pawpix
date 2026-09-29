@@ -54,7 +54,8 @@ object StateCodec {
         )
         val spriteDefaults = SpriteSettings()
         val pets = root["pets"].list.mapNotNull { p ->
-            val id = p["id"].str ?: return@mapNotNull null
+            // Ids name folders on disk: only ever the app's own [a-z0-9] ids (a crafted backup can't say "..").
+            val id = p["id"].str?.takeIf { ID.matches(it) } ?: return@mapNotNull null
             val sp = p["sprite"]
             Pet(
                 id = id,
@@ -78,7 +79,7 @@ object StateCodec {
         }
         val petIds = pets.map { it.id }.toSet()
         val tasks = root["tasks"].list.mapNotNull { t ->
-            val id = t["id"].str ?: return@mapNotNull null
+            val id = t["id"].str?.takeIf { ID.matches(it) } ?: return@mapNotNull null
             val petId = t["petId"].str ?: return@mapNotNull null
             if (petId !in petIds) return@mapNotNull null
             val kind = enumOr(t["kind"].str, TaskKind.FEED)
@@ -109,6 +110,8 @@ object StateCodec {
         }
         return AppState(pets, tasks, completions, settings)
     }
+
+    private val ID = Regex("[a-z0-9]{1,40}")
 
     private inline fun <reified E : Enum<E>> enumOr(name: String?, fallback: E): E =
         enumValues<E>().firstOrNull { it.name == name } ?: fallback

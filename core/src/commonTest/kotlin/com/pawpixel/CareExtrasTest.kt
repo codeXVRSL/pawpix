@@ -94,13 +94,99 @@ class HealthCareTest {
     }
 
     @Test fun healthRemindersSurviveABusyDailySchedule() {
-        var s = withTask(rabies())
+        var s = StateOps.complete(withTask(rabies()), "v", now, clock)
         repeat(30) { i ->
             s = StateOps.upsertTask(s, CareTask("f$i", "p1", TaskKind.FEED, "Feed $i", listOf(8 * 60, 12 * 60, 16 * 60, 20 * 60), anchorDay = today, createdAtMs = 0))
         }
         val r = ReminderPlanner.plan(s, now, clock)
         assertTrue(r.size <= ReminderPlanner.MAX_PENDING)
         assertTrue(r.any { it.taskId == "v" })
+    }
+}
+
+class HealthReviewFixesTest {
+    private val clock = LocalClock.MANILA
+    private val today = 20400L
+    private val now = clock.at(today, 12 * 60)
+    private val pet = Pet("p1", "Mochi", Species.DOG, 0)
+    private fun task(kind: TaskKind, id: String) = StateOps.defaultTask(pet, kind, today, id, now)
+    private fun label(s: AppState, id: String, at: Long = now) =
+        CareStats.dueLabel(CareStats.healthDue(s, "p1", at, clock).first { it.task.id == id }, at, clock)
+
+    @Test fun longAgoRecordsShowTheRealOverdueTime() {
+        var s = AppState(pets = listOf(pet), tasks = listOf(task(TaskKind.DEWORM, "d"), task(TaskKind.FLEA_TICK, "f")))
+        s = StateOps.logOnDay(s, "d", today - 182, now, clock)
+        s = StateOps.logOnDay(s, "f", today - 365, now, clock)
+        assertEquals("Overdue by 92 days", label(s, "d"))
+        assertEquals("Overdue by 335 days", label(s, "f"))
+    }
+
+    @Test fun unknownDatesNeverUpsetThePetAndOnlyOneHealthItemCounts() {
+        val adult = HealthPlan.addTo(AppState(pets = listOf(pet)), pet, now, clock)
+        for (h in listOf(0, 24, 36, 72, 24 * 30)) {
+            val r = MoodEngine.read(adult, "p1", now + h * HOUR_MS, clock)
+            assertTrue(r.mood in setOf(Mood.CONTENT, Mood.SLEEPY), "+${h}h: ${r.mood}")
+        }
+        assertTrue(ReminderPlanner.plan(adult, now, clock).isEmpty(), "no reminders for guessed dates")
+        // Everything recorded as long overdue: still just one gentle need, never sad.
+        var s = adult
+        for (t in s.tasks) s = StateOps.logOnDay(s, t.id, today - 400, now, clock)
+        val r = MoodEngine.read(s, "p1", now + 3 * DAY_MS, clock)
+        assertEquals(Mood.NEEDS_MEDS, r.mood)
+    }
+
+    @Test fun healthItemsDueTogetherShareOneNotification() {
+        var s = AppState(pets = listOf(pet), tasks = listOf(task(TaskKind.DEWORM, "d"), task(TaskKind.FLEA_TICK, "f")))
+        s = StateOps.logOnDay(s, "d", today - 80, now, clock) // due in 10 days
+        s = StateOps.logOnDay(s, "f", today - 20, now, clock) // due in 10 days
+        val r = ReminderPlanner.plan(s, now, clock)
+        assertEquals(3, r.size)
+        assertEquals("Mochi's deworming and tick & flea prevention are due in 3 days. A good time to book the vet.", r[0].body)
+        assertTrue(r.none { it.quickDone }, "a bundle has no single Done")
+    }
+
+    @Test fun seriesIgnoresDoubleTapsAndOldRecords() {
+        val series = listOf(today + 10, today + 31, today + 52)
+        var s = AppState(pets = listOf(pet), tasks = listOf(task(TaskKind.VACCINE, "v").copy(series = series)))
+        s = StateOps.logOnDay(s, "v", today - 1, now, clock) // "yesterday": weeks before dose 1
+        assertEquals("Due in 10 days", label(s, "v"))
+        val d1 = clock.at(today + 10, 10 * 60)
+        s = StateOps.complete(StateOps.complete(s, "v", d1, clock), "v", d1 + MINUTE_MS, clock) // double tap
+        assertEquals("Due in 21 days", label(s, "v", d1 + HOUR_MS))
+    }
+
+    @Test fun undoRemovesWhatWasJustRecorded() {
+        var s = AppState(pets = listOf(pet), tasks = listOf(task(TaskKind.VACCINE, "v")))
+        s = StateOps.complete(s, "v", now, clock)          // given today
+        s = StateOps.logOnDay(s, "v", today - 365, now, clock) // then a mistaken "a year ago"
+        s = StateOps.undoLast(s, "v")
+        assertEquals(listOf(now), s.completions.map { it.atMs })
+        s = StateOps.undoLast(s, "v")
+        assertEquals("Due today", label(s, "v"), "nothing recorded: due from when it was added")
+    }
+
+    @Test fun oldNotificationDoneDoesntRecordAgain() {
+        var s = AppState(pets = listOf(pet), tasks = listOf(task(TaskKind.VACCINE, "v")))
+        s = StateOps.complete(s, "v", now, clock)
+        val later = now + 2 * DAY_MS
+        assertEquals(s, StateOps.completeFromReminder(s, "v", later, clock))
+        val feed = CareTask("f", "p1", TaskKind.FEED, "Feed", listOf(480))
+        val daily = s.copy(tasks = s.tasks + feed)
+        assertEquals(2, StateOps.completeFromReminder(daily, "f", later, clock).completions.size)
+    }
+
+    @Test fun backupsAndStatesRejectPathLikeIds() {
+        val json = StateCodec.encode(AppState(pets = listOf(Pet("..", "X", Species.CAT, 0), pet)))
+        assertEquals(listOf("p1"), StateCodec.decode(json).pets.map { it.id })
+        val empty = Backup.encode(AppState(), emptyMap(), 1)
+        assertFailsWith<Backup.NotABackup> { Backup.decode(empty) }
+    }
+
+    @Test fun youngPetsStartParasiteCareAtEightWeeks() {
+        val pup = pet.copy(birthDay = today - 30)
+        val s = HealthPlan.addTo(AppState(pets = listOf(pup)), pup, now, clock)
+        assertEquals(listOf(today + 26), s.tasks.single { it.title == "Heartworm prevention" }.series)
+        assertEquals("Due in 26 days", label(s, s.tasks.single { it.title == "Tick & flea prevention" }.id))
     }
 }
 
@@ -120,6 +206,18 @@ class AwayModeTest {
         val reminders = ReminderPlanner.plan(away, at(12 * 60), clock, horizonMs = 5 * DAY_MS)
         assertTrue(reminders.all { it.atMs >= at(15 * 60, 20403) })
         assertNull(WidgetSnapshot.build(away, at(12 * 60), clock)["pets"].list.single()["action"].str)
+    }
+
+    @Test fun tappingImBackForgivesWhatWasMissed() {
+        val away = StateOps.setAway(base, at(20 * 60, 20403))
+        val back = StateOps.setAway(away, at(12 * 60)) // "I'm back" at noon on day 20400
+        assertEquals(Mood.CONTENT, MoodEngine.read(back, "p1", at(12 * 60 + 1), clock).mood)
+    }
+
+    @Test fun remindersArePlannedFromTheReturn() {
+        val away = StateOps.setAway(base, at(15 * 60, 20410))
+        val r = ReminderPlanner.plan(away, at(12 * 60), clock)
+        assertTrue(r.isNotEmpty() && r.all { it.atMs >= at(15 * 60, 20410) }, r.toString())
     }
 
     @Test fun comingBackStartsFresh() {

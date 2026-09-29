@@ -40,3 +40,6 @@ end $$;
 drop trigger if exists map_pets_clean_name on public.map_pets;
 create trigger map_pets_clean_name before insert or update of name on public.map_pets
   for each row execute function public.map_pets_clean_name();
+
+-- Names already on the map before this migration go through the filter too.
+update public.map_pets set name = name where public.pawpixel_name_blocked(name);

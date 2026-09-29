@@ -89,7 +89,12 @@ object MoodEngine {
             val slots = AdaptiveTiming.effectiveSlots(t, state.completions, nowMs, clock)
             CareEngine.status(t, state.completions, nowMs, clock, slots)
         }
-        val penalties = statuses.map { it to penalty(it, nowMs, state.settings.awayUntilMs) }
+        // Health care weighs lightly: only the most overdue item counts, and only one with a known
+        // date (a record or a planned puppy/kitten dose), so a pet never gets sad over paperwork.
+        val daily = statuses.filter { !it.task.kind.health }.map { it to penalty(it, nowMs, state.settings.awayUntilMs) }
+        val health = statuses.filter { it.task.kind.health && it.known }
+            .map { it to penalty(it, nowMs, state.settings.awayUntilMs) }.maxByOrNull { it.second }
+        val penalties = daily + listOfNotNull(health)
         val total = penalties.sumOf { it.second }
         val worst = penalties.maxByOrNull { it.second }
         val score = (100 - total / 2.0 * 100).toInt().coerceIn(0, 100)

@@ -21,6 +21,9 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.produceState
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -122,7 +125,11 @@ private fun PetCard(app: AppScope, state: AppState, pet: Pet) {
 @Composable
 private fun WidgetTip(app: AppScope, state: AppState) {
     val platform = app.repo.platform
-    val installed = remember(app.now) { platform.widgetInstalled() }
+    // Asks the system once per screen visit (and every few minutes), not on every clock tick.
+    val first = remember { platform.widgetInstalled() }
+    val installed by produceState(first, app.now / (5 * 60_000)) {
+        value = withContext(Dispatchers.Default) { platform.widgetInstalled() }
+    }
     var manual by remember { mutableStateOf(installed == null) }
     if (installed == true || state.settings.widgetTipDismissed) return
     PixelCard(Modifier.fillMaxWidth()) {

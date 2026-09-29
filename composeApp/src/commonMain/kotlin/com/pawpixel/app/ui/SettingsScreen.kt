@@ -42,13 +42,24 @@ const val PRIVACY_URL = "https://pawpixel.app/privacy" // TODO: publish docs/PRI
 fun SettingsScreen(app: AppScope, state: AppState) {
     val s = state.settings
     var confirmWipe by remember { mutableStateOf(false) }
-    var restoreBytes by remember { mutableStateOf<ByteArray?>(null) }
+    var pendingRestore by remember { mutableStateOf<Backup.Contents?>(null) }
     var backupMessage by remember { mutableStateOf<String?>(null) }
+    var busy by remember { mutableStateOf(false) }
     val pickBackup = rememberFilePicker { bytes ->
         if (bytes == null) return@rememberFilePicker
-        // Check it's a backup before asking to replace anything.
-        backupMessage = runCatching { Backup.decode(bytes.decodeToString()); restoreBytes = bytes; null }
-            .getOrElse { (it as? Backup.NotABackup)?.message ?: "Couldn't read that file." }
+        // Read and check it (off the main thread) before asking to replace anything.
+        busy = true
+        app.launch {
+            try {
+                pendingRestore = app.repo.readBackup(bytes)
+            } catch (e: Backup.NotABackup) {
+                backupMessage = e.message
+            } catch (e: Exception) {
+                backupMessage = "Couldn't read that file."
+            } finally {
+                busy = false
+            }
+        }
     }
 
     Column(
@@ -103,15 +114,18 @@ fun SettingsScreen(app: AppScope, state: AppState) {
             style = MaterialTheme.typography.bodySmall,
         )
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            OutlinedButton(enabled = state.pets.isNotEmpty(), onClick = { app.repo.exportBackup() }) { Text("Save backup file") }
-            OutlinedButton(onClick = { backupMessage = null; pickBackup() }) { Text("Restore") }
+            OutlinedButton(enabled = state.pets.isNotEmpty() && !busy, onClick = {
+                busy = true; backupMessage = null
+                app.launch { try { backupMessage = app.repo.exportBackup() } finally { busy = false } }
+            }) { Text("Save backup file") }
+            OutlinedButton(enabled = !busy, onClick = { backupMessage = null; pickBackup() }) { Text("Restore") }
         }
         backupMessage?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.secondary) }
 
         Text("Privacy", fontWeight = FontWeight.Bold)
         Text(
             "Everything stays on this phone: no account, no uploads, no tracking. (Your phone's own backup may include it, and backup files go only where you save them.) Your photo is turned into a sprite on the device, " +
-                "and only a small crop is kept for your before/after card. Deleting the app deletes everything. " +
+                "and only a small crop is kept for your before/after card. Deleting the app deletes what's on the phone (Android's own Google backup may keep a copy until you remove it in Google Drive). " +
                 "The pet map is optional: only if you join it, your pixel pets, their names and your rough area (about 1 km, never " +
                 "your exact location) go to PawPixel's map server, with the Google or Apple account you sign in with. " +
                 "On Android, Google's on-device pet detector (ML Kit) sends Google anonymous performance data, never your photos.",
@@ -123,21 +137,35 @@ fun SettingsScreen(app: AppScope, state: AppState) {
         Text("PawPixel $APP_VERSION", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 
-    restoreBytes?.let { bytes ->
+    pendingRestore?.let { contents ->
+        val names = contents.state.pets.joinToString { it.name }
         AlertDialog(
-            onDismissRequest = { restoreBytes = null },
+            onDismissRequest = { pendingRestore = null },
             title = { Text("Restore this backup?") },
-            text = { Text("Pets, tasks and history on this phone will be replaced with the ones in the backup.") },
+            text = {
+                Text(
+                    "It has ${if (contents.state.pets.size == 1) "1 pet" else "${contents.state.pets.size} pets"} ($names)" +
+                        (if (contents.createdAtMs > 0) ", saved ${formatDate(contents.createdAtMs, app.repo.clock)}" else "") +
+                        ". Pets, tasks and history on this phone will be replaced.",
+                )
+            },
             confirmButton = {
                 TextButton(onClick = {
-                    restoreBytes = null
+                    pendingRestore = null
+                    busy = true
                     app.launch {
-                        backupMessage = runCatching { app.repo.restoreBackup(bytes) }
-                            .fold({ n -> if (n == 1) "Restored 1 pet." else "Restored $n pets." }, { it.message ?: "Couldn't restore that backup." })
+                        backupMessage = try {
+                            val n = app.repo.restoreBackup(contents)
+                            if (n == 1) "Restored 1 pet." else "Restored $n pets."
+                        } catch (e: Exception) {
+                            e.message ?: "Couldn't restore that backup."
+                        } finally {
+                            busy = false
+                        }
                     }
                 }) { Text("Replace with backup") }
             },
-            dismissButton = { TextButton(onClick = { restoreBytes = null }) { Text("Cancel") } },
+            dismissButton = { TextButton(onClick = { pendingRestore = null }) { Text("Cancel") } },
         )
     }
 
