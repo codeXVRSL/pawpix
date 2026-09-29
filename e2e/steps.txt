@@ -1,0 +1,38 @@
+PASS  first open goes straight to making a pet  (1351 ms)
+PASS  photo becomes a pixel pet  (6361 ms)
+      note: memory: total PSS 165706 kB, Java heap 37236 kB, native heap 17652 kB, graphics 0 kB
+PASS  memory just after turning the photo into a pet  (426 ms)
+PASS  cat body, floppy ears, then back to pointy  (3873 ms)
+PASS  face square is shown and can be resized  (13036 ms)
+PASS  name and save  (21506 ms)
+PASS  Done on a care task counts and cheers the pet up  (3511 ms)
+      note: found by dragging after 2 accessibility scrolls: BySelector [TEXT='\Q+ Add care task\E']
+PASS  add a medicine task  (25392 ms)
+PASS  health: a kitten's birthday gives her the first-year plan  (42506 ms)
+      note: found by dragging after 5 accessibility scrolls: BySelector [TEXT='\Q💉 FVRCP vaccine\E']
+PASS  health: record a dose with a photo of the vaccination card  (58276 ms)
+      note: anti-rabies after 'a month ago': Due in 11 months
+PASS  health: an anti-rabies shot given a month ago is next due in 11 months  (21617 ms)
+PASS  weight: two weigh-ins draw the chart; the list opens  (22928 ms)
+PASS  milestone: 7 days of care is celebrated and shareable  (16928 ms)
+PASS  outfits: a week of care earns a bandana, and it shows on the pet  (12970 ms)
+PASS  share animation and before/after card open the share sheet  (6852 ms)
+PASS  home screen lists the pet  (2152 ms)
+PASS  settings open and close  (1478 ms)
+PASS  away mode pauses care and comes back  (1912 ms)
+      note: record photo restored for g1dt2i3wjvu9
+PASS  backup: save a file, then restore one  (8807 ms)
+PASS  pet map: join, see the pixel pets nearby, report, RSVP, leave  (21446 ms)
+      note: on Chelsea's page: Litter cleaned by Jamaica · 7:35 PM
+PASS  household: share Chelsea, a partner joins, her Done and her Undo show on this phone  (14255 ms)
+      note: pressed Done on the notification
+PASS  reminder notification with a working Done button  (4427 ms)
+PASS  home-screen widget can be added and draws the pet  (7802 ms)
+      note: found by dragging after 6 accessibility scrolls: BySelector [TEXT='\Q+ Add care task\E']
+      note: idle 5 s: 109 frames, 103 (94.50%) janky, p50 113ms, p90 150ms, p99 150ms
+      note: scrolling: 218 frames, 200 (91.74%) janky, p50 117ms, p90 150ms, p99 150ms
+      note: memory: total PSS 146456 kB, Java heap 22848 kB, native heap 26920 kB, graphics 0 kB
+PASS  performance: frame times on Chelsea's page (living pet idle, then scrolling)  (49291 ms)
+PASS  large text (200%) on a small phone: the main screens still fit  (25713 ms)
+PASS  dark mode: the main screens  (15528 ms)
+PASS  reopening the app keeps the pet  (47560 ms)
