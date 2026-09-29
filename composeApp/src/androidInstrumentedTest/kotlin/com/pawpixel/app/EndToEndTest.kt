@@ -348,6 +348,7 @@ class EndToEndTest {
             retrying { nameField.click() }
             retrying { find(By.clazz("android.widget.EditText")).text = "Save" }
             device.pressBack()
+            Thread.sleep(800) // the keyboard closing
             shot("h-household-start")
             retrying { scrollTo(By.text("Create household")).click() }
             val code = find(By.text(Pattern.compile("[A-HJKMNP-Z2-9]{4}-[A-HJKMNP-Z2-9]{4}")), 20_000).text
@@ -531,20 +532,32 @@ class EndToEndTest {
         return device.findObject(selector) ?: throw AssertionError("not found after scrolling: $selector")
     }
 
-    /** Scrolls the first scrollable container of the app one page. False when it can't move. */
+    /**
+     * Scrolls the first scrollable container of the app one page. False when it can't move.
+     * Looks in the app's own windows, top one first: right after a dialog or the keyboard closes,
+     * the system's "active window" can still be the one that just went away.
+     */
     private fun accessibilityScroll(forward: Boolean): Boolean {
-        val root = instr.uiAutomation.rootInActiveWindow ?: return false
-        val queue = ArrayDeque(listOf(root))
-        while (queue.isNotEmpty()) {
-            val node = queue.removeFirst()
-            if (node.isScrollable) {
+        val appRoots = instr.uiAutomation.windows.sortedByDescending { it.layer }
+            .mapNotNull { it.root }.filter { it.packageName == instr.targetContext.packageName }
+        for (root in appRoots + listOfNotNull(instr.uiAutomation.rootInActiveWindow)) {
+            scrollable(root)?.let { node ->
                 return node.performAction(
                     if (forward) AccessibilityNodeInfo.ACTION_SCROLL_FORWARD else AccessibilityNodeInfo.ACTION_SCROLL_BACKWARD,
                 )
             }
-            for (i in 0 until node.childCount) node.getChild(i)?.let { queue.addLast(it) }
         }
         return false
+    }
+
+    private fun scrollable(root: AccessibilityNodeInfo): AccessibilityNodeInfo? {
+        val queue = ArrayDeque(listOf(root))
+        while (queue.isNotEmpty()) {
+            val node = queue.removeFirst()
+            if (node.isScrollable) return node
+            for (i in 0 until node.childCount) node.getChild(i)?.let { queue.addLast(it) }
+        }
+        return null
     }
 
     private fun waitFor(what: String, timeoutMs: Long = 15_000, condition: () -> Boolean) {

@@ -165,14 +165,16 @@ fun FamilyScreen(app: AppScope, state: AppState, sharePetId: String?, join: Bool
                     Text(tr("Send a code to the people you care for your pets with (up to 8 in a household)."), style = MaterialTheme.typography.bodySmall)
                     OutlinedButton(enabled = !busy, onClick = { act { inviteCode = family.invite() } }) { Text(tr("New invite code")) }
                 }
-                if (iAmOwner) {
-                    TextButton(enabled = !busy, onClick = { act { family.revokeInvites(); inviteCode = null; message = tr("All invite codes are cancelled.") } }) {
-                        Text(tr("Cancel all invite codes"))
+                Column {
+                    if (iAmOwner) {
+                        TextButton(enabled = !busy, onClick = { act { family.revokeInvites(); inviteCode = null; message = tr("All invite codes are cancelled.") } }) {
+                            Text(tr("Cancel all invite codes"))
+                        }
                     }
-                }
-                TextButton(enabled = !busy, onClick = { confirmLeave = true }) { Text(tr("Leave {0}", h.name), color = MaterialTheme.colorScheme.error) }
-                if (iAmOwner) {
-                    TextButton(enabled = !busy, onClick = { confirmStop = true }) { Text(tr("Stop sharing for everyone"), color = MaterialTheme.colorScheme.error) }
+                    TextButton(enabled = !busy, onClick = { confirmLeave = true }) { Text(tr("Leave {0}", h.name), color = MaterialTheme.colorScheme.error) }
+                    if (iAmOwner) {
+                        TextButton(enabled = !busy, onClick = { confirmStop = true }) { Text(tr("Stop sharing for everyone"), color = MaterialTheme.colorScheme.error) }
+                    }
                 }
                 Text(
                     tr(
