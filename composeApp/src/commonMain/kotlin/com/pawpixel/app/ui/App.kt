@@ -29,7 +29,8 @@ sealed interface Screen {
     data class EditTask(val petId: String, val taskId: String?, val health: Boolean = false) : Screen
     data object Settings : Screen
     data object PetMap : Screen
-    data object Family : Screen
+    /** Sharing with your household. [sharePetId]: share this pet once in a household. [join]: you came to enter a code. */
+    data class Family(val sharePetId: String? = null, val join: Boolean = false) : Screen
 }
 
 /** Shared state handed to every screen. */
@@ -65,18 +66,15 @@ fun App(repo: PawRepository, registerBack: ((() -> Boolean) -> (() -> Unit))? = 
                 now = repo.now()
             }
         }
-        // Family sharing: pick up the others' Done taps every minute while open, and send this
-        // phone's changes a moment after they happen. (Does nothing outside a family.)
+        // Household: pick up the others' Done taps every minute while open, and send this phone's
+        // changes a moment after they happen. (Does nothing outside a household.)
         LaunchedEffect(Unit) {
             while (true) {
                 repo.family.requestSync()
                 delay(60_000)
             }
         }
-        LaunchedEffect(state) {
-            delay(2_000)
-            repo.family.onLocalChange(state)
-        }
+        LaunchedEffect(state) { repo.family.onLocalChange(state) }
         // First open: straight to "make your pixel pet".
         LaunchedEffect(Unit) {
             if (repo.state.value.pets.isEmpty()) stack = listOf(Screen.Home, Screen.CreatePet)
@@ -113,7 +111,7 @@ fun App(repo: PawRepository, registerBack: ((() -> Boolean) -> (() -> Unit))? = 
                 }
                 Screen.Settings -> SettingsScreen(app, state)
                 Screen.PetMap -> PetMapScreen(app, state)
-                Screen.Family -> FamilyScreen(app, state)
+                is Screen.Family -> FamilyScreen(app, state, screen.sharePetId, screen.join)
             }
         }
         }

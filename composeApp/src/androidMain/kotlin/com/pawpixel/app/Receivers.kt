@@ -33,13 +33,13 @@ class ReminderReceiver : BroadcastReceiver() {
         val nm = context.getSystemService(NotificationManager::class.java)
         if (intent.action == ACTION_DONE) {
             nm.cancel(id)
-            work { PawPixelApplication.repo(context).completeFromReminder(refs) }
+            work { PawPixelApplication.repo(context).completeInBackground { completeFromReminder(refs) } }
             return
         }
         work {
             val repo = PawPixelApplication.repo(context)
-            // Family sharing: fetch the others' taps first, so nobody is told to feed a pet that was just fed.
-            if (repo.family.household != null) repo.family.syncWithin(8_000)
+            // Household: fetch the others' taps first, so nobody is told to feed a pet that was just fed.
+            repo.family.syncWithin()
             // Only what's still to do (by anyone); nothing left, no notification.
             val state = repo.state.value
             val open = refs.filter { r ->
@@ -101,7 +101,7 @@ class ReminderReceiver : BroadcastReceiver() {
 class WidgetTickReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) = work {
         val repo = PawPixelApplication.repo(context)
-        repo.family.syncWithin(8_000) // the family's taps, so the widget's mood is everyone's care
+        repo.family.syncWithin() // the household's taps, so the widget's mood is everyone's care
         repo.publish()
     }
 
@@ -115,5 +115,9 @@ class WidgetTickReceiver : BroadcastReceiver() {
 
 /** Alarms are cleared on reboot, app update and time zone change; reschedule everything. */
 class BootReceiver : BroadcastReceiver() {
-    override fun onReceive(context: Context, intent: Intent) = work { PawPixelApplication.repo(context).publish() }
+    override fun onReceive(context: Context, intent: Intent) = work {
+        val repo = PawPixelApplication.repo(context)
+        repo.publish()
+        repo.family.syncWithin() // catch up on the household's care while the phone was off
+    }
 }

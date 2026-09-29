@@ -38,6 +38,7 @@ import com.pawpixel.core.CareStats
 import com.pawpixel.core.MoodEngine
 import com.pawpixel.core.Pet
 import com.pawpixel.core.Species
+import com.pawpixel.core.TaskKind
 import com.pawpixel.core.TaskStatus
 import com.pawpixel.sprite.PetEvent
 import kotlinx.coroutines.Dispatchers
@@ -98,15 +99,15 @@ fun PetScreen(app: AppScope, state: AppState, pet: Pet) {
         }
         nextMilestoneLine(pet)?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
 
-        // Family sharing: who else cares for this pet, or an invitation to set it up.
+        // Household: who else cares for this pet, or an invitation to share it.
         val household = app.repo.family.household
         if (pet.shared && household != null) {
             val others = household.members.filter { it.userId != app.repo.family.myUserId }.joinToString { it.name }
-            TextButton(onClick = { app.navigate(Screen.Family) }) {
+            TextButton(onClick = { app.navigate(Screen.Family()) }) {
                 Text(if (others.isEmpty()) tr("Shared with {0}", household.name) else tr("Cared for with {0}", others), style = MaterialTheme.typography.bodySmall)
             }
-        } else if (app.repo.family.isSetUp) {
-            TextButton(onClick = { app.navigate(Screen.Family) }) { Text(tr("👪 Care for {0} together with family", pet.name)) }
+        } else {
+            OutlinedButton(onClick = { app.navigate(Screen.Family(sharePetId = pet.id)) }) { Text(tr("👪 Share with your household")) }
         }
 
         Text(tr("Care"), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
@@ -167,7 +168,7 @@ fun PetScreen(app: AppScope, state: AppState, pet: Pet) {
             text = {
                 Text(
                     tr("This removes the sprite, tasks and history from this phone. It can't be undone.") +
-                        if (pet.shared) " " + tr("Your family keeps their copy of {0}, no longer shared.", pet.name) else "",
+                        if (pet.shared) " " + tr("Your household keeps their copy of {0}, no longer shared.", pet.name) else "",
                 )
             },
             confirmButton = {
@@ -179,6 +180,18 @@ fun PetScreen(app: AppScope, state: AppState, pet: Pet) {
         )
     }
     if (renaming) RenameDialog(app, pet) { renaming = false }
+}
+
+/** "Fed by Jamaica · 7:02 AM": care someone else in the household logged, from the owner's side. */
+fun doneBy(kind: TaskKind, who: String, time: String): String = when (kind) {
+    TaskKind.FEED -> tr("Fed by {0} · {1}", who, time)
+    TaskKind.WATER -> tr("Water refilled by {0} · {1}", who, time)
+    TaskKind.WALK -> tr("Walked by {0} · {1}", who, time)
+    TaskKind.PLAY -> tr("Playtime with {0} · {1}", who, time)
+    TaskKind.MEDS -> tr("Medicine given by {0} · {1}", who, time)
+    TaskKind.GROOM -> tr("Groomed by {0} · {1}", who, time)
+    TaskKind.LITTER -> tr("Litter cleaned by {0} · {1}", who, time)
+    else -> tr("Done by {0} · {1}", who, time)
 }
 
 private fun hearts(score: Int): String {
@@ -204,11 +217,11 @@ private fun TaskRow(app: AppScope, pet: Pet, s: TaskStatus, onDone: () -> Unit) 
                 Text("${t.kind.emoji} ${trName(t.title)}", fontWeight = FontWeight.Bold)
                 Text(detail, color = if (s.isOverdue) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface)
                 Text(times, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                // Family sharing: "Done by Jamaica · 7:02 AM" when someone else did it today.
+                // Household: "Fed by Jamaica · 7:02 AM" when someone else did it today.
                 val today = clock.dayIndex(app.now)
                 app.repo.state.value.completions.lastOrNull { it.taskId == t.id && it.localDay == today }?.let { c ->
                     app.repo.family.nameOf(c.by)?.let { who ->
-                        Text(tr("Done by {0} · {1}", who, formatTime(c.atMs, clock)), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.secondary)
+                        Text(doneBy(t.kind, who, formatTime(c.atMs, clock)), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.secondary)
                     }
                 }
                 if (t.adaptive && AdaptiveTiming.effectiveSlots(t, app.repo.state.value.completions, app.now, clock) != t.slots.sorted()) {
@@ -220,7 +233,10 @@ private fun TaskRow(app: AppScope, pet: Pet, s: TaskStatus, onDone: () -> Unit) 
                     Button(onClick = { onDone(); app.launch { app.repo.complete(t.id) } }) { Text(tr("Done")) }
                 }
                 Row {
-                    if (s.logged > 0) TextButton(onClick = { app.launch { app.repo.undo(t.id) } }) { Text(tr("Undo")) }
+                    // Undo takes back your own Done, never someone else's.
+                    val mineThisCycle = s.logged > 0 && app.repo.state.value.completions
+                        .any { it.taskId == t.id && it.localDay >= s.cycleStartDay && app.repo.family.isMine(it.by) }
+                    if (mineThisCycle) TextButton(onClick = { app.launch { app.repo.undo(t.id) } }) { Text(tr("Undo")) }
                     TextButton(onClick = { app.navigate(Screen.EditTask(pet.id, t.id)) }) { Text(tr("Edit")) }
                 }
             }

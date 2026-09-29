@@ -356,6 +356,9 @@ class AnimationTest {
         val back = PetLook.decode(code)!!
         assertEquals(code, back.encode())
         assertTrue(PetArt(back, Species.CAT).still.pixels.contentEquals(PetArt(look, Species.CAT).still.pixels), "same pixel pet")
+        // A household member's phone draws from the code alone (never the face file): the same pet, awake and asleep.
+        assertTrue(PetArt(back, Species.CAT).still.pixels.contentEquals(PetArt(sprite(), Species.CAT).still.pixels), "same as from the face")
+        assertTrue(Chibi.sleeping(PetArt(back, Species.CAT)).pixels.contentEquals(Chibi.sleeping(PetArt(sprite(), Species.CAT)).pixels))
         for (bad in listOf("", "2;ffffff;" + "0".repeat(64), "1;;" + "0".repeat(64), "1;ffffff;" + "1".repeat(64), "1;zzzzzz;" + "0".repeat(64), "1;ffffff;00"))
             assertEquals(null, PetLook.decode(bad), bad)
     }

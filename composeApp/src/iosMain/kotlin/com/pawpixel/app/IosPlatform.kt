@@ -105,11 +105,11 @@ object IosGraph {
 
     /**
      * Done on a notification: [refs] is "task@slot" pairs (several for a bundled reminder). Calls
-     * [done] once it's saved, so iOS keeps the app awake until then.
+     * [done] once it's saved and sent to the household (or that timed out), so iOS keeps the app awake until then.
      */
     fun completeTask(refs: String, done: NotificationDone) {
         MainScope().launch {
-            try { repo.completeFromReminder(com.pawpixel.core.ReminderRef.decodeAll(refs)) } finally { done.finished() }
+            try { repo.completeInBackground { completeFromReminder(com.pawpixel.core.ReminderRef.decodeAll(refs)) } } finally { done.finished() }
         }
     }
 

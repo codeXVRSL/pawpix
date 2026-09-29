@@ -54,6 +54,10 @@ Made in Naga City, Philippines.
   - **Personal info → Email address** and **User IDs**: collected (from Google sign-in), for account management.
   - **Personal info → Other info** (pet names) and **App activity → Other user-generated content** (RSVPs, reports): collected, shared with other users (names only), for app functionality.
   - Users can request deletion: **yes** (in the app).
+- **If household sharing is switched on** (same server and sign-in as the map), also declare (optional, tied to the account, deletable in the app):
+  - **Personal info → Name** (the name a member shows their household): collected, shared with other users (household members), for app functionality.
+  - **Personal info → Other info** (shared pets' names, birthday, pixel look) and **App activity → Other actions** (the care log: when a task was done or undone, and by whom; care and health schedules): collected, shared with other users (household members only), for app functionality.
+  - Photos and location: still **not collected** (households never receive them).
 Re-check the guide before submitting; it's Google's list and can change.
 
 ## Apple App Store
@@ -73,7 +77,7 @@ virtual pet,pet care,reminder,feed,walk,pixel art,dog,cat,puppy,kitten,sprite,8b
 **Description:** use the Google Play full description above (Apple doesn't render bullets specially; plain line breaks are fine).
 
 **Category:** Lifestyle (secondary: Entertainment) · **Age rating:** 4+
-**App Privacy:** without the pet map: Data Not Collected (the iOS build uses Apple's Vision framework on-device, with no third-party SDKs). **With the pet map switched on**, declare as "Data Linked to You", not used for tracking: **Coarse Location**, **User ID**, **Email Address** (if the user shares it via Sign in with Apple), and **Other User Content** (pet names, RSVPs, reports), all for App Functionality. Re-check if you add any SDK such as RevenueCat or analytics.
+**App Privacy:** without the pet map: Data Not Collected (the iOS build uses Apple's Vision framework on-device, with no third-party SDKs). **With the pet map switched on**, declare as "Data Linked to You", not used for tracking: **Coarse Location**, **User ID**, **Email Address** (if the user shares it via Sign in with Apple), and **Other User Content** (pet names, RSVPs, reports), all for App Functionality. **With household sharing**, add **Name** (the name shown to household members) and **Other User Content** (shared pets, their care schedules and the care log of who did what), linked to the user, for App Functionality. Re-check if you add any SDK such as RevenueCat or analytics.
 
 ## Screenshots (captured from the real app by CI)
 Ready to upload, taken from the end-to-end runs (only the photo picker is stubbed):

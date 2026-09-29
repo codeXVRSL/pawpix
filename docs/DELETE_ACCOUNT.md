@@ -9,8 +9,10 @@ Your pets, photos, care tasks, health records and history live only on your phon
 - In the app: **Settings → Delete all my data**, or
 - uninstall PawPixel. (On Android, also remove PawPixel from your Google backup: Google Drive → Backups.)
 
-## PawPixel account (pet map and family sharing)
-If you joined the optional pet map or a family, the server keeps your sign-in (Google or Apple account ID and email), your pixel pets, their names, your ~1 km area, your RSVPs, blocks and reports, and your family membership and the shared pets' care records.
+## PawPixel account (pet map and household)
+If you joined the optional pet map or a household, the server keeps your sign-in (Google or Apple account ID and email), your pixel pets, their names, your ~1 km area, your RSVPs, blocks and reports, and your household membership (the name you show) and the shared pets' care records.
+
+Deleting the account removes your membership in a household (and the household itself if you were the last one in it). Care records you logged stay with the household, no longer linked to you.
 
 **Delete it in the app:** Pet map → More → **Delete my map account** (or Settings → Delete all my data). It is deleted immediately.
 

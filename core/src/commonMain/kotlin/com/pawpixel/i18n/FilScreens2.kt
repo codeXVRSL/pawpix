@@ -1,7 +1,7 @@
 package com.pawpixel.i18n
 
 /**
- * Filipino for Settings, Family sharing, the sprite maker and shared components.
+ * Filipino for Settings, the household screens, the sprite maker and shared components.
  * Everyday Filipino; loanwords kept where people use them ("backup", "sync", "invite code", "Done").
  */
 object FilScreens2 {
@@ -20,10 +20,11 @@ object FilScreens2 {
         "Language" to "Wika",
         "Phone's language" to "Wika ng phone",
         "Filipino translations are new: tell us if something sounds off." to "Bago pa lang ang salin sa Filipino: sabihan mo kami kung may parang mali o kakaiba.",
-        "Family sharing" to "Pagbabahagi sa pamilya",
+        "Household" to "Household",
         "You're in {0} ({1} people)." to "Kasama ka sa {0} ({1} tao).",
         "Care for your pets together: everyone's Done taps show on every phone." to "Sabay-sabay ninyong alagaan ang mga alaga: makikita sa bawat phone ang Done ng lahat.",
-        "Open family sharing" to "Buksan ang pagbabahagi sa pamilya",
+        "Household settings" to "Mga setting ng household",
+        "Join a household" to "Sumali sa isang household",
         "Away from home" to "Wala sa bahay",
         "Care reminders are paused until {0}. Your pets won't fret over care missed while you're away." to "Naka-pause ang mga paalala hanggang {0}. Hindi mag-aalala ang mga alaga mo sa mga hindi nagawang pag-aalaga habang wala ka.",
         "I'm back" to "Nandito na ako",
@@ -52,12 +53,16 @@ object FilScreens2 {
             "and only a small crop is kept for your before/after card. Deleting the app deletes what's on the phone (Android's own Google backup may keep a copy until you remove it in Google Drive). " +
             "The pet map is optional: only if you join it, your pixel pets, their names and your rough area (about 1 km, never " +
             "your exact location) go to PawPixel's map server, with the Google or Apple account you sign in with. " +
+            "Sharing with your household is optional too: only then, the pets you share (name, pixel look, care and health " +
+            "schedules), who did each task and the name you show go to PawPixel's server, for your household only. Never photos. " +
             "On Android, Google's on-device pet detector (ML Kit) sends Google anonymous performance data, never your photos." to
             "Nananatili ang lahat sa phone na ito: walang account, walang ina-upload, walang tracking. (Maaaring kasama ito sa sariling backup ng phone mo, at napupunta lang ang mga backup file kung saan mo ito ise-save.) " +
             "Ginagawang sprite ang litrato mo sa mismong device, at maliit na crop lang ang itinatabi para sa before/after card mo. " +
             "Kapag binura mo ang app, mabubura ang nasa phone (maaaring may kopyang itabi ang sariling Google backup ng Android hangga't hindi mo ito binubura sa Google Drive). " +
             "Opsyonal ang pet map: kung sasali ka lang, mapupunta sa map server ng PawPixel ang mga pixel pet mo, ang pangalan nila at ang tinatayang lugar mo (mga 1 km, hindi kailanman ang eksaktong lokasyon mo), " +
             "kasama ang Google o Apple account na ginamit mo sa pag-sign in. " +
+            "Opsyonal din ang pag-share sa household mo: kung gagawin mo lang, mapupunta sa server ng PawPixel ang mga alagang ishe-share mo (pangalan, pixel na itsura, iskedyul ng pag-aalaga at kalusugan), " +
+            "kung sino ang gumawa ng bawat gawain at ang pangalang ipinapakita mo, para sa household mo lang. Hindi kailanman ang mga litrato. " +
             "Sa Android, nagpapadala sa Google ang pet detector ng Google na nasa device mismo (ML Kit) ng anonymous na performance data, hindi kailanman ang mga litrato mo.",
         "Privacy policy" to "Privacy policy",
         "Contact support" to "Makipag-ugnayan sa support",
@@ -74,51 +79,68 @@ object FilScreens2 {
         "Delete everything?" to "Burahin lahat?",
         "All pets, sprites, tasks and history will be removed from this phone, and your pet map account (if you joined) from the server. This can't be undone." to "Mabubura sa phone na ito ang lahat ng alaga, sprite, gawain at history, at sa server naman ang pet map account mo (kung sumali ka). Hindi na ito maibabalik.",
 
-        // Family sharing
+        // Household
         "Something went wrong. Please try again." to "May nangyaring mali. Pakisubukan ulit.",
-        "Family sharing is coming soon: this build isn't connected to PawPixel's server yet. Everything else works on this phone as usual." to "Malapit na ang pagbabahagi sa pamilya: hindi pa konektado ang build na ito sa server ng PawPixel. Gumagana pa rin gaya ng dati ang lahat ng iba pa sa phone na ito.",
-        " (you)" to " (ikaw)",
-        " · started the family" to " · nagsimula ng pamilya",
+        "Your household" to "Ang household mo",
+        "Coming soon" to "Malapit na",
+        "Sharing with your household isn't available yet: this build isn't connected to PawPixel's server. Everything else works on this phone as usual." to "Hindi pa puwedeng mag-share sa household mo: hindi pa konektado ang build na ito sa server ng PawPixel. Gumagana pa rin gaya ng dati ang lahat ng iba pa sa phone na ito.",
+        "(you)" to "(ikaw)",
+        "Started the household" to "Nagsimula ng household",
+        "Just you so far. Send an invite code to someone at home." to "Ikaw pa lang sa ngayon. Magpadala ng invite code sa kasama mo sa bahay.",
         "Sync now" to "I-sync ngayon",
         "Pets you care for together" to "Mga alagang sabay ninyong inaalagaan",
-        "Pets your family shares appear here after the next sync." to "Lalabas dito ang mga alagang ibinabahagi ng pamilya mo pagkatapos ng susunod na sync.",
-        "Shared: care, health and records sync" to "Shared: naka-sync ang pag-aalaga, kalusugan at mga record",
+        "Pets your household shares appear here after the next sync." to "Lalabas dito ang mga alagang shared sa household mo pagkatapos ng susunod na sync.",
+        "Shared: care, health and who did it" to "Shared: pag-aalaga, kalusugan at kung sino ang gumawa",
         "Only on this phone" to "Sa phone na ito lang",
+        "Share {0}" to "I-share si {0}",
         "Invite someone" to "Mag-imbita",
-        "Send a code to the people you care for your pets with (up to 8). It works for 7 days. They sign in, tap Join with a code, and see your shared pets." to "Magpadala ng code sa mga kasama mong nag-aalaga sa mga alaga mo (hanggang 8). Gagana ito nang 7 araw. Magsa-sign in sila, ita-tap ang Sumali gamit ang code, at makikita na nila ang mga shared na alaga mo.",
-        "Get an invite code" to "Kumuha ng invite code",
+        "Send a code to the people you care for your pets with (up to 8 in a household)." to "Magpadala ng code sa mga kasama mong nag-aalaga sa mga alaga mo (hanggang 8 sa isang household).",
+        "New invite code" to "Bagong invite code",
         "All invite codes are cancelled." to "Kinansela na ang lahat ng invite code.",
         "Cancel all invite codes" to "Kanselahin lahat ng invite code",
         "Leave {0}" to "Umalis sa {0}",
+        "Stop sharing for everyone" to "Itigil ang pag-share para sa lahat",
         "What's shared: pet names, their pixel looks, care tasks, health dates and who tapped Done. Never photos (card photos stay on your phone) and never your location. Reminder settings stay your own." to "Ang ibinabahagi: pangalan ng mga alaga, ang pixel na itsura nila, mga gawain sa pag-aalaga, mga petsa sa kalusugan at kung sino ang nag-tap ng Done. Hindi kailanman ang mga litrato (nananatili sa phone mo ang mga litrato sa card) at hindi kailanman ang lokasyon mo. Sa iyo lang ang mga setting ng paalala mo.",
         "Remove {0}?" to "Alisin si {0}?",
-        "{0} stops seeing your family's pets and taps. Their phone keeps its own copy, no longer shared." to "Hindi na makikita ni {0} ang mga alaga at tap ng pamilya mo. May sariling kopya pa rin ang phone niya, pero hindi na shared.",
-        "Leave the family?" to "Umalis sa pamilya?",
+        "{0} stops seeing your household's pets and taps. Their phone keeps its own copy, no longer shared." to "Hindi na makikita ni {0} ang mga alaga at tap ng household mo. May sariling kopya pa rin ang phone niya, pero hindi na shared.",
+        "Leave the household?" to "Umalis sa household?",
         "Shared pets stay on this phone with their history, no longer shared. The others keep theirs." to "Mananatili sa phone na ito ang mga shared na alaga kasama ang history nila, pero hindi na shared. Mananatili rin sa iba ang kanila.",
         "Leave" to "Umalis",
+        "Stop sharing for everyone?" to "Itigil ang pag-share para sa lahat?",
+        "The household ends for everyone. Each phone keeps its own copy of the pets and their history, no longer shared." to "Matatapos ang household para sa lahat. Mananatili sa bawat phone ang sarili nitong kopya ng mga alaga at ng history nila, pero hindi na shared.",
+        "Stop sharing" to "Itigil ang pag-share",
         "Care for your pets together" to "Sabay-sabay na alagaan ang mga alaga",
+        "Care for {0} together" to "Sabay-sabay na alagaan si {0}",
         "When someone at home feeds or walks your pet, it shows on everyone's phone and widget, with who did it. No more double breakfasts." to "Kapag may nagpakain o nagpalakad sa alaga mo sa bahay, makikita ito sa phone at widget ng lahat, kasama kung sino ang gumawa. Wala nang dobleng almusal.",
-        "Family sharing needs an account, so PawPixel's server can pass your Done taps between phones. Everything else keeps working on this phone without one." to "Kailangan ng account ang pagbabahagi sa pamilya, para maipasa ng server ng PawPixel ang mga Done tap ninyo sa bawat phone. Gumagana pa rin ang lahat ng iba pa sa phone na ito kahit wala nito.",
+        "Sharing needs an account, so PawPixel's server can pass your Done taps between phones. Everything else keeps working on this phone without one." to "Kailangan ng account para mag-share, para maipasa ng server ng PawPixel ang mga Done tap ninyo sa bawat phone. Gumagana pa rin ang lahat ng iba pa sa phone na ito kahit wala nito.",
         "Sign in with Google" to "Mag-sign in gamit ang Google",
         "Sign in with Apple" to "Mag-sign in gamit ang Apple",
         "Sign in (test account)" to "Mag-sign in (test account)",
-        "Your name (what your family sees)" to "Pangalan mo (ito ang makikita ng pamilya mo)",
-        "New family" to "Bagong pamilya",
-        "Family name, e.g. The Cruz home" to "Pangalan ng pamilya, hal. Pamilya Cruz",
-        "Our family" to "Ang aming pamilya",
-        "Start a family" to "Magsimula ng pamilya",
-        "Join with a code" to "Sumali gamit ang code",
+        "Your name" to "Pangalan mo",
+        "What your household sees, e.g. \"Fed by {0}\"" to "Ito ang makikita ng household mo, hal. \"Pinakain ni {0}\"",
+        "Start a household" to "Magsimula ng household",
+        "You'll get a code to send to the people you care for your pets with." to "Makakakuha ka ng code na ipapadala mo sa mga kasama mong nag-aalaga sa mga alaga mo.",
+        "Create household" to "Gumawa ng household",
+        "Got a code from someone at home? Enter it here, and their pets appear on this phone." to "May code ka mula sa kasama mo sa bahay? Ilagay ito rito, at lalabas sa phone na ito ang mga alaga nila.",
         "Invite code" to "Invite code",
         "Join" to "Sumali",
-        "Add your name first." to "Ilagay muna ang pangalan mo.",
-        "Valid for 7 days" to "Gagana nang 7 araw",
-        "Join {0} on PawPixel, so we can care for our pets together. Open PawPixel → Family sharing → Join with a code: {1}" to "Sumali sa {0} sa PawPixel, para sabay nating maalagaan ang mga alaga natin. Buksan ang PawPixel → Pagbabahagi sa pamilya → Sumali gamit ang code: {1}",
-        "Share the code" to "I-share ang code",
+        "Your invite code" to "Ang invite code mo",
+        "Invite code {0}" to "Invite code {0}",
+        "Works for 7 days, for up to 8 people in a household." to "Gagana nang 7 araw, para sa hanggang 8 tao sa isang household.",
+        "Copy" to "Kopyahin",
+        "Copied ✓" to "Nakopya na ✓",
+        "Join my household on PawPixel: code {0}" to "Sumali sa household ko sa PawPixel: code {0}",
+        "Join {0}'s care on PawPixel: code {1}" to "Tumulong sa pag-aalaga kay {0} sa PawPixel: code {1}",
+        "{0} and {1}" to "{0} at {1}",
         "Syncing…" to "Nagsi-sync…",
         "Not synced: {0} Your changes wait on this phone." to "Hindi na-sync: {0} Naghihintay sa phone na ito ang mga binago mo.",
         "Not synced yet" to "Hindi pa na-sync",
         "Synced just now" to "Na-sync ngayon lang",
         "Synced {0}" to "Na-sync {0}",
+        "{0}'s household" to "Household ni {0}",
+        "You're no longer in {0}. Your pets stay on this phone with their history." to "Wala ka na sa {0}. Mananatili sa phone na ito ang mga alaga mo kasama ang history nila.",
+        "Someone at home already has your pet on PawPixel?" to "Nasa PawPixel na ba ang alaga mo sa phone ng kasama mo sa bahay?",
+        "👪 Join a household" to "👪 Sumali sa isang household",
 
         // Sprite maker
         "Couldn't open that photo. Try another one." to "Hindi mabuksan ang litratong iyan. Subukan ang iba.",

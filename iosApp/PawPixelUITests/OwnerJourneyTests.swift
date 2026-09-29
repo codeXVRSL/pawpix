@@ -168,6 +168,17 @@ final class OwnerJourneyTests: XCTestCase {
             try find("‹ Back").tap()
         }
 
+        step("share with your household (no server in this CI build: says it's not available yet)") {
+            try find(petName).tap()
+            try scrollTo(query: element(containing: "Share with your household"), "Share with your household").tap()
+            let ready = element("Coming soon").waitForExistence(timeout: 10)
+            shot("household")
+            guard ready else { throw Failure("household screen didn't say it's not available yet") }
+            try find("‹ Back").tap()
+            try scrollTo("‹ Back").tap() // the pet's page is scrolled down to the share button
+            try find("Settings")
+        }
+
         step("relaunch keeps the pet") {
             app.terminate()
             app.launchEnvironment["PAWPIXEL_TEST_RESET"] = "0"

@@ -112,7 +112,7 @@ object FilCore {
         "MEET {0}" to "KILALANIN SI {0}",
         "MY PET" to "ANG ALAGA KO",
         "MADE WITH PAWPIXEL" to "GAWA SA PAWPIXEL",
-        "Start or join a family first" to "Gumawa o sumali muna sa isang pamilya",
+        "Start or join a household first" to "Gumawa o sumali muna sa isang household",
         "Couldn't sync: {0}" to "Hindi ma-sync: {0}",
         "You're in {0} (just you so far)." to "Kasali ka sa {0} (ikaw pa lang sa ngayon).",
 

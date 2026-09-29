@@ -25,6 +25,7 @@ import androidx.test.uiautomator.Configurator
 import androidx.test.uiautomator.StaleObjectException
 import androidx.test.uiautomator.UiDevice
 import androidx.test.uiautomator.UiObject2
+import androidx.test.uiautomator.Until
 import com.pawpixel.app.widget.PetWidgetReceiver
 import kotlinx.coroutines.runBlocking
 import org.hamcrest.CoreMatchers.not
@@ -338,55 +339,55 @@ class EndToEndTest {
             find(By.text("Chelsea"))
         }
 
-        step("family sharing: start a family, a partner joins, her Done shows on this phone") {
+        step("household: share Chelsea, a partner joins, her Done and her Undo show on this phone") {
             if (!repo.map.settings.isConfigured) { note("server not set up in this build; skipped"); return@step }
-            retrying { find(By.text("Settings")).click() }
-            retrying { scrollTo(By.text("Open family sharing")).click() }
+            retrying { find(By.text("Chelsea")).click() }
+            retrying { scrollTo(By.text("👪 Share with your household")).click() }
             if (device.hasObject(By.text(repo.map.signInLabel))) retrying { find(By.text(repo.map.signInLabel)).click() }
             val nameField = find(By.clazz("android.widget.EditText"), 20_000)
             retrying { nameField.click() }
             retrying { find(By.clazz("android.widget.EditText")).text = "Save" }
             device.pressBack()
-            retrying { scrollTo(By.text("Start a family")).click() }
+            shot("h-household-start")
+            retrying { scrollTo(By.text("Create household")).click() }
             val code = find(By.text(Pattern.compile("[A-HJKMNP-Z2-9]{4}-[A-HJKMNP-Z2-9]{4}")), 20_000).text
-            shot("family-invite")
+            shot("h-household-invite")
+            waitFor("Chelsea is shared", 20_000) { repo.state.value.pets.single().shared }
             // Jamaica, on her own phone (here: the app's own client, signed in as the seeded partner).
             val partnerApi = com.pawpixel.map.SupabaseApi(repo.map.settings, repo.platform.http, object : com.pawpixel.map.SessionStore {
                 var s: String? = null; override fun load() = s; override fun save(json: String?) { s = json }
             }, repo.platform::nowMs)
             val partner = com.pawpixel.map.HouseholdClient(partnerApi)
             val hid = runBlocking { partnerApi.signInWithPassword("partner@test.pawpixel", "partner-pass-123"); partner.join(code, "Jamaica") }
-            // Share Chelsea.
-            retrying { scrollTo(By.checkable(true)).click() }
-            waitFor("Chelsea reaches the family", 30_000) { runBlocking { partner.pull(hid) }.pets.any { it.name == "Chelsea" } }
-            val shared = runBlocking { partner.pull(hid) }
+            waitFor("Chelsea reaches the household", 30_000) { runBlocking { partner.pull(hid) }.changes.pets.any { it.name == "Chelsea" } }
+            val shared = runBlocking { partner.pull(hid) }.changes
+            check(shared.pets.single().lookCode != null) { "no pixel look shared" }
             // Litter, not water: the reminder step after this one uses the water task.
             val litter = shared.tasks.first { it.kind.name == "LITTER" }
-            check(shared.pets.single().lookCode != null) { "no pixel look shared" }
             // Jamaica cleans the litter.
             val now = repo.now()
             runBlocking {
                 partner.push(hid, com.pawpixel.core.SyncPush(addCompletions = listOf(com.pawpixel.core.Completion(
                     litter.id, now, repo.clock.minuteOfDay(now), repo.clock.dayIndex(now), id = "partnerlitter1"))))
             }
-            retrying { find(By.text("Sync now")).click() }
+            retrying { scrollTo(By.text("Sync now")).click() }
             waitFor("her Done arrives", 30_000) { repo.state.value.completions.any { it.id == "partnerlitter1" && it.by == partnerApi.userId } }
-            find(By.textContains("Jamaica"))
-            shot("family-members")
-            // Back to Home (wait for it: the family screen also lists "Chelsea"), then her page.
-            goHome()
-            find(By.text("Pet map"))
-            retrying { find(By.text("Chelsea")).click() }
-            scrollTo(By.text("+ Add care task")) // her page is open
-            val mine = repo.state.value
-            val today = repo.clock.dayIndex(repo.now())
-            note("litter records: " + mine.completions.filter { it.taskId == litter.id }.joinToString { "${it.id} by=${it.by} day=${it.localDay}" } +
-                " today=$today me=${repo.family.myUserId} name=${repo.family.nameOf(partnerApi.userId)}")
-            scrollTo(By.textStartsWith("Done by Jamaica"))
-            Thread.sleep(500)
-            shot("family-done-by")
+            scrollTo(By.text("Jamaica"))
+            shot("h-household-members")
+            // Back to Chelsea's page: "Litter cleaned by Jamaica · <time>".
             device.pressBack()
-            find(By.text("Chelsea"))
+            scrollTo(By.text("+ Add care task")) // her page is open
+            val row = scrollTo(By.textStartsWith("Litter cleaned by Jamaica"))
+            note("on Chelsea's page: " + row.text)
+            Thread.sleep(500)
+            shot("h-household-done-by")
+            // Jamaica undoes it on her phone; the next sync (as when the app is reopened) takes it back here too.
+            runBlocking { partner.push(hid, com.pawpixel.core.SyncPush(undoCompletionIds = listOf("partnerlitter1"))) }
+            check(runBlocking { repo.family.sync() }) { "sync failed: ${repo.family.status.value.error}" }
+            waitFor("her Undo arrives", 20_000) { repo.state.value.completions.none { it.id == "partnerlitter1" } }
+            check(device.wait(Until.gone(By.textStartsWith("Litter cleaned by Jamaica")), 10_000)) { "'Litter cleaned by Jamaica' still shown after her Undo" }
+            device.pressBack()
+            find(By.text("Pet map"))
         }
 
         step("reminder notification with a working Done button") {

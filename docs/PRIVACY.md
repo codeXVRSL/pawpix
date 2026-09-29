@@ -2,7 +2,7 @@
 
 _Last updated: [date]. Replace the bracketed parts and publish this page before release._
 
-**Short version:** PawPixel works on your phone. Your photos are never uploaded. Only if you choose to join the **pet map** do a few things go to PawPixel's map server: your pixel pets, their names, your rough area (about 1 km) and the Google or Apple account you sign in with.
+**Short version:** PawPixel works on your phone. Your photos are never uploaded. Only if you choose to join the **pet map** or **share pets with your household** do a few things go to PawPixel's server: for the map, your pixel pets, their names and your rough area (about 1 km); for a household, the pets you share, their care and who did it; and in both cases the Google or Apple account you sign in with.
 
 ## What PawPixel stores, and where
 - **Your pet's photo:** used on your phone to make the pixel sprite. PawPixel keeps only a small (256×256) crop so it can make your before/after card and remake the sprite. The original stays in your photo library.
@@ -22,15 +22,17 @@ If you join the pet map, and only then:
 - **Leaving and deleting:** "Leave the map" removes your pets and area. "Delete my map account" (or Settings → Delete all my data) deletes your account and everything above from the server immediately.
 - The map is for people 18 and over.
 
-## Family sharing (optional)
-If you start or join a family, and only then:
+## Sharing with your household (optional)
+If you start or join a household (for example you and your partner both caring for your dog), and only then:
 - **Sign-in:** the same Google or Apple sign-in as the pet map.
-- **What your family sees:** the pets you choose to share (name, dog or cat, ear shape, pixel look code, birthday if you gave one), their care tasks and health schedules, when each was done and by whom (the name you chose), and the names of the people in the family. Never photos (vaccination-card photos stay on your phone) and never your location.
-- **Who can see it:** only the people in your family, who joined with an invite code. Our server enforces this.
-- **Leaving:** "Leave" removes you from the family; shared pets stay on your phone. Care records you logged stay with the family. Deleting your account removes you and marks your records as by an unknown person; a family with nobody left is deleted.
+- **What the server stores and your household sees:** the name you choose to show them (e.g. "Jamaica"); the pets you choose to share: name, dog or cat, ear shape, outfit, birthday if you gave one, where you tapped its eyes, and a short pixel "look code" (up to three fur colours and where they sit on the face), which is all another phone needs to draw the same pixel pet; their care tasks and health schedules; and a care log: each Done (when, and who), and each Undo (when, and who). The names of the people in the household.
+- **Never shared:** photos (not the pet's photo, not its face crop, not vaccination-card photos), your location, your reminder settings, your weigh-ins.
+- **Who can see it:** only the people in your household, who joined with an invite code (8 characters, valid for 7 days). Our server enforces this; a household has at most 8 people.
+- **How long:** until you leave, the household ends, or you delete your account. Undone records are kept in the log (marked undone) so every phone learns about the undo; each task keeps its latest 400 records.
+- **Leaving and deleting:** "Leave" removes you from the household; shared pets stay on your phone. Care records you logged stay with the household. The person who started it can remove people, and "Stop sharing for everyone" deletes the household and everything the server kept for it (each phone keeps its own copy). Deleting your account removes you and marks your records as by an unknown person; a household with nobody left is deleted.
 
 ## What PawPixel does not do
-- No ads or tracking. Outside the optional pet map, PawPixel has no account and receives none of your data.
+- No ads or tracking. Outside the optional pet map and household sharing, PawPixel has no account and receives none of your data.
 - No precise location. The optional map uses approximate location only, turned into a ~1 km square on your phone.
 - Photos are processed on your device by your phone's built-in tools: Google ML Kit on Android, Apple Vision on iPhone. Your photo is not uploaded.
 - **On Android only:** Google ML Kit sends Google anonymous diagnostic data (device model, OS and app version, performance and error information, and a per-installation ID) so Google can maintain the feature. It does not include your photos. See Google's ML Kit terms and privacy information.
@@ -39,7 +41,7 @@ If you start or join a family, and only then:
 When you tap **Share before/after**, PawPixel creates an image and opens your phone's share sheet. What happens next is up to you and the app you share to.
 
 ## Deleting your data
-Settings → **Delete all my data** removes everything immediately, including your pet map account if you joined. Uninstalling the app removes everything on the phone; if you joined the map, delete your map account in the app first (or email us and we'll delete it).
+Settings → **Delete all my data** removes everything immediately, including your PawPixel account (pet map and household) if you signed in. Uninstalling the app removes everything on the phone; if you joined the map, delete your map account in the app first (or email us and we'll delete it).
 
 ## Children
 PawPixel is a general-audience app. The pet map is only for people 18 and over; we don't knowingly collect data from children, and we delete any map account we learn belongs to a child.

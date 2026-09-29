@@ -35,7 +35,7 @@ jobs:
         with: { name: core-test-report, path: core/build/reports/tests }
 
   map-backend:
-    name: Map backend on a real Supabase stack (privacy rules)
+    name: Map and household backend on a real Supabase stack (privacy rules)
     runs-on: ubuntu-latest
     permissions:
       contents: write   # pushes the test log to the ci-results/backend branch
@@ -52,6 +52,14 @@ jobs:
           set -o pipefail
           mkdir -p backend-out
           python3 supabase/tests/map_test.py 2>&1 | tee backend-out/map_test.txt
+      - name: Play a household through every sharing rule
+        if: success() || failure()
+        run: |
+          eval "$(supabase status -o env)"
+          export SUPABASE_URL="$API_URL" ANON_KEY="${ANON_KEY:-$PUBLISHABLE_KEY}" SERVICE_KEY="${SERVICE_ROLE_KEY:-$SECRET_KEY}"
+          set -o pipefail
+          mkdir -p backend-out
+          python3 supabase/tests/household_test.py 2>&1 | tee backend-out/household_test.txt
       - uses: actions/setup-java@v4
         with: { distribution: temurin, java-version: "17" }
       - uses: gradle/actions/setup-gradle@v4

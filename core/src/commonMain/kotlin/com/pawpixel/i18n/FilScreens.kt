@@ -50,7 +50,7 @@ object FilScreens {
         "Tap {0} to give pets" to "I-tap si {0} para lambingin",
         "Shared with {0}" to "Naka-share sa {0}",
         "Cared for with {0}" to "Kasamang nag-aalaga: {0}",
-        "👪 Care for {0} together with family" to "👪 Alagaan si {0} kasama ang pamilya",
+        "👪 Share with your household" to "👪 I-share sa household mo",
         "Care" to "Pag-aalaga",
         "No care tasks yet. Add feeding, walks or medicine so {0}'s mood can follow real care." to
             "Wala pang gawain. Magdagdag ng pagpapakain, paglalakad o gamot para sumunod ang mood ni {0} sa totoong pag-aalaga.",
@@ -65,8 +65,8 @@ object FilScreens {
         "Delete {0}?" to "Burahin si {0}?",
         "This removes the sprite, tasks and history from this phone. It can't be undone." to
             "Mabubura ang sprite, mga gawain at history sa phone na ito. Hindi na ito maibabalik.",
-        "Your family keeps their copy of {0}, no longer shared." to
-            "Mananatili sa pamilya mo ang kopya nila ni {0}, pero hindi na ito shared.",
+        "Your household keeps their copy of {0}, no longer shared." to
+            "Mananatili sa household mo ang kopya nila ni {0}, pero hindi na ito shared.",
         "Edit pet" to "I-edit ang alaga",
 
         // Care task rows
@@ -76,6 +76,13 @@ object FilScreens {
         "Next {0}" to "Susunod {0}",
         "(every {0} days)" to "(tuwing {0} araw)",
         "Done by {0} · {1}" to "Ginawa ni {0} · {1}",
+        "Fed by {0} · {1}" to "Pinakain ni {0} · {1}",
+        "Water refilled by {0} · {1}" to "Pinalitan ni {0} ang tubig · {1}",
+        "Walked by {0} · {1}" to "Ipinasyal ni {0} · {1}",
+        "Playtime with {0} · {1}" to "Nakipaglaro si {0} · {1}",
+        "Medicine given by {0} · {1}" to "Pinainom ni {0} ng gamot · {1}",
+        "Groomed by {0} · {1}" to "Inayusan ni {0} · {1}",
+        "Litter cleaned by {0} · {1}" to "Nilinis ni {0} ang litter · {1}",
         "Adjusted to your routine" to "Inayon sa routine mo",
 
         // Health

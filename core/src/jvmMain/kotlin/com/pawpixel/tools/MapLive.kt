@@ -116,29 +116,42 @@ fun main() {
     val now = System.currentTimeMillis()
     val mochi = Pet("mochi", "Mochi", Species.DOG, 0, shared = true, lookCode = look)
     val feed = CareTask("feed", "mochi", TaskKind.FEED, "Feed", listOf(7 * 60, 17 * 60))
-    var saveState = StateOps.complete(AppState(pets = listOf(mochi), tasks = listOf(feed)), "feed", now - 60_000, clock)
-    var saveBase = SharedData(); var janBase = SharedData(); var janState = AppState()
-    fun syncSave() { val r = HouseholdSync.merge(saveState, saveBase, run { fs.pull(hid) }); run { fs.push(hid, r.push) }; saveState = r.state; saveBase = r.base }
-    fun syncJan() { val r = HouseholdSync.merge(janState, janBase, run { fj.pull(hid) }); run { fj.push(hid, r.push) }; janState = r.state; janBase = r.base }
+    /** A phone syncing the way the app does: pull what changed since its cursor, merge, push. */
+    class Phone(val client: HouseholdClient, var state: AppState) {
+        var base = SharedData(); var cursor = 0L
+        fun sync(run: (suspend () -> Any) -> Any) {
+            val pulled = run { client.pull(hid, cursor, base.tasks.map { it.id }.toSet()) } as HouseholdClient.Pulled
+            val r = HouseholdSync.merge(state, base, pulled.changes, client.userId, clock, System.currentTimeMillis())
+            run { client.push(hid, r.push) }
+            state = r.state; base = r.base; cursor = pulled.cursorMs
+        }
+    }
+    val savePhone = Phone(fs, StateOps.complete(AppState(pets = listOf(mochi), tasks = listOf(feed)), "feed", now - 60_000, clock))
+    val janPhone = Phone(fj, AppState())
+    fun syncSave() = savePhone.sync { run(it) }
+    fun syncJan() = janPhone.sync { run(it) }
     syncSave(); syncJan()
-    check("Jamaica's phone gets Mochi, the tasks and Save's Done", janState.pets.singleOrNull()?.lookCode == look &&
-        janState.tasks.size == 1 && janState.completions.singleOrNull()?.by == save.userId, janState)
-    janState = StateOps.complete(janState, "feed", now, clock)
+    check("Jamaica's phone gets Mochi, the tasks and Save's Done", janPhone.state.pets.singleOrNull()?.lookCode == look &&
+        janPhone.state.tasks.size == 1 && janPhone.state.completions.singleOrNull()?.by == save.userId, janPhone.state)
+    janPhone.state = StateOps.complete(janPhone.state, "feed", now, clock)
     syncJan(); syncSave()
-    check("Save sees Jamaica's Done, marked as hers", saveState.completions.count { it.by == jamaica.userId } == 1, saveState.completions)
-    janState = StateOps.undoLast(janState, "feed", mine = setOf(null, jamaica.userId))
+    check("Save sees Jamaica's Done, marked as hers", savePhone.state.completions.count { it.by == jamaica.userId } == 1, savePhone.state.completions)
+    janPhone.state = StateOps.undoLast(janPhone.state, "feed", mine = setOf(null, jamaica.userId))
     syncJan(); syncSave()
-    check("Jamaica's undo reaches Save", saveState.completions.none { it.by == jamaica.userId }, saveState.completions)
+    check("Jamaica's undo reaches Save", savePhone.state.completions.none { it.by == jamaica.userId }, savePhone.state.completions)
+    check("the undo is kept in the log, marked undone", run { fs.pull(hid) }.changes.log.count { it.undone } == 1)
+    val later = savePhone.cursor + HouseholdClient.LOOK_BACK_MS + 1 // as if pulling again after the look-back window
+    check("a pull only brings what changed since the last one", run { fs.pull(hid, later, savePhone.base.tasks.map { it.id }.toSet()) }.changes.log.isEmpty())
 
-    val peek = run { fx.pull(hid) }
-    check("a stranger reads nothing of the family", peek.pets.isEmpty() && peek.tasks.isEmpty() && peek.completions.isEmpty(), peek)
+    val peek = run { fx.pull(hid) }.changes
+    check("a stranger reads nothing of the family", peek.pets.isEmpty() && peek.tasks.isEmpty() && peek.log.isEmpty(), peek)
     val sneak = runCatching { run { fx.push(hid, SyncPush(upsertPets = listOf(mochi.copy(name = "Hacked")))) } }.exceptionOrNull() as? MapException
     check("a stranger can't write into the family", sneak?.kind == MapException.Kind.REFUSED, sneak)
     run {
         save.api.rest("POST", "/rest/v1/household_completions", Json.obj("household_id" to hid, "id" to "spoof1", "task_id" to "feed",
             "at_ms" to now, "local_minute" to 0, "local_day" to 0, "done_by" to jamaica.userId).stringify())
     }
-    check("nobody can log a Done in someone else's name", run { fs.pull(hid) }.completions.single { it.id == "spoof1" }.by == save.userId)
+    check("nobody can log a Done in someone else's name", run { fs.pull(hid) }.changes.log.single { it.completion.id == "spoof1" }.completion.by == save.userId)
 
     run { fj.leave() }
     check("leaving works, and the family stays", run { fj.mine() } == null && run { fs.mine() }?.members?.size == 1)

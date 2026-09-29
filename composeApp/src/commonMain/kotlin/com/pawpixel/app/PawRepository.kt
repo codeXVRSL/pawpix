@@ -6,6 +6,7 @@ import com.pawpixel.i18n.Lang
 import com.pawpixel.i18n.tr
 import com.pawpixel.core.Backup
 import com.pawpixel.core.HealthPlan
+import com.pawpixel.core.HouseholdSync
 import com.pawpixel.core.Ids
 import com.pawpixel.core.LocalClock
 import com.pawpixel.core.Mood
@@ -79,8 +80,13 @@ class PawRepository(val platform: Platform) {
         I18n.lang = Lang.resolve(state.settings.language, platform.systemLanguage())
     }
 
-    suspend fun update(change: (AppState) -> AppState): AppState = mutex.withLock {
-        val n = change(_state.value)
+    /**
+     * Applies a change, saves it and republishes. [stamp]: the owner's own change, so edited pets and
+     * tasks get the time of the edit (the later edit wins between household phones); false for what
+     * a household sync brought in.
+     */
+    suspend fun update(stamp: Boolean = true, change: (AppState) -> AppState): AppState = mutex.withLock {
+        val n = change(_state.value).let { if (stamp) HouseholdSync.stamp(_state.value, it, now()) else it }
         if (n != _state.value) {
             files.writeText(STATE_FILE, StateCodec.encode(n))
             if (n.settings.language != _state.value.settings.language) applyLanguage(n)
@@ -205,6 +211,15 @@ class PawRepository(val platform: Platform) {
     }
     /** Undo takes back this phone's own last record, never a family member's. */
     suspend fun undo(taskId: String) = update { StateOps.undoLast(it, taskId, mine = setOf(null, family.myUserId)) }
+
+    /**
+     * A Done from outside the app (widget, notification): logs it, then tells the household right
+     * away (best effort, a few seconds), so nobody else is reminded to feed a pet that was just fed.
+     */
+    suspend fun completeInBackground(log: suspend PawRepository.() -> Unit) {
+        log()
+        family.syncWithin()
+    }
     suspend fun setSettings(settings: Settings) = update { StateOps.setSettings(it, settings) }
 
     suspend fun deleteAllData() {
@@ -243,7 +258,8 @@ class PawRepository(val platform: Platform) {
     suspend fun readBackup(bytes: ByteArray): Backup.Contents = withContext(Dispatchers.Default) {
         if (bytes.isEmpty() || bytes.size > Backup.MAX_BYTES) throw Backup.NotABackup("That file is too big to be a PawPixel backup.")
         val contents = Backup.decode(bytes.decodeToString())
-        val missing = contents.state.pets.filter { "sprites/${it.id}/head.bin" !in contents.files }
+        // A pet that came from a household member's phone has no face file: it's drawn from its look code.
+        val missing = contents.state.pets.filter { "sprites/${it.id}/head.bin" !in contents.files && it.lookCode?.let(PetLook::decode) == null }
         if (missing.isNotEmpty()) throw Backup.NotABackup(tr("This backup is missing {0}'s pixel look.", missing.first().name))
         contents
     }
@@ -264,8 +280,12 @@ class PawRepository(val platform: Platform) {
             }
             // Widget poses for each pet, drawn from its restored face.
             for (pet in contents.state.pets) {
-                val head = contents.files["sprites/${pet.id}/head.bin"]?.let { runCatching { RawImage.decode(it) }.getOrNull() } ?: continue
-                writeWidgetPoses(pet, PetArt(head, pet.species, Ears.of(pet.ears), com.pawpixel.sprite.Accessory.of(pet.accessory)), "$STAGING/")
+                val outfit = com.pawpixel.sprite.Accessory.of(pet.accessory)
+                val art = contents.files["sprites/${pet.id}/head.bin"]?.let { runCatching { RawImage.decode(it) }.getOrNull() }
+                    ?.let { PetArt(it, pet.species, Ears.of(pet.ears), outfit) }
+                    ?: pet.lookCode?.let(PetLook::decode)?.let { PetArt(it, pet.species, Ears.of(pet.ears), outfit) }
+                    ?: continue
+                writeWidgetPoses(pet, art, "$STAGING/")
             }
         }
         mutex.withLock {

@@ -151,7 +151,8 @@ class PetWidgetReceiver : GlanceAppWidgetReceiver() {
 class DoneAction : ActionCallback {
     override suspend fun onAction(context: Context, glanceId: GlanceId, parameters: ActionParameters) {
         val taskId = parameters[TASK] ?: return
-        PawPixelApplication.repo(context).complete(taskId) // saves, then refreshes every widget
+        // Saves and refreshes every widget, then tells the household.
+        PawPixelApplication.repo(context).completeInBackground { complete(taskId) }
     }
 
     companion object {

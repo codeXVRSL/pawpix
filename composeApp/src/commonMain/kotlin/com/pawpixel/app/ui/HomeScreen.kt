@@ -58,13 +58,17 @@ fun HomeScreen(app: AppScope, state: AppState) {
                     Button(onClick = { app.navigate(Screen.CreatePet) }) { Text(tr("Choose a photo")) }
                 }
             }
+            JoinHouseholdLink(app)
         } else {
             LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.weight(1f)) {
                 items(state.pets, key = { it.id }) { pet -> PetCard(app, state, pet) }
                 item {
-                    TextButton(onClick = {
-                        if (StateOps.canAddPet(state)) app.navigate(Screen.CreatePet) else showProDialog = true
-                    }) { Text(tr("+ Add another pet")) }
+                    Column {
+                        TextButton(onClick = {
+                            if (StateOps.canAddPet(state)) app.navigate(Screen.CreatePet) else showProDialog = true
+                        }) { Text(tr("+ Add another pet")) }
+                        if (app.repo.family.household == null) JoinHouseholdLink(app)
+                    }
                 }
                 item {
                     WidgetTip(app, state)
@@ -81,6 +85,12 @@ fun HomeScreen(app: AppScope, state: AppState) {
             confirmButton = { TextButton(onClick = { showProDialog = false }) { Text(tr("OK")) } },
         )
     }
+}
+
+/** For someone whose partner already has the pet on PawPixel: join their household instead of making it again. */
+@Composable
+fun JoinHouseholdLink(app: AppScope) {
+    TextButton(onClick = { app.navigate(Screen.Family(join = true)) }) { Text(tr("👪 Join a household")) }
 }
 
 fun statusesFor(app: AppScope, state: AppState, petId: String): List<TaskStatus> =

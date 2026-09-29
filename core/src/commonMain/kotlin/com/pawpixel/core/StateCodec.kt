@@ -26,6 +26,7 @@ object StateCodec {
                 "careDays" to p.careDays,
                 "milestoneSeen" to p.milestoneSeen,
                 "accessory" to p.accessory,
+                "edited" to p.editedAtMs,
                 "sprite" to Json.obj(
                     "size" to p.sprite.size, "colors" to p.sprite.colors,
                     "outline" to p.sprite.outline, "vibrance" to p.sprite.vibrance,
@@ -39,6 +40,7 @@ object StateCodec {
                 "adaptive" to t.adaptive, "exactAlarm" to t.exactAlarm, "remindersOn" to t.remindersOn,
                 "createdAt" to t.createdAtMs,
                 "series" to t.series,
+                "edited" to t.editedAtMs,
             )
         },
         "weights" to state.weights.map { w -> Json.obj("petId" to w.petId, "day" to w.day, "g" to w.grams) },
@@ -82,6 +84,7 @@ object StateCodec {
                 careDays = p["careDays"].list.mapNotNull { it.long }.distinct().sorted().takeLast(AppState.MAX_CARE_DAYS),
                 milestoneSeen = p["milestoneSeen"].int ?: 0,
                 accessory = p["accessory"].str?.takeIf { com.pawpixel.sprite.Accessory.of(it) != null },
+                editedAtMs = p["edited"].long ?: 0L,
                 sprite = SpriteSettings(
                     size = sp["size"].int ?: spriteDefaults.size,
                     colors = sp["colors"].int ?: spriteDefaults.colors,
@@ -108,6 +111,7 @@ object StateCodec {
                 remindersOn = t["remindersOn"].bool ?: true,
                 createdAtMs = t["createdAt"].long ?: 0L,
                 series = t["series"].list.mapNotNull { it.long }.sorted().take(HealthPlan.MAX_DOSES),
+                editedAtMs = t["edited"].long ?: 0L,
             )
         }
         val taskIds = tasks.map { it.id }.toSet()

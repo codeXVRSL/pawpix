@@ -181,6 +181,10 @@ fun SpriteMakerScreen(app: AppScope, state: AppState, existingPetId: String?) {
                     if (loading) CircularProgressIndicator() else Button(onClick = pick) { Text(tr("Choose a photo")) }
                 }
             }
+            if (existing == null && state.pets.isEmpty()) {
+                Text(tr("Someone at home already has your pet on PawPixel?"), style = MaterialTheme.typography.bodySmall)
+                JoinHouseholdLink(app)
+            }
         } else {
             PixelCard(Modifier.fillMaxWidth()) {
                 Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(6.dp)) {

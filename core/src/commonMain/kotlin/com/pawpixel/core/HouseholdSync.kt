@@ -21,10 +21,35 @@ data class SyncPush(
     val upsertTasks: List<CareTask> = emptyList(),
     val deleteTaskIds: List<String> = emptyList(),
     val addCompletions: List<Completion> = emptyList(),
-    val deleteCompletionIds: List<String> = emptyList(),
+    /** Records this phone undid: marked undone on the server (the care log is append-only). */
+    val undoCompletionIds: List<String> = emptyList(),
 ) {
     val isEmpty: Boolean get() = upsertPets.isEmpty() && deletePetIds.isEmpty() && upsertTasks.isEmpty() &&
-        deleteTaskIds.isEmpty() && addCompletions.isEmpty() && deleteCompletionIds.isEmpty()
+        deleteTaskIds.isEmpty() && addCompletions.isEmpty() && undoCompletionIds.isEmpty()
+}
+
+/** A care record as the server's log has it: added, or later undone. */
+data class LoggedCompletion(val completion: Completion, val undone: Boolean = false)
+
+/**
+ * What a sync pulls: the household's pets and tasks (a few rows, pulled whole) and the care records
+ * added or undone since the last sync (the log only grows, so only what changed is pulled).
+ */
+data class RemoteChanges(
+    val pets: List<Pet>,
+    val tasks: List<CareTask>,
+    val log: List<LoggedCompletion>,
+) {
+    /**
+     * The server's copy, rebuilt from the last sync's copy ([base]) and what changed since: records
+     * are deduplicated by id, and undone ones drop out.
+     */
+    fun applyTo(base: SharedData): SharedData {
+        val records = LinkedHashMap<String, Completion>()
+        for (c in base.completions) records[c.id] = c
+        for (e in log) if (e.undone) records.remove(e.completion.id) else records[e.completion.id] = e.completion
+        return SharedData(pets, tasks, records.values.toList())
+    }
 }
 
 data class SyncResult(
@@ -67,16 +92,42 @@ object HouseholdSync {
     }
 
     /** The fields everyone shares; the rest (sprite settings, reminder switches) is this phone's own. */
-    fun view(p: Pet) = p.copy(sprite = SpriteSettings(), spriteVersion = 0, shared = true, careDays = emptyList(), milestoneSeen = 0)
-    fun view(t: CareTask) = t.copy(remindersOn = true, exactAlarm = false)
+    fun view(p: Pet) = p.copy(sprite = SpriteSettings(), spriteVersion = 0, shared = true, careDays = emptyList(), milestoneSeen = 0, editedAtMs = 0)
+    fun view(t: CareTask) = t.copy(remindersOn = true, exactAlarm = false, editedAtMs = 0)
+
+    /**
+     * Marks the pets and tasks this phone's owner just changed with the time of the change, so the
+     * later of two offline edits wins (see [merge]). Only for the owner's own changes, never for
+     * what a sync brought in.
+     */
+    fun stamp(before: AppState, after: AppState, nowMs: Long): AppState {
+        if (after.pets === before.pets && after.tasks === before.tasks) return after
+        val oldPets = before.pets.associateBy { it.id }
+        val oldTasks = before.tasks.associateBy { it.id }
+        return after.copy(
+            pets = after.pets.map { p -> if (oldPets[p.id]?.let(::view) != view(p)) p.copy(editedAtMs = nowMs) else p },
+            tasks = after.tasks.map { t -> if (oldTasks[t.id]?.let(::view) != view(t)) t.copy(editedAtMs = nowMs) else t },
+        )
+    }
+
+    /** [merge] with the server's copy rebuilt from what changed since the last sync. */
+    fun merge(local: AppState, base: SharedData, remote: RemoteChanges, me: String?, clock: LocalClock?, nowMs: Long?): SyncResult =
+        merge(local, base, remote.applyTo(base), me, clock, nowMs)
 
     /**
      * @param me this phone's account: only its own records (or ones made before sharing) are sent,
      *   so a re-shared history keeps its authors.
      * @param clock this phone's calendar: records from other phones get their local day and minute
      *   recomputed here, so a family member in another time zone lands on the right day.
+     * @param nowMs this phone's time. Clocks disagree: a record or an edit "from the future" (a phone
+     *   whose clock runs ahead) counts as made now, so it can't win every later edit.
      */
-    fun merge(local: AppState, base: SharedData, remoteAll: SharedData, me: String? = null, clock: LocalClock? = null): SyncResult {
+    fun merge(
+        local: AppState, base: SharedData, remoteAll: SharedData, me: String? = null, clock: LocalClock? = null, nowMs: Long? = null,
+    ): SyncResult {
+        fun capped(ms: Long) = if (nowMs == null) ms else minOf(ms, nowMs)
+        /** Someone else changed it too since the last sync, later than this phone did (a tie goes to the server's copy). */
+        fun theirsIsLater(mineAt: Long, base: Any, remote: Any?, theirsAt: Long) = remote != null && remote != base && capped(theirsAt) >= capped(mineAt)
         val mine = sharedPart(local)
         // A pet this phone holds but doesn't share (it stopped sharing, or left and rejoined) is not
         // taken from the server: it stays this phone's own. The family keeps its copy.
@@ -98,7 +149,9 @@ object HouseholdSync {
         val unshared = HashSet<String>()                 // removed by someone else: kept here, unshared
         for (id in ordered(lp.keys, rp.keys, bp.keys)) {
             val l = lp[id]; val b = bp[id]; val r = rp[id]
-            val changedHere = l?.let(::view) != b?.let(::view)
+            // Changed here since the last sync, and not also changed later on another phone.
+            val changedHere = l?.let(::view) != b?.let(::view) &&
+                !(l != null && b != null && theirsIsLater(l.editedAtMs, view(b), r?.let(::view), r?.editedAtMs ?: 0))
             when {
                 changedHere && l != null -> { keptPets[id] = l; if (r?.let(::view) != view(l)) push.upsertPets += l }
                 // Stopped sharing (or deleted) here: take it out of the family. Everyone else keeps a copy.
@@ -122,7 +175,9 @@ object HouseholdSync {
             val l = lt[id]; val b = bt[id]; val r = rt[id]
             // Tasks of pets no longer shared (removed elsewhere, or unshared/deleted here) are left alone.
             if ((l ?: r ?: b)!!.petId !in keptPets) continue
-            val changedHere = l?.let(::view) != b?.let(::view)
+            // Changed here since the last sync, and not also changed later on another phone.
+            val changedHere = l?.let(::view) != b?.let(::view) &&
+                !(l != null && b != null && theirsIsLater(l.editedAtMs, view(b), r?.let(::view), r?.editedAtMs ?: 0))
             when {
                 changedHere && l != null -> { keptTasks[id] = l; if (r?.let(::view) != view(l)) push.upsertTasks += l }
                 changedHere && l == null -> { deletedTasks += id; if (r != null) push.deleteTaskIds += id }
@@ -148,10 +203,11 @@ object HouseholdSync {
             val c = lc.getValue(id)
             if (id !in rc && (c.by == null || c.by == me)) push.addCompletions += c
         }
-        for (id in undoneHere) if (id in rc) push.deleteCompletionIds += id
+        for (id in undoneHere) if (id in rc) push.undoCompletionIds += id
         val undoneElsewhere = (bc.keys - rc.keys) - addedHere
         val known = local.completions.map { it.id }.toSet()
         val newFromOthers = rc.values.filter { it.id !in known && it.id !in undoneHere && !trimmed(it) }.sortedBy { it.atMs }
+            .map { c -> c.copy(atMs = capped(c.atMs)) }
             .map { c -> if (clock == null) c else c.copy(localDay = clock.dayIndex(c.atMs), localMinute = clock.minuteOfDay(c.atMs)) }
 
         // ---- New local state ----
@@ -193,7 +249,7 @@ object HouseholdSync {
     private class Push {
         val upsertPets = ArrayList<Pet>(); val deletePetIds = ArrayList<String>()
         val upsertTasks = ArrayList<CareTask>(); val deleteTaskIds = ArrayList<String>()
-        val addCompletions = ArrayList<Completion>(); val deleteCompletionIds = ArrayList<String>()
-        fun build() = SyncPush(upsertPets, deletePetIds, upsertTasks, deleteTaskIds, addCompletions, deleteCompletionIds)
+        val addCompletions = ArrayList<Completion>(); val undoCompletionIds = ArrayList<String>()
+        fun build() = SyncPush(upsertPets, deletePetIds, upsertTasks, deleteTaskIds, addCompletions, undoCompletionIds)
     }
 }

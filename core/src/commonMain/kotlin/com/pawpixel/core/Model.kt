@@ -66,6 +66,8 @@ data class Pet(
     val milestoneSeen: Int = 0,
     /** The outfit it wears ([com.pawpixel.sprite.Accessory] name), earned with days of care. */
     val accessory: String? = null,
+    /** When this phone last changed something the household shares (name, look, ...): the later edit wins. */
+    val editedAtMs: Long = 0,
 )
 
 data class SpriteSettings(
@@ -102,6 +104,8 @@ data class CareTask(
      * after the last one the task repeats every [everyDays] from when it was last given.
      */
     val series: List<Long> = emptyList(),
+    /** When this phone last changed the task (see [Pet.editedAtMs]). */
+    val editedAtMs: Long = 0,
 )
 
 data class Completion(

@@ -93,13 +93,18 @@ fun SettingsScreen(app: AppScope, state: AppState) {
         }
         Text(tr("Filipino translations are new: tell us if something sounds off."), style = MaterialTheme.typography.bodySmall)
 
-        Text(tr("Family sharing"), fontWeight = FontWeight.Bold)
+        Text(tr("Household"), fontWeight = FontWeight.Bold)
+        val household = app.repo.family.household
         Text(
-            app.repo.family.household?.let { if (it.members.size == 1) tr("You're in {0} (just you so far).", it.name) else tr("You're in {0} ({1} people).", it.name, it.members.size) }
+            household?.let { if (it.members.size == 1) tr("You're in {0} (just you so far).", it.name) else tr("You're in {0} ({1} people).", it.name, it.members.size) }
                 ?: tr("Care for your pets together: everyone's Done taps show on every phone."),
             style = MaterialTheme.typography.bodySmall,
         )
-        OutlinedButton(onClick = { app.navigate(Screen.Family) }) { Text(tr("Open family sharing")) }
+        if (household != null) {
+            OutlinedButton(onClick = { app.navigate(Screen.Family()) }) { Text(tr("Household settings")) }
+        } else {
+            OutlinedButton(onClick = { app.navigate(Screen.Family(join = true)) }) { Text(tr("Join a household")) }
+        }
 
         Text(tr("Away from home"), fontWeight = FontWeight.Bold)
         if (state.isAway(app.now)) {
@@ -154,6 +159,8 @@ fun SettingsScreen(app: AppScope, state: AppState) {
                     "and only a small crop is kept for your before/after card. Deleting the app deletes what's on the phone (Android's own Google backup may keep a copy until you remove it in Google Drive). " +
                     "The pet map is optional: only if you join it, your pixel pets, their names and your rough area (about 1 km, never " +
                     "your exact location) go to PawPixel's map server, with the Google or Apple account you sign in with. " +
+                    "Sharing with your household is optional too: only then, the pets you share (name, pixel look, care and health " +
+                    "schedules), who did each task and the name you show go to PawPixel's server, for your household only. Never photos. " +
                     "On Android, Google's on-device pet detector (ML Kit) sends Google anonymous performance data, never your photos.",
             ),
         )
