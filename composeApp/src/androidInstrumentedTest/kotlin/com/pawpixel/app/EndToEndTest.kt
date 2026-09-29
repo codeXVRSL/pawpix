@@ -274,7 +274,7 @@ class EndToEndTest {
             val before = choosers()
             retrying { scrollTo(By.text("Share the card")).click() }
             waitFor("milestone share sheet") { choosers() == before + 1 }
-            find(By.textStartsWith("🎉 7 days of care"))
+            scrollTo(By.textStartsWith("🎉 7 days of care"))
             shot("milestone")
             retrying { find(By.text("Nice!")).click() }
             waitFor("celebrated once") { repo.state.value.pet(petId)?.milestoneSeen == 7 }
