@@ -10,6 +10,8 @@ struct PawPixelApp: App {
     var body: some Scene {
         WindowGroup {
             ComposeView().ignoresSafeArea()
+                // A widget tap: "pawpixel://pet/<id>" opens that pet's page.
+                .onOpenURL { url in IosGraph.shared.openLink(url: url.absoluteString) }
         }
         .onChange(of: scenePhase, initial: true) { _, phase in
             // Apply Done taps made on the widget and refresh reminders/widgets.

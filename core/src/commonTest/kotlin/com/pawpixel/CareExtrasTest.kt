@@ -79,8 +79,9 @@ class HealthCareTest {
         val s = withTask(rabies(createdAt = at(0, today - 30)).copy(anchorDay = today - 30))
         // Weeks overdue, the pet still isn't sad: health weighs less than a missed meal.
         assertTrue(MoodEngine.read(s, "p1", now, clock).mood != Mood.SAD)
-        val widget = WidgetSnapshot.build(s, now, clock)["pets"].list.single()
-        assertEquals(Json.Null, widget["action"], "no one-tap 'Vaccinated' on the home screen")
+        val widget = WidgetSnapshot.build(s, now, clock)
+        assertNull(WidgetSnapshot.face(widget, now)!!.actionTaskId, "no one-tap 'Vaccinated' on the home screen")
+        assertTrue(widget["pets"].list.single()["actions"].list.all { it["taskId"].str == null })
     }
 
     @Test fun healthRemindersReachBeyondTheDailyHorizon() {
@@ -205,7 +206,7 @@ class AwayModeTest {
         assertEquals("Mochi is being looked after", r.caption)
         val reminders = ReminderPlanner.plan(away, at(12 * 60), clock, horizonMs = 5 * DAY_MS)
         assertTrue(reminders.all { it.atMs >= at(15 * 60, 20403) })
-        assertNull(WidgetSnapshot.build(away, at(12 * 60), clock)["pets"].list.single()["action"].str)
+        assertNull(WidgetSnapshot.face(WidgetSnapshot.build(away, at(12 * 60), clock), at(12 * 60))!!.actionTaskId)
     }
 
     @Test fun tappingImBackForgivesWhatWasMissed() {

@@ -39,7 +39,12 @@ targets:
   PawPixelUITests:
     type: bundle.ui-testing
     platform: iOS
-    sources: [PawPixelUITests]
+    # The widget's model and views too, so a test can render every widget family to images.
+    sources:
+      - PawPixelUITests
+      - PetWidget/WidgetModel.swift
+      - PetWidget/PetWidgetViews.swift
+      - PetWidget/sample-pet.png
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.pawpixel.app.uitests

@@ -9,6 +9,7 @@ import androidx.core.app.NotificationCompat
 import com.pawpixel.core.Reminder
 import com.pawpixel.core.ReminderRef
 import com.pawpixel.core.StateOps
+import com.pawpixel.core.TaskKind
 import com.pawpixel.i18n.tr
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -31,6 +32,7 @@ class ReminderReceiver : BroadcastReceiver() {
         val refs = intent.getStringExtra(EXTRA_REFS)?.let(ReminderRef::decodeAll)?.ifEmpty { null } ?: listOf(ReminderRef(taskId, null))
         val id = intent.getIntExtra(EXTRA_ID, 0)
         val nm = context.getSystemService(NotificationManager::class.java)
+        if (intent.action == ACTION_SHOW) AndroidPlatform.noteFired(context, id)
         if (intent.action == ACTION_DONE) {
             nm.cancel(id)
             work { PawPixelApplication.repo(context).completeInBackground { completeFromReminder(refs) } }
@@ -38,7 +40,11 @@ class ReminderReceiver : BroadcastReceiver() {
         }
         // A note that isn't about a task (Rabies Awareness Month): just show it.
         if (taskId.isEmpty()) {
-            work { if (PawPixelApplication.repo(context).state.value.settings.remindersEnabled) show(context, intent, taskId, emptyList(), id) }
+            work {
+                if (PawPixelApplication.repo(context).state.value.settings.remindersEnabled) {
+                    show(context, intent, taskId, emptyList(), id, AndroidPlatform.CHANNEL_HEALTH)
+                }
+            }
             return
         }
         work {
@@ -52,13 +58,14 @@ class ReminderReceiver : BroadcastReceiver() {
                 t != null && t.remindersOn && !StateOps.isCovered(state, r, repo.now(), repo.clock)
             }
             if (open.isEmpty() || !state.settings.remindersEnabled) return@work
-            show(context, intent, open.first().taskId, open, id)
+            val health = open.any { r -> state.task(r.taskId)?.kind?.let { it == TaskKind.MEDS || it.health } == true }
+            show(context, intent, open.first().taskId, open, id, if (health) AndroidPlatform.CHANNEL_HEALTH else AndroidPlatform.CHANNEL_ID)
         }
     }
 
-    private fun show(context: Context, intent: Intent, taskId: String, refs: List<ReminderRef>, id: Int) {
+    private fun show(context: Context, intent: Intent, taskId: String, refs: List<ReminderRef>, id: Int, channel: String) {
         val nm = context.getSystemService(NotificationManager::class.java)
-        AndroidPlatform.ensureChannel(context)
+        AndroidPlatform.ensureChannels(context)
         val open = PendingIntent.getActivity(
             context, id, Intent(context, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP),
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
@@ -69,7 +76,7 @@ class ReminderReceiver : BroadcastReceiver() {
                 .putExtra(EXTRA_REFS, ReminderRef.encodeAll(refs)).putExtra(EXTRA_ID, id),
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
         )
-        val builder = NotificationCompat.Builder(context, AndroidPlatform.CHANNEL_ID)
+        val builder = NotificationCompat.Builder(context, channel)
             .setSmallIcon(R.drawable.ic_stat_paw)
             .setContentTitle(intent.getStringExtra(EXTRA_TITLE))
             .setContentText(intent.getStringExtra(EXTRA_BODY))
@@ -118,9 +125,14 @@ class WidgetTickReceiver : BroadcastReceiver() {
     }
 }
 
-/** Alarms are cleared on reboot, app update and time zone change; reschedule everything. */
+/**
+ * Alarms are cleared on restart and app updates, and the clock, time zone, language or exact-alarm
+ * permission may have changed: replan reminders and redraw the widgets (their times, names, words).
+ */
 class BootReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) = work {
+        // Reminders due while the phone was off weren't "lost" to battery saving.
+        AndroidPlatform.forgetScheduled(context)
         val repo = PawPixelApplication.repo(context)
         repo.publish()
         repo.family.syncWithin() // catch up on the household's care while the phone was off

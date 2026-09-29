@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The widget picker's picture before Android 12: the sample pet on the widget's background. -->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:drawable="@drawable/widget_background" android:width="160dp" android:height="160dp" />
+    <item android:left="16dp" android:right="16dp" android:top="28dp" android:bottom="28dp">
+        <bitmap android:src="@drawable/widget_sample_pet" android:gravity="fill" android:filter="false" />
+    </item>
+</layer-list>

@@ -2,218 +2,97 @@ import WidgetKit
 import SwiftUI
 import AppIntents
 
-private let appGroup = "group.com.pawpixel.app"
+// The model and reader (widget.json, taps, DoneIntent) are in WidgetModel.swift, the views in
+// PetWidgetViews.swift (both also compiled into the UI tests, which render them to images).
 
-private func sharedDir() -> URL? {
-    FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: appGroup)?
-        .appendingPathComponent("pawpixel", isDirectory: true)
-}
+// MARK: - Which pet (widget configuration)
 
-// MARK: - widget.json (written by the Kotlin app; see core/WidgetSnapshot.kt)
-
-struct Snapshot: Decodable {
-    let version: Int
-    let generatedAt: Double
-    let pets: [SnapshotPet]
-    /// The widget's own words in the owner's language (Done, the empty message).
-    let labels: [String: String]?
-}
-
-struct SnapshotPet: Decodable {
+struct PetEntity: AppEntity {
+    static var typeDisplayRepresentation: TypeDisplayRepresentation = "Pet"
+    static var defaultQuery = PetQuery()
     let id: String
     let name: String
-    let sprites: [String: String]
-    let timeline: [MoodPoint]
-    let action: DoneOption?
+    var displayRepresentation: DisplayRepresentation { DisplayRepresentation(title: "\(name)") }
 }
 
-struct MoodPoint: Decodable {
-    let at: Double      // epoch ms
-    let mood: String
-    let caption: String
+/// The pets in widget.json, and "whoever needs you most".
+struct PetQuery: EntityQuery {
+    func entities(for identifiers: [String]) async throws -> [PetEntity] { all().filter { identifiers.contains($0.id) } }
+    func suggestedEntities() async throws -> [PetEntity] { all() }
+    func defaultResult() async -> PetEntity? { all().first }
+
+    private func all() -> [PetEntity] {
+        guard let snap = WidgetStore.snapshot() else { return [] }
+        return snap.pets.map { PetEntity(id: $0.id, name: $0.name) }
+            + [PetEntity(id: Snapshot.mostInNeed, name: snap.labels?["mostInNeed"] ?? "Whoever needs you most")]
+    }
 }
 
-struct DoneOption: Decodable {
-    let taskId: String
-    let label: String
-    let timelineIfDone: [MoodPoint]
-}
+struct SelectPetIntent: WidgetConfigurationIntent {
+    static var title: LocalizedStringResource = "Choose a pet"
+    static var description = IntentDescription("Which pet this widget shows.")
 
-struct PendingTap: Codable {
-    let taskId: String
-    let at: Double
-}
-
-enum WidgetStore {
-    static func snapshot() -> Snapshot? {
-        guard let url = sharedDir()?.appendingPathComponent("widget.json"),
-              let data = try? Data(contentsOf: url) else { return nil }
-        return try? JSONDecoder().decode(Snapshot.self, from: data)
-    }
-
-    static func pendingTaps() -> [PendingTap] {
-        guard let url = sharedDir()?.appendingPathComponent("pending_done.json"),
-              let data = try? Data(contentsOf: url) else { return [] }
-        return (try? JSONDecoder().decode([PendingTap].self, from: data)) ?? []
-    }
-
-    /// The app ingests this file on its next launch (PawRepository.ingestWidgetTaps).
-    static func recordTap(taskId: String) {
-        guard let dir = sharedDir() else { return }
-        try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
-        var taps = pendingTaps()
-        taps.append(PendingTap(taskId: taskId, at: Date().timeIntervalSince1970 * 1000))
-        if let data = try? JSONEncoder().encode(taps) {
-            try? data.write(to: dir.appendingPathComponent("pending_done.json"), options: .atomic)
-        }
-    }
-
-    static func image(_ relative: String?) -> UIImage? {
-        guard let relative, let url = sharedDir()?.appendingPathComponent(relative) else { return nil }
-        return UIImage(contentsOfFile: url.path)
-    }
+    /// Unset: the first pet.
+    @Parameter(title: "Pet") var pet: PetEntity?
 }
 
 // MARK: - Timeline
 
-struct PetEntry: TimelineEntry {
-    let date: Date
-    let name: String
-    let caption: String
-    let mood: String
-    let image: UIImage?
-    let action: DoneOption?
-    let empty: Bool
-    var doneLabel: String = "Done"
+struct Provider: AppIntentTimelineProvider {
+    /// widget.json covers two days; entries go no further (the app refreshes it whenever it runs).
+    private static let maxEntries = 200
 
-    static let placeholder = PetEntry(date: .now, name: "Your pet", caption: "Open PawPixel to make your pixel pet",
-                                      mood: "content", image: nil, action: nil, empty: true)
+    func placeholder(in context: Context) -> PetEntry { .sample }
 
-    /// The empty state, in the owner's language when the app has written its words.
-    static func empty(_ labels: [String: String]?) -> PetEntry {
-        PetEntry(date: .now, name: labels?["yourPet"] ?? "Your pet", caption: labels?["empty"] ?? "Open PawPixel to make your pixel pet",
-                 mood: "content", image: nil, action: nil, empty: true, doneLabel: labels?["done"] ?? "Done")
+    func snapshot(for configuration: SelectPetIntent, in context: Context) async -> PetEntry {
+        guard let snap = WidgetStore.snapshot(), !snap.pets.isEmpty else { return .sample }
+        return entry(snap, at: .now, choice: configuration.pet?.id, taps: WidgetStore.pendingTaps(), images: ImageCache())
+    }
+
+    func timeline(for configuration: SelectPetIntent, in context: Context) async -> Timeline<PetEntry> {
+        // No file yet: the app reloads widgets when it writes one.
+        guard let snap = WidgetStore.snapshot() else { return Timeline(entries: [.empty(nil)], policy: .never) }
+        let now = Date()
+        let taps = WidgetStore.pendingTaps()
+        let images = ImageCache()
+        let dates = [now] + snap.changeDates(after: now, taps: taps).prefix(Self.maxEntries)
+        let entries = dates.map { entry(snap, at: $0, choice: configuration.pet?.id, taps: taps, images: images) }
+        return Timeline(entries: entries, policy: .atEnd)
+    }
+
+    private func entry(_ snap: Snapshot, at date: Date, choice: String?, taps: [PendingTap], images: ImageCache) -> PetEntry {
+        guard let face = snap.face(at: date, choice: choice, taps: taps) else { return .empty(snap.labels) }
+        return PetEntry(date: date, face: face, image: images.image(face.sprite), labels: snap.labels ?? [:])
     }
 }
 
-struct Provider: TimelineProvider {
-    /// Worst first: with several pets the widget shows the one that needs you most.
-    private static let priority = ["sad", "meds", "hungry", "restless", "content", "happy", "sleepy"]
-
-    func placeholder(in context: Context) -> PetEntry { .placeholder }
-
-    func getSnapshot(in context: Context, completion: @escaping (PetEntry) -> Void) {
-        completion(makeEntries(now: .now).first ?? .placeholder)
-    }
-
-    func getTimeline(in context: Context, completion: @escaping (Timeline<PetEntry>) -> Void) {
-        let entries = makeEntries(now: .now)
-        let refresh = entries.last.map { $0.date.addingTimeInterval(3600) } ?? Date().addingTimeInterval(3600)
-        completion(Timeline(entries: entries.isEmpty ? [.empty(WidgetStore.snapshot()?.labels)] : entries, policy: .after(refresh)))
-    }
-
-    private func current(_ points: [MoodPoint], nowMs: Double) -> MoodPoint? {
-        points.last { $0.at <= nowMs } ?? points.first
-    }
-
-    func makeEntries(now: Date) -> [PetEntry] {
-        guard let snap = WidgetStore.snapshot(), !snap.pets.isEmpty else { return [] }
-        let nowMs = now.timeIntervalSince1970 * 1000
-        let taps = WidgetStore.pendingTaps().filter { $0.at >= snap.generatedAt }
-
-        // If the owner tapped Done on the widget since the app last ran, show the "after" timeline.
-        func timeline(for pet: SnapshotPet) -> (points: [MoodPoint], action: DoneOption?) {
-            if let action = pet.action, taps.contains(where: { $0.taskId == action.taskId }) {
-                return (action.timelineIfDone, nil)
-            }
-            return (pet.timeline, pet.action)
-        }
-
-        let ranked = snap.pets.min { a, b in
-            let ma = current(timeline(for: a).points, nowMs: nowMs)?.mood ?? "content"
-            let mb = current(timeline(for: b).points, nowMs: nowMs)?.mood ?? "content"
-            return (Self.priority.firstIndex(of: ma) ?? 9) < (Self.priority.firstIndex(of: mb) ?? 9)
-        }!
-        let (points, action) = timeline(for: ranked)
-        var result: [PetEntry] = []
-        for (i, p) in points.enumerated() {
-            let isLast = i == points.count - 1
-            if !isLast && points[i + 1].at <= nowMs { continue } // superseded before now
-            let date = max(now, Date(timeIntervalSince1970: p.at / 1000))
-            result.append(PetEntry(date: date, name: ranked.name, caption: p.caption, mood: p.mood,
-                                   image: WidgetStore.image(ranked.sprites[p.mood]),
-                                   action: (p.mood == "happy" || p.mood == "sleepy") ? nil : action, empty: false,
-                                   doneLabel: snap.labels?["done"] ?? "Done"))
-        }
-        return result
+/// Each mood's pose is read once per timeline.
+private final class ImageCache {
+    private var images: [String: UIImage] = [:]
+    func image(_ path: String?) -> UIImage? {
+        guard let path else { return nil }
+        if let hit = images[path] { return hit }
+        let image = WidgetStore.image(path)
+        images[path] = image
+        return image
     }
 }
 
-// MARK: - One-tap Done (iOS 17 interactive widgets)
+// MARK: - Widget
 
-struct DoneIntent: AppIntent {
-    static var title: LocalizedStringResource = "Mark care task done"
-
-    @Parameter(title: "Task") var taskId: String
-
-    init() {}
-    init(taskId: String) { self.taskId = taskId }
-
-    func perform() async throws -> some IntentResult {
-        WidgetStore.recordTap(taskId: taskId)
-        return .result() // WidgetKit reloads the timeline after an intent runs.
-    }
-}
-
-// MARK: - Views
-
-struct PetWidgetView: View {
+struct PetWidgetEntryView: View {
     @Environment(\.widgetFamily) private var family
+    @Environment(\.showsWidgetContainerBackground) private var showsBackground
     let entry: PetEntry
 
-    private let ink = Color(red: 0.17, green: 0.13, blue: 0.21)
-    private let berry = Color(red: 0.91, green: 0.22, blue: 0.31)
-
     var body: some View {
-        Group {
-            if entry.empty {
-                Text(entry.caption).font(.caption).multilineTextAlignment(.center).foregroundStyle(ink)
-            } else if family == .systemSmall {
-                VStack(spacing: 2) {
-                    sprite
-                    Text(entry.name).font(.caption.bold()).foregroundStyle(ink).lineLimit(1)
-                    if let action = entry.action { doneButton(action, compact: true) }
-                }
-            } else {
-                HStack(spacing: 12) {
-                    sprite
-                    VStack(alignment: .leading, spacing: 6) {
-                        Text(entry.name).font(.headline).foregroundStyle(ink)
-                        Text(entry.caption).font(.subheadline).foregroundStyle(ink.opacity(0.8)).lineLimit(2)
-                        if let action = entry.action { doneButton(action, compact: false) }
-                    }
-                    Spacer(minLength: 0)
+        PetWidgetView(entry: entry, family: family, showsBackground: showsBackground)
+            .containerBackground(for: .widget) {
+                switch family {
+                case .accessoryCircular, .accessoryRectangular, .accessoryInline: Color.clear
+                default: Palette.paper
                 }
             }
-        }
-        .containerBackground(for: .widget) { Color(red: 1.0, green: 0.957, blue: 0.878) }
-    }
-
-    @ViewBuilder private var sprite: some View {
-        if let image = entry.image {
-            Image(uiImage: image)
-                .interpolation(.none) // keep pixels crisp
-                .resizable()
-                .scaledToFit()
-                .accessibilityLabel("\(entry.name): \(entry.caption)")
-        }
-    }
-
-    private func doneButton(_ action: DoneOption, compact: Bool) -> some View {
-        Button(intent: DoneIntent(taskId: action.taskId)) {
-            Text(compact ? entry.doneLabel : action.label).font(.caption.bold())
-        }
-        .tint(berry)
     }
 }
 
@@ -224,11 +103,14 @@ struct PetWidgetBundle: WidgetBundle {
 
 struct PetWidget: Widget {
     var body: some WidgetConfiguration {
-        StaticConfiguration(kind: "PetWidget", provider: Provider()) { entry in
-            PetWidgetView(entry: entry)
+        AppIntentConfiguration(kind: "PetWidget", intent: SelectPetIntent.self, provider: Provider()) { entry in
+            PetWidgetEntryView(entry: entry)
         }
         .configurationDisplayName("PawPixel")
-        .description("Your pixel pet and how they feel right now.")
-        .supportedFamilies([.systemSmall, .systemMedium])
+        .description("Your pixel pet, how they feel right now, and a Done button when care is due.")
+        .supportedFamilies([.systemSmall, .systemMedium, .systemLarge, .accessoryCircular, .accessoryRectangular, .accessoryInline])
     }
 }
+
+#Preview(as: .systemSmall) { PetWidget() } timeline: { PetEntry.sample }
+#Preview(as: .accessoryRectangular) { PetWidget() } timeline: { PetEntry.sample }

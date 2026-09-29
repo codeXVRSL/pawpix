@@ -18,6 +18,8 @@ const val MINUTES_PER_DAY = 1440
  * platform supply DST-aware offsets; tests and the Philippines (no DST) can use [fixed].
  */
 class LocalClock(private val offsetAt: (Long) -> Long) {
+    /** Offset from UTC at [ms]. */
+    fun offsetMs(ms: Long): Long = offsetAt(ms)
     fun dayIndex(ms: Long): Long = (ms + offsetAt(ms)).floorDiv(DAY_MS)
     fun minuteOfDay(ms: Long): Int = ((ms + offsetAt(ms)).mod(DAY_MS) / MINUTE_MS).toInt()
     fun startOfDay(day: Long): Long {

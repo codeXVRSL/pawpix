@@ -99,7 +99,9 @@ object IosGraph {
     /** Call when the app comes to the foreground: applies widget taps and refreshes everything. */
     fun onForeground() { MainScope().launch { repo.ingestWidgetTaps(); repo.publish(); repo.family.requestSync() } }
 
-    /** "Done" tapped on a notification. */
+    /** A widget tap ("pawpixel://pet/<id>"): the app opens that pet's page. */
+    fun openLink(url: String) = repo.openLink(url)
+
     /** "Done" in the owner's language, for the notification button (loads the app's settings first). */
     fun doneLabel(): String { repo.state; return com.pawpixel.i18n.tr("Done") }
 

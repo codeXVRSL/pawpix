@@ -1,0 +1,5 @@
+<resources>
+    <!-- The widget before Android 12 (no Material You there): warm paper, and a soft night version. -->
+    <color name="widget_background">#FFF4E0</color>
+    <color name="widget_ink">#2B2135</color>
+</resources>

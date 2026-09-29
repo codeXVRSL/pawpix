@@ -11,7 +11,6 @@ import com.pawpixel.core.HouseholdSync
 import com.pawpixel.core.Ids
 import com.pawpixel.core.LocalClock
 import com.pawpixel.core.Mood
-import com.pawpixel.core.MoodEngine
 import com.pawpixel.core.Pet
 import com.pawpixel.core.ReminderPlanner
 import com.pawpixel.core.Settings
@@ -101,15 +100,24 @@ class PawRepository(val platform: Platform) {
     /** Rebuilds widget data and reminders from the current state. Safe to call any time (e.g. app start). */
     suspend fun publish() = mutex.withLock { publishLocked(_state.value) }
 
-    private fun publishLocked(state: AppState) {
+    private suspend fun publishLocked(state: AppState) {
         applyLanguage(state) // the phone's language may have changed while PawPixel was running
         val now = now()
-        files.writeText(WidgetSnapshot.FILE_NAME, WidgetSnapshot.build(state, now, clock).stringify())
+        // Two days of widget timelines is real work: keep it off the main thread.
+        val (snapshot, reminders) = withContext(Dispatchers.Default) {
+            WidgetSnapshot.build(state, now, clock) to ReminderPlanner.plan(state, now, clock)
+        }
+        files.writeText(WidgetSnapshot.FILE_NAME, snapshot.stringify())
         _widgetRevision.value = _widgetRevision.value + 1
-        platform.scheduleReminders(ReminderPlanner.plan(state, now, clock))
-        val nextChange = state.pets.mapNotNull { MoodEngine.nextChangeMs(state, it.id, now, clock) }.minOrNull()
-        platform.refreshWidgets(nextChange)
+        platform.scheduleReminders(reminders)
+        platform.refreshWidgets(WidgetSnapshot.nextChangeMs(snapshot, now))
     }
+
+    /** A link into the app ("pawpixel://pet/<id>" from a widget) for the screens to follow, until [consumeLink]. */
+    private val _link = MutableStateFlow<String?>(null)
+    val link: StateFlow<String?> = _link.asStateFlow()
+    fun openLink(url: String) { _link.value = url }
+    fun consumeLink() { _link.value = null }
 
     /** Applies Done taps made on the iOS widget while the app was closed. */
     suspend fun ingestWidgetTaps() {

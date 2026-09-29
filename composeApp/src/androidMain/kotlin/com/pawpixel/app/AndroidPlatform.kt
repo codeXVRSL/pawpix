@@ -21,6 +21,7 @@ import com.google.mlkit.vision.segmentation.subject.SubjectSegmenterOptions
 import com.pawpixel.app.widget.PetWidget
 import com.pawpixel.core.HOUR_MS
 import com.pawpixel.core.Reminder
+import com.pawpixel.core.ReminderDelivery
 import com.pawpixel.i18n.tr
 import com.pawpixel.map.Http
 import com.pawpixel.map.HttpResponse
@@ -107,31 +108,60 @@ class AndroidPlatform(private val context: Context) : Platform {
 
     @Synchronized
     override fun scheduleReminders(reminders: List<Reminder>) {
+        ensureChannels(context) // their names follow the app's language
         val alarms = context.getSystemService(AlarmManager::class.java)
-        val prefs = context.getSharedPreferences("reminders", Context.MODE_PRIVATE)
-        prefs.getStringSet("ids", emptySet())!!.forEach { id ->
+        val prefs = reminderPrefs(context)
+        prefs.getStringSet(KEY_IDS, emptySet())!!.forEach { id ->
             alarms.cancel(ReminderReceiver.pendingIntent(context, id.toInt(), null))
         }
+        // Before replacing the list: did any of the last one never go off? (Phones that stop apps in the background.)
+        val fired = prefs.getStringSet(KEY_FIRED, emptySet())!!.mapNotNull { it.toIntOrNull() }.toSet()
+        val lost = ReminderDelivery.lost(ReminderDelivery.decode(prefs.getString(KEY_SCHEDULED, null)), fired, nowMs())
+        if (lost > 0) log("$lost reminder(s) were never delivered")
+        // Android 12+ needs the owner's permission for exact alarms (off by default from Android 14).
+        // Without it, "exact time" reminders still come, just possibly a few minutes late.
         val canExact = Build.VERSION.SDK_INT < 31 || alarms.canScheduleExactAlarms()
         for (r in reminders) {
             val pi = ReminderReceiver.pendingIntent(context, r.id, r)
             if (r.exact && canExact) alarms.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, r.atMs, pi)
             else alarms.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, r.atMs, pi)
         }
-        prefs.edit().putStringSet("ids", reminders.map { it.id.toString() }.toSet()).apply()
+        prefs.edit()
+            .putStringSet(KEY_IDS, reminders.map { it.id.toString() }.toSet())
+            .putString(KEY_SCHEDULED, ReminderDelivery.encode(reminders.map { it.id to it.atMs }))
+            .putStringSet(KEY_FIRED, emptySet())
+            .putInt(KEY_LOST, prefs.getInt(KEY_LOST, 0) + lost)
+            .apply()
     }
 
     override fun requestNotificationPermission() {
-        ensureChannel(context)
+        ensureChannels(context)
         permissionRequester?.invoke()
+    }
+
+    override fun backgroundTip(): BackgroundTip? {
+        val prefs = reminderPrefs(context)
+        if (prefs.getBoolean(KEY_TIP_DISMISSED, false) || prefs.getInt(KEY_LOST, 0) < ReminderDelivery.TIP_AFTER) return null
+        val maker = PhoneMaker.of(Build.MANUFACTURER)
+        return BackgroundTip(maker.label ?: Build.MANUFACTURER.replaceFirstChar { it.uppercase() }, maker.steps())
+    }
+
+    override fun openBackgroundSettings() = PhoneMaker.of(Build.MANUFACTURER).openSettings(context)
+
+    override fun dismissBackgroundTip() {
+        reminderPrefs(context).edit().putBoolean(KEY_TIP_DISMISSED, true).apply()
     }
 
     // ---- Widgets ----
 
     override fun refreshWidgets(nextChangeMs: Long?) {
-        appScope.launch { runCatching { PetWidget().updateAll(context) } }
-        // Wake up when the mood is due to change (or in a few hours, to extend the timeline).
-        val at = nextChangeMs ?: (nowMs() + 6 * HOUR_MS)
+        appScope.launch {
+            runCatching { PetWidget().updateAll(context) }
+            PetWidget.updatePreview(context) // the widget picker shows your own pet (Android 15+)
+        }
+        // Wake up when the widget is due to change, and every few hours anyway to extend its timeline.
+        // RTC (not _WAKEUP): a sleeping phone's screen is off, so it can wait until it wakes.
+        val at = minOf(nextChangeMs ?: Long.MAX_VALUE, nowMs() + 6 * HOUR_MS)
         val alarms = context.getSystemService(AlarmManager::class.java)
         alarms.setAndAllowWhileIdle(AlarmManager.RTC, at, WidgetTickReceiver.pendingIntent(context))
     }
@@ -275,15 +305,43 @@ class AndroidPlatform(private val context: Context) : Platform {
     }
 
     companion object {
+        /** Everyday care (feeding, walks...). */
         const val CHANNEL_ID = "care"
+        /** Medicine and health care, so an owner can quiet everyday reminders but keep these. */
+        const val CHANNEL_HEALTH = "health"
 
-        fun ensureChannel(context: Context) {
+        /** Creates the channels, or renames them to the app's current language (Android keeps the owner's own settings). */
+        fun ensureChannels(context: Context) {
             val nm = context.getSystemService(NotificationManager::class.java)
-            if (nm.getNotificationChannel(CHANNEL_ID) == null) {
-                nm.createNotificationChannel(
-                    NotificationChannel(CHANNEL_ID, context.getString(R.string.channel_care), NotificationManager.IMPORTANCE_DEFAULT),
-                )
-            }
+            nm.createNotificationChannels(listOf(
+                NotificationChannel(CHANNEL_ID, tr("Care reminders"), NotificationManager.IMPORTANCE_DEFAULT)
+                    .apply { description = tr("Feeding, walks, water and other everyday care.") },
+                NotificationChannel(CHANNEL_HEALTH, tr("Medicine and health"), NotificationManager.IMPORTANCE_DEFAULT)
+                    .apply { description = tr("Medicine doses, vaccines, deworming and vet visits.") },
+            ))
+        }
+
+        private const val KEY_IDS = "ids"
+        /** The scheduled reminders as "id@at", to notice any that never went off. */
+        private const val KEY_SCHEDULED = "scheduled"
+        /** Ids of reminders whose alarm went off since the list was last replaced. */
+        private const val KEY_FIRED = "fired"
+        /** Reminders never delivered, in all. */
+        const val KEY_LOST = "lost"
+        const val KEY_TIP_DISMISSED = "backgroundTipDismissed"
+
+        fun reminderPrefs(context: Context) = context.getSharedPreferences("reminders", Context.MODE_PRIVATE)
+
+        /** A reminder's alarm went off (whether or not it was still worth showing). */
+        @Synchronized
+        fun noteFired(context: Context, id: Int) {
+            val prefs = reminderPrefs(context)
+            prefs.edit().putStringSet(KEY_FIRED, prefs.getStringSet(KEY_FIRED, emptySet())!! + id.toString()).apply()
+        }
+
+        /** After a restart or a clock change, the old alarms are gone for reasons of their own: don't count them as lost. */
+        fun forgetScheduled(context: Context) {
+            reminderPrefs(context).edit().remove(KEY_SCHEDULED).apply()
         }
     }
 }

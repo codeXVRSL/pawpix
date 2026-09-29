@@ -42,11 +42,13 @@ data class ReminderRef(val taskId: String, val slotAt: Long?) {
  * Plans local notifications for open care slots. Platforms cancel everything and schedule this
  * list after every change, so reminders for tasks already done simply disappear.
  *
- * iOS allows 64 pending local notifications per app, so the list is capped at [MAX_PENDING].
+ * iOS allows 64 pending local notifications per app, so the list is capped at [MAX_PENDING], the
+ * soonest first. Planning a week ahead keeps reminders coming if the app isn't opened for days
+ * (iOS can't replan in the background).
  */
 object ReminderPlanner {
     const val MAX_PENDING = 60
-    const val HORIZON_MS = 2 * DAY_MS
+    const val HORIZON_MS = 7 * DAY_MS
     /** Follow-up nudge for medicine if it is still not given. */
     const val MEDS_NUDGE_MS = 45 * MINUTE_MS
 
@@ -92,6 +94,8 @@ object ReminderPlanner {
                 for (m in slots) {
                     val at = clock.at(cycle, m)
                     if (at in (nowMs + 1)..end) out += reminder(task, pet, at, false)
+                    // The follow-up too, so it comes even if the app isn't opened before then.
+                    if (task.kind == TaskKind.MEDS && at + MEDS_NUDGE_MS in (nowMs + 1)..end) out += reminder(task, pet, at + MEDS_NUDGE_MS, true, slotAt = at)
                 }
                 cycle += n
             }
@@ -150,7 +154,14 @@ object ReminderPlanner {
     const val RABIES_MONTH_LEAD_MS = 45 * DAY_MS
 
     /** Reminders this close together become one notification. */
-    const val BUNDLE_WINDOW_MS = 20 * MINUTE_MS
+    const val BUNDLE_WINDOW_MS = 30 * MINUTE_MS
+
+    /**
+     * At most this many everyday-care notifications a day (a bundle counts once). Medicine and health
+     * care don't count and are never dropped. Past the cap, the least pressing care goes quiet (the
+     * widget still shows it): feeding and walks before play and grooming.
+     */
+    const val MAX_DAILY_CARE = 6
 
     /**
      * Fewer, calmer notifications: everyday care due within [BUNDLE_WINDOW_MS] of each other (breakfast
@@ -159,7 +170,7 @@ object ReminderPlanner {
      */
     private fun bundleDaily(reminders: List<Reminder>, state: AppState, clock: LocalClock): List<Reminder> {
         val (meds, rest) = reminders.partition { state.task(it.taskId)?.kind == TaskKind.MEDS }
-        val out = ArrayList<Reminder>(meds)
+        val out = ArrayList<Reminder>()
         var group = ArrayList<Reminder>()
         fun flush() {
             if (group.size == 1) out += group[0]
@@ -172,8 +183,15 @@ object ReminderPlanner {
             group += r
         }
         flush()
-        return out
+        return meds + capPerDay(out, state, clock)
     }
+
+    private fun capPerDay(reminders: List<Reminder>, state: AppState, clock: LocalClock): List<Reminder> =
+        reminders.groupBy { clock.dayIndex(it.atMs) }.values.flatMap { day ->
+            if (day.size <= MAX_DAILY_CARE) day
+            else day.sortedWith(compareByDescending<Reminder> { r -> r.taskIds.maxOf { id -> state.task(id)?.kind?.let(MoodEngine::weight) ?: 0.0 } }
+                .thenBy { it.atMs }).take(MAX_DAILY_CARE)
+        }
 
     private fun merged(group: List<Reminder>, state: AppState): Reminder {
         val byPet = group.groupBy { it.petId }

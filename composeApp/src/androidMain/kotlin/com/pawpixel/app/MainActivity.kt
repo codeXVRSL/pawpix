@@ -1,6 +1,7 @@
 package com.pawpixel.app
 
 import android.Manifest
+import android.content.Intent
 import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -49,6 +50,19 @@ class MainActivity : ComponentActivity() {
                 unregister
             })
         }
+        if (savedInstanceState == null) openLink(intent)
+    }
+
+    /** A widget tap opens its pet's page. */
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        openLink(intent)
+    }
+
+    private fun openLink(intent: Intent?) {
+        val url = intent?.data?.toString() ?: return
+        if (url.startsWith("pawpixel://")) app.repo.openLink(url)
     }
 
     override fun onResume() {
