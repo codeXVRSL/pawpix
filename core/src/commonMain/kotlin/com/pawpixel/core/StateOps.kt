@@ -42,6 +42,7 @@ object StateOps {
             pets = state.pets.filterNot { it.id == petId },
             tasks = state.tasks.filterNot { it.petId == petId },
             completions = state.completions.filterNot { it.taskId in taskIds },
+            weights = state.weights.filterNot { it.petId == petId },
         )
     }
 
@@ -67,10 +68,30 @@ object StateOps {
 
     /** Logs a task as done at [atMs] (now, or an earlier date for health records). */
     fun complete(state: AppState, taskId: String, atMs: Long, clock: LocalClock, newId: () -> String = { Ids.newId() }): AppState {
-        state.task(taskId) ?: return state
+        val task = state.task(taskId) ?: return state
         val c = Completion(taskId, atMs, clock.minuteOfDay(atMs), clock.dayIndex(atMs), id = newId())
-        return prune(state.copy(completions = state.completions + c))
+        return prune(markCareDays(state.copy(completions = state.completions + c), task.petId, listOf(c.localDay)))
     }
+
+    /** Adds days to a pet's care calendar (see [Pet.careDays]). */
+    fun markCareDays(state: AppState, petId: String, days: Collection<Long>): AppState {
+        if (days.isEmpty()) return state
+        return state.copy(pets = state.pets.map { p ->
+            if (p.id != petId || p.careDays.containsAll(days)) p
+            else p.copy(careDays = (p.careDays + days).distinct().sorted().takeLast(AppState.MAX_CARE_DAYS))
+        })
+    }
+
+    /** Records a weigh-in (one per day: a second one that day replaces the first). */
+    fun logWeight(state: AppState, petId: String, day: Long, grams: Int): AppState {
+        if (state.pet(petId) == null || grams !in 1..200_000) return state
+        val others = state.weights.filterNot { it.petId == petId && it.day == day }
+        val mine = (others.filter { it.petId == petId } + Weight(petId, day, grams)).sortedBy { it.day }.takeLast(AppState.MAX_WEIGHTS_PER_PET)
+        return state.copy(weights = others.filter { it.petId != petId } + mine)
+    }
+
+    fun removeWeight(state: AppState, petId: String, day: Long): AppState =
+        state.copy(weights = state.weights.filterNot { it.petId == petId && it.day == day })
 
     /**
      * A "Done" from a notification. Health care counts only if it's due within a day, so tapping an
@@ -90,7 +111,13 @@ object StateOps {
     fun undoLast(state: AppState, taskId: String, mine: Set<String?>? = null): AppState {
         val i = state.completions.indexOfLast { it.taskId == taskId && (mine == null || it.by in mine) }
         if (i < 0) return state
-        return state.copy(completions = state.completions.filterIndexed { j, _ -> j != i })
+        val gone = state.completions[i]
+        val next = state.copy(completions = state.completions.filterIndexed { j, _ -> j != i })
+        // Take the day off the care calendar if nothing else was logged for the pet that day.
+        val petId = state.task(taskId)?.petId ?: return next
+        val petTasks = next.tasksFor(petId).map { it.id }.toSet()
+        if (next.completions.any { it.taskId in petTasks && it.localDay == gone.localDay }) return next
+        return next.copy(pets = next.pets.map { p -> if (p.id == petId) p.copy(careDays = p.careDays - gone.localDay) else p })
     }
 
     /**

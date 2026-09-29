@@ -67,7 +67,7 @@ object HouseholdSync {
     }
 
     /** The fields everyone shares; the rest (sprite settings, reminder switches) is this phone's own. */
-    fun view(p: Pet) = p.copy(sprite = SpriteSettings(), spriteVersion = 0, shared = true)
+    fun view(p: Pet) = p.copy(sprite = SpriteSettings(), spriteVersion = 0, shared = true, careDays = emptyList(), milestoneSeen = 0)
     fun view(t: CareTask) = t.copy(remindersOn = true, exactAlarm = false)
 
     /**
@@ -169,7 +169,11 @@ object HouseholdSync {
         } + keptPets.values.filter { k -> local.pets.none { it.id == k.id } }
         val tasks = local.tasks.filter { it.id !in removedTaskIds }.map { t -> keptTasks[t.id] ?: t } +
             keptTasks.values.filter { k -> local.tasks.none { it.id == k.id } }
-        val state = StateOps.prune(local.copy(pets = pets, tasks = tasks, completions = completions))
+        var state = StateOps.prune(local.copy(pets = pets, tasks = tasks, completions = completions))
+        // Care others logged counts toward this phone's care calendar too.
+        for ((petId, recs) in newFromOthers.groupBy { c -> tasks.firstOrNull { it.id == c.taskId }?.petId }) {
+            if (petId != null) state = StateOps.markCareDays(state, petId, recs.map { it.localDay })
+        }
         val failBase = SharedData(remote.pets, remote.tasks, remote.completions)
         return SyncResult(state, sharedPart(state), push.build(), redraw, failBase)
     }
@@ -178,7 +182,7 @@ object HouseholdSync {
     private fun mergePet(local: Pet, remote: Pet): Pet {
         val lookChanged = local.lookCode != remote.lookCode || local.species != remote.species || local.ears != remote.ears
         return remote.copy(
-            sprite = local.sprite, shared = true,
+            sprite = local.sprite, shared = true, careDays = local.careDays, milestoneSeen = local.milestoneSeen,
             spriteVersion = if (lookChanged) local.spriteVersion + 1 else local.spriteVersion,
         )
     }

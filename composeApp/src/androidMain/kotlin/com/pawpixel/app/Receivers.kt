@@ -23,11 +23,13 @@ private fun BroadcastReceiver.work(block: suspend () -> Unit) {
 class ReminderReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         val taskId = intent.getStringExtra(EXTRA_TASK) ?: return
+        // A bundled reminder ("Mochi: feed and fresh water") is about several tasks; Done logs them all.
+        val taskIds = intent.getStringArrayExtra(EXTRA_TASKS)?.toList()?.ifEmpty { null } ?: listOf(taskId)
         val id = intent.getIntExtra(EXTRA_ID, 0)
         val nm = context.getSystemService(NotificationManager::class.java)
         if (intent.action == ACTION_DONE) {
             nm.cancel(id)
-            work { PawPixelApplication.repo(context).completeFromReminder(taskId) }
+            work { taskIds.forEach { PawPixelApplication.repo(context).completeFromReminder(it) } }
             return
         }
         work {
@@ -35,9 +37,9 @@ class ReminderReceiver : BroadcastReceiver() {
             // Family sharing: fetch the others' taps first, so nobody is told to feed a pet that was just fed.
             if (repo.family.household != null) {
                 repo.family.syncWithin(8_000)
-                if (doneByFamily(repo, taskId)) return@work
+                if (taskIds.all { doneByFamily(repo, it) }) return@work
             }
-            show(context, repo, intent, taskId, id)
+            show(context, repo, intent, taskId, taskIds, id)
         }
     }
 
@@ -53,7 +55,7 @@ class ReminderReceiver : BroadcastReceiver() {
         return byOther && last.localDay == repo.clock.dayIndex(now) && !status.isOverdue
     }
 
-    private fun show(context: Context, repo: PawRepository, intent: Intent, taskId: String, id: Int) {
+    private fun show(context: Context, repo: PawRepository, intent: Intent, taskId: String, taskIds: List<String>, id: Int) {
         val nm = context.getSystemService(NotificationManager::class.java)
         // Completing a task reschedules (and so cancels) its reminders; this guards against settings changes.
         val state = repo.state.value
@@ -66,13 +68,15 @@ class ReminderReceiver : BroadcastReceiver() {
         )
         val done = PendingIntent.getBroadcast(
             context, id,
-            Intent(context, ReminderReceiver::class.java).setAction(ACTION_DONE).putExtra(EXTRA_TASK, taskId).putExtra(EXTRA_ID, id),
+            Intent(context, ReminderReceiver::class.java).setAction(ACTION_DONE).putExtra(EXTRA_TASK, taskId)
+                .putExtra(EXTRA_TASKS, taskIds.toTypedArray()).putExtra(EXTRA_ID, id),
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
         )
         val builder = NotificationCompat.Builder(context, AndroidPlatform.CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_stat_paw)
             .setContentTitle(intent.getStringExtra(EXTRA_TITLE))
             .setContentText(intent.getStringExtra(EXTRA_BODY))
+            .setStyle(NotificationCompat.BigTextStyle().bigText(intent.getStringExtra(EXTRA_BODY)))
             .setContentIntent(open)
             .setAutoCancel(true)
         if (intent.getBooleanExtra(EXTRA_QUICK_DONE, true)) builder.addAction(0, "Done", done)
@@ -88,12 +92,14 @@ class ReminderReceiver : BroadcastReceiver() {
         const val EXTRA_TITLE = "title"
         const val EXTRA_BODY = "body"
         const val EXTRA_QUICK_DONE = "quickDone"
+        const val EXTRA_TASKS = "tasks"
 
         /** Same request code and action => same PendingIntent, so it can be cancelled later. */
         fun pendingIntent(context: Context, id: Int, r: Reminder?): PendingIntent {
             val intent = Intent(context, ReminderReceiver::class.java).setAction(ACTION_SHOW)
             if (r != null) intent.putExtra(EXTRA_TASK, r.taskId).putExtra(EXTRA_ID, r.id)
                 .putExtra(EXTRA_TITLE, r.title).putExtra(EXTRA_BODY, r.body).putExtra(EXTRA_QUICK_DONE, r.quickDone)
+                .putExtra(EXTRA_TASKS, r.taskIds.toTypedArray())
             return PendingIntent.getBroadcast(context, id, intent, PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
         }
     }

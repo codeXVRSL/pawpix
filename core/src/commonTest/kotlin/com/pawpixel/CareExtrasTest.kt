@@ -257,7 +257,7 @@ class CareStatsTest {
 }
 
 class BackupTest {
-    private val pet = Pet("abc123", "Mochi", Species.CAT, 5, ears = "FLOPPY")
+    private val pet = Pet("abc123", "Mochi", Species.CAT, 5, ears = "FLOPPY", careDays = listOf(20000))
     private val task = CareTask("t1", "abc123", TaskKind.VACCINE, "Anti-rabies shot", listOf(540), everyDays = 365, anchorDay = 20000)
     private val state = AppState(
         pets = listOf(pet), tasks = listOf(task),

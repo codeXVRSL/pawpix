@@ -346,6 +346,17 @@ class PawRepository(val platform: Platform) {
     fun animationGif(pet: Pet, art: PetArt): ByteArray =
         AnimatedExport.clip(art, emptyList(), pet.name)
 
+    /** Shares a milestone card ("100 days of care"). */
+    fun shareMilestone(pet: Pet, days: Int) {
+        val art = art(pet) ?: return
+        val card = com.pawpixel.sprite.MilestoneCard.render(art.still, pet.name, com.pawpixel.core.Milestones.title(days))
+        platform.shareFile(Png.encode(card), "${fileStem(pet)}-$days-days.png", "image/png")
+    }
+
+    suspend fun celebrate(petId: String, days: Int) = update { com.pawpixel.core.Milestones.celebrate(it, petId, days) }
+    suspend fun logWeight(petId: String, grams: Int) = update { StateOps.logWeight(it, petId, clock.dayIndex(now()), grams) }
+    suspend fun removeWeight(petId: String, day: Long) = update { StateOps.removeWeight(it, petId, day) }
+
     fun shareGif(pet: Pet, gif: ByteArray) = platform.shareFile(gif, "${fileStem(pet)}.gif", "image/gif")
 
     private fun fileStem(pet: Pet) = "pawpixel-" + pet.name.lowercase().filter { it.isLetterOrDigit() }.ifEmpty { "pet" }

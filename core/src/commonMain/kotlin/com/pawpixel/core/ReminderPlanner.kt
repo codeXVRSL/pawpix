@@ -11,6 +11,8 @@ data class Reminder(
     val exact: Boolean,
     /** Show a "Done" button on the notification. Off for heads-ups ("due in 3 days"). */
     val quickDone: Boolean = true,
+    /** Every task this notification is about (several when bundled); its Done completes them all. */
+    val taskIds: List<String> = listOf(taskId),
 )
 
 /**
@@ -72,7 +74,7 @@ object ReminderPlanner {
             }
         }
         val keptHealth = bundle(health.filter { it.atMs >= quietUntil }, state).sortedBy { it.atMs }.take(MAX_HEALTH)
-        val daily = out.filter { it.atMs >= quietUntil }.sortedBy { it.atMs }.take(MAX_PENDING - keptHealth.size)
+        val daily = bundleDaily(out.filter { it.atMs >= quietUntil }, state).sortedBy { it.atMs }.take(MAX_PENDING - keptHealth.size)
         return (daily + keptHealth).sortedBy { it.atMs }
     }
 
@@ -95,6 +97,52 @@ object ReminderPlanner {
         )
         return list.filter { it.atMs > nowMs }
     }
+
+    /** Reminders this close together become one notification. */
+    const val BUNDLE_WINDOW_MS = 20 * MINUTE_MS
+
+    /**
+     * Fewer, calmer notifications: everyday care due within [BUNDLE_WINDOW_MS] of each other (breakfast
+     * and fresh water, or feeding two pets) comes as one, "Mochi: feed and fresh water · Kiko: feed",
+     * whose Done logs them all. Medicine always keeps its own notification and follow-up.
+     */
+    private fun bundleDaily(reminders: List<Reminder>, state: AppState): List<Reminder> {
+        val (meds, rest) = reminders.partition { state.task(it.taskId)?.kind == TaskKind.MEDS }
+        val out = ArrayList<Reminder>(meds)
+        var group = ArrayList<Reminder>()
+        fun flush() {
+            if (group.size == 1) out += group[0]
+            if (group.size > 1) out += merged(group, state)
+            group = ArrayList()
+        }
+        for (r in rest.sortedBy { it.atMs }) {
+            if (group.isNotEmpty() && r.atMs - group[0].atMs > BUNDLE_WINDOW_MS) flush()
+            group += r
+        }
+        flush()
+        return out
+    }
+
+    private fun merged(group: List<Reminder>, state: AppState): Reminder {
+        val byPet = group.groupBy { it.petId }
+        val parts = byPet.map { (petId, rs) ->
+            val name = state.pet(petId)?.name ?: "Your pet"
+            name + ": " + joinNames(rs.mapNotNull { state.task(it.taskId)?.title?.lowercase() }.distinct())
+        }
+        val pets = byPet.keys.mapNotNull { state.pet(it)?.name }
+        val first = group[0]
+        val ids = group.map { it.taskId }.distinct()
+        return first.copy(
+            id = stableId(ids.joinToString(","), first.atMs, false),
+            title = "🐾 Care time · " + joinNames(pets),
+            body = parts.joinToString(" · ") + ". Tap Done when it's all done.",
+            exact = group.any { it.exact },
+            taskIds = ids,
+        )
+    }
+
+    private fun joinNames(names: List<String>): String =
+        if (names.size <= 2) names.joinToString(" and ") else names.dropLast(1).joinToString(", ") + " and " + names.last()
 
     /**
      * Several health items for the same pet at the same moment (deworming and tick & flea due the

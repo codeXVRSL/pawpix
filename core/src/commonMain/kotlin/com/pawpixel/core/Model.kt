@@ -57,6 +57,13 @@ data class Pet(
      * phone have no face file here, so they're drawn from this.
      */
     val lookCode: String? = null,
+    /**
+     * Every day (local day index) anyone logged care for this pet, sorted. Kept separately from the
+     * records (which are trimmed) so milestones like "100 days of care" count the whole history.
+     */
+    val careDays: List<Long> = emptyList(),
+    /** The highest milestone already celebrated (see [Milestones]). */
+    val milestoneSeen: Int = 0,
 )
 
 data class SpriteSettings(
@@ -117,6 +124,9 @@ data class Completion(
     }
 }
 
+/** A weigh-in: [grams] on local day [day]. */
+data class Weight(val petId: String, val day: Long, val grams: Int)
+
 data class Settings(
     val remindersEnabled: Boolean = true,
     /**
@@ -138,7 +148,9 @@ data class AppState(
     val tasks: List<CareTask> = emptyList(),
     val completions: List<Completion> = emptyList(),
     val settings: Settings = Settings(),
+    val weights: List<Weight> = emptyList(),
 ) {
+    fun weightsFor(petId: String): List<Weight> = weights.filter { it.petId == petId }.sortedBy { it.day }
     fun pet(id: String): Pet? = pets.firstOrNull { it.id == id }
     fun task(id: String): CareTask? = tasks.firstOrNull { it.id == id }
     fun isAway(nowMs: Long): Boolean = nowMs < settings.awayUntilMs
@@ -149,6 +161,8 @@ data class AppState(
         const val SCHEMA_VERSION = 1
         /** Completions kept per task; enough for ~5 weeks of 4x/day learning. */
         const val MAX_COMPLETIONS_PER_TASK = 140
+        const val MAX_WEIGHTS_PER_PET = 200
+        const val MAX_CARE_DAYS = 3000
         /** Longest repeat: yearly. */
         const val MAX_EVERY_DAYS = 365
         const val FREE_PET_LIMIT = 1

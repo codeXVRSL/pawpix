@@ -156,7 +156,7 @@ final class OwnerJourneyTests: XCTestCase {
             try scrollTo("Away 3 days").tap()
             try find("I'm back").tap()
             try scrollTo("Save backup file")
-            try find("‹ Back").tap()
+            try scrollTo("‹ Back").tap() // the screen is scrolled down to the backup section
         }
 
         step("pet map opens (this CI build has no map server: it says so)") {

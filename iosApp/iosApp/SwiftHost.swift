@@ -151,7 +151,7 @@ final class SwiftHost: NSObject, IosHost {
             content.sound = .default
             // The Done button is left off heads-ups ("due in 3 days").
             if (item["quickDone"] as? Bool) != false { content.categoryIdentifier = Self.careCategory }
-            content.userInfo = ["taskId": taskId]
+            content.userInfo = ["taskId": (item["taskIds"] as? String).flatMap { $0.isEmpty ? nil : $0 } ?? taskId]
             let trigger = UNTimeIntervalNotificationTrigger(timeInterval: at - now, repeats: false)
             center.add(UNNotificationRequest(identifier: id, content: content, trigger: trigger))
         }

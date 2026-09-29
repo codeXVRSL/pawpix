@@ -81,6 +81,8 @@ fun PetScreen(app: AppScope, state: AppState, pet: Pet) {
             }
         }
 
+        MilestoneBanner(app, pet)
+
         // Gentle progress: days cared for this week, never a streak that breaks.
         val week = CareStats.week(state, pet.id, app.now, app.repo.clock)
         val summary = CareStats.summary(state, pet.id, app.now, app.repo.clock)
@@ -92,6 +94,7 @@ fun PetScreen(app: AppScope, state: AppState, pet: Pet) {
             Text(week.joinToString(" ") { if (it) "●" else "○" }, color = MaterialTheme.colorScheme.primary)
             Text(summary, style = MaterialTheme.typography.bodySmall)
         }
+        nextMilestoneLine(pet)?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
 
         // Family sharing: who else cares for this pet, or an invitation to set it up.
         val household = app.repo.family.household
@@ -111,6 +114,9 @@ fun PetScreen(app: AppScope, state: AppState, pet: Pet) {
 
         Spacer(Modifier.height(8.dp))
         HealthSection(app, state, pet)
+
+        Spacer(Modifier.height(8.dp))
+        WeightSection(app, state, pet)
 
         Spacer(Modifier.height(8.dp))
         Text("Share & sprite", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)

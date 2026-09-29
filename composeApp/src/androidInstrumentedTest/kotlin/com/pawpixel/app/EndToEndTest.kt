@@ -195,6 +195,29 @@ class EndToEndTest {
             shot("health-local-help")
         }
 
+        step("weight: log a weigh-in and see it") {
+            retrying { scrollTo(By.text("+ Add today's weight")).click() }
+            val field = find(By.clazz("android.widget.EditText"))
+            retrying { field.text = "4.2" }
+            retrying { find(By.text("Save")).click() }
+            waitFor("weight saved") { repo.state.value.weightsFor(petId).singleOrNull()?.grams == 4200 }
+            scrollTo(By.text("4.2 kg"))
+            shot("weight")
+        }
+
+        step("milestone: 7 days of care is celebrated and shareable") {
+            // A week of care, as if logged over the past days.
+            val today = repo.clock.dayIndex(repo.now())
+            runBlocking { repo.update { s -> com.pawpixel.core.StateOps.markCareDays(s, petId, (today - 6..today).toList()) } }
+            val before = choosers()
+            retrying { scrollTo(By.text("Share the card")).click() }
+            waitFor("milestone share sheet") { choosers() == before + 1 }
+            find(By.textStartsWith("🎉 7 days of care"))
+            shot("milestone")
+            retrying { find(By.text("Nice!")).click() }
+            waitFor("celebrated once") { repo.state.value.pet(petId)?.milestoneSeen == 7 }
+        }
+
         step("share animation and before/after card open the share sheet") {
             val before = choosers()
             retrying { scrollTo(By.text("Share animation")).click() }

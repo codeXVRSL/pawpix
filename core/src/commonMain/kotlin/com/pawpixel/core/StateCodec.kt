@@ -22,6 +22,8 @@ object StateCodec {
                 "birthDay" to p.birthDay,
                 "shared" to p.shared,
                 "look" to p.lookCode,
+                "careDays" to p.careDays,
+                "milestoneSeen" to p.milestoneSeen,
                 "sprite" to Json.obj(
                     "size" to p.sprite.size, "colors" to p.sprite.colors,
                     "outline" to p.sprite.outline, "vibrance" to p.sprite.vibrance,
@@ -37,6 +39,7 @@ object StateCodec {
                 "series" to t.series,
             )
         },
+        "weights" to state.weights.map { w -> Json.obj("petId" to w.petId, "day" to w.day, "g" to w.grams) },
         "completions" to state.completions.map { c ->
             Json.obj("taskId" to c.taskId, "at" to c.atMs, "minute" to c.localMinute, "day" to c.localDay, "id" to c.id, "by" to c.by)
         },
@@ -73,6 +76,8 @@ object StateCodec {
                 birthDay = p["birthDay"].long,
                 shared = p["shared"].bool ?: false,
                 lookCode = p["look"].str?.takeIf { it.length <= 200 },
+                careDays = p["careDays"].list.mapNotNull { it.long }.distinct().sorted().takeLast(AppState.MAX_CARE_DAYS),
+                milestoneSeen = p["milestoneSeen"].int ?: 0,
                 sprite = SpriteSettings(
                     size = sp["size"].int ?: spriteDefaults.size,
                     colors = sp["colors"].int ?: spriteDefaults.colors,
@@ -115,7 +120,19 @@ object StateCodec {
                 by = c["by"].str?.takeIf { it.length <= 64 },
             )
         }
-        return AppState(pets, tasks, completions, settings)
+        val weights = root["weights"].list.mapNotNull { w ->
+            val petId = w["petId"].str?.takeIf { it in petIds } ?: return@mapNotNull null
+            val g = w["g"].int?.takeIf { it in 1..200_000 } ?: return@mapNotNull null
+            Weight(petId, w["day"].long ?: return@mapNotNull null, g)
+        }
+        // Older saves have no care calendar: start it from the records they do have.
+        val withDays = pets.map { p ->
+            if (p.careDays.isNotEmpty()) p else {
+                val ids = tasks.filter { it.petId == p.id }.map { it.id }.toSet()
+                p.copy(careDays = completions.filter { it.taskId in ids }.map { it.localDay }.distinct().sorted())
+            }
+        }
+        return AppState(withDays, tasks, completions, settings, weights)
     }
 
     private val ID = Regex("[a-z0-9]{1,40}")

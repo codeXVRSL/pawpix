@@ -95,7 +95,8 @@ object IosGraph {
     fun onForeground() { MainScope().launch { repo.ingestWidgetTaps(); repo.publish(); repo.family.requestSync() } }
 
     /** "Done" tapped on a notification. */
-    fun completeTask(taskId: String) { MainScope().launch { repo.completeFromReminder(taskId) } }
+    /** Done on a notification: [taskId] may list several, comma-separated (a bundled reminder). */
+    fun completeTask(taskId: String) { MainScope().launch { taskId.split(',').filter { it.isNotBlank() }.forEach { repo.completeFromReminder(it) } } }
 
     internal fun host() = host
 }
@@ -143,7 +144,8 @@ class IosPlatform(private val host: IosHost) : Platform {
 
     override fun scheduleReminders(reminders: List<Reminder>) {
         val json = Json.arr(reminders.map {
-            Json.obj("id" to it.id.toString(), "taskId" to it.taskId, "at" to it.atMs / 1000, "title" to it.title, "body" to it.body, "quickDone" to it.quickDone)
+            Json.obj("id" to it.id.toString(), "taskId" to it.taskId, "at" to it.atMs / 1000, "title" to it.title, "body" to it.body, "quickDone" to it.quickDone,
+                "taskIds" to it.taskIds.joinToString(","))
         }).stringify()
         host.scheduleReminders(json)
     }
