@@ -303,6 +303,49 @@ class EndToEndTest {
             find(By.text("Chelsea"))
         }
 
+        step("family sharing: start a family, a partner joins, her Done shows on this phone") {
+            if (!repo.map.settings.isConfigured) { note("server not set up in this build; skipped"); return@step }
+            retrying { find(By.text("Settings")).click() }
+            retrying { scrollTo(By.text("Open family sharing")).click() }
+            if (device.hasObject(By.text(repo.map.signInLabel))) retrying { find(By.text(repo.map.signInLabel)).click() }
+            val nameField = find(By.clazz("android.widget.EditText"), 20_000)
+            retrying { nameField.click() }
+            retrying { find(By.clazz("android.widget.EditText")).text = "Save" }
+            device.pressBack()
+            retrying { scrollTo(By.text("Start a family")).click() }
+            val code = find(By.text(Pattern.compile("[A-HJKMNP-Z2-9]{4}-[A-HJKMNP-Z2-9]{4}")), 20_000).text
+            shot("family-invite")
+            // Jamaica, on her own phone (here: the app's own client, signed in as the seeded partner).
+            val partnerApi = com.pawpixel.map.SupabaseApi(repo.map.settings, repo.platform.http, object : com.pawpixel.map.SessionStore {
+                var s: String? = null; override fun load() = s; override fun save(json: String?) { s = json }
+            }, repo.platform::nowMs)
+            val partner = com.pawpixel.map.HouseholdClient(partnerApi)
+            val hid = runBlocking { partnerApi.signInWithPassword("partner@test.pawpixel", "partner-pass-123"); partner.join(code, "Jamaica") }
+            // Share Chelsea.
+            retrying { scrollTo(By.checkable(true)).click() }
+            waitFor("Chelsea reaches the family", 30_000) { runBlocking { partner.pull(hid) }.pets.any { it.name == "Chelsea" } }
+            val shared = runBlocking { partner.pull(hid) }
+            val water = shared.tasks.first { it.kind.name == "WATER" }
+            check(shared.pets.single().lookCode != null) { "no pixel look shared" }
+            // Jamaica refills the water.
+            val now = repo.now()
+            runBlocking {
+                partner.push(hid, com.pawpixel.core.SyncPush(addCompletions = listOf(com.pawpixel.core.Completion(
+                    water.id, now, repo.clock.minuteOfDay(now), repo.clock.dayIndex(now), id = "partnerwater1"))))
+            }
+            retrying { find(By.text("Sync now")).click() }
+            waitFor("her Done arrives", 30_000) { repo.state.value.completions.any { it.id == "partnerwater1" && it.by == partnerApi.userId } }
+            find(By.textContains("Jamaica"))
+            shot("family-members")
+            device.pressBack(); device.pressBack()
+            retrying { find(By.text("Chelsea")).click() }
+            scrollTo(By.textStartsWith("Done by Jamaica"))
+            Thread.sleep(500)
+            shot("family-done-by")
+            device.pressBack()
+            find(By.text("Chelsea"))
+        }
+
         step("reminder notification with a working Done button") {
             val task = repo.state.value.tasksFor(petId).first { it.kind.name == "WATER" }
             val before = completions()

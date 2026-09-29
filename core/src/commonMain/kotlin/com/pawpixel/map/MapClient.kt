@@ -58,21 +58,19 @@ data class Venue(val name: String, val lat: Double, val lng: Double)
 data class SharedPet(val localId: String, val name: String, val species: String, val ears: String, val look: String)
 
 /**
- * Talks to the map backend (Supabase: Auth + PostgREST). All privacy rules are enforced by the
- * server (supabase/migrations); this client only ever sends a grid cell, never a coordinate.
+ * PawPixel's server (Supabase: Auth + PostgREST), shared by the pet map and family sharing: one
+ * sign-in, one session. Errors are [MapException]s with a [MapException.Kind] the UI can explain.
  */
-class MapClient(
-    private val settings: MapSettings,
+class SupabaseApi(
+    val settings: MapSettings,
     private val http: Http,
     private val store: SessionStore,
-    private val nowMs: () -> Long,
+    val nowMs: () -> Long,
 ) {
     private var session: Session? = store.load()?.let(::parseStoredSession)
 
     val isSignedIn: Boolean get() = session != null
     val userId: String? get() = session?.userId
-
-    // ---------- Sign-in ----------
 
     /** Google (Android) or Apple (iOS) identity token. [nonce] is the raw nonce whose hash went to the provider. */
     suspend fun signInWithIdToken(provider: String, idToken: String, nonce: String?) {
@@ -121,6 +119,68 @@ class MapClient(
         acceptSession(Json.parse(r.body))
         return session!!.accessToken
     }
+
+    suspend fun rpc(name: String, args: Json = Json.obj()): String = rest("POST", "/rest/v1/rpc/$name", args.stringify())
+
+    suspend fun rest(method: String, path: String, body: String? = null, prefer: String? = null): String {
+        val r = send(method, path, body, bearer = token(), prefer = prefer)
+        when {
+            r.status in 200..299 -> return r.body
+            r.status == 401 -> { signOutLocally(); throw MapException(MapException.Kind.SIGNED_OUT, "Please sign in again") }
+            r.body.contains("gathering is full") -> throw MapException(MapException.Kind.FULL, "This gathering is full")
+            r.status in 400..499 -> throw MapException(MapException.Kind.REFUSED, errorMessage(r.body) ?: "Not allowed (${r.status})")
+            else -> throw MapException(MapException.Kind.SERVER, "PawPixel's server had a problem (${r.status})")
+        }
+    }
+
+    private fun errorMessage(body: String): String? = runCatching { Json.parse(body)["message"].str }.getOrNull()
+
+    private suspend fun send(method: String, path: String, body: String?, bearer: String, prefer: String? = null): HttpResponse {
+        if (!settings.isConfigured) throw MapException(MapException.Kind.NOT_SET_UP, "This build isn't connected to PawPixel's server yet")
+        val headers = buildMap {
+            put("apikey", settings.anonKey)
+            put("Authorization", "Bearer $bearer")
+            put("Content-Type", "application/json")
+            if (prefer != null) put("Prefer", prefer)
+        }
+        return try {
+            http.send(HttpRequest(method, settings.supabaseUrl.trimEnd('/') + path, headers, body))
+        } catch (e: MapException) {
+            throw e
+        } catch (e: Exception) {
+            throw MapException(MapException.Kind.OFFLINE, "Can't reach PawPixel's server. Check your connection.")
+        }
+    }
+
+    fun isoNow(): String {
+        val ms = nowMs()
+        val days = ms.floorDiv(86_400_000L)
+        val rem = ms - days * 86_400_000L
+        val (y, m, d) = com.pawpixel.core.LocalClock.civil(days)
+        fun p(n: Long, w: Int = 2) = n.toString().padStart(w, '0')
+        return "${p(y.toLong(), 4)}-${p(m.toLong())}-${p(d.toLong())}T${p(rem / 3_600_000)}:${p(rem / 60_000 % 60)}:${p(rem / 1000 % 60)}Z"
+    }
+}
+
+/**
+ * Talks to the map backend (Supabase: Auth + PostgREST). All privacy rules are enforced by the
+ * server (supabase/migrations); this client only ever sends a grid cell, never a coordinate.
+ */
+class MapClient(
+    settings: MapSettings,
+    http: Http,
+    store: SessionStore,
+    nowMs: () -> Long,
+) {
+    /** Shares the sign-in with family sharing (see [HouseholdClient]). */
+    val api = SupabaseApi(settings, http, store, nowMs)
+
+    val isSignedIn: Boolean get() = api.isSignedIn
+    val userId: String? get() = api.userId
+
+    suspend fun signInWithIdToken(provider: String, idToken: String, nonce: String?) = api.signInWithIdToken(provider, idToken, nonce)
+    suspend fun signInWithPassword(email: String, password: String) = api.signInWithPassword(email, password)
+    fun signOutLocally() = api.signOutLocally()
 
     // ---------- Joining, updating and leaving ----------
 
@@ -213,60 +273,7 @@ class MapClient(
             Venue(v["venue_name"].str ?: return@let null, v["venue_lat"].double ?: 0.0, v["venue_lng"].double ?: 0.0)
         }
 
-    // ---------- Plumbing ----------
-
-    private suspend fun rpc(name: String, args: Json = Json.obj()): String = rest("POST", "/rest/v1/rpc/$name", args.stringify())
-
-    private suspend fun rest(method: String, path: String, body: String? = null, prefer: String? = null): String {
-        val r = send(method, path, body, bearer = token(), prefer = prefer)
-        when {
-            r.status in 200..299 -> return r.body
-            r.status == 401 -> { signOutLocally(); throw MapException(MapException.Kind.SIGNED_OUT, "Please sign in again") }
-            r.body.contains("gathering is full") -> throw MapException(MapException.Kind.FULL, "This gathering is full")
-            r.status in 400..499 -> throw MapException(MapException.Kind.REFUSED, errorMessage(r.body) ?: "Not allowed (${r.status})")
-            else -> throw MapException(MapException.Kind.SERVER, "The map server had a problem (${r.status})")
-        }
-    }
-
-    private fun errorMessage(body: String): String? = runCatching { Json.parse(body)["message"].str }.getOrNull()
-
-    private suspend fun send(method: String, path: String, body: String?, bearer: String, prefer: String? = null): HttpResponse {
-        if (!settings.isConfigured) throw MapException(MapException.Kind.NOT_SET_UP, "The pet map isn't set up in this build")
-        val headers = buildMap {
-            put("apikey", settings.anonKey)
-            put("Authorization", "Bearer $bearer")
-            put("Content-Type", "application/json")
-            if (prefer != null) put("Prefer", prefer)
-        }
-        return try {
-            http.send(HttpRequest(method, settings.supabaseUrl.trimEnd('/') + path, headers, body))
-        } catch (e: MapException) {
-            throw e
-        } catch (e: Exception) {
-            throw MapException(MapException.Kind.OFFLINE, "Can't reach the map. Check your connection.")
-        }
-    }
-
-    private fun isoNow(): String {
-        val ms = nowMs()
-        val days = ms.floorDiv(86_400_000L)
-        val rem = ms - days * 86_400_000L
-        val (y, m, d) = civil(days)
-        fun p(n: Long, w: Int = 2) = n.toString().padStart(w, '0')
-        return "${p(y, 4)}-${p(m)}-${p(d)}T${p(rem / 3_600_000)}:${p(rem / 60_000 % 60)}:${p(rem / 1000 % 60)}Z"
-    }
-
-    /** Days since 1970-01-01 to (year, month, day), Howard Hinnant's civil_from_days. */
-    private fun civil(z0: Long): Triple<Long, Long, Long> {
-        val z = z0 + 719468
-        val era = z.floorDiv(146097L)
-        val doe = z - era * 146097
-        val yoe = (doe - doe / 1460 + doe / 36524 - doe / 146096) / 365
-        val y = yoe + era * 400
-        val doy = doe - (365 * yoe + yoe / 4 - yoe / 100)
-        val mp = (5 * doy + 2) / 153
-        val d = doy - (153 * mp + 2) / 5 + 1
-        val m = if (mp < 10) mp + 3 else mp - 9
-        return Triple(if (m <= 2) y + 1 else y, m, d)
-    }
+    private suspend fun rpc(name: String, args: Json = Json.obj()): String = api.rpc(name, args)
+    private suspend fun rest(method: String, path: String, body: String? = null, prefer: String? = null): String = api.rest(method, path, body, prefer)
+    private fun isoNow(): String = api.isoNow()
 }

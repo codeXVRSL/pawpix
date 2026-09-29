@@ -93,6 +93,17 @@ fun PetScreen(app: AppScope, state: AppState, pet: Pet) {
             Text(summary, style = MaterialTheme.typography.bodySmall)
         }
 
+        // Family sharing: who else cares for this pet, or an invitation to set it up.
+        val household = app.repo.family.household
+        if (pet.shared && household != null) {
+            val others = household.members.filter { it.userId != app.repo.family.myUserId }.joinToString { it.name }
+            TextButton(onClick = { app.navigate(Screen.Family) }) {
+                Text(if (others.isEmpty()) "Shared with ${household.name}" else "Cared for with $others", style = MaterialTheme.typography.bodySmall)
+            }
+        } else if (app.repo.family.isSetUp) {
+            TextButton(onClick = { app.navigate(Screen.Family) }) { Text("👪 Care for ${pet.name} together with family") }
+        }
+
         Text("Care", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
         if (statuses.isEmpty()) Text("No care tasks yet. Add feeding, walks or medicine so ${pet.name}'s mood can follow real care.")
         statuses.forEach { s -> TaskRow(app, pet, s, onDone = { react(PetEvent.Cared(s.task.kind)) }) }
@@ -129,7 +140,9 @@ fun PetScreen(app: AppScope, state: AppState, pet: Pet) {
                     }
                 },
             ) { Text(if (makingGif) "Making GIF…" else "Share animation") }
-            OutlinedButton(onClick = { app.repo.shareReveal(pet) }) { Text("Before/after") }
+            // A pet from a family member's phone has no photo here, so no before/after card.
+            val hasPhoto = remember(pet.id, pet.spriteVersion) { app.repo.photoCrop(pet.id) != null }
+            if (hasPhoto) OutlinedButton(onClick = { app.repo.shareReveal(pet) }) { Text("Before/after") }
         }
         shareError?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
         OutlinedButton(onClick = { app.navigate(Screen.RemakeSprite(pet.id)) }) { Text("Edit look: photo, face, ears") }
@@ -140,7 +153,12 @@ fun PetScreen(app: AppScope, state: AppState, pet: Pet) {
         AlertDialog(
             onDismissRequest = { confirmDelete = false },
             title = { Text("Delete ${pet.name}?") },
-            text = { Text("This removes the sprite, tasks and history from this phone. It can't be undone.") },
+            text = {
+                Text(
+                    "This removes the sprite, tasks and history from this phone. It can't be undone." +
+                        if (pet.shared) " Your family keeps their copy of ${pet.name}, no longer shared." else "",
+                )
+            },
             confirmButton = {
                 TextButton(onClick = { confirmDelete = false; app.launch { app.repo.deletePet(pet.id) } }) {
                     Text("Delete", color = MaterialTheme.colorScheme.error)
@@ -175,6 +193,13 @@ private fun TaskRow(app: AppScope, pet: Pet, s: TaskStatus, onDone: () -> Unit) 
                 Text("${t.kind.emoji} ${t.title}", fontWeight = FontWeight.Bold)
                 Text(detail, color = if (s.isOverdue) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface)
                 Text(times, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                // Family sharing: "Done by Jamaica · 7:02 AM" when someone else did it today.
+                val today = clock.dayIndex(app.now)
+                app.repo.state.value.completions.lastOrNull { it.taskId == t.id && it.localDay == today }?.let { c ->
+                    app.repo.family.nameOf(c.by)?.let { who ->
+                        Text("Done by $who · ${formatTime(c.atMs, clock)}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.secondary)
+                    }
+                }
                 if (t.adaptive && AdaptiveTiming.effectiveSlots(t, app.repo.state.value.completions, app.now, clock) != t.slots.sorted()) {
                     Text("Adjusted to your routine", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.secondary)
                 }

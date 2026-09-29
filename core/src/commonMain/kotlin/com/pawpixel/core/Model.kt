@@ -50,6 +50,13 @@ data class Pet(
     val ears: String? = null,
     /** Local day index of the pet's birthday (a guess is fine); null = not given. Plans puppy/kitten care. */
     val birthDay: Long? = null,
+    /** Cared for together with a family (see [HouseholdSync]); its care syncs with their phones. */
+    val shared: Boolean = false,
+    /**
+     * The pixel look as a [com.pawpixel.sprite.PetLook] code. Pets that came from a family member's
+     * phone have no face file here, so they're drawn from this.
+     */
+    val lookCode: String? = null,
 )
 
 data class SpriteSettings(
@@ -95,7 +102,20 @@ data class Completion(
     val localMinute: Int,
     /** Local day index when it happened. */
     val localDay: Long,
-)
+    /** Stable id, so family phones can tell records apart. Old records get one derived from task and time. */
+    val id: String = derivedId(taskId, atMs),
+    /** Family sharing: the account that logged it (null = this phone, before sharing). */
+    val by: String? = null,
+) {
+    companion object {
+        fun derivedId(taskId: String, atMs: Long): String {
+            var h = 1125899906842597L
+            for (c in taskId) h = 31 * h + c.code
+            h = 31 * h + atMs
+            return "c" + (h and Long.MAX_VALUE).toString(36)
+        }
+    }
+}
 
 data class Settings(
     val remindersEnabled: Boolean = true,

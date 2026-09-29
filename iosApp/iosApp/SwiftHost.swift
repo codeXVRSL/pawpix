@@ -181,6 +181,15 @@ final class SwiftHost: NSObject, IosHost {
         top.present(sheet, animated: true)
     }
 
+    func shareText(text: String) {
+        guard let top = Self.topViewController() else { return }
+        let sheet = UIActivityViewController(activityItems: [text], applicationActivities: nil)
+        sheet.popoverPresentationController?.sourceView = top.view
+        sheet.popoverPresentationController?.sourceRect = CGRect(x: top.view.bounds.midX, y: top.view.bounds.midY, width: 0, height: 0)
+        sheet.popoverPresentationController?.permittedArrowDirections = []
+        top.present(sheet, animated: true)
+    }
+
     func openUrl(url: String) {
         guard let u = URL(string: url) else { return }
         UIApplication.shared.open(u)

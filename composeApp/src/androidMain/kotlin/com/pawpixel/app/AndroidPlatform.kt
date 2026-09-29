@@ -158,9 +158,14 @@ class AndroidPlatform(private val context: Context) : Platform {
             type = mimeType
             putExtra(Intent.EXTRA_STREAM, uri)
             clipData = ClipData.newRawUri(null, uri) // lets the share sheet show a preview
-            putExtra(Intent.EXTRA_TEXT, "Meet my pet in pixels! Made with PawPixel")
+            if (mimeType.startsWith("image/")) putExtra(Intent.EXTRA_TEXT, "Meet my pet in pixels! Made with PawPixel")
             addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
         }
+        context.startActivity(Intent.createChooser(send, "Share").addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+    }
+
+    override fun shareText(text: String) {
+        val send = Intent(Intent.ACTION_SEND).apply { type = "text/plain"; putExtra(Intent.EXTRA_TEXT, text) }
         context.startActivity(Intent.createChooser(send, "Share").addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
     }
 

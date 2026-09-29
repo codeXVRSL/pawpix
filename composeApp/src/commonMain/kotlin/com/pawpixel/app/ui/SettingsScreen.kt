@@ -78,6 +78,14 @@ fun SettingsScreen(app: AppScope, state: AppState) {
             app.launch { app.repo.setSettings(s.copy(remindersEnabled = on)) }
         }
 
+        Text("Family sharing", fontWeight = FontWeight.Bold)
+        Text(
+            app.repo.family.household?.let { "You're in ${it.name} (${it.members.size} people)." }
+                ?: "Care for your pets together: everyone's Done taps show on every phone.",
+            style = MaterialTheme.typography.bodySmall,
+        )
+        OutlinedButton(onClick = { app.navigate(Screen.Family) }) { Text("Open family sharing") }
+
         Text("Away from home", fontWeight = FontWeight.Bold)
         if (state.isAway(app.now)) {
             Text("Care reminders are paused until ${formatDate(s.awayUntilMs, app.repo.clock)}. Your pets won't fret over care missed while you're away.")

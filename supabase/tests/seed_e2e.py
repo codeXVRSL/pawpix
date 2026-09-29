@@ -50,6 +50,8 @@ def owner(cell, i):
 
 
 user(os.environ["TEST_EMAIL"], os.environ["TEST_PASSWORD"])
+# A second person for the family-sharing step (the test signs in as them to join and tap Done).
+user("partner@test.pawpixel", "partner-pass-123")
 cells = set()
 for dr in range(-3, 4):
     for dc in range(-3, 4):

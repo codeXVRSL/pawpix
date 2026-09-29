@@ -20,6 +20,8 @@ object StateCodec {
                 "eyes" to p.eyes.map { (x, y) -> listOf(x, y) },
                 "ears" to (p.ears ?: ""),
                 "birthDay" to p.birthDay,
+                "shared" to p.shared,
+                "look" to p.lookCode,
                 "sprite" to Json.obj(
                     "size" to p.sprite.size, "colors" to p.sprite.colors,
                     "outline" to p.sprite.outline, "vibrance" to p.sprite.vibrance,
@@ -36,7 +38,7 @@ object StateCodec {
             )
         },
         "completions" to state.completions.map { c ->
-            Json.obj("taskId" to c.taskId, "at" to c.atMs, "minute" to c.localMinute, "day" to c.localDay)
+            Json.obj("taskId" to c.taskId, "at" to c.atMs, "minute" to c.localMinute, "day" to c.localDay, "id" to c.id, "by" to c.by)
         },
     ).stringify()
 
@@ -69,6 +71,8 @@ object StateCodec {
                 }.take(2),
                 ears = p["ears"].str?.ifEmpty { null },
                 birthDay = p["birthDay"].long,
+                shared = p["shared"].bool ?: false,
+                lookCode = p["look"].str?.takeIf { it.length <= 200 },
                 sprite = SpriteSettings(
                     size = sp["size"].int ?: spriteDefaults.size,
                     colors = sp["colors"].int ?: spriteDefaults.colors,
@@ -101,11 +105,14 @@ object StateCodec {
         val completions = root["completions"].list.mapNotNull { c ->
             val taskId = c["taskId"].str ?: return@mapNotNull null
             if (taskId !in taskIds) return@mapNotNull null
+            val at = c["at"].long ?: return@mapNotNull null
             Completion(
                 taskId = taskId,
-                atMs = c["at"].long ?: return@mapNotNull null,
+                atMs = at,
                 localMinute = c["minute"].int ?: 0,
                 localDay = c["day"].long ?: 0L,
+                id = c["id"].str?.takeIf { ID.matches(it) } ?: Completion.derivedId(taskId, at),
+                by = c["by"].str?.takeIf { it.length <= 64 },
             )
         }
         return AppState(pets, tasks, completions, settings)

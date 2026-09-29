@@ -231,10 +231,10 @@ final class OwnerJourneyTests: XCTestCase {
     @discardableResult
     private func scrollTo(query e: XCUIElement, _ what: String) throws -> XCUIElement {
         _ = e.waitForExistence(timeout: 5)
-        if e.exists && e.isHittable { return e }
+        if e.exists && e.isHittable { return settled(e) }
         for up in [true, false] {
             for i in 0..<8 {
-                if e.exists && e.isHittable { return e }
+                if e.exists && e.isHittable { return settled(e) }
                 let from = app.coordinate(withNormalizedOffset: CGVector(dx: 0.985, dy: up ? 0.7 : 0.3))
                 let to = app.coordinate(withNormalizedOffset: CGVector(dx: 0.985, dy: up ? 0.3 : 0.7))
                 if i % 2 == 0 { from.press(forDuration: 0.05, thenDragTo: to) }
@@ -244,6 +244,18 @@ final class OwnerJourneyTests: XCTestCase {
             }
         }
         guard e.exists && e.isHittable else { throw Failure("not found after scrolling: \(what)") }
+        return settled(e)
+    }
+
+    /// Waits until a scroll has stopped moving [e] (a tap during the fling lands somewhere else).
+    private func settled(_ e: XCUIElement) -> XCUIElement {
+        var last = e.frame
+        for _ in 0..<12 {
+            usleep(250_000)
+            let now = e.frame
+            if now == last { break }
+            last = now
+        }
         return e
     }
 

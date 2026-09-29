@@ -55,7 +55,7 @@ jobs:
       - uses: actions/setup-java@v4
         with: { distribution: temurin, java-version: "17" }
       - uses: gradle/actions/setup-gradle@v4
-      - name: The app's own map client against the same server
+      - name: The app's own map and family-sharing clients against the same server
         if: success() || failure()
         run: |
           set -o pipefail

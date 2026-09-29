@@ -21,6 +21,7 @@ import com.pawpixel.sprite.Chibi
 import com.pawpixel.sprite.Ears
 import com.pawpixel.sprite.FaceBox
 import com.pawpixel.sprite.PetArt
+import com.pawpixel.sprite.PetLook
 import com.pawpixel.sprite.PixelImage
 import com.pawpixel.sprite.Png
 import com.pawpixel.sprite.Poses
@@ -58,6 +59,9 @@ class PawRepository(val platform: Platform) {
 
     /** The opt-in pet map (sign-in session, shared pets, your ~1 km area). */
     val map: PetMapModel by lazy { PetMapModel(platform, files) }
+
+    /** Family sharing (same sign-in as the map). */
+    val family: FamilyModel by lazy { FamilyModel(this, map) }
 
     private fun load(): AppState {
         // A restore interrupted between its two renames: put the pets' files back.
@@ -100,16 +104,19 @@ class PawRepository(val platform: Platform) {
     // ---- Pets ----
 
     suspend fun addPet(name: String, species: Species, settings: SpriteSettings, result: SpriteResult, ears: Ears?): Pet {
-        val pet = Pet(Ids.newId(), name.trim().ifEmpty { "My pet" }, species, now(), settings, ears = ears?.name)
-        saveHead(pet.id, result.head, result.photoCrop)
+        val draft = Pet(Ids.newId(), name.trim().ifEmpty { "My pet" }, species, now(), settings, ears = ears?.name)
+        saveHead(draft.id, result.head, result.photoCrop)
+        val pet = draft.copy(lookCode = art(draft)?.look?.encode())
         writeWidgetPoses(pet)
         update { StateOps.addPet(it, pet, now(), clock) }
         return pet
     }
 
     suspend fun updateSprite(pet: Pet, settings: SpriteSettings, result: SpriteResult, ears: Ears?) {
-        val updated = pet.copy(sprite = settings, eyes = emptyList(), ears = ears?.name, spriteVersion = pet.spriteVersion + 1)
+        val drawn = pet.copy(sprite = settings, eyes = emptyList(), ears = ears?.name, spriteVersion = pet.spriteVersion + 1)
         saveHead(pet.id, result.head, result.photoCrop)
+        // The look code travels to family phones, so keep it in step with the face.
+        val updated = drawn.copy(lookCode = art(drawn)?.look?.encode() ?: pet.lookCode)
         writeWidgetPoses(updated)
         update { StateOps.updatePet(it, updated) }
     }
@@ -181,13 +188,15 @@ class PawRepository(val platform: Platform) {
     suspend fun setAway(days: Int) = update {
         StateOps.setAway(it, if (days <= 0) now() else clock.at(clock.dayIndex(now()) + days, 12 * 60))
     }
-    suspend fun undo(taskId: String) = update { StateOps.undoLast(it, taskId) }
+    /** Undo takes back this phone's own last record, never a family member's. */
+    suspend fun undo(taskId: String) = update { StateOps.undoLast(it, taskId, mine = setOf(null, family.myUserId)) }
     suspend fun setSettings(settings: Settings) = update { StateOps.setSettings(it, settings) }
 
     suspend fun deleteAllData() {
         // If you joined the pet map, delete that account too (best effort: offline still wipes the phone).
         if (map.client.isSignedIn) runCatching { map.deleteAccount() }
         map.forgetLocally()
+        family.clearLocal()
         mutex.withLock {
             files.delete("sprites")
             files.delete(STATE_FILE)
@@ -291,8 +300,18 @@ class PawRepository(val platform: Platform) {
     fun head(petId: String): PixelImage? = headCache[petId]
         ?: files.readBytes("sprites/$petId/head.bin")?.let(RawImage::decode)?.also { headCache[petId] = it }
 
-    /** The pet's face (its colours and markings), species and ears: everything needed to draw and animate it. */
+    /**
+     * The pet's face (its colours and markings), species and ears: everything needed to draw and
+     * animate it. A pet from a family member's phone has no face file here and is drawn from its look code.
+     */
     fun art(pet: Pet): PetArt? = head(pet.id)?.let { PetArt(it, pet.species, Ears.of(pet.ears)) }
+        ?: pet.lookCode?.let { PetLook.decode(it) }?.let { PetArt(it, pet.species, Ears.of(pet.ears)) }
+
+    /** Widget poses for pets whose look arrived or changed through family sharing. */
+    fun redrawPoses(petIds: List<String>) {
+        for (id in petIds) state.value.pet(id)?.let { pet -> headCache.remove(id); writeWidgetPoses(pet) }
+        if (petIds.isNotEmpty()) platform.refreshWidgets(null)
+    }
 
     fun photoCrop(petId: String): PixelImage? = files.readBytes("sprites/$petId/photo.bin")?.let(RawImage::decode)
 

@@ -22,6 +22,13 @@ If you join the pet map, and only then:
 - **Leaving and deleting:** "Leave the map" removes your pets and area. "Delete my map account" (or Settings → Delete all my data) deletes your account and everything above from the server immediately.
 - The map is for people 18 and over.
 
+## Family sharing (optional)
+If you start or join a family, and only then:
+- **Sign-in:** the same Google or Apple sign-in as the pet map.
+- **What your family sees:** the pets you choose to share (name, dog or cat, ear shape, pixel look code, birthday if you gave one), their care tasks and health schedules, when each was done and by whom (the name you chose), and the names of the people in the family. Never photos (vaccination-card photos stay on your phone) and never your location.
+- **Who can see it:** only the people in your family, who joined with an invite code. Our server enforces this.
+- **Leaving:** "Leave" removes you from the family; shared pets stay on your phone. Care records you logged stay with the family. Deleting your account removes you and marks your records as by an unknown person; a family with nobody left is deleted.
+
 ## What PawPixel does not do
 - No ads or tracking. Outside the optional pet map, PawPixel has no account and receives none of your data.
 - No precise location. The optional map uses approximate location only, turned into a ~1 km square on your phone.

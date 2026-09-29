@@ -54,7 +54,7 @@ class MainActivity : ComponentActivity() {
     override fun onResume() {
         super.onResume()
         // Time has passed: refresh reminders and widgets.
-        lifecycleScope.launch { app.repo.ingestWidgetTaps(); app.repo.publish() }
+        lifecycleScope.launch { app.repo.ingestWidgetTaps(); app.repo.publish(); app.repo.family.sync() }
     }
 
     override fun onDestroy() {

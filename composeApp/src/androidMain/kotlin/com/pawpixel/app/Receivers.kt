@@ -30,7 +30,31 @@ class ReminderReceiver : BroadcastReceiver() {
             work { PawPixelApplication.repo(context).completeFromReminder(taskId) }
             return
         }
-        val repo = PawPixelApplication.repo(context)
+        work {
+            val repo = PawPixelApplication.repo(context)
+            // Family sharing: fetch the others' taps first, so nobody is told to feed a pet that was just fed.
+            if (repo.family.household != null) {
+                repo.family.syncWithin(8_000)
+                if (doneByFamily(repo, taskId)) return@work
+            }
+            show(context, repo, intent, taskId, id)
+        }
+    }
+
+    /** True if someone else in the family already did this task, making the reminder moot. */
+    private fun doneByFamily(repo: PawRepository, taskId: String): Boolean {
+        val state = repo.state.value
+        val task = state.task(taskId) ?: return true
+        if (task.kind.health) return false
+        val now = repo.now()
+        val last = state.completions.lastOrNull { it.taskId == taskId } ?: return false
+        val byOther = last.by != null && last.by != repo.family.myUserId
+        val status = com.pawpixel.core.CareEngine.status(task, state.completions, now + 5 * 60_000, repo.clock)
+        return byOther && last.localDay == repo.clock.dayIndex(now) && !status.isOverdue
+    }
+
+    private fun show(context: Context, repo: PawRepository, intent: Intent, taskId: String, id: Int) {
+        val nm = context.getSystemService(NotificationManager::class.java)
         // Completing a task reschedules (and so cancels) its reminders; this guards against settings changes.
         val state = repo.state.value
         val task = state.task(taskId) ?: return
@@ -77,7 +101,11 @@ class ReminderReceiver : BroadcastReceiver() {
 
 /** Fires when the pet's mood is due to change, so the widget updates without the app open. */
 class WidgetTickReceiver : BroadcastReceiver() {
-    override fun onReceive(context: Context, intent: Intent) = work { PawPixelApplication.repo(context).publish() }
+    override fun onReceive(context: Context, intent: Intent) = work {
+        val repo = PawPixelApplication.repo(context)
+        repo.family.syncWithin(8_000) // the family's taps, so the widget's mood is everyone's care
+        repo.publish()
+    }
 
     companion object {
         fun pendingIntent(context: Context): PendingIntent = PendingIntent.getBroadcast(

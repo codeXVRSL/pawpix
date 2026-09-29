@@ -66,9 +66,9 @@ object StateOps {
     )
 
     /** Logs a task as done at [atMs] (now, or an earlier date for health records). */
-    fun complete(state: AppState, taskId: String, atMs: Long, clock: LocalClock): AppState {
+    fun complete(state: AppState, taskId: String, atMs: Long, clock: LocalClock, newId: () -> String = { Ids.newId() }): AppState {
         state.task(taskId) ?: return state
-        val c = Completion(taskId, atMs, clock.minuteOfDay(atMs), clock.dayIndex(atMs))
+        val c = Completion(taskId, atMs, clock.minuteOfDay(atMs), clock.dayIndex(atMs), id = newId())
         return prune(state.copy(completions = state.completions + c))
     }
 
@@ -82,9 +82,13 @@ object StateOps {
         return complete(state, taskId, atMs, clock)
     }
 
-    /** Removes the most recently *added* completion of a task (undo), even if it was for an earlier date. */
-    fun undoLast(state: AppState, taskId: String): AppState {
-        val i = state.completions.indexOfLast { it.taskId == taskId }
+    /**
+     * Removes the most recently *added* completion of a task (undo), even if it was for an earlier
+     * date. With family sharing, only one of [mine] (this phone's records: null, or your account id),
+     * so undo never takes back someone else's Done.
+     */
+    fun undoLast(state: AppState, taskId: String, mine: Set<String?>? = null): AppState {
+        val i = state.completions.indexOfLast { it.taskId == taskId && (mine == null || it.by in mine) }
         if (i < 0) return state
         return state.copy(completions = state.completions.filterIndexed { j, _ -> j != i })
     }

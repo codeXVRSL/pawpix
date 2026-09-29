@@ -68,6 +68,7 @@ interface IosHost {
     fun requestNotificationPermission()
     fun reloadWidgets()
     fun shareFile(data: NSData, fileName: String)
+    fun shareText(text: String)
     fun openUrl(url: String)
     /** Approximate location (asks permission; reduced accuracy is fine). */
     fun approximateLocation(completion: LocationCallback)
@@ -91,7 +92,7 @@ object IosGraph {
     fun start(host: IosHost) { this.host = host }
 
     /** Call when the app comes to the foreground: applies widget taps and refreshes everything. */
-    fun onForeground() { MainScope().launch { repo.ingestWidgetTaps(); repo.publish() } }
+    fun onForeground() { MainScope().launch { repo.ingestWidgetTaps(); repo.publish(); repo.family.sync() } }
 
     /** "Done" tapped on a notification. */
     fun completeTask(taskId: String) { MainScope().launch { repo.completeFromReminder(taskId) } }
@@ -151,6 +152,7 @@ class IosPlatform(private val host: IosHost) : Platform {
     // WidgetKit timelines already contain future mood changes, so only a reload is needed.
     override fun refreshWidgets(nextChangeMs: Long?) = host.reloadWidgets()
     override fun shareFile(bytes: ByteArray, fileName: String, mimeType: String) = host.shareFile(bytes.toNSData(), fileName)
+    override fun shareText(text: String) = host.shareText(text)
     override fun openUrl(url: String) = host.openUrl(url)
     // Only the format argument is bridged to NSString: passing a Kotlin String through NSLog's
     // variadic "%@" crashes (EXC_BAD_ACCESS). So the message is the format, with % escaped.

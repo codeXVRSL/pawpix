@@ -1,6 +1,6 @@
-# Switching on the pet map
+# Switching on the pet map and family sharing
 
-The map is built and tested (against a real Supabase in CI), but a store build needs **your**
+The map and family sharing use the same server and sign-in. Both are built and tested (against a real Supabase in CI), but a store build needs **your**
 accounts. Until these settings are filled in, the app shows "The pet map is coming soon", and
 everything else works as before.
 
@@ -12,7 +12,7 @@ and a map-tile key. Then you put six values into the build.
 2. Apply the database: install the [Supabase CLI](https://supabase.com/docs/guides/cli), then from the repo:
    ```
    supabase link --project-ref <your-project-ref>
-   supabase db push          # applies supabase/migrations/0001 and 0002
+   supabase db push          # applies every file in supabase/migrations (map, name filter, family sharing)
    ```
 3. Note **Project URL** and the **anon / publishable key** (Project Settings → API).
    Never put the service/secret key in the app.

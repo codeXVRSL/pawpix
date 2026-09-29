@@ -51,6 +51,8 @@ interface Platform {
     fun pinWidget(): Boolean = false
     /** Opens the system share sheet for a file (PNG, GIF, or a JSON backup). */
     fun shareFile(bytes: ByteArray, fileName: String, mimeType: String)
+    /** Opens the share sheet for a short text (a family invite). */
+    fun shareText(text: String)
     fun openUrl(url: String)
     /** Diagnostic line in the system log (logcat / Console), never shown to the user. */
     fun log(message: String) {}

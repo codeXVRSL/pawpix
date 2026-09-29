@@ -1,7 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- Android 11 and older: Google's Auto Backup keeps pets, tasks and history, so a new phone gets
-     them back. The pet-map sign-in is left out: it belongs to the Google account, not the backup. -->
+     them back. The pet-map sign-in and family-sharing state are left out: they belong to the account, not the backup. -->
 <full-backup-content>
     <include domain="file" path="pawpixel/" />
     <exclude domain="file" path="pawpixel/map/" />
+        <exclude domain="file" path="pawpixel/family/" />
 </full-backup-content>
