@@ -75,6 +75,10 @@ final class OwnerJourneyTests: XCTestCase {
                 for ch in petName {
                     let key = app.keys[String(ch)]
                     guard key.waitForExistence(timeout: 3) else { throw Failure("no key \(ch) on the keyboard") }
+                    // A keyboard still animating in has keys that exist but can't be tapped yet (tapping one
+                    // then fails the whole test): wait, and if it isn't ready, retry the word.
+                    if !key.isHittable { sleep(1) }
+                    guard key.isHittable else { log.append("      key \(ch) not ready"); break }
                     key.tap()
                 }
                 if saveButton.waitForExistence(timeout: 2) { log.append("      typed on attempt \(attempt)"); break }
