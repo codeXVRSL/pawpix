@@ -168,7 +168,8 @@ class FamilyModel(private val repo: PawRepository, private val map: PetMapModel)
      * sends this phone's changes. Safe to call often (one at a time); does nothing outside a
      * household. Returns false if it couldn't reach the server (changes stay on the phone for next time).
      */
-    suspend fun sync(): Boolean = syncLock.withLock {
+    // Off the main thread even when a screen asks: reading the base and drawing arrived pets' poses take a while.
+    suspend fun sync(): Boolean = withContext(Dispatchers.Default) { syncLock.withLock {
         val saved = household ?: return@withLock true
         if (!isSetUp || !isSignedIn) return@withLock true
         _status.value = _status.value.copy(syncing = true)
@@ -217,7 +218,7 @@ class FamilyModel(private val repo: PawRepository, private val map: PetMapModel)
             _status.value = _status.value.copy(syncing = false, error = tr("Couldn't sync: {0}", e.message ?: ""))
             false
         }
-    }
+    } }
 
     /** Quick sync for background moments (a reminder about to show, a Done from the widget): gives up after [timeoutMs]. */
     suspend fun syncWithin(timeoutMs: Long = BACKGROUND_TIMEOUT_MS): Boolean =
