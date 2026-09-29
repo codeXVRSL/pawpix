@@ -1,0 +1,48 @@
+PASS  first open goes straight to making a pet  (1426 ms)
+PASS  photo becomes a pixel pet  (5170 ms)
+PASS  cat body, floppy ears, then back to pointy  (3976 ms)
+PASS  face square is shown and can be resized  (13992 ms)
+PASS  name and save  (21680 ms)
+PASS  Done on a care task counts and cheers the pet up  (3033 ms)
+PASS  add a medicine task  (15161 ms)
+      note: found by dragging after 6 accessibility scrolls: BySelector [TEXT='\Q💉 FVRCP vaccine\E']
+PASS  health: a kitten's birthday gives her the first-year plan  (77396 ms)
+PASS  health: record a dose with a photo of the vaccination card  (29716 ms)
+      note: anti-rabies after 'a month ago': Due in 11 months
+PASS  health: an anti-rabies shot given a month ago is next due in 11 months  (19037 ms)
+PASS  weight: two weigh-ins draw the chart; the list opens  (17530 ms)
+PASS  milestone: 7 days of care is celebrated and shareable  (38493 ms)
+PASS  outfits: a week of care earns a bandana, and it shows on the pet  (14350 ms)
+PASS  share animation and before/after card open the share sheet  (5214 ms)
+PASS  home screen lists the pet  (2270 ms)
+PASS  settings open and close  (1482 ms)
+PASS  away mode pauses care and comes back  (1830 ms)
+      note: record photo restored for 518n53k598g7
+PASS  backup: save a file, then restore one  (8130 ms)
+PASS  pet map: join, see the pixel pets nearby, report, RSVP, leave  (21077 ms)
+      note: on Chelsea's page: Litter cleaned by Jamaica · 9:18 PM
+PASS  household: share Chelsea, a partner joins, her Done and her Undo show on this phone  (13926 ms)
+      note: pressed Done on the notification
+PASS  reminder notification with a working Done button  (4499 ms)
+PASS  home-screen widget can be added and draws the pet  (7946 ms)
+      note: widget 2x1: [Chelsea]
+      note: widget 4x1: [Chelsea, Chelsea is sleeping]
+      note: widget 2x2: [Chelsea]
+      note: widget 2x3: [Chelsea, Next: 🍖 Feed · 7:00 AM]
+      note: widget 3x2: [Chelsea, Chelsea is sleeping, Next: 🍖 Feed · 7:00 AM]
+      note: widget 4x2: [Chelsea, Chelsea is sleeping, Next: 🍖 Feed · 7:00 AM]
+      note: widget 4x3: [Chelsea, Chelsea is sleeping, Next: 🍖 Feed · 7:00 AM]
+      note: widget 2x2 dark: [Chelsea]
+      note: widget 4x2 dark: [Chelsea, Chelsea is sleeping, Next: 🍖 Feed · 7:00 AM]
+PASS  widget: good layouts from a one-row strip to 4x3, light and dark  (2210 ms)
+      note: widget button: 💧 Done for e2ewater
+      note: widget 4x1-due: [Chelsea, Chelsea is sleeping, 💧 Done]
+      note: widget 2x3-due: [Chelsea, 💧 Done]
+      note: widget 4x2-due dark: [Chelsea, Chelsea is sleeping, 💧 Done]
+      note: widget after Done: Chelsea is sleeping, button for null
+PASS  widget: Done on the widget logs care and cheers the pet up  (11637 ms)
+PASS  widget: tapping it opens the pet's page  (13626 ms)
+PASS  widget: each widget can show a different pet  (8416 ms)
+PASS  bundled reminder: one notification, and its Done logs everything in it  (5210 ms)
+PASS  reminders that never arrived: a one-time tip for this phone's background setting  (6607 ms)
+PASS  reopening the app keeps the pet  (47696 ms)
