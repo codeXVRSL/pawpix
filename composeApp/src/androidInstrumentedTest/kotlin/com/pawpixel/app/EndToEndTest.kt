@@ -1,6 +1,8 @@
 package com.pawpixel.app
 
 import android.Manifest
+import android.accessibilityservice.AccessibilityServiceInfo
+import android.graphics.Rect
 import android.app.Activity
 import android.app.Instrumentation
 import android.appwidget.AppWidgetManager
@@ -62,6 +64,11 @@ class EndToEndTest {
     fun setUp() {
         out.deleteRecursively(); out.mkdirs()
         Configurator.getInstance().waitForIdleTimeout = 1_000
+        // See every window, not only the "active" one: just after a dialog closes, the active window
+        // can still be the dialog's, and UiAutomator would miss what's on screen.
+        instr.uiAutomation.serviceInfo = instr.uiAutomation.serviceInfo.apply {
+            flags = flags or AccessibilityServiceInfo.FLAG_RETRIEVE_INTERACTIVE_WINDOWS
+        }
         if (Build.VERSION.SDK_INT >= 33) {
             instr.uiAutomation.grantRuntimePermission(ctx.packageName, Manifest.permission.POST_NOTIFICATIONS)
         }
@@ -595,18 +602,20 @@ class EndToEndTest {
 
     /** Scrolls the first scrollable container of the app one page. False when it can't move. */
     private fun accessibilityScroll(forward: Boolean): Boolean {
-        val root = instr.uiAutomation.rootInActiveWindow ?: return false
-        val queue = ArrayDeque(listOf(root))
+        // The app's biggest scrollable area: its screen, not a dialog that's still closing.
+        val roots = instr.uiAutomation.windows.mapNotNull { it.root }.filter { it.packageName == ctx.packageName }
+            .ifEmpty { listOfNotNull(instr.uiAutomation.rootInActiveWindow) }
+        val scrollables = ArrayList<AccessibilityNodeInfo>()
+        val queue = ArrayDeque(roots)
         while (queue.isNotEmpty()) {
             val node = queue.removeFirst()
-            if (node.isScrollable) {
-                return node.performAction(
-                    if (forward) AccessibilityNodeInfo.ACTION_SCROLL_FORWARD else AccessibilityNodeInfo.ACTION_SCROLL_BACKWARD,
-                )
-            }
+            if (node.isScrollable) { scrollables += node; continue }
             for (i in 0 until node.childCount) node.getChild(i)?.let { queue.addLast(it) }
         }
-        return false
+        val target = scrollables.maxByOrNull { n -> Rect().also { n.getBoundsInScreen(it) }.let { it.width().toLong() * it.height() } } ?: return false
+        return target.performAction(
+            if (forward) AccessibilityNodeInfo.ACTION_SCROLL_FORWARD else AccessibilityNodeInfo.ACTION_SCROLL_BACKWARD,
+        )
     }
 
     private fun waitFor(what: String, timeoutMs: Long = 15_000, condition: () -> Boolean) {
