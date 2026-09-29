@@ -1,0 +1,19 @@
+# Local Supabase for development and CI (`supabase start`). The hosted project is configured in
+# the Supabase dashboard; see docs/MAP_SETUP.md.
+project_id = "pawpixel"
+
+[api]
+port = 54321
+schemas = ["public"]
+
+[db]
+port = 54322
+major_version = 15
+
+[auth]
+site_url = "http://127.0.0.1:3000"
+enable_signup = true
+
+[auth.email]
+enable_signup = true
+enable_confirmations = false

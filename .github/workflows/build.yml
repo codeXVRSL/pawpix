@@ -24,6 +24,21 @@ jobs:
         if: failure()
         with: { name: core-test-report, path: core/build/reports/tests }
 
+  map-backend:
+    name: Map backend on a real Supabase stack (privacy rules)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: supabase/setup-cli@v1
+        with: { version: latest }
+      - name: Start Supabase (database, auth, API) with the migrations
+        run: supabase start -x studio,imgproxy,edge-runtime,logflare,vector,realtime,storage-api,postgres-meta,supavisor
+      - name: Play several owners through every privacy rule
+        run: |
+          eval "$(supabase status -o env)"
+          export SUPABASE_URL="$API_URL" ANON_KEY="${ANON_KEY:-$PUBLISHABLE_KEY}" SERVICE_KEY="${SERVICE_ROLE_KEY:-$SECRET_KEY}"
+          python3 supabase/tests/map_test.py
+
   android:
     name: Android debug APK
     runs-on: ubuntu-latest
