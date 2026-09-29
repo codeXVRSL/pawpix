@@ -686,6 +686,14 @@ class EndToEndTest {
                 Thread.sleep(if (stuck > 0) 600L else 400L)
             }
         }
+        // Then UiAutomator's own scrolling of the page, both ways.
+        for (dir in listOf(androidx.test.uiautomator.Direction.DOWN, androidx.test.uiautomator.Direction.UP)) {
+            val found = runCatching {
+                device.findObject(By.scrollable(true))?.apply { setGestureMargin(device.displayHeight / 8) }
+                    ?.scrollUntil(dir, Until.findObject(selector))
+            }.getOrNull()
+            if (found != null) { note("found by UiAutomator scrolling after $moved accessibility scrolls: $selector"); return found }
+        }
         // Last resort: drag the page like a finger, down the middle.
         val x = device.displayWidth / 2
         for (up in listOf(true, false)) {
