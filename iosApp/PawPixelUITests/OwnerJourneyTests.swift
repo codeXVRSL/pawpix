@@ -169,7 +169,9 @@ final class OwnerJourneyTests: XCTestCase {
         }
 
         step("share with your household (no server in this CI build: says it's not available yet)") {
-            try find(petName).tap()
+            let card = element(containing: petName)
+            guard card.waitForExistence(timeout: 15) else { throw Failure("pet not listed") }
+            card.tap()
             try scrollTo(query: element(containing: "Share with your household"), "Share with your household").tap()
             let ready = element("Coming soon").waitForExistence(timeout: 10)
             shot("household")

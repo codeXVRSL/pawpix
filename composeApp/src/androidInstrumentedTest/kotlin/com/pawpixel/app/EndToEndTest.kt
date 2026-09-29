@@ -525,12 +525,26 @@ class EndToEndTest {
         for (forward in listOf(true, false)) {
             repeat(15) {
                 device.findObject(selector)?.let { return it }
-                if (!accessibilityScroll(forward)) return@repeat
+                val before = visibleTexts()
+                accessibilityScroll(forward)
                 Thread.sleep(400)
+                // CI emulators sometimes accept the accessibility scroll without moving the page: drag it
+                // instead, along the right-hand edge (away from the face-square photo).
+                if (visibleTexts() == before) {
+                    val x = device.displayWidth * 97 / 100
+                    val (from, to) = if (forward) 0.75 to 0.35 else 0.35 to 0.75
+                    device.swipe(x, (device.displayHeight * from).toInt(), x, (device.displayHeight * to).toInt(), 30)
+                    Thread.sleep(400)
+                }
             }
         }
         return device.findObject(selector) ?: throw AssertionError("not found after scrolling: $selector")
     }
+
+    /** What's on screen now (texts and where they are), to tell whether a scroll moved anything. */
+    private fun visibleTexts(): List<String> = runCatching {
+        device.findObjects(By.pkg(instr.targetContext.packageName).textStartsWith("")).map { "${it.text}@${it.visibleBounds.top}" }
+    }.getOrDefault(emptyList())
 
     /**
      * Scrolls the first scrollable container of the app one page. False when it can't move.
