@@ -170,11 +170,13 @@ class BackupTest {
     @Test fun roundTripsStateAndPetFiles() {
         val head = ByteArray(300) { (it * 7).toByte() }
         val photo = byteArrayOf(0, 1, 2, -1, -128, 127)
-        val text = Backup.encode(state, mapOf("sprites/abc123/head.bin" to head, "sprites/abc123/photo.bin" to photo), 42)
+        assertEquals(listOf("sprites/abc123/head.bin", "sprites/abc123/photo.bin", "sprites/abc123/card-t1.jpg"), Backup.filesFor(state, "abc123"))
+        val text = Backup.encode(state, mapOf("sprites/abc123/head.bin" to head, "sprites/abc123/photo.bin" to photo, "sprites/abc123/card-t1.jpg" to photo), 42)
         val back = Backup.decode(text)
         assertEquals(state, back.state)
         assertTrue(head.contentEquals(back.files["sprites/abc123/head.bin"]))
         assertTrue(photo.contentEquals(back.files["sprites/abc123/photo.bin"]))
+        assertTrue(photo.contentEquals(back.files["sprites/abc123/card-t1.jpg"]))
         assertEquals(42, back.createdAtMs)
     }
 

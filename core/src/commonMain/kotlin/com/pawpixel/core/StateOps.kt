@@ -54,6 +54,7 @@ object StateOps {
             title = task.title.trim().ifEmpty { task.kind.defaultTitle },
             // Health care is counted from when it was actually done, so the routine isn't "learned".
             adaptive = task.adaptive && !task.kind.health,
+            series = if (task.kind.health) task.series.distinct().sorted().take(HealthPlan.MAX_DOSES) else emptyList(),
         )
         val exists = state.tasks.any { it.id == task.id }
         return state.copy(tasks = if (exists) state.tasks.map { if (it.id == task.id) clean else it } else state.tasks + clean)

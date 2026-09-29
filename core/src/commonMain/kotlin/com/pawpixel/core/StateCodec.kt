@@ -19,6 +19,7 @@ object StateCodec {
                 "spriteVersion" to p.spriteVersion,
                 "eyes" to p.eyes.map { (x, y) -> listOf(x, y) },
                 "ears" to (p.ears ?: ""),
+                "birthDay" to p.birthDay,
                 "sprite" to Json.obj(
                     "size" to p.sprite.size, "colors" to p.sprite.colors,
                     "outline" to p.sprite.outline, "vibrance" to p.sprite.vibrance,
@@ -31,6 +32,7 @@ object StateCodec {
                 "slots" to t.slots, "everyDays" to t.everyDays, "anchorDay" to t.anchorDay,
                 "adaptive" to t.adaptive, "exactAlarm" to t.exactAlarm, "remindersOn" to t.remindersOn,
                 "createdAt" to t.createdAtMs,
+                "series" to t.series,
             )
         },
         "completions" to state.completions.map { c ->
@@ -65,6 +67,7 @@ object StateCodec {
                     if (x != null && y != null && x in 0.0..1.0 && y in 0.0..1.0) x to y else null
                 }.take(2),
                 ears = p["ears"].str?.ifEmpty { null },
+                birthDay = p["birthDay"].long,
                 sprite = SpriteSettings(
                     size = sp["size"].int ?: spriteDefaults.size,
                     colors = sp["colors"].int ?: spriteDefaults.colors,
@@ -90,6 +93,7 @@ object StateCodec {
                 exactAlarm = t["exactAlarm"].bool ?: false,
                 remindersOn = t["remindersOn"].bool ?: true,
                 createdAtMs = t["createdAt"].long ?: 0L,
+                series = t["series"].list.mapNotNull { it.long }.sorted().take(HealthPlan.MAX_DOSES),
             )
         }
         val taskIds = tasks.map { it.id }.toSet()

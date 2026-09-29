@@ -101,6 +101,9 @@ object CareEngine {
         clock: LocalClock,
         slots: List<Int> = task.slots,
     ): TaskStatus {
+        if (task.kind.health && task.series.isNotEmpty()) {
+            seriesStatus(task, completions, nowMs, clock)?.let { return it }
+        }
         val n = task.everyDays.coerceAtLeast(1)
         val today = clock.dayIndex(nowMs)
         val cycleStart = cycleStart(task, today)
@@ -125,6 +128,32 @@ object CareEngine {
         val lastDone = mine.filter { it.atMs <= nowMs }.maxOfOrNull { it.atMs }
         return TaskStatus(task, cycleStart, slotTimes, passed, done, overdueSince, nextDue, lastDone, logged = doneCount)
     }
+}
+
+/**
+ * A first-year series (see [CareTask.series]): the k-th dose given covers the k-th planned day, so
+ * the next dose is due on planned day number "doses given so far". Null once the series is done,
+ * and the task then repeats like any other health item.
+ */
+private fun seriesStatus(task: CareTask, completions: List<Completion>, nowMs: Long, clock: LocalClock): TaskStatus? {
+    val mine = completions.filter { it.taskId == task.id && it.atMs <= nowMs }
+    val given = mine.size
+    if (given >= task.series.size) return null
+    val slot = task.slots.firstOrNull() ?: (9 * 60)
+    val dueDay = task.series[given]
+    val dueAt = clock.at(dueDay, slot)
+    val passed = if (dueAt <= nowMs) 1 else 0
+    return TaskStatus(
+        task = task,
+        cycleStartDay = dueDay,
+        slotTimes = listOf(dueAt),
+        passed = passed,
+        done = 0,
+        overdueSinceMs = if (passed == 1) dueAt else null,
+        nextDueMs = if (passed == 1) task.series.getOrNull(given + 1)?.let { clock.at(it, slot) } else dueAt,
+        lastDoneMs = mine.maxOfOrNull { it.atMs },
+        logged = 0,
+    )
 }
 
 /**

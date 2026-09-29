@@ -166,7 +166,7 @@ fun TaskEditorScreen(app: AppScope, state: AppState, pet: Pet, taskId: String?, 
 
         Button(onClick = save, modifier = Modifier.fillMaxWidth()) { Text("Save") }
         if (original != null) {
-            TextButton(onClick = { app.launch { app.repo.update { StateOps.removeTask(it, original.id) }; app.back() } }) {
+            TextButton(onClick = { app.launch { app.repo.deleteTask(original); app.back() } }) {
                 Text("Delete task", color = MaterialTheme.colorScheme.error)
             }
         }

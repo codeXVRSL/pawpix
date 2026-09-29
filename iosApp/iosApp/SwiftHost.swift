@@ -84,6 +84,12 @@ final class SwiftHost: NSObject, IosHost {
 
     // MARK: Pet cut-out (Vision, iOS 17+)
 
+    func encodeJpeg(rawImage: Data, quality: Double) -> Data? {
+        guard let decoded = RawImageBytes.decode(rawImage) else { return nil }
+        // A fresh UIImage carries no EXIF, so the card photo loses any location it had.
+        return UIImage(cgImage: decoded.0).jpegData(compressionQuality: quality)
+    }
+
     func segmentPet(rawImage: Data, completion: DataCallback) {
         DispatchQueue.global(qos: .userInitiated).async {
             let mask = Self.foregroundMask(rawImage)

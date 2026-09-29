@@ -32,6 +32,8 @@ interface Platform {
 
     /** Decodes a picked photo (applying EXIF rotation), scaled so the longest side is at most [maxSide]. */
     suspend fun decodePhoto(bytes: ByteArray, maxSide: Int): PixelImage?
+    /** JPEG bytes for a photo (vaccination cards). Re-encoding also drops EXIF, such as GPS. Null = unsupported. */
+    suspend fun encodeJpeg(image: PixelImage, quality: Int = 82): ByteArray? = null
     /** Native pet cut-out (ML Kit / Vision). Null means "not available", and the core fallback is used. */
     suspend fun segmentPet(photo: PixelImage): Mask?
 

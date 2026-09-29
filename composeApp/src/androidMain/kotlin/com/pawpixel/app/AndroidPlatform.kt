@@ -71,6 +71,13 @@ class AndroidPlatform(private val context: Context) : Platform {
         }.getOrNull()
     }
 
+    override suspend fun encodeJpeg(image: PixelImage, quality: Int): ByteArray? = withContext(Dispatchers.Default) {
+        runCatching {
+            val bitmap = Bitmap.createBitmap(image.pixels, image.width, image.height, Bitmap.Config.ARGB_8888)
+            java.io.ByteArrayOutputStream().also { bitmap.compress(Bitmap.CompressFormat.JPEG, quality, it) }.toByteArray()
+        }.getOrNull()
+    }
+
     override suspend fun segmentPet(photo: PixelImage): Mask? {
         val bitmap = Bitmap.createBitmap(photo.pixels, photo.width, photo.height, Bitmap.Config.ARGB_8888)
         val segmenter = SubjectSegmentation.getClient(

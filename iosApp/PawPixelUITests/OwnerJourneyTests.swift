@@ -111,6 +111,7 @@ final class OwnerJourneyTests: XCTestCase {
 
         step("health reminders: add the usual set") {
             try scrollTo("+ Add health reminders").tap()
+            try find("Adult / not sure").tap()
             try scrollTo(query: element(containing: "Anti-rabies shot"), "vaccine row")
             guard element(containing: "Due today").waitForExistence(timeout: 10) else { throw Failure("vaccine not shown as due") }
             sleep(1)

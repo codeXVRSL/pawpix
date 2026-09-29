@@ -159,8 +159,12 @@ class EndToEndTest {
 
         step("health reminders: add the usual set, record a shot given a month ago") {
             retrying { scrollTo(By.text("+ Add health reminders")).click() }
-            waitFor("health tasks added") { repo.state.value.tasksFor(petId).count { it.kind.health } == 4 }
-            val vaccine = repo.state.value.tasksFor(petId).first { it.kind.name == "VACCINE" }
+            find(By.textContains("born?"))
+            shot("health-birthday")
+            retrying { find(By.text("Adult / not sure")).click() }
+            // An adult cat: anti-rabies, FVRCP booster, deworming, tick & flea, check-up.
+            waitFor("health tasks added") { repo.state.value.tasksFor(petId).count { it.kind.health } == 5 }
+            val vaccine = repo.state.value.tasksFor(petId).first { it.title == "Anti-rabies shot" }
             val row = scrollTo(By.text("💉 Anti-rabies shot"))
             find(By.text("Due today"))
             // The Done button in the same row (the nearest one vertically).
@@ -174,6 +178,21 @@ class EndToEndTest {
             scrollTo(By.text("Due in 11 months"))
             Thread.sleep(500)
             shot("health-section")
+            // Photo of the vaccination card (the stubbed picker returns the test photo).
+            val cardRow = scrollTo(By.text("💉 Anti-rabies shot"))
+            val add = device.findObjects(By.text("📷 Add card photo")).minByOrNull { kotlin.math.abs(it.visibleBounds.top - cardRow.visibleBounds.bottom) }
+                ?: throw AssertionError("no card button")
+            retrying { add.click() }
+            waitFor("card saved", 20_000) { repo.card(vaccine) != null }
+            check(repo.card(vaccine)!!.let { it[0] == 0xFF.toByte() && it[1] == 0xD8.toByte() }) { "card isn't a JPEG" }
+            retrying { scrollTo(By.text("📷 View card")).click() }
+            find(By.text("Anti-rabies shot · Chelsea"))
+            shot("health-card")
+            retrying { find(By.text("Close")).click() }
+            // Rabies rules and local help.
+            retrying { scrollTo(By.text("Rabies rules and where to get shots")).click() }
+            scrollTo(By.textContains("City Veterinary Office"))
+            shot("health-local-help")
         }
 
         step("share animation and before/after card open the share sheet") {
@@ -222,7 +241,7 @@ class EndToEndTest {
             waitFor("backup share sheet") { choosers() == before + 1 }
             // Restore a backup of this phone with one change (bedtime 9 PM), picked from "Files".
             val state = repo.state.value
-            val files = state.pets.flatMap { Backup.filesFor(it.id) }.mapNotNull { path -> repo.platform.files.readBytes(path)?.let { path to it } }.toMap()
+            val files = state.pets.flatMap { Backup.filesFor(state, it.id) }.mapNotNull { path -> repo.platform.files.readBytes(path)?.let { path to it } }.toMap()
             val backup = File(ctx.cacheDir, "e2e-backup.json")
             backup.writeText(Backup.encode(state.copy(settings = state.settings.copy(nightStart = 21 * 60)), files, repo.now()))
             intending(hasAction(Intent.ACTION_OPEN_DOCUMENT)).respondWith(

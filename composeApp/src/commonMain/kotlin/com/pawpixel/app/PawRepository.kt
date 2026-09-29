@@ -2,6 +2,7 @@ package com.pawpixel.app
 
 import com.pawpixel.core.AppState
 import com.pawpixel.core.Backup
+import com.pawpixel.core.HealthPlan
 import com.pawpixel.core.Ids
 import com.pawpixel.core.LocalClock
 import com.pawpixel.core.Mood
@@ -13,7 +14,6 @@ import com.pawpixel.core.Species
 import com.pawpixel.core.SpriteSettings
 import com.pawpixel.core.StateCodec
 import com.pawpixel.core.StateOps
-import com.pawpixel.core.TaskDefaults
 import com.pawpixel.core.WidgetSnapshot
 import com.pawpixel.sprite.AnimatedExport
 import com.pawpixel.sprite.Argb
@@ -30,7 +30,9 @@ import com.pawpixel.sprite.SpriteResult
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.sync.withLock
 
 /**
@@ -130,13 +132,44 @@ class PawRepository(val platform: Platform) {
     suspend fun givenDaysAgo(taskId: String, days: Int) =
         update { StateOps.logOnDay(it, taskId, clock.dayIndex(now()) - days, now(), clock) }
 
-    /** Adds the usual health care for the pet's species that it doesn't have yet (vaccine, deworming, ...). */
-    suspend fun addHealthCare(pet: Pet) = update { s ->
-        val have = s.tasksFor(pet.id).map { it.kind }.toSet()
-        val today = clock.dayIndex(now())
-        TaskDefaults.healthKindsFor(pet.species).filter { it !in have }
-            .fold(s) { acc, kind -> StateOps.upsertTask(acc, StateOps.defaultTask(pet, kind, today, Ids.newId(), now())) }
+    /**
+     * Adds the usual health care the pet doesn't have yet (see [HealthPlan]). With a [birthDay], a
+     * puppy or kitten also gets its first-year vaccine and deworming series.
+     */
+    suspend fun addHealthCare(pet: Pet, birthDay: Long?) = update { s ->
+        val withBirthday = pet.copy(birthDay = birthDay ?: pet.birthDay)
+        HealthPlan.addTo(StateOps.updatePet(s, withBirthday), withBirthday, now(), clock)
     }
+
+    suspend fun deleteTask(task: com.pawpixel.core.CareTask) {
+        update { StateOps.removeTask(it, task.id) }
+        files.delete(Backup.cardPath(task.petId, task.id))
+    }
+
+    // ---- Vaccination card photos ----
+
+    /**
+     * Keeps a photo of the vaccination card (or vet receipt) with a health item. Re-encoded on the
+     * phone (max 1600 px, JPEG), which also removes location and other photo metadata.
+     */
+    suspend fun saveCard(task: com.pawpixel.core.CareTask, photo: ByteArray): Boolean {
+        val img = platform.decodePhoto(photo, CARD_MAX_SIDE) ?: return false
+        val bytes = platform.encodeJpeg(img) ?: withContext(Dispatchers.Default) { Png.encode(img) }
+        files.writeBytes(Backup.cardPath(task.petId, task.id), bytes)
+        _cardRevision.value = _cardRevision.value + 1
+        return true
+    }
+
+    fun card(task: com.pawpixel.core.CareTask): ByteArray? = files.readBytes(Backup.cardPath(task.petId, task.id))
+
+    fun deleteCard(task: com.pawpixel.core.CareTask) {
+        files.delete(Backup.cardPath(task.petId, task.id))
+        _cardRevision.value = _cardRevision.value + 1
+    }
+
+    /** Bumped when a card photo changes, so the screen re-reads it. */
+    private val _cardRevision = MutableStateFlow(0L)
+    val cardRevision: StateFlow<Long> = _cardRevision.asStateFlow()
 
     /** Someone else is caring for the pets for [days] days (0 = I'm back). */
     suspend fun setAway(days: Int) = update {
@@ -164,7 +197,7 @@ class PawRepository(val platform: Platform) {
     /** Everything on this phone as one file, shared to wherever the owner keeps it (Drive, Files, email). */
     fun exportBackup() {
         val state = _state.value
-        val files = state.pets.flatMap { Backup.filesFor(it.id) }.mapNotNull { path -> files.readBytes(path)?.let { path to it } }.toMap()
+        val files = state.pets.flatMap { Backup.filesFor(state, it.id) }.mapNotNull { path -> files.readBytes(path)?.let { path to it } }.toMap()
         val bytes = Backup.encode(state, files, now()).encodeToByteArray()
         val day = clock.dayIndex(now())
         platform.shareFile(bytes, "pawpixel-backup-${LocalClock.isoDate(day)}.json", "application/json")
@@ -247,5 +280,6 @@ class PawRepository(val platform: Platform) {
     companion object {
         const val STATE_FILE = "state.json"
         const val WIDGET_SCALE = 4
+        const val CARD_MAX_SIDE = 1600
     }
 }

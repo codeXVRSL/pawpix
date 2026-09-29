@@ -48,6 +48,8 @@ data class Pet(
     val eyes: List<Pair<Double, Double>> = emptyList(),
     /** Ear shape chosen by the owner ("POINTY" / "FLOPPY"); null = the species' usual ears. */
     val ears: String? = null,
+    /** Local day index of the pet's birthday (a guess is fine); null = not given. Plans puppy/kitten care. */
+    val birthDay: Long? = null,
 )
 
 data class SpriteSettings(
@@ -78,6 +80,12 @@ data class CareTask(
     val remindersOn: Boolean = true,
     /** Slots planned before this moment never count as missed (a pet added at 9am isn't "hungry" for 7am). */
     val createdAtMs: Long = 0,
+    /**
+     * Health only: planned days (local day indices) of a first-year series, e.g. a puppy's 5-in-1
+     * at 6, 9, 12 and 16 weeks. Each dose given (each completion) moves to the next planned day;
+     * after the last one the task repeats every [everyDays] from when it was last given.
+     */
+    val series: List<Long> = emptyList(),
 )
 
 data class Completion(

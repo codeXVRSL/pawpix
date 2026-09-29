@@ -11,16 +11,20 @@ object Backup {
     const val FORMAT = "pawpixel-backup"
     const val VERSION = 1
     /** The only files a backup may carry, so a crafted file can't write anywhere else. */
-    private val FILE_PATH = Regex("sprites/([a-z0-9]{1,40})/(head|photo)\\.bin")
-    /** Much larger than any real backup (a pet is ~100 KB), to refuse junk early. */
-    const val MAX_BYTES = 40_000_000
+    private val FILE_PATH = Regex("sprites/([a-z0-9]{1,40})/(head\\.bin|photo\\.bin|card-[a-z0-9]{1,40}\\.jpg)")
+    /** Much larger than any real backup (a pet is ~100 KB, a card photo ~1 MB), to refuse junk early. */
+    const val MAX_BYTES = 60_000_000
 
     class Contents(val state: AppState, val files: Map<String, ByteArray>, val createdAtMs: Long)
 
     class NotABackup(message: String) : IllegalArgumentException(message)
 
-    /** Paths of a pet's files that belong in a backup. */
-    fun filesFor(petId: String) = listOf("sprites/$petId/head.bin", "sprites/$petId/photo.bin")
+    /** Paths of a pet's files that belong in a backup (some may not exist, e.g. no card photo). */
+    fun filesFor(state: AppState, petId: String) =
+        listOf("sprites/$petId/head.bin", "sprites/$petId/photo.bin") + state.tasksFor(petId).filter { it.kind.health }.map { cardPath(petId, it.id) }
+
+    /** A photo of the vaccination card (or vet receipt) for a health item. */
+    fun cardPath(petId: String, taskId: String) = "sprites/$petId/card-$taskId.jpg"
 
     fun encode(state: AppState, files: Map<String, ByteArray>, nowMs: Long): String = Json.obj(
         "format" to FORMAT,

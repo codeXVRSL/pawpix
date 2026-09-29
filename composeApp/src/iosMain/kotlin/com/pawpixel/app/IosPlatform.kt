@@ -59,6 +59,8 @@ interface IosHost {
     fun pickFile(completion: DataCallback)
     /** Decodes and orientation-corrects a photo; returns [RawImage] bytes, longest side <= maxSide. */
     fun decodePhoto(data: NSData, maxSide: Int): NSData?
+    /** Takes [RawImage] bytes, returns JPEG bytes (no EXIF), or null. */
+    fun encodeJpeg(rawImage: NSData, quality: Double): NSData?
     /** Takes [RawImage] bytes, returns a Float32 little-endian mask (width*height), or null if Vision can't. */
     fun segmentPet(rawImage: NSData, completion: DataCallback)
     /** JSON array of {id, taskId, at (epoch seconds), title, body}. Replaces all pending reminders. */
@@ -114,6 +116,10 @@ class IosPlatform(private val host: IosHost) : Platform {
     // Decoding a full-size photo is slow; keep it off the main thread.
     override suspend fun decodePhoto(bytes: ByteArray, maxSide: Int): PixelImage? = withContext(Dispatchers.Default) {
         host.decodePhoto(bytes.toNSData(), maxSide)?.toByteArray()?.let(RawImage::decode)
+    }
+
+    override suspend fun encodeJpeg(image: PixelImage, quality: Int): ByteArray? = withContext(Dispatchers.Default) {
+        host.encodeJpeg(RawImage.encode(image).toNSData(), quality / 100.0)?.toByteArray()
     }
 
     override suspend fun segmentPet(photo: PixelImage): Mask? = suspendCancellableCoroutine { cont ->
