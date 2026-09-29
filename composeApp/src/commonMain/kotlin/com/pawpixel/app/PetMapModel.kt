@@ -15,7 +15,13 @@ import com.pawpixel.sprite.PetArt
  * The pet map on this phone: sign-in session, which pets you share, and your ~1 km area.
  * Exact coordinates are snapped to a grid cell here and never stored or sent.
  */
-class PetMapModel(private val platform: Platform, private val files: FileStore, val settings: MapSettings = MapBuildConfig) {
+class PetMapModel(
+    private val platform: Platform,
+    private val files: FileStore,
+    val settings: MapSettings = MapBuildConfig,
+    /** The account is gone (deleted from the map screen): family sharing forgets it too. */
+    private val onAccountDeleted: suspend () -> Unit = {},
+) {
     val client = MapClient(settings, platform.http, object : SessionStore {
         override fun load() = files.readText(SESSION)
         override fun save(json: String?) { if (json == null) files.delete(SESSION) else files.writeText(SESSION, json) }
@@ -80,6 +86,7 @@ class PetMapModel(private val platform: Platform, private val files: FileStore, 
     suspend fun deleteAccount() {
         client.deleteAccount()
         forgetLocally()
+        onAccountDeleted()
     }
 
     /** Local only: sign out and forget area and choices (e.g. "Delete all my data"). */

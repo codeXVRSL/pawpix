@@ -68,13 +68,13 @@ fun App(repo: PawRepository, registerBack: ((() -> Boolean) -> (() -> Unit))? = 
         // phone's changes a moment after they happen. (Does nothing outside a family.)
         LaunchedEffect(Unit) {
             while (true) {
-                repo.family.sync()
+                repo.family.requestSync()
                 delay(60_000)
             }
         }
         LaunchedEffect(state) {
             delay(2_000)
-            repo.family.sync()
+            repo.family.onLocalChange(state)
         }
         // First open: straight to "make your pixel pet".
         LaunchedEffect(Unit) {

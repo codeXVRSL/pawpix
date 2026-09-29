@@ -105,6 +105,9 @@ fun main() {
     check("invite code looks right", Regex("[A-HJKMNP-Z2-9]{8}").matches(code), code)
     val wrong = runCatching { run { fx.join("AAAA2222", "Stranger") } }.exceptionOrNull() as? MapException
     check("a wrong code is refused with a reason", wrong?.kind == MapException.Kind.REFUSED && wrong.message!!.contains("wrong"), wrong)
+    repeat(10) { runCatching { run { fx.join("AAAA2222", "Stranger") } } }
+    val locked = runCatching { run { fx.join(code, "Stranger") } }.exceptionOrNull() as? MapException
+    check("after 10 wrong codes, even the right one waits an hour", locked?.message?.contains("wait an hour") == true, locked)
     check("joining with a typed code (dash, lower case)", run { fj.join(code.lowercase().chunked(4).joinToString("-"), "Jamaica") } == hid)
     val fam = run { fj.mine() }
     check("both see the family and its members", fam?.members?.map { it.name } == listOf("Save", "Jamaica"), fam)

@@ -9,8 +9,8 @@ import com.pawpixel.core.Species
 import com.pawpixel.core.SyncPush
 import com.pawpixel.core.TaskKind
 
-/** A family sharing pets, and who's in it. */
-data class Household(val id: String, val name: String, val members: List<Member>) {
+/** A family sharing pets, and who's in it. [ownerId] can remove people and cancel invites. */
+data class Household(val id: String, val name: String, val members: List<Member>, val ownerId: String? = null) {
     data class Member(val userId: String, val name: String)
     fun nameOf(userId: String?): String? = members.firstOrNull { it.userId == userId }?.name
 }
@@ -27,12 +27,12 @@ class HouseholdClient(private val api: SupabaseApi) {
     /** Your household, or null if you're not in one. */
     suspend fun mine(): Household? {
         val me = api.userId ?: return null
-        val row = Json.parse(api.rest("GET", "/rest/v1/household_members?user_id=eq.$me&select=household_id,households(name)")).list.firstOrNull()
+        val row = Json.parse(api.rest("GET", "/rest/v1/household_members?user_id=eq.$me&select=household_id,households(name,owner_id)")).list.firstOrNull()
             ?: return null
         val id = row["household_id"].str ?: return null
         val members = Json.parse(api.rest("GET", "/rest/v1/household_members?household_id=eq.$id&select=user_id,display_name&order=joined_at")).list
             .mapNotNull { m -> Household.Member(m["user_id"].str ?: return@mapNotNull null, m["display_name"].str ?: "Family member") }
-        return Household(id, row["households"]["name"].str ?: "Family", members)
+        return Household(id, row["households"]["name"].str ?: "Family", members, row["households"]["owner_id"].str)
     }
 
     suspend fun create(name: String, yourName: String): String =
@@ -47,7 +47,13 @@ class HouseholdClient(private val api: SupabaseApi) {
     /** Joins with a code; returns the household id. Refused with a readable message if the code is wrong or expired. */
     suspend fun join(code: String, yourName: String): String =
         Json.parse(api.rpc("join_household", Json.obj("p_code" to normalizeCode(code), "p_display_name" to yourName.trim().take(24)))).str
-            ?: throw MapException(MapException.Kind.SERVER, "No household id")
+            ?: throw MapException(MapException.Kind.REFUSED, "That invite code is wrong or has expired. Check it with the person who sent it.")
+
+    /** The family's owner removes someone (they keep their own copies of the pets). */
+    suspend fun removeMember(userId: String) { api.rpc("remove_member", Json.obj("p_user" to userId)) }
+
+    /** The owner cancels every open invite code. */
+    suspend fun revokeInvites() { api.rpc("revoke_invites") }
 
     suspend fun leave() { api.rpc("leave_household") }
 

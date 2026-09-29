@@ -35,6 +35,12 @@ data class SyncResult(
     val push: SyncPush,
     /** Pets whose pixel look arrived or changed, so their widget poses need drawing. */
     val redraw: List<String>,
+    /**
+     * The base to keep if sending [push] fails: the server's copy as pulled (minus pets this phone
+     * keeps unshared). Everything this phone changed then still differs from it and goes next time,
+     * and nothing just received from others looks like this phone's own edit.
+     */
+    val baseIfPushFails: SharedData,
 )
 
 /**
@@ -64,8 +70,23 @@ object HouseholdSync {
     fun view(p: Pet) = p.copy(sprite = SpriteSettings(), spriteVersion = 0, shared = true)
     fun view(t: CareTask) = t.copy(remindersOn = true, exactAlarm = false)
 
-    fun merge(local: AppState, base: SharedData, remote: SharedData): SyncResult {
+    /**
+     * @param me this phone's account: only its own records (or ones made before sharing) are sent,
+     *   so a re-shared history keeps its authors.
+     * @param clock this phone's calendar: records from other phones get their local day and minute
+     *   recomputed here, so a family member in another time zone lands on the right day.
+     */
+    fun merge(local: AppState, base: SharedData, remoteAll: SharedData, me: String? = null, clock: LocalClock? = null): SyncResult {
         val mine = sharedPart(local)
+        // A pet this phone holds but doesn't share (it stopped sharing, or left and rejoined) is not
+        // taken from the server: it stays this phone's own. The family keeps its copy.
+        val ignored = local.pets.filter { !it.shared }.map { it.id }.toSet().intersect(remoteAll.pets.map { it.id }.toSet())
+        val ignoredTasks = remoteAll.tasks.filter { it.petId in ignored }.map { it.id }.toSet()
+        val remote = SharedData(
+            remoteAll.pets.filter { it.id !in ignored },
+            remoteAll.tasks.filter { it.id !in ignoredTasks },
+            remoteAll.completions.filter { it.taskId !in ignoredTasks },
+        )
         val push = Push()
         val redraw = ArrayList<String>()
 
@@ -80,7 +101,8 @@ object HouseholdSync {
             val changedHere = l?.let(::view) != b?.let(::view)
             when {
                 changedHere && l != null -> { keptPets[id] = l; if (r?.let(::view) != view(l)) push.upsertPets += l }
-                changedHere && l == null -> { if (r != null) push.deletePetIds += id } // stopped sharing here
+                // Stopped sharing (or deleted) here: take it out of the family. Everyone else keeps a copy.
+                changedHere && l == null -> { if (remoteAll.pets.any { it.id == id }) push.deletePetIds += id }
                 r != null -> {
                     val merged = l?.let { mergePet(it, r) } ?: r.copy(shared = true, spriteVersion = 1)
                     if (l == null || l.lookCode != r.lookCode || l.species != r.species || l.ears != r.ears) redraw += id
@@ -114,12 +136,23 @@ object HouseholdSync {
         val lc = mine.completions.filter { it.taskId in sharedTaskIds }.associateBy { it.id }
         val bc = base.completions.associateBy { it.id }
         val rc = remote.completions.filter { it.taskId in sharedTaskIds }.associateBy { it.id }
-        val undoneHere = bc.keys - lc.keys
+        // This phone keeps at most MAX_COMPLETIONS_PER_TASK records per task. Records older than the
+        // oldest one kept were trimmed here, not undone: they're neither deleted on the server nor
+        // brought back.
+        val floor = mine.completions.groupBy { it.taskId }
+            .filterValues { it.size >= AppState.MAX_COMPLETIONS_PER_TASK }.mapValues { (_, l) -> l.minOf { it.atMs } }
+        fun trimmed(c: Completion) = floor[c.taskId]?.let { c.atMs < it } ?: false
+        val undoneHere = bc.keys - lc.keys - bc.values.filter(::trimmed).map { it.id }.toSet()
         val addedHere = lc.keys - bc.keys
-        for (id in addedHere) if (id !in rc) push.addCompletions += lc.getValue(id)
+        for (id in addedHere) {
+            val c = lc.getValue(id)
+            if (id !in rc && (c.by == null || c.by == me)) push.addCompletions += c
+        }
         for (id in undoneHere) if (id in rc) push.deleteCompletionIds += id
         val undoneElsewhere = (bc.keys - rc.keys) - addedHere
-        val newFromOthers = rc.values.filter { it.id !in lc && it.id !in undoneHere }.sortedBy { it.atMs }
+        val known = local.completions.map { it.id }.toSet()
+        val newFromOthers = rc.values.filter { it.id !in known && it.id !in undoneHere && !trimmed(it) }.sortedBy { it.atMs }
+            .map { c -> if (clock == null) c else c.copy(localDay = clock.dayIndex(c.atMs), localMinute = clock.minuteOfDay(c.atMs)) }
 
         // ---- New local state ----
         val removedTaskIds: Set<String> = deletedTasks
@@ -137,7 +170,8 @@ object HouseholdSync {
         val tasks = local.tasks.filter { it.id !in removedTaskIds }.map { t -> keptTasks[t.id] ?: t } +
             keptTasks.values.filter { k -> local.tasks.none { it.id == k.id } }
         val state = StateOps.prune(local.copy(pets = pets, tasks = tasks, completions = completions))
-        return SyncResult(state, sharedPart(state), push.build(), redraw)
+        val failBase = SharedData(remote.pets, remote.tasks, remote.completions)
+        return SyncResult(state, sharedPart(state), push.build(), redraw, failBase)
     }
 
     /** Takes someone else's edit of a pet, keeping how this phone draws it. */

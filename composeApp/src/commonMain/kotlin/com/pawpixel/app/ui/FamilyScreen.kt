@@ -51,6 +51,7 @@ fun FamilyScreen(app: AppScope, state: AppState) {
     var signedIn by remember { mutableStateOf(family.isSignedIn) }
     var inviteCode by remember { mutableStateOf<String?>(null) }
     var confirmLeave by remember { mutableStateOf(false) }
+    var removing by remember { mutableStateOf<com.pawpixel.map.Household.Member?>(null) }
 
     fun act(block: suspend () -> Unit) {
         busy = true; message = null
@@ -97,8 +98,17 @@ fun FamilyScreen(app: AppScope, state: AppState) {
                 PixelCard(Modifier.fillMaxWidth()) {
                     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                         Text(h.name, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                        val iAmOwner = h.ownerId != null && h.ownerId == family.myUserId
                         h.members.forEach { m ->
-                            Text("• ${m.name}" + if (m.userId == family.myUserId) " (you)" else "")
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text(
+                                    "• ${m.name}" + (if (m.userId == family.myUserId) " (you)" else "") + (if (m.userId == h.ownerId) " · started the family" else ""),
+                                    modifier = Modifier.weight(1f),
+                                )
+                                if (iAmOwner && m.userId != family.myUserId) {
+                                    TextButton(enabled = !busy, onClick = { removing = m }) { Text("Remove") }
+                                }
+                            }
                         }
                         Text(syncLine(status.syncing, status.lastSyncMs, status.error, app), style = MaterialTheme.typography.bodySmall,
                             color = if (status.error != null) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant)
@@ -135,6 +145,11 @@ fun FamilyScreen(app: AppScope, state: AppState) {
                 } else {
                     InviteCode(app, code, h.name)
                 }
+                if (h.ownerId == family.myUserId) {
+                    TextButton(enabled = !busy, onClick = { act { family.revokeInvites(); inviteCode = null; message = "All invite codes are cancelled." } }) {
+                        Text("Cancel all invite codes")
+                    }
+                }
 
                 TextButton(onClick = { confirmLeave = true }) { Text("Leave ${h.name}", color = MaterialTheme.colorScheme.error) }
                 Text(
@@ -144,6 +159,18 @@ fun FamilyScreen(app: AppScope, state: AppState) {
                 )
             }
         }
+    }
+
+    removing?.let { m ->
+        AlertDialog(
+            onDismissRequest = { removing = null },
+            title = { Text("Remove ${m.name}?") },
+            text = { Text("${m.name} stops seeing your family's pets and taps. Their phone keeps its own copy, no longer shared.") },
+            confirmButton = {
+                TextButton(onClick = { removing = null; act { family.removeMember(m.userId) } }) { Text("Remove", color = MaterialTheme.colorScheme.error) }
+            },
+            dismissButton = { TextButton(onClick = { removing = null }) { Text("Cancel") } },
+        )
     }
 
     if (confirmLeave) {

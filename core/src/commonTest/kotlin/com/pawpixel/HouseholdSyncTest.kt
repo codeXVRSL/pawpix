@@ -27,14 +27,17 @@ class HouseholdSyncTest {
         return SharedData(pets, tasks, comps)
     }
 
-    private inner class Phone(val user: String, var state: AppState) {
+    private inner class Phone(val user: String, var state: AppState, val tz: LocalClock = clock) {
         var base = SharedData()
         var lastPush = SyncPush()
-        fun sync() {
-            val r = HouseholdSync.merge(state, base, server)
+        /** [pushFails]: the merge is applied here, but sending it fails (offline, cancelled). */
+        fun sync(pushFails: Boolean = false) {
+            val r = HouseholdSync.merge(state, base, server, me = user, clock = tz)
             lastPush = r.push
+            state = r.state
+            if (pushFails) { base = r.baseIfPushFails; return }
             server = server.apply(r.push, user)
-            state = r.state; base = r.base
+            base = r.base
         }
         fun done(taskId: String, min: Int) { state = StateOps.complete(state, taskId, at(min), clock, ids) }
     }
@@ -138,6 +141,64 @@ class HouseholdSyncTest {
         assertFalse(kept.shared, "Jamaica keeps her copy, no longer shared")
         assertEquals(2, b.state.completions.size, "with its history")
         assertEquals(2, b.state.tasks.size)
+    }
+
+    @Test fun reSharingAfterStoppingNeverDuplicatesRecords() {
+        val (a, b) = family()
+        a.state = StateOps.updatePet(a.state, a.state.pets[0].copy(shared = false))
+        a.sync()                          // Save stops: Mochi leaves the family
+        b.state = StateOps.updatePet(b.state, b.state.pets[0].copy(shared = true))
+        b.sync()                          // Jamaica shares her copy again
+        repeat(3) { a.sync() }            // Save's phone must not import it while it holds Mochi unshared
+        assertEquals(1, a.state.completions.size, a.state.completions.toString())
+        assertFalse(a.state.pets.single().shared)
+        assertTrue(a.lastPush.isEmpty)
+    }
+
+    @Test fun reSharedHistoryKeepsItsAuthors() {
+        val (a, b) = family()
+        b.done("feed", 17 * 60); b.sync(); a.sync()
+        a.state = StateOps.updatePet(a.state, a.state.pets[0].copy(shared = false)); a.sync()
+        a.state = StateOps.updatePet(a.state, a.state.pets[0].copy(shared = true)); a.sync()
+        val hers = a.state.completions.single { it.by == "jamaica" }.id
+        assertTrue(server.completions.none { it.id == hers }, "Jamaica's old record isn't re-sent (it would be stamped as Save's)")
+        assertEquals(1, a.state.completions.count { it.by == "jamaica" }, "Save's phone still shows it as hers")
+    }
+
+    @Test fun aFailedPushNeverPushesOldCopiesOverNewerEdits() {
+        val (a, b) = family()
+        b.state = StateOps.upsertTask(b.state, b.state.task("feed")!!.copy(title = "B1")); b.sync()
+        a.sync(pushFails = true)          // Save gets B1, but can't send
+        b.state = StateOps.upsertTask(b.state, b.state.task("feed")!!.copy(title = "B2")); b.sync()
+        a.sync(); b.sync()
+        assertEquals("B2", server.tasks.single { it.id == "feed" }.title)
+        assertEquals("B2", a.state.task("feed")!!.title)
+        assertEquals("B2", b.state.task("feed")!!.title)
+    }
+
+    @Test fun localTrimmingIsntAnUndo() {
+        val (a, b) = family()
+        repeat(AppState.MAX_COMPLETIONS_PER_TASK + 5) { i -> a.state = StateOps.complete(a.state, "walk", at(0) - i * DAY_MS, clock, ids) }
+        a.sync(); b.sync()
+        a.done("walk", 6 * 60)            // trims the oldest locally
+        a.sync()
+        assertTrue(a.lastPush.deleteCompletionIds.isEmpty(), "trimmed records aren't deleted for everyone")
+        a.sync()                          // (learns its new record's author)
+        val before = a.state.completions.size
+        a.sync()
+        assertTrue(a.lastPush.isEmpty && a.state.completions.size == before, "and they don't come back on every sync")
+    }
+
+    @Test fun recordsFromAnotherTimeZoneLandOnTheRightDay() {
+        val a = Phone("save", AppState(pets = listOf(pet.copy(shared = true)), tasks = listOf(feed, walk)))
+        a.sync()
+        val b = Phone("jamaica", AppState(), tz = LocalClock.fixed(-7 * HOUR_MS)) // California
+        b.sync()
+        b.done("feed", 23 * 60 + 30)       // 11:30 pm Manila = 8:30 am California, same instant
+        b.sync(); a.sync()
+        val c = a.state.completions.single()
+        assertEquals(clock.dayIndex(c.atMs), c.localDay)
+        assertEquals(clock.minuteOfDay(c.atMs), c.localMinute)
     }
 
     @Test fun onlySharedPetsLeaveThePhone() {

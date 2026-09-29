@@ -325,16 +325,17 @@ class EndToEndTest {
             retrying { scrollTo(By.checkable(true)).click() }
             waitFor("Chelsea reaches the family", 30_000) { runBlocking { partner.pull(hid) }.pets.any { it.name == "Chelsea" } }
             val shared = runBlocking { partner.pull(hid) }
-            val water = shared.tasks.first { it.kind.name == "WATER" }
+            // Litter, not water: the reminder step after this one uses the water task.
+            val litter = shared.tasks.first { it.kind.name == "LITTER" }
             check(shared.pets.single().lookCode != null) { "no pixel look shared" }
-            // Jamaica refills the water.
+            // Jamaica cleans the litter.
             val now = repo.now()
             runBlocking {
                 partner.push(hid, com.pawpixel.core.SyncPush(addCompletions = listOf(com.pawpixel.core.Completion(
-                    water.id, now, repo.clock.minuteOfDay(now), repo.clock.dayIndex(now), id = "partnerwater1"))))
+                    litter.id, now, repo.clock.minuteOfDay(now), repo.clock.dayIndex(now), id = "partnerlitter1"))))
             }
             retrying { find(By.text("Sync now")).click() }
-            waitFor("her Done arrives", 30_000) { repo.state.value.completions.any { it.id == "partnerwater1" && it.by == partnerApi.userId } }
+            waitFor("her Done arrives", 30_000) { repo.state.value.completions.any { it.id == "partnerlitter1" && it.by == partnerApi.userId } }
             find(By.textContains("Jamaica"))
             shot("family-members")
             device.pressBack(); device.pressBack()

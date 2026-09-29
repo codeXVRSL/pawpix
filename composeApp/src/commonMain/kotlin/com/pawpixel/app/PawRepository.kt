@@ -58,7 +58,7 @@ class PawRepository(val platform: Platform) {
     fun now() = platform.nowMs()
 
     /** The opt-in pet map (sign-in session, shared pets, your ~1 km area). */
-    val map: PetMapModel by lazy { PetMapModel(platform, files) }
+    val map: PetMapModel by lazy { PetMapModel(platform, files, onAccountDeleted = { family.forgetLocally() }) }
 
     /** Family sharing (same sign-in as the map). */
     val family: FamilyModel by lazy { FamilyModel(this, map) }
@@ -254,7 +254,12 @@ class PawRepository(val platform: Platform) {
             }
         }
         mutex.withLock {
-            val restored = contents.state.copy(settings = contents.state.settings.copy(pro = _state.value.settings.pro))
+            // Restored pets come back unshared: the family's copy may have moved on since the backup, and
+            // re-sharing (Family sharing) merges them without deleting anyone's newer records.
+            val restored = contents.state.copy(
+                settings = contents.state.settings.copy(pro = _state.value.settings.pro),
+                pets = contents.state.pets.map { it.copy(shared = false) },
+            )
             files.delete(OLD_SPRITES)
             val hadSprites = files.exists("sprites")
             if (hadSprites && !files.rename("sprites", OLD_SPRITES)) fail()
@@ -271,6 +276,7 @@ class PawRepository(val platform: Platform) {
             _state.value = restored
             publishLocked(restored)
         }
+        family.forgetBase()
         _cardRevision.value = _cardRevision.value + 1
         return contents.state.pets.size
     }

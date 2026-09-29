@@ -92,7 +92,7 @@ object IosGraph {
     fun start(host: IosHost) { this.host = host }
 
     /** Call when the app comes to the foreground: applies widget taps and refreshes everything. */
-    fun onForeground() { MainScope().launch { repo.ingestWidgetTaps(); repo.publish(); repo.family.sync() } }
+    fun onForeground() { MainScope().launch { repo.ingestWidgetTaps(); repo.publish(); repo.family.requestSync() } }
 
     /** "Done" tapped on a notification. */
     fun completeTask(taskId: String) { MainScope().launch { repo.completeFromReminder(taskId) } }
