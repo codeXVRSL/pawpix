@@ -13,7 +13,7 @@ _Last updated: [date]. Replace the bracketed parts and publish this page before 
 
 ## The pet map (optional)
 If you join the pet map, and only then:
-- **Sign-in:** you sign in with Google (Android) or Apple (iPhone). Our map server (Supabase, hosted in [region]) stores your account ID and the email address your provider shares (Apple lets you hide it).
+- **Sign-in:** you sign in with Google (Android) or Apple (iPhone). Our map server (Supabase, hosted in [region]) stores your account ID and the email address your provider shares (Apple lets you hide it). With Sign in with Apple, it also keeps a token from Apple, used only to end PawPixel's link to your Apple ID when you delete your account.
 - **Your pixel pets:** each pet you choose is sent as its name, dog or cat, ear shape and a short "look code" (up to three fur colours and where they sit on the face). Never a photo.
 - **Your area:** your phone asks for your *approximate* location, turns it into a square about 1 km wide, and sends only that square. Your exact location never leaves your phone and is not stored. Your area is refreshed when you open the map and removed after 14 days if you don't.
 - **Who sees what:** other map members see pets, names and squares, only for squares with 3 or more owners, and never who owns which pet. Gathering venues are shown only to people who said they're going.

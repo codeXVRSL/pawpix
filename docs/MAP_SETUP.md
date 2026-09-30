@@ -33,6 +33,74 @@ and a map-tile key. Then you put six values into the build.
 2. In Supabase → Authentication → Providers → **Apple**: enable it and add `com.pawpixel.app` as a
    client ID (native sign-in needs no Services ID or secret).
 
+### 3b. Revoking Sign in with Apple when an account is deleted (App Store rule 5.1.1(v))
+Apple requires that deleting an account also revokes the app's Sign in with Apple token, using
+Apple's REST API. PawPixel does this on the server, in the Edge Function
+`supabase/functions/apple-revoke`:
+- Right after Sign in with Apple, the iPhone app sends Apple's one-time **authorization code** to the
+  function. The function swaps it at `https://appleid.apple.com/auth/token` for a **refresh token** and
+  keeps it in the `apple_tokens` table (migration `0008`). Only the function (service role) can read
+  or write that table; the app never sees the token.
+- **Delete my map account** on an iPhone calls the function, which revokes the token at
+  `https://appleid.apple.com/auth/revoke` and then deletes the account (the same `delete_account()`
+  as before). Deleting always wins: if Apple is down, the account is still deleted and the function
+  logs the failure. If the function can't be reached at all, the app deletes the account directly.
+
+To talk to Apple, the function signs a short-lived "client secret" (an ES256 JWT) with a Sign in with
+Apple **key** from your Apple Developer account. The key lives only in Supabase function secrets:
+never in the repo, the app, or GitHub.
+
+**Until you do the steps below, nothing breaks:** accounts are still deleted, and the function's log
+says `Sign in with Apple revocation isn't set up (APPLE_TEAM_ID, APPLE_KEY_ID, APPLE_PRIVATE_KEY)`.
+Do them before you submit the iPhone app for review.
+
+1. **Make the key.** [Apple Developer](https://developer.apple.com/account) → Certificates, Identifiers
+   & Profiles → **Keys** → **+**. Name it "PawPixel Sign in with Apple", tick **Sign in with Apple**,
+   click **Configure** and choose the primary App ID **com.pawpixel.app**. Save, Continue, Register.
+   **Download** the `AuthKey_XXXXXXXXXX.p8` file: Apple lets you download it only once. Keep it in
+   your password manager, never in the repo.
+2. **Note two IDs.**
+   - `APPLE_KEY_ID`: the 10-character **Key ID** shown on the key's page (also in the file name).
+   - `APPLE_TEAM_ID`: your 10-character **Team ID** (Membership details, or top right of the portal).
+3. **Apply the database and deploy the function** (from the repo, after `supabase link`):
+   ```
+   supabase db push                          # creates apple_tokens (0008_apple_sign_in_tokens.sql)
+   supabase functions deploy apple-revoke    # reads supabase/config.toml: verify_jwt = false
+   ```
+   (`verify_jwt = false` is intended: the function checks the caller's session itself with Supabase
+   Auth, which also works with the newer asymmetric JWT signing keys.)
+4. **Set the secrets** (Supabase → Edge Functions → Secrets, or the CLI):
+   ```
+   supabase secrets set APPLE_TEAM_ID=ABCDE12345 APPLE_KEY_ID=XYZ987WVUT
+   supabase secrets set APPLE_PRIVATE_KEY="$(cat ~/Downloads/AuthKey_XXXXXXXXXX.p8)"
+   ```
+   The whole `.p8` file, including the `-----BEGIN PRIVATE KEY-----` lines. In the dashboard you can
+   paste it as is (line breaks, or literal `\n`, both work).
+   `APPLE_CLIENT_ID` is optional and defaults to the app's bundle ID, **com.pawpixel.app** (the
+   client ID for native Sign in with Apple). Set it only if the bundle ID ever changes.
+   `SUPABASE_URL`, `SUPABASE_ANON_KEY` and `SUPABASE_SERVICE_ROLE_KEY` are provided by Supabase
+   automatically; don't set them.
+5. **Check it on an iPhone** (TestFlight build pointing at this project):
+   - Sign in with Apple on the pet map. Supabase → Table editor → `apple_tokens` now has a row for you.
+   - Pet map → More → **Delete my map account**. The row and the account are gone, the function's log
+     (Edge Functions → apple-revoke → Logs) has no errors, and on the iPhone, Settings → your name →
+     Sign-In & Security → Sign in with Apple no longer lists PawPixel.
+
+Notes:
+- An Apple account that signed in while the secrets were missing has no token on file, so its
+  deletion can't be revoked; signing in again after the setup fixes that. Set the secrets before
+  real users sign in.
+- If you rotate the key (revoke it in the portal and make a new one), update `APPLE_KEY_ID` and
+  `APPLE_PRIVATE_KEY`. Stored tokens keep working: they belong to the app, not the key.
+- **Deleting an account for someone (support):** revoke first, then delete the user in Supabase →
+  Authentication → Users (everything else cascades):
+  ```
+  curl -X POST https://<project-ref>.supabase.co/functions/v1/apple-revoke \
+    -H "Authorization: Bearer <service_role key>" -H "Content-Type: application/json" \
+    -d '{"action":"revoke","user_id":"<the user's id>"}'
+  ```
+  Run it from your own computer only: the service role key never goes in the app or the repo.
+
 ## 4. Map tiles
 The map draws standard 256 px raster tiles, crisp and pixelated. Any provider with a `{z}/{x}/{y}`
 URL works. The default suggestion is **MapTiler**:

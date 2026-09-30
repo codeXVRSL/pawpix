@@ -154,29 +154,50 @@ class MapClientTest {
         assertEquals("code-1", com.pawpixel.core.Json.parse(r.body!!)["code"].str)
     }
 
-    @Test fun deletingAnAppleAccountRevokesAtAppleFirst() {
+    @Test fun deletingAnAppleAccountGoesThroughTheRevokingFunction() {
         val c = signedInWithApple()
         // The provider survives the app restarting (it's in the saved session).
         val restarted = client()
+        reply = { HttpResponse(200, """{"deleted":true,"revoked":true}""") }
         runSync { restarted.deleteAccount() }
-        assertEquals(listOf("/functions/v1/apple-revoke", "/rest/v1/rpc/delete_account"), log.map { it.url.removePrefix("https://x.supabase.co") })
-        assertEquals("revoke", com.pawpixel.core.Json.parse(log[0].body!!)["action"].str)
+        assertEquals(listOf("/functions/v1/apple-revoke"), log.map { it.url.removePrefix("https://x.supabase.co") })
+        assertEquals("delete_account", com.pawpixel.core.Json.parse(log[0].body!!)["action"].str)
+        assertEquals("Bearer tok1", log[0].headers["Authorization"])
+        assertEquals("anon", log[0].headers["apikey"])
         assertFalse(restarted.isSignedIn)
         assertTrue(c.isSignedIn, "only the client that deleted forgets in memory; the store is cleared")
         assertEquals(null, saved[0])
     }
 
-    @Test fun anAppleRevocationThatFailsStillDeletesTheAccount() {
+    @Test fun ifTheRevokingFunctionFailsTheAccountIsStillDeleted() {
         val c = signedInWithApple()
-        reply = { r -> if (r.url.contains("/functions/")) HttpResponse(502, """{"error":"Apple refused the request"}""") else HttpResponse(200, "") }
+        reply = { r -> if (r.url.contains("/functions/")) HttpResponse(500, """{"error":"Server error"}""") else HttpResponse(200, "") }
         runSync { c.deleteAccount() }
         assertTrue(log.last().url.endsWith("/rest/v1/rpc/delete_account"))
         assertFalse(c.isSignedIn)
-        // Offline for the revocation (or the function isn't deployed): the same.
+        // Offline for the function: the same.
         val d = signedInWithApple()
         reply = { r -> if (r.url.contains("/functions/")) throw IllegalStateException("timeout") else HttpResponse(200, "") }
         runSync { d.deleteAccount() }
         assertTrue(log.last().url.endsWith("/rest/v1/rpc/delete_account"))
+        // Not deployed (404), or refused (401): the session isn't dropped before the account is deleted.
+        for (status in listOf(404, 401)) {
+            val e = signedInWithApple()
+            reply = { r -> if (r.url.contains("/functions/")) HttpResponse(status, """{"message":"nope"}""") else HttpResponse(204, "") }
+            runSync { e.deleteAccount() }
+            assertEquals(listOf("/functions/v1/apple-revoke", "/rest/v1/rpc/delete_account"), log.map { it.url.removePrefix("https://x.supabase.co") }, "status $status")
+            assertEquals("Bearer tok1", log[1].headers["Authorization"])
+            assertFalse(e.isSignedIn)
+        }
+    }
+
+    @Test fun aFailedCodeHandOffKeepsTheSession() {
+        val c = signedInWithApple()
+        reply = { HttpResponse(401, """{"error":"Sign in first"}""") }
+        val e = runCatching { runSync { c.storeAppleAuthorizationCode("code-1") } }.exceptionOrNull() as MapException
+        assertEquals(MapException.Kind.REFUSED, e.kind)
+        assertEquals("Sign in first", e.message)
+        assertTrue(c.isSignedIn)
     }
 
     @Test fun refreshingTheSessionKeepsTheProvider() {

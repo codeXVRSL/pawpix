@@ -45,8 +45,8 @@ jobs:
       - uses: actions/checkout@v4
       - uses: supabase/setup-cli@v1
         with: { version: latest }
-      - name: Start Supabase (database, auth, API) with the migrations
-        run: supabase start -x studio,imgproxy,edge-runtime,logflare,vector,realtime,storage-api,postgres-meta,supavisor
+      - name: Start Supabase (database, auth, API, Edge Functions) with the migrations
+        run: supabase start -x studio,imgproxy,logflare,vector,realtime,storage-api,postgres-meta,supavisor
       - name: Play several owners through every privacy rule
         run: |
           eval "$(supabase status -o env)"
@@ -72,6 +72,14 @@ jobs:
           eval "$(supabase status -o env)"
           export SUPABASE_URL="$API_URL" ANON_KEY="${ANON_KEY:-$PUBLISHABLE_KEY}" SERVICE_KEY="${SERVICE_ROLE_KEY:-$SECRET_KEY}"
           ./gradlew :core:mapLive --quiet 2>&1 | tee backend-out/map_client_live.txt
+      - name: Sign in with Apple revocation function, served for real, without Apple secrets (deleting still works)
+        if: success() || failure()
+        run: |
+          eval "$(supabase status -o env)"
+          export SUPABASE_URL="$API_URL" ANON_KEY="${ANON_KEY:-$PUBLISHABLE_KEY}" SERVICE_KEY="${SERVICE_ROLE_KEY:-$SECRET_KEY}"
+          set -o pipefail
+          mkdir -p backend-out
+          python3 supabase/tests/apple_revoke_test.py 2>&1 | tee backend-out/apple_revoke_e2e.txt
       - uses: denoland/setup-deno@v2
         if: success() || failure()
         with: { deno-version: v2.x }
@@ -81,12 +89,13 @@ jobs:
         run: |
           set -o pipefail
           mkdir -p backend-out
-          { deno check supabase/functions/apple-revoke/index.ts && deno test supabase/functions/apple-revoke/; } 2>&1 | tee backend-out/apple_revoke_test.txt
+          { deno check supabase/functions/apple-revoke/ && deno test supabase/functions/apple-revoke/; } 2>&1 | tee backend-out/apple_revoke_test.txt
       - name: Publish the log to the ci-results/backend branch
         if: always()
         run: |
           mkdir -p backend-out
           docker logs supabase_db_pawpixel 2>&1 | tail -n 200 > backend-out/db-log.txt || true
+          docker logs supabase_edge_runtime_pawpixel 2>&1 | tail -n 200 > backend-out/functions-log.txt || true
           bash scripts/publish-results.sh backend-out ci-results/${{ github.ref_name == 'main' && 'backend' || format('{0}-backend', github.ref_name) }} "${{ github.token }}"
 
   android:

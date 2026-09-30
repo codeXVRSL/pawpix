@@ -126,8 +126,17 @@ class SupabaseApi(
 
     suspend fun rpc(name: String, args: Json = Json.obj()): String = rest("POST", "/rest/v1/rpc/$name", args.stringify())
 
-    /** Calls a Supabase Edge Function (supabase/functions/<name>) as the signed-in owner. */
-    suspend fun function(name: String, args: Json): String = rest("POST", "/functions/v1/$name", args.stringify())
+    /**
+     * Calls a Supabase Edge Function (supabase/functions/<name>) as the signed-in owner. Unlike [rest],
+     * a refusal never signs out: a function that isn't deployed (or set up) mustn't end the session.
+     */
+    suspend fun function(name: String, args: Json): String {
+        val r = send("POST", "/functions/v1/$name", args.stringify(), bearer = token())
+        if (r.status in 200..299) return r.body
+        val message = runCatching { Json.parse(r.body)["error"].str }.getOrNull() ?: errorMessage(r.body)
+        throw if (r.status in 400..499) MapException(MapException.Kind.REFUSED, message ?: tr("Not allowed ({0})", r.status))
+        else MapException(MapException.Kind.SERVER, tr("PawPixel's server had a problem ({0})", r.status))
+    }
 
     suspend fun rest(method: String, path: String, body: String? = null, prefer: String? = null): String {
         val r = send(method, path, body, bearer = token(), prefer = prefer)
@@ -238,11 +247,16 @@ class MapClient(
     }
 
     /**
-     * Deletes the sign-in account and everything on the server; signs out. An Apple sign-in is first
-     * revoked at Apple (App Store rule 5.1.1(v)), best effort: the account is deleted either way.
+     * Deletes the sign-in account and everything on the server; signs out. A Sign in with Apple account
+     * is deleted by the apple-revoke function, which first revokes the app's token at Apple (App Store
+     * rule 5.1.1(v)). If that function can't be reached (not deployed, offline for a moment), the account
+     * is deleted directly: deleting always wins. Deleting twice is harmless (the second deletes nothing).
      */
     suspend fun deleteAccount() {
-        if (api.provider == "apple") runCatching { api.function("apple-revoke", Json.obj("action" to "revoke")) }
+        if (api.provider == "apple") {
+            val deleted = runCatching { api.function("apple-revoke", Json.obj("action" to "delete_account")) }.isSuccess
+            if (deleted) { signOutLocally(); return }
+        }
         rpc("delete_account")
         signOutLocally()
     }
