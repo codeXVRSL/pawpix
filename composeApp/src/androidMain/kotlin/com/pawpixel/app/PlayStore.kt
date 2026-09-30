@@ -169,10 +169,15 @@ class PlayStore(private val context: Context, private val activity: () -> Activi
         return found.firstOrNull { it.productId == Pro.PRODUCT_ID } ?: throw StoreException(StoreProblem.NOT_SET_UP)
     }
 
-    private fun problemOf(result: BillingResult): StoreProblem = when (result.responseCode) {
-        BillingResponseCode.SERVICE_UNAVAILABLE, BillingResponseCode.NETWORK_ERROR, BillingResponseCode.SERVICE_DISCONNECTED -> StoreProblem.OFFLINE
-        BillingResponseCode.BILLING_UNAVAILABLE, BillingResponseCode.FEATURE_NOT_SUPPORTED -> StoreProblem.UNAVAILABLE
-        BillingResponseCode.ITEM_UNAVAILABLE -> StoreProblem.NOT_SET_UP
-        else -> StoreProblem.ERROR
+    /** Play's answer, in the app's words. Since PBL 6, a real network problem is NETWORK_ERROR. */
+    private fun problemOf(result: BillingResult): StoreProblem {
+        android.util.Log.w("PawPixel", "Play Billing: ${result.responseCode} ${result.debugMessage}")
+        return when (result.responseCode) {
+            BillingResponseCode.NETWORK_ERROR -> StoreProblem.OFFLINE
+            BillingResponseCode.SERVICE_UNAVAILABLE, BillingResponseCode.SERVICE_DISCONNECTED,
+            BillingResponseCode.BILLING_UNAVAILABLE, BillingResponseCode.FEATURE_NOT_SUPPORTED -> StoreProblem.UNAVAILABLE
+            BillingResponseCode.ITEM_UNAVAILABLE -> StoreProblem.NOT_SET_UP
+            else -> StoreProblem.ERROR
+        }
     }
 }
