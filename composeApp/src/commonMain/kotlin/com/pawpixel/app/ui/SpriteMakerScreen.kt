@@ -155,7 +155,8 @@ fun SpriteMakerScreen(app: AppScope, state: AppState, existingPetId: String?) {
                     app.back()
                     app.navigate(Screen.PetDetail(pet.id))
                 } else {
-                    error = tr("Your first pet is free. More pets come with PawPixel Pro (coming soon).")
+                    error = tr("Your first pet is free. More pets come with PawPixel Pro.")
+                    app.navigate(Screen.Pro)
                 }
             } finally {
                 saving = false

@@ -18,17 +18,24 @@ object Milestones {
     /** The next one to reach, and how many days to go. */
     fun next(pet: Pet): Pair<Int, Int>? = DAYS.firstOrNull { it > caredDays(pet) }?.let { it to it - caredDays(pet) }
 
-    /** Outfits this pet has earned so far. */
+    /** Outfits this pet has earned so far with days of care. */
     fun unlocked(pet: Pet): List<com.pawpixel.sprite.Accessory> =
-        com.pawpixel.sprite.Accessory.entries.filter { it.unlockDays <= caredDays(pet) }
+        com.pawpixel.sprite.Accessory.entries.filter { !it.pro && it.unlockDays <= caredDays(pet) }
+
+    /** Outfits that come with PawPixel Pro. */
+    val proOutfits: List<com.pawpixel.sprite.Accessory> get() = com.pawpixel.sprite.Accessory.entries.filter { it.pro }
+
+    /** Whether the pet can put [accessory] on: earned with care, or a Pro outfit with Pro. */
+    fun canWear(state: AppState, pet: Pet, accessory: com.pawpixel.sprite.Accessory): Boolean =
+        if (accessory.pro) state.settings.pro else accessory in unlocked(pet)
 
     /**
-     * Puts on an outfit (null = none). Only one it has earned; the pose images are redrawn, so the
-     * sprite version moves on.
+     * Puts on an outfit (null = none). Only one it can wear ([canWear]); the pose images are
+     * redrawn, so the sprite version moves on. One already on stays on (nothing is taken away).
      */
     fun wear(state: AppState, petId: String, accessory: com.pawpixel.sprite.Accessory?): AppState =
         state.copy(pets = state.pets.map { p ->
-            if (p.id != petId || (accessory != null && accessory !in unlocked(p)) || p.accessory == accessory?.name) p
+            if (p.id != petId || (accessory != null && !canWear(state, p, accessory)) || p.accessory == accessory?.name) p
             else p.copy(accessory = accessory?.name, spriteVersion = p.spriteVersion + 1)
         })
 

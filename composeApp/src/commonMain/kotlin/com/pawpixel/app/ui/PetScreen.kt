@@ -138,7 +138,7 @@ fun PetScreen(app: AppScope, state: AppState, pet: Pet) {
         WeightSection(app, state, pet)
 
         Spacer(Modifier.height(8.dp))
-        OutfitSection(app, pet)
+        OutfitSection(app, state, pet)
 
         Spacer(Modifier.height(8.dp))
         SectionTitle(tr("Share & sprite"))

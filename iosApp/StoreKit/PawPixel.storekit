@@ -1,0 +1,38 @@
+{
+  "identifier" : "5C1B8F2E",
+  "nonRenewingSubscriptions" : [
+
+  ],
+  "products" : [
+    {
+      "displayPrice" : "4.99",
+      "familyShareable" : true,
+      "internalID" : "6740000001",
+      "localizations" : [
+        {
+          "description" : "More pets and Pro outfits. One-time purchase, no subscription.",
+          "displayName" : "PawPixel Pro",
+          "locale" : "en_US"
+        }
+      ],
+      "productID" : "pawpixel_pro",
+      "referenceName" : "PawPixel Pro",
+      "type" : "NonConsumable"
+    }
+  ],
+  "settings" : {
+    "_failTransactionsEnabled" : false,
+    "_locale" : "en_US",
+    "_storefront" : "USA",
+    "_storeKitErrors" : [
+
+    ]
+  },
+  "subscriptionGroups" : [
+
+  ],
+  "version" : {
+    "major" : 3,
+    "minor" : 0
+  }
+}

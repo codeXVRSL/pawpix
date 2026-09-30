@@ -12,6 +12,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.pawpixel.core.AppState
 import com.pawpixel.core.Milestones
 import com.pawpixel.core.Pet
 import com.pawpixel.i18n.tr
@@ -41,21 +42,34 @@ fun nextMilestoneLine(pet: Pet): String? = Milestones.next(pet)?.let { (at, left
     }
 }
 
-/** Outfits the pet has earned with days of care (and the next ones, with how long to go). */
+/**
+ * Outfits the pet has earned with days of care (and the next ones, with how long to go), then the
+ * Pro ones: with Pro they're worn like the others; without, a tap opens the Pro screen.
+ */
 @OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 @Composable
-fun OutfitSection(app: AppScope, pet: Pet) {
+fun OutfitSection(app: AppScope, state: AppState, pet: Pet) {
     val earned = Milestones.unlocked(pet)
     val days = Milestones.caredDays(pet)
     SectionTitle(tr("Outfits"))
-    Text(tr("{0} earns pixel outfits with days of care. Nothing to buy.", pet.name), style = MaterialTheme.typography.bodySmall)
+    Text(tr("{0} earns pixel outfits with days of care.", pet.name), style = MaterialTheme.typography.bodySmall)
     androidx.compose.foundation.layout.FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
         androidx.compose.material3.FilterChip(pet.accessory == null, { app.launch { app.repo.wear(pet, null) } }, label = { Text(tr("None")) })
-        com.pawpixel.sprite.Accessory.entries.forEach { a ->
+        com.pawpixel.sprite.Accessory.entries.filter { !it.pro }.forEach { a ->
             if (a in earned) {
                 androidx.compose.material3.FilterChip(pet.accessory == a.name, { app.launch { app.repo.wear(pet, a) } }, label = { Text(tr(a.label)) })
             } else {
                 androidx.compose.material3.AssistChip(onClick = {}, enabled = false, label = { Text(tr("🔒 {0} · in {1} days", tr(a.label), a.unlockDays - days)) })
+            }
+        }
+    }
+    Text(tr("Pro outfits"), style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold)
+    androidx.compose.foundation.layout.FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+        Milestones.proOutfits.forEach { a ->
+            if (Milestones.canWear(state, pet, a) || pet.accessory == a.name) {
+                androidx.compose.material3.FilterChip(pet.accessory == a.name, { app.launch { app.repo.wear(pet, a) } }, label = { Text(tr(a.label)) })
+            } else {
+                androidx.compose.material3.AssistChip(onClick = { app.navigate(Screen.Pro) }, label = { Text(tr("✨ {0} · Pro", tr(a.label))) })
             }
         }
     }

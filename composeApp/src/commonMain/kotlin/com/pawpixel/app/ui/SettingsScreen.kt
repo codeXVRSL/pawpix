@@ -22,6 +22,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -131,12 +132,16 @@ fun SettingsScreen(app: AppScope, state: AppState) {
         TimeStepper(tr("Wakes at"), s.nightEnd) { app.launch { app.repo.setSettings(s.copy(nightEnd = it)) } }
 
         GroupLabel(tr("PawPixel Pro"))
-        Text(tr("Your first pet is free forever. Pro (coming soon) adds more pets, AI-enhanced sprites and hand-finished sprites by a pixel artist."))
-        if (app.repo.platform.isDebugBuild) {
-            SwitchRow(tr("Test build: unlock Pro features"), tr("Only in test builds, until in-app purchases are connected."), s.pro) {
-                app.launch { app.repo.setSettings(s.copy(pro = it)) }
-            }
-        }
+        Text(
+            when {
+                s.pro -> tr("You have PawPixel Pro. Thank you!")
+                s.proPending -> tr("Waiting for your payment for PawPixel Pro.")
+                else -> tr("Your first pet is free forever. Pro is a one-time purchase for more pets and Pro outfits.")
+            },
+            style = MaterialTheme.typography.bodySmall,
+        )
+        OutlinedButton(onClick = { app.navigate(Screen.Pro) }) { Text(tr("About PawPixel Pro")) }
+        app.repo.platform.store.test?.let { TestStoreSwitches(app, it) }
 
         GroupLabel(tr("Backup"))
         Text(
@@ -216,6 +221,26 @@ fun SettingsScreen(app: AppScope, state: AppState) {
             },
             dismissButton = { TextButton(onClick = { confirmWipe = false }) { Text(tr("Cancel")) } },
         )
+    }
+}
+
+/** Test builds only: a pretend store, to walk through buying Pro (and paying later) without paying. */
+@Composable
+private fun TestStoreSwitches(app: AppScope, test: com.pawpixel.app.TestStore) {
+    // The pretend store keeps its own state: redraw these switches after each change.
+    var revision by remember { mutableStateOf(0) }
+    key(revision) {
+        SwitchRow(tr("Test build: pretend store"), tr("Buy Pro without paying. Only in test builds."), test.enabled) {
+            test.enabled = it; revision++
+            app.launch { app.repo.pro.storeSwitched() }
+        }
+        if (test.enabled) {
+            SwitchRow(tr("Test build: pay later"), tr("The next purchase waits for a cash payment."), test.payLater) { test.payLater = it; revision++ }
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                AssistChip(onClick = { test.paymentArrives() }, label = { Text(tr("Payment arrives")) })
+                AssistChip(onClick = { test.refund() }, label = { Text(tr("Refund")) })
+            }
+        }
     }
 }
 

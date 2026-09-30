@@ -43,6 +43,8 @@ class AndroidPlatform(private val context: Context) : Platform {
     private val appScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     override val files: FileStore = AndroidFileStore(File(context.filesDir, "pawpixel"))
     override val isDebugBuild: Boolean = (context.applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE) != 0
+    /** Google Play Billing; debug builds can switch to a pretend store (see the androidDebug source set). */
+    override val store: Store by lazy { storeFor(context, PlayStore(context) { activity?.get() }) }
 
     /** Set by [MainActivity] so the shared UI can ask for notification permission. */
     var permissionRequester: (() -> Unit)? = null

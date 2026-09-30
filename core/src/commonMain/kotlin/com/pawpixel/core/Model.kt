@@ -68,6 +68,11 @@ data class Pet(
     val accessory: String? = null,
     /** When this phone last changed something the household shares (name, look, ...): the later edit wins. */
     val editedAtMs: Long = 0,
+    /**
+     * Arrived from the household (made on someone else's phone). Never counts toward the free pet
+     * limit: a family's pets are never behind PawPixel Pro. This phone's own flag, not shared.
+     */
+    val fromHousehold: Boolean = false,
 ) {
     /**
      * Everything the pixel pet is drawn from. A screen that keeps a drawing of the pet keys it by
@@ -150,7 +155,13 @@ data class Settings(
     val widgetTipDismissed: Boolean = false,
     /** "en", "fil", or "" to follow the phone's language. */
     val language: String = "",
+    /**
+     * PawPixel Pro is owned: this phone's cached copy of what the app store says (see
+     * [ProEntitlement]), so Pro works offline. The store stays the source of truth.
+     */
     val pro: Boolean = false,
+    /** A Pro purchase is waiting for its payment (cash at 7-Eleven or ECPay, bank approval...). */
+    val proPending: Boolean = false,
     /** Local minute to start "sleepy" night mode. */
     val nightStart: Int = 22 * 60,
     /** Local minute to end night mode. */
@@ -184,6 +195,7 @@ data class AppState(
         const val MAX_CARE_DAYS = 3000
         /** Longest repeat: yearly. */
         const val MAX_EVERY_DAYS = 365
+        /** Pets this phone can make without PawPixel Pro. The one place to change it. */
         const val FREE_PET_LIMIT = 1
     }
 }

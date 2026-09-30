@@ -14,7 +14,6 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -46,7 +45,6 @@ import com.pawpixel.i18n.trName
 
 @Composable
 fun HomeScreen(app: AppScope, state: AppState) {
-    var showProDialog by remember { mutableStateOf(false) }
     Column(Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding().padding(horizontal = 16.dp)) {
         val title = @Composable { m: Modifier ->
             Text("PawPixel", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Black, maxLines = 1, modifier = m.semantics { heading() })
@@ -82,7 +80,7 @@ fun HomeScreen(app: AppScope, state: AppState) {
                 item {
                     Column {
                         TextButton(onClick = {
-                            if (StateOps.canAddPet(state)) app.navigate(Screen.CreatePet) else showProDialog = true
+                            app.navigate(if (StateOps.canAddPet(state)) Screen.CreatePet else Screen.Pro)
                         }) { Text(tr("+ Add another pet")) }
                         if (app.repo.family.household == null) JoinHouseholdLink(app)
                     }
@@ -93,14 +91,6 @@ fun HomeScreen(app: AppScope, state: AppState) {
                 }
             }
         }
-    }
-    if (showProDialog) {
-        AlertDialog(
-            onDismissRequest = { showProDialog = false },
-            title = { Text(tr("More pets with Pro")) },
-            text = { Text(tr("Your first pet is free forever. Extra pets are part of PawPixel Pro, which is coming soon.")) },
-            confirmButton = { TextButton(onClick = { showProDialog = false }) { Text(tr("OK")) } },
-        )
     }
 }
 

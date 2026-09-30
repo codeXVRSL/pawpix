@@ -38,6 +38,8 @@ sealed interface Screen {
     data object PetMap : Screen
     /** Sharing with your household. [sharePetId]: share this pet once in a household. [join]: you came to enter a code. */
     data class Family(val sharePetId: String? = null, val join: Boolean = false) : Screen
+    /** PawPixel Pro: only when the owner tries a Pro thing, or opens it from Settings. */
+    data object Pro : Screen
 }
 
 /**
@@ -53,6 +55,7 @@ internal fun Screen.code(): String = when (this) {
     Screen.Settings -> "settings"
     Screen.PetMap -> "map"
     is Screen.Family -> "family:${sharePetId ?: "-"}:${if (join) 1 else 0}"
+    Screen.Pro -> "pro"
 }
 
 internal fun screenOf(code: String): Screen? {
@@ -67,6 +70,7 @@ internal fun screenOf(code: String): Screen? {
         "settings" -> Screen.Settings
         "map" -> Screen.PetMap
         "family" -> Screen.Family(id(1), p.getOrNull(2) == "1")
+        "pro" -> Screen.Pro
         else -> null
     }
 }
@@ -185,6 +189,7 @@ fun App(repo: PawRepository, registerBack: ((() -> Boolean) -> (() -> Unit))? = 
                 Screen.Settings -> SettingsScreen(app, state)
                 Screen.PetMap -> PetMapScreen(app, state)
                 is Screen.Family -> FamilyScreen(app, state, screen.sharePetId, screen.join)
+                Screen.Pro -> ProScreen(app, state)
             }
             }
         }

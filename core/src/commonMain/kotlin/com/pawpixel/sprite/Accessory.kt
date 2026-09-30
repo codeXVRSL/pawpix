@@ -1,13 +1,21 @@
 package com.pawpixel.sprite
 
 /**
- * Little pixel outfits the pet earns with care: every one unlocks after a number of days of care
- * (see [com.pawpixel.core.Milestones]), never with money, and nothing is ever taken away.
+ * Little pixel outfits. Most are earned with care: each unlocks after a number of days of care
+ * (see [com.pawpixel.core.Milestones]), and nothing is ever taken away. A few Filipino ones
+ * ([pro]) come with PawPixel Pro, the one-time purchase, instead.
  *
  * Each is a tiny hand-drawn grid placed relative to the head, so it follows every pose (walking,
  * eating, looking around, lying down). Letters are colours; '.' is see-through; 'o' is the outline.
  */
-enum class Accessory(val label: String, val unlockDays: Int, private val rows: List<String>, private val anchor: Anchor) {
+enum class Accessory(
+    val label: String,
+    val unlockDays: Int,
+    private val rows: List<String>,
+    private val anchor: Anchor,
+    /** Comes with PawPixel Pro rather than days of care. */
+    val pro: Boolean = false,
+) {
     BANDANA("Bandana", 3, listOf(
         "ooooooooo",
         "orrrrrrro",
@@ -51,7 +59,38 @@ enum class Accessory(val label: String, val unlockDays: Int, private val rows: L
         "oyyyyyyyo",
         "oyryyybyo",
         "ooooooooo",
-    ), Anchor.TOP);
+    ), Anchor.TOP),
+
+    // ---- Pro outfits ----
+    SALAKOT("Salakot", 0, listOf(
+        "..........o..........",
+        ".........oyo.........",
+        "........onnno........",
+        "......oonnnndoo......",
+        "....oonndnnnnddoo....",
+        "..oonnnnnnndnnnddoo..",
+        "oonndnnnnnnnnndnnddoo",
+        "odddddddddddddddddddo",
+        ".ooooooooooooooooooo.",
+    ), Anchor.TOP, pro = true),
+    SAMPAGUITA("Sampaguita", 0, listOf(
+        "wo.........ow",
+        "owo.......owo",
+        ".owgo...ogwo.",
+        "..owwowowwo..",
+        "...ogwwwgo...",
+        "....orrro....",
+        ".....oro.....",
+    ), Anchor.NECK, pro = true),
+    PAROL("Parol", 0, listOf(
+        "..ooo..",
+        ".oyryo.",
+        "oyrrryo",
+        ".oyryo.",
+        "..ooo..",
+        "..y.y..",
+        "..r.r..",
+    ), Anchor.EAR, pro = true);
 
     enum class Anchor { NECK, EAR, TOP, EYES }
 
@@ -90,6 +129,8 @@ enum class Accessory(val label: String, val unlockDays: Int, private val rows: L
             'b' to 0xFF3E7BD6.toInt(),
             'k' to 0xFF1D1B26.toInt(),
             'f' to 0xFF8A7FA3.toInt(), // a light frame, so glasses show on black fur too
+            'n' to 0xFFE2B66C.toInt(), // woven straw (salakot)
+            'd' to 0xFFB07A3E.toInt(), // straw in shade
         )
     }
 }

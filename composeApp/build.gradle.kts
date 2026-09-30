@@ -83,6 +83,8 @@ kotlin {
             implementation(libs.androidx.credentials)
             implementation(libs.androidx.credentials.play.services)
             implementation(libs.googleid)
+            // PawPixel Pro, a one-time purchase
+            implementation(libs.play.billing)
         }
         // End-to-end test on a real emulator: see scripts/android-e2e.sh and the "android-e2e" CI job.
         androidInstrumentedTest.dependencies {

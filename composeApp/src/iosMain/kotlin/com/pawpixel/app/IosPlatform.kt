@@ -76,6 +76,22 @@ interface IosHost {
     fun approximateLocation(completion: LocationCallback)
     /** Sign in with Apple; the request carries [hashedNonce]. Token null + error null = cancelled. */
     fun signInWithApple(hashedNonce: String, completion: TokenCallback)
+
+    // ---- PawPixel Pro (StoreKit 2, in ProStore.swift). Answers are a status word, see [IosStore]. ----
+
+    /** The product's display price: ("ok", price) or a problem. */
+    fun storePrice(productId: String, completion: StoreCallback)
+    /** Opens Apple's purchase sheet: "owned", "pending", "cancelled" or a problem. */
+    fun storeBuy(productId: String, completion: StoreCallback)
+    /** Current entitlements ("owned" / "none"); with [sync], AppStore.sync() first (Restore purchase). */
+    fun storeOwned(productId: String, sync: Boolean, completion: StoreCallback)
+    /** Transaction.updates, for the app's whole life: "owned" (e.g. Ask to Buy approved) or "revoked" (refund). */
+    fun storeListen(productId: String, listener: StoreCallback)
+}
+
+/** A StoreKit answer: [status] is owned, pending, none, revoked, cancelled, ok, offline, unavailable or error. */
+interface StoreCallback {
+    fun onResult(status: String, price: String?)
 }
 
 /** Swift's notification completion handler, called when a notification's Done is saved. */
@@ -102,6 +118,8 @@ object IosGraph {
     fun onForeground() {
         host.notificationStatus() // refreshes the cached answer for the reminders card
         MainScope().launch { repo.ingestWidgetTaps(); repo.publish(); repo.family.requestSync() }
+        // Pro: what the App Store says now (a refund, or a purchase from another device).
+        MainScope().launch { repo.pro.refresh() }
     }
 
     /** A widget tap ("pawpixel://pet/<id>"): the app opens that pet's page. */
@@ -131,6 +149,7 @@ class IosPlatform(private val host: IosHost) : Platform {
     override val files: FileStore = IosFileStore(host.sharedContainerPath())
     @OptIn(kotlin.experimental.ExperimentalNativeApi::class)
     override val isDebugBuild: Boolean = kotlin.native.Platform.isDebugBinary
+    override val store: Store = IosStore(host)
 
     override fun systemLanguage(): String = (NSLocale.preferredLanguages.firstOrNull() as? String) ?: "en"
     override fun nowMs(): Long = (NSDate().timeIntervalSince1970 * 1000).toLong()
@@ -244,6 +263,57 @@ class IosPlatform(private val host: IosHost) : Platform {
                 }
             })
         }
+}
+
+/** PawPixel Pro through StoreKit 2 (Swift, behind [IosHost]). Apple's answers arrive as status words. */
+class IosStore(private val host: IosHost) : Store {
+    private val id = com.pawpixel.core.Pro.PRODUCT_ID
+
+    private suspend fun ask(call: (StoreCallback) -> Unit): Pair<String, String?> = suspendCancellableCoroutine { cont ->
+        call(object : StoreCallback {
+            override fun onResult(status: String, price: String?) { if (cont.isActive) cont.resume(status to price) }
+        })
+    }
+
+    private fun problem(status: String) = when (status) {
+        "offline" -> StoreProblem.OFFLINE
+        "unavailable" -> StoreProblem.UNAVAILABLE
+        else -> StoreProblem.ERROR
+    }
+
+    private fun ownership(status: String) = when (status) {
+        "owned" -> com.pawpixel.core.Ownership.OWNED
+        "pending" -> com.pawpixel.core.Ownership.PENDING
+        "none" -> com.pawpixel.core.Ownership.NONE
+        else -> throw StoreException(problem(status))
+    }
+
+    override suspend fun price(): String {
+        val (status, price) = ask { host.storePrice(id, it) }
+        return price?.takeIf { status == "ok" } ?: throw StoreException(problem(status))
+    }
+
+    override suspend fun buy(): BuyResult {
+        val (status, _) = ask { host.storeBuy(id, it) }
+        return when (status) {
+            "owned", "pending" -> BuyResult.Done(ownership(status))
+            "cancelled" -> BuyResult.Cancelled
+            else -> BuyResult.Failed(problem(status))
+        }
+    }
+
+    override suspend fun owned(sync: Boolean): com.pawpixel.core.Ownership = ownership(ask { host.storeOwned(id, sync, it) }.first)
+
+    override fun listen(onEvent: (com.pawpixel.core.StoreEvent) -> Unit) {
+        host.storeListen(id, object : StoreCallback {
+            override fun onResult(status: String, price: String?) {
+                when (status) {
+                    "owned", "pending" -> onEvent(com.pawpixel.core.StoreEvent.Purchase(ownership(status)))
+                    "revoked" -> onEvent(com.pawpixel.core.StoreEvent.Revoked)
+                }
+            }
+        })
+    }
 }
 
 class IosFileStore(private val root: String) : FileStore {

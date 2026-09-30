@@ -3,8 +3,12 @@ package com.pawpixel.core
 /** Pure state transitions. The app's repository applies these and persists the result. */
 object StateOps {
 
+    /**
+     * Whether the owner can make another pet: always with Pro, otherwise up to
+     * [AppState.FREE_PET_LIMIT] of their own. Pets from the household don't count.
+     */
     fun canAddPet(state: AppState): Boolean =
-        state.settings.pro || state.pets.size < AppState.FREE_PET_LIMIT
+        state.settings.pro || state.pets.count { !it.fromHousehold } < AppState.FREE_PET_LIMIT
 
     /** Adds a pet with the default care tasks for its species. */
     fun addPet(

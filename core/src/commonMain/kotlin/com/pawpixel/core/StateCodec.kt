@@ -11,6 +11,7 @@ object StateCodec {
             "widgetTipDismissed" to state.settings.widgetTipDismissed,
             "language" to state.settings.language,
             "pro" to state.settings.pro,
+            "proPending" to state.settings.proPending,
             "nightStart" to state.settings.nightStart,
             "nightEnd" to state.settings.nightEnd,
             "remindersAsked" to state.settings.remindersAsked,
@@ -28,6 +29,7 @@ object StateCodec {
                 "milestoneSeen" to p.milestoneSeen,
                 "accessory" to p.accessory,
                 "edited" to p.editedAtMs,
+                "fromHousehold" to p.fromHousehold,
                 "sprite" to Json.obj(
                     "size" to p.sprite.size, "colors" to p.sprite.colors,
                     "outline" to p.sprite.outline, "vibrance" to p.sprite.vibrance,
@@ -91,6 +93,7 @@ object StateCodec {
             widgetTipDismissed = s["widgetTipDismissed"].bool ?: defaults.widgetTipDismissed,
             language = s["language"].str?.takeIf { it.length <= 8 } ?: defaults.language,
             pro = s["pro"].bool ?: defaults.pro,
+            proPending = s["proPending"].bool ?: defaults.proPending,
             nightStart = s["nightStart"].int ?: defaults.nightStart,
             nightEnd = s["nightEnd"].int ?: defaults.nightEnd,
             remindersAsked = s["remindersAsked"].bool ?: defaults.remindersAsked,
@@ -118,6 +121,7 @@ object StateCodec {
                 milestoneSeen = p["milestoneSeen"].int ?: 0,
                 accessory = p["accessory"].str?.takeIf { com.pawpixel.sprite.Accessory.of(it) != null },
                 editedAtMs = p["edited"].long ?: 0L,
+                fromHousehold = p["fromHousehold"].bool ?: false,
                 sprite = SpriteSettings(
                     size = sp["size"].int ?: spriteDefaults.size,
                     colors = sp["colors"].int ?: spriteDefaults.colors,

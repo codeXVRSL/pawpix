@@ -79,6 +79,9 @@ class PawRepository(val platform: Platform) {
     /** Family sharing (same sign-in as the map). */
     val family: FamilyModel by lazy { FamilyModel(this, map) }
 
+    /** PawPixel Pro, the one-time purchase (more pets, Pro outfits). */
+    val pro: ProModel by lazy { ProModel(this) }
+
     /**
      * The saved state. A damaged save is never replaced by an empty app: the last good copy
      * ([STATE_BACKUP], refreshed at every start) takes over, and the damaged file is kept aside.
@@ -318,6 +321,8 @@ class PawRepository(val platform: Platform) {
             _state.value = AppState()
             publishLocked(_state.value)
         }
+        // Pro belongs to the store account, not to this phone's data: ask the store again.
+        pro.refresh()
     }
 
     // ---- Backup ----
@@ -375,7 +380,7 @@ class PawRepository(val platform: Platform) {
             // Restored pets come back unshared: the family's copy may have moved on since the backup, and
             // re-sharing (Family sharing) merges them without deleting anyone's newer records.
             val restored = contents.state.copy(
-                settings = contents.state.settings.copy(pro = _state.value.settings.pro),
+                settings = contents.state.settings.copy(pro = _state.value.settings.pro, proPending = _state.value.settings.proPending),
                 pets = contents.state.pets.map { it.copy(shared = false) },
             )
             val encoded = StateCodec.encode(restored)
@@ -437,7 +442,7 @@ class PawRepository(val platform: Platform) {
             ?: pet.lookCode?.let { PetLook.decode(it) }?.let { PetArt(it, pet.species, Ears.of(pet.ears), outfit) }
     }
 
-    /** Puts on (or takes off) an outfit the pet has earned, and redraws the widget poses. */
+    /** Puts on (or takes off) an outfit the pet has earned (or a Pro one), and redraws the widget poses. */
     suspend fun wear(pet: Pet, outfit: com.pawpixel.sprite.Accessory?) {
         val s = update { com.pawpixel.core.Milestones.wear(it, pet.id, outfit) }
         s.pet(pet.id)?.let { withContext(Dispatchers.Default) { writeWidgetPoses(it) }; platform.refreshWidgets(null) }

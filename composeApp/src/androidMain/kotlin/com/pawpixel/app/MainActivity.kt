@@ -69,6 +69,8 @@ class MainActivity : ComponentActivity() {
         super.onResume()
         // Time has passed: refresh reminders and widgets.
         lifecycleScope.launch { app.repo.ingestWidgetTaps(); app.repo.publish(); app.repo.family.requestSync() }
+        // Pro: a cash payment made since, or a refund (Play lists what's owned now).
+        lifecycleScope.launch { app.repo.pro.refresh() }
     }
 
     override fun onDestroy() {

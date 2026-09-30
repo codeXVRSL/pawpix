@@ -92,7 +92,7 @@ object HouseholdSync {
     }
 
     /** The fields everyone shares; the rest (sprite settings, reminder switches) is this phone's own. */
-    fun view(p: Pet) = p.copy(sprite = SpriteSettings(), spriteVersion = 0, shared = true, careDays = emptyList(), milestoneSeen = 0, editedAtMs = 0)
+    fun view(p: Pet) = p.copy(sprite = SpriteSettings(), spriteVersion = 0, shared = true, careDays = emptyList(), milestoneSeen = 0, editedAtMs = 0, fromHousehold = false)
     fun view(t: CareTask) = t.copy(remindersOn = true, exactAlarm = false, editedAtMs = 0)
 
     /**
@@ -160,7 +160,7 @@ object HouseholdSync {
                 // Stopped sharing (or deleted) here: take it out of the family. Everyone else keeps a copy.
                 changedHere && l == null -> { if (remoteAll.pets.any { it.id == id }) push.deletePetIds += id }
                 r != null -> {
-                    val merged = l?.let { mergePet(it, r) } ?: r.copy(shared = true, spriteVersion = 1)
+                    val merged = l?.let { mergePet(it, r) } ?: r.copy(shared = true, spriteVersion = 1, fromHousehold = true)
                     if (l == null || l.lookCode != r.lookCode || l.species != r.species || l.ears != r.ears || l.accessory != r.accessory) redraw += id
                     keptPets[id] = merged
                 }
@@ -242,7 +242,7 @@ object HouseholdSync {
         val lookChanged = local.lookCode != remote.lookCode || local.species != remote.species || local.ears != remote.ears ||
             local.accessory != remote.accessory
         return remote.copy(
-            sprite = local.sprite, shared = true, careDays = local.careDays, milestoneSeen = local.milestoneSeen,
+            sprite = local.sprite, shared = true, careDays = local.careDays, milestoneSeen = local.milestoneSeen, fromHousehold = local.fromHousehold,
             spriteVersion = if (lookChanged) local.spriteVersion + 1 else local.spriteVersion,
         )
     }

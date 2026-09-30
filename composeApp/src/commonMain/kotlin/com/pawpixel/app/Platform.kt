@@ -27,8 +27,10 @@ interface FileStore {
 /** Everything the shared app needs from Android or iOS. */
 interface Platform {
     val files: FileStore
-    /** Debug/test builds: shows testing switches (like the Pro beta unlock) that release builds hide. */
+    /** Debug/test builds: shows testing switches (like the pretend store) that release builds hide. */
     val isDebugBuild: Boolean
+    /** The app store's in-app purchases (Google Play Billing / StoreKit 2), for PawPixel Pro. */
+    val store: Store get() = Store.None
     /** The phone's language code ("en", "fil", "tl"...), for following it by default. */
     fun systemLanguage(): String = "en"
     fun nowMs(): Long
@@ -84,6 +86,70 @@ interface Platform {
      * checks. Returns null if the owner cancels; throws with a readable message on errors.
      */
     suspend fun signInForMap(hashedNonce: String, googleWebClientId: String): MapIdentity?
+}
+
+/**
+ * PawPixel Pro through the phone's app store. The store is the source of truth; the app keeps a copy
+ * (see [com.pawpixel.core.ProEntitlement]) so Pro works offline. Prices always come from here.
+ */
+interface Store {
+    /** Pro's price as the store shows it to this owner (like "₱249.00"). Throws [StoreException]. */
+    suspend fun price(): String
+
+    /** Opens the store's purchase sheet and waits for the answer. Later changes arrive through [listen]. */
+    suspend fun buy(): BuyResult
+
+    /**
+     * What this account owns (restore). [sync]: the owner tapped Restore, so the store may check
+     * with its server and ask them to sign in (iOS); otherwise it answers quietly. Throws [StoreException].
+     */
+    suspend fun owned(sync: Boolean = false): com.pawpixel.core.Ownership
+
+    /** Changes that happen outside a purchase: a cash payment that arrived, a refund. Set once. */
+    fun listen(onEvent: (com.pawpixel.core.StoreEvent) -> Unit)
+
+    /** Test builds only: a pretend store to walk through buying without paying. Null in release builds. */
+    val test: TestStore? get() = null
+
+    /** No store on this device (or not wired up): everything says it's unavailable. */
+    object None : Store {
+        override suspend fun price(): String = throw StoreException(StoreProblem.UNAVAILABLE)
+        override suspend fun buy(): BuyResult = BuyResult.Failed(StoreProblem.UNAVAILABLE)
+        override suspend fun owned(sync: Boolean): com.pawpixel.core.Ownership = throw StoreException(StoreProblem.UNAVAILABLE)
+        override fun listen(onEvent: (com.pawpixel.core.StoreEvent) -> Unit) {}
+    }
+}
+
+/** How a purchase went. */
+sealed interface BuyResult {
+    /** Bought ([com.pawpixel.core.Ownership.OWNED]), or waiting for the payment ([com.pawpixel.core.Ownership.PENDING]). */
+    data class Done(val ownership: com.pawpixel.core.Ownership) : BuyResult
+    /** The owner closed the purchase sheet. Nothing was charged. */
+    data object Cancelled : BuyResult
+    data class Failed(val problem: StoreProblem) : BuyResult
+}
+
+enum class StoreProblem {
+    /** No connection. */
+    OFFLINE,
+    /** No store on this phone, purchases turned off, or Pro isn't set up in the store yet. */
+    UNAVAILABLE,
+    /** Anything else. */
+    ERROR,
+}
+
+class StoreException(val problem: StoreProblem) : Exception("store: $problem")
+
+/** Test builds: controls for the pretend store (Settings → the test build's switches, and the end-to-end test). */
+interface TestStore {
+    /** Use the pretend store instead of the real one. */
+    var enabled: Boolean
+    /** The next purchase is paid later, like cash at 7-Eleven. */
+    var payLater: Boolean
+    /** The pretend cash payment arrives. */
+    fun paymentArrives()
+    /** The pretend purchase is refunded. */
+    fun refund()
 }
 
 /** What to tell the owner: the phone's make ("Xiaomi"; null if it doesn't say) and where its background setting is. */
