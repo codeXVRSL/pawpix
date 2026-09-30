@@ -10,6 +10,11 @@
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <uses-permission android:name="android.permission.INTERNET" />
 
+    <!-- PawPixel Pro: whether the Play Store is on this phone (package visibility, Android 11+). -->
+    <queries>
+        <package android:name="com.android.vending" />
+    </queries>
+
     <application
         android:name=".PawPixelApplication"
         android:allowBackup="true"

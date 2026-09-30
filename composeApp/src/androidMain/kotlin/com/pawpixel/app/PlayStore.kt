@@ -131,6 +131,8 @@ class PlayStore(private val context: Context, private val activity: () -> Activi
 
     private suspend fun connect() = connecting.withLock {
         if (client.isReady) return@withLock
+        // No Play Store on this phone (some emulators, phones without Google): there's no store at all.
+        if (!hasPlayStore()) throw StoreException(StoreProblem.UNAVAILABLE)
         val result = suspendCancellableCoroutine { cont ->
             client.startConnection(object : BillingClientStateListener {
                 override fun onBillingSetupFinished(result: BillingResult) { if (cont.isActive) cont.resume(result) }
@@ -139,8 +141,15 @@ class PlayStore(private val context: Context, private val activity: () -> Activi
                 }
             })
         }
-        if (result.responseCode != BillingResponseCode.OK) throw StoreException(problemOf(result))
+        if (result.responseCode != BillingResponseCode.OK) {
+            // Play's billing service wouldn't even connect: the store isn't usable here (not "offline").
+            throw StoreException(if (result.responseCode == BillingResponseCode.SERVICE_DISCONNECTED) StoreProblem.UNAVAILABLE else problemOf(result))
+        }
     }
+
+    private fun hasPlayStore(): Boolean = runCatching {
+        context.packageManager.getPackageInfo("com.android.vending", 0); true
+    }.getOrDefault(false)
 
     private suspend fun details(): ProductDetails {
         connect()

@@ -358,44 +358,7 @@ class EndToEndTest {
         }
 
         step("PawPixel Pro: says what it is, and buying it with cash (pretend store) turns it on once paid") {
-            retrying { find(By.text("Settings")).click() }
-            retrying { scrollTo(By.text("About PawPixel Pro")).click() }
-            find(By.text("One-time purchase. No subscription."))
-            // This emulator has no Play Store: the Pro screen says so, and nothing else changes.
-            find(By.textContains("isn't available"), 30_000)
-            find(By.text("Restore purchase"))
-            shot("pro-not-available")
-            device.pressBack()
-            find(By.text("About PawPixel Pro"))
-            // The test build's pretend store: pay later (like cash at 7-Eleven), then the payment arrives.
-            val test = checkNotNull(repo.platform.store.test) { "no pretend store in a debug build" }
-            try {
-                test.enabled = true
-                test.payLater = true
-                runBlocking { repo.pro.storeSwitched() }
-                retrying { scrollTo(By.text("About PawPixel Pro")).click() }
-                retrying { find(By.textStartsWith("Buy PawPixel Pro ·"), 20_000).click() }
-                find(By.text("⏳ Waiting for your payment"))
-                check(repo.state.value.settings.proPending && !repo.state.value.settings.pro) { "not waiting for the payment" }
-                shot("pro-pending")
-                test.paymentArrives()
-                waitFor("Pro once the payment arrived") { repo.state.value.settings.pro && !repo.state.value.settings.proPending }
-                find(By.textStartsWith("✅ You have PawPixel Pro"))
-                shot("pro-owned")
-                // A refund drops Pro and never a pet.
-                val pets = repo.state.value.pets
-                test.refund()
-                waitFor("Pro gone after the refund") { !repo.state.value.settings.pro }
-                check(repo.state.value.pets == pets) { "the refund changed the pets" }
-            } finally {
-                test.payLater = false
-                test.enabled = false
-                runBlocking { repo.pro.storeSwitched() }
-            }
-            device.pressBack()
-            find(By.text("About PawPixel Pro"))
-            device.pressBack()
-            find(By.text("Chelsea"))
+            try { proJourney() } finally { goHome() } // a failure here never strands the next steps
         }
 
         step("pet map: join, see the pixel pets nearby, report, RSVP, leave") {
@@ -774,6 +737,48 @@ class EndToEndTest {
 
         val failed = log.lines().filter { it.startsWith("FAIL") }
         check(failed.isEmpty()) { "Some steps failed:\n" + failed.joinToString("\n") }
+    }
+
+    /** PawPixel Pro: the screen as CI sees it (no Play Store), then a purchase with the pretend store. */
+    private fun proJourney() {
+        retrying { find(By.text("Settings")).click() }
+        retrying { scrollTo(By.text("About PawPixel Pro")).click() }
+        find(By.text("One-time purchase. No subscription."))
+        // This emulator has no Play Store: the Pro screen says so, and nothing else changes.
+        find(By.textContains("isn't available"), 30_000)
+        find(By.text("Restore purchase"))
+        shot("pro-not-available")
+        device.pressBack()
+        find(By.text("About PawPixel Pro"))
+        // The test build's pretend store: pay later (like cash at 7-Eleven), then the payment arrives.
+        val test = checkNotNull(repo.platform.store.test) { "no pretend store in a debug build" }
+        try {
+            test.enabled = true
+            test.payLater = true
+            runBlocking { repo.pro.storeSwitched() }
+            retrying { scrollTo(By.text("About PawPixel Pro")).click() }
+            retrying { find(By.textStartsWith("Buy PawPixel Pro ·"), 20_000).click() }
+            find(By.text("⏳ Waiting for your payment"))
+            check(repo.state.value.settings.proPending && !repo.state.value.settings.pro) { "not waiting for the payment" }
+            shot("pro-pending")
+            test.paymentArrives()
+            waitFor("Pro once the payment arrived") { repo.state.value.settings.pro && !repo.state.value.settings.proPending }
+            find(By.textStartsWith("✅ You have PawPixel Pro"))
+            shot("pro-owned")
+            // A refund drops Pro and never a pet.
+            val pets = repo.state.value.pets
+            test.refund()
+            waitFor("Pro gone after the refund") { !repo.state.value.settings.pro }
+            check(repo.state.value.pets == pets) { "the refund changed the pets" }
+        } finally {
+            test.payLater = false
+            test.enabled = false
+            runBlocking { repo.pro.storeSwitched() }
+        }
+        device.pressBack()
+        find(By.text("About PawPixel Pro"))
+        device.pressBack()
+        find(By.text("Chelsea"))
     }
 
     // ---- helpers ----
