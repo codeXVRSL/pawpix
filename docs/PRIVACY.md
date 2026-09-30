@@ -31,6 +31,9 @@ If you start or join a household (for example you and your partner both caring f
 - **How long:** until you leave, the household ends, or you delete your account. Undone records are kept in the log (marked undone) so every phone learns about the undo; each task keeps its latest 400 records.
 - **Leaving and deleting:** "Leave" removes you from the household; shared pets stay on your phone. Care records you logged stay with the household. The person who started it can remove people, and "Stop sharing for everyone" deletes the household and everything the server kept for it (each phone keeps its own copy). Deleting your account removes you and marks your records as by an unknown person; a household with nobody left is deleted.
 
+## PawPixel Pro (optional purchase)
+If you buy PawPixel Pro, Google Play or Apple's App Store handles the payment (GCash, Maya, card, load, or cash at 7-Eleven / ECPay on Google Play). PawPixel never sees your payment details. The app asks the store only whether your store account owns Pro, and keeps a yes/no copy on your phone so Pro works offline. Nothing about the purchase is sent to PawPixel's server.
+
 ## What PawPixel does not do
 - No ads or tracking. Outside the optional pet map and household sharing, PawPixel has no account and receives none of your data.
 - No precise location. The optional map uses approximate location only, turned into a ~1 km square on your phone.

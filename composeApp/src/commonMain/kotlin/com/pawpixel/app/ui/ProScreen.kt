@@ -18,6 +18,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -93,6 +94,11 @@ fun ProScreen(app: AppScope, state: AppState) {
                     else -> Text(tr("Getting the price…"), color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
                 Text(tr("One-time purchase. No subscription."), fontWeight = FontWeight.Bold)
+                Text(
+                    tr("Paid through your phone's app store, with the ways it offers: GCash, Maya, a card or load. On Google Play you can also pay with cash at 7-Eleven or ECPay."),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
                 if (price == null && ui.priceProblem != null) {
                     OutlinedButton(onClick = { app.launch { pro.loadPrice() } }) { Text(tr("Try again")) }
                 } else {
@@ -121,6 +127,10 @@ fun ProScreen(app: AppScope, state: AppState) {
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
+        Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+            TextButton(onClick = { app.repo.platform.openUrl(PRIVACY_URL) }) { Text(tr("Privacy policy")) }
+            TextButton(onClick = { app.repo.platform.openUrl(TERMS_URL) }) { Text(tr("Terms of use")) }
+        }
     }
 }
 

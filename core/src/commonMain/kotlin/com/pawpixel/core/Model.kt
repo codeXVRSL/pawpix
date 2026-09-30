@@ -162,6 +162,11 @@ data class Settings(
     val pro: Boolean = false,
     /** A Pro purchase is waiting for its payment (cash at 7-Eleven or ECPay, bank approval...). */
     val proPending: Boolean = false,
+    /**
+     * Test builds only: "Test build: unlock Pro features" is on, so Pro stays on whatever the store
+     * says. Release builds clear it at start (see [ProEntitlement.forRelease]).
+     */
+    val proTestUnlock: Boolean = false,
     /** Local minute to start "sleepy" night mode. */
     val nightStart: Int = 22 * 60,
     /** Local minute to end night mode. */

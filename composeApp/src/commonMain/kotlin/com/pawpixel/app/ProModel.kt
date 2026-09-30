@@ -43,7 +43,9 @@ class ProModel(private val repo: PawRepository) {
     private fun listen() {
         if (listening) return
         listening = true
-        store.listen { event -> scope.launch { apply(event) } }
+        store.listen { event ->
+            scope.launch { runCatching { apply(event) }.onFailure { repo.platform.log("Store news not saved: $it") } }
+        }
     }
 
     private suspend fun apply(event: StoreEvent) {
@@ -52,15 +54,32 @@ class ProModel(private val repo: PawRepository) {
         repo.update(stamp = false) { ProEntitlement.apply(it, event) }
     }
 
-    /** At start and when the app comes back: the store's answer wins; offline, the saved copy stays. */
+    /**
+     * At start and when the app comes back: the store's answer wins; offline, the saved copy stays.
+     * Never throws: whatever the store does, the rest of the app carries on.
+     */
     suspend fun refresh() {
-        listen()
-        apply(
-            try { StoreEvent.Checked(store.owned()) } catch (e: StoreException) {
-                repo.platform.log("Store check failed: ${e.problem}")
-                StoreEvent.Unreachable
-            },
-        )
+        if (!repo.platform.isDebugBuild && repo.state.value.settings.proTestUnlock) repo.update(stamp = false) { ProEntitlement.forRelease(it) }
+        try {
+            listen()
+            apply(
+                try { StoreEvent.Checked(store.owned()) } catch (e: StoreException) {
+                    repo.platform.log("Store check failed: ${e.problem}")
+                    StoreEvent.Unreachable
+                },
+            )
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            throw e
+        } catch (e: Throwable) {
+            repo.platform.log("Store check failed: $e")
+        }
+    }
+
+    /** Test builds: "Test build: unlock Pro features" (off: the store is asked again). */
+    suspend fun testUnlock(on: Boolean) {
+        if (!repo.platform.isDebugBuild) return
+        repo.update(stamp = false) { ProEntitlement.testUnlock(it, on) }
+        if (!on) refresh()
     }
 
     /** The Pro screen opened (or "Try again"): ask the store for the price. */
@@ -72,6 +91,11 @@ class ProModel(private val repo: PawRepository) {
             _ui.update { it.copy(price = price) }
         } catch (e: StoreException) {
             _ui.update { it.copy(priceProblem = problemText(e.problem)) }
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            throw e
+        } catch (e: Throwable) {
+            repo.platform.log("Store price failed: $e")
+            _ui.update { it.copy(priceProblem = problemText(StoreProblem.ERROR)) }
         }
     }
 
@@ -118,6 +142,12 @@ class ProModel(private val repo: PawRepository) {
         var message: String? = null
         try {
             message = block()
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            throw e
+        } catch (e: Throwable) {
+            // A store library surprise never takes the app down: say so and let them try again.
+            repo.platform.log("Store failed: $e")
+            message = problemText(StoreProblem.ERROR)
         } finally {
             _ui.update { it.copy(busy = false, message = message) }
         }
@@ -126,6 +156,7 @@ class ProModel(private val repo: PawRepository) {
     private fun problemText(problem: StoreProblem): String = when (problem) {
         StoreProblem.OFFLINE -> tr("You seem to be offline. Connect to the internet and try again.")
         StoreProblem.UNAVAILABLE -> tr("The app store isn't available on this phone right now.")
+        StoreProblem.NOT_SET_UP -> tr("PawPixel Pro isn't available yet. Everything else in PawPixel works as usual.")
         StoreProblem.ERROR -> tr("The store couldn't finish that. Please try again in a moment.")
     }
 }

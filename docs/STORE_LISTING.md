@@ -38,7 +38,7 @@ PRIVATE BY DESIGN
 • No account. No ads. No tracking.
 • Your photo never leaves your phone. The sprite is made on the device.
 
-Your first pet is free. PawPixel Pro (coming soon) adds more pets and hand-finished sprites by a pixel artist.
+Your first pet is free, with everything: care, reminders, health records, backups and household sharing. PawPixel Pro, a one-time purchase (no subscription), adds more pets and Filipino Pro outfits (salakot, sampaguita, parol).
 
 Made in Naga City, Philippines.
 

@@ -240,6 +240,13 @@ final class SwiftHost: NSObject, IosHost {
         controller.performRequests()
     }
 
+    // MARK: PawPixel Pro (StoreKit 2, see ProStore.swift)
+
+    func storePrice(productId: String, completion: StoreCallback) { ProStore.shared.price(productId, completion) }
+    func storeBuy(productId: String, completion: StoreCallback) { ProStore.shared.buy(productId, completion) }
+    func storeOwned(productId: String, sync: Bool, completion: StoreCallback) { ProStore.shared.owned(productId, sync: sync, completion) }
+    func storeListen(productId: String, listener: StoreCallback) { ProStore.shared.listen(productId, listener) }
+
     static func topViewController() -> UIViewController? {
         let scene = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }.first
         var top = scene?.windows.first { $0.isKeyWindow }?.rootViewController

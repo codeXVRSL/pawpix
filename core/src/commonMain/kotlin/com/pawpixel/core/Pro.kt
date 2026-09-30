@@ -63,10 +63,28 @@ object ProEntitlement {
         StoreEvent.Unreachable -> e
     }
 
-    /** Applies [event] to the cached entitlement in [state]'s settings. Pets and outfits are never touched. */
+    /**
+     * Applies [event] to the cached entitlement in [state]'s settings. Pets and outfits are never
+     * touched. While a test build's unlock switch is on, the store's news doesn't change Pro.
+     */
     fun apply(state: AppState, event: StoreEvent): AppState {
+        if (state.settings.proTestUnlock) return state
         val e = next(of(state.settings), event)
         if (e == of(state.settings)) return state
         return state.copy(settings = state.settings.copy(pro = e.owned, proPending = e.pending))
     }
+
+    /**
+     * Test builds: "Test build: unlock Pro features". On: Pro, whatever the store says. Off: no Pro
+     * until the store is asked again (the app does that right after).
+     */
+    fun testUnlock(state: AppState, on: Boolean): AppState =
+        state.copy(settings = state.settings.copy(pro = on, proPending = false, proTestUnlock = on))
+
+    /**
+     * Release builds never keep a test build's unlock (a phone that had a test build installed):
+     * Pro goes back to what the store says, which the app asks right after.
+     */
+    fun forRelease(state: AppState): AppState =
+        if (!state.settings.proTestUnlock) state else testUnlock(state, false)
 }

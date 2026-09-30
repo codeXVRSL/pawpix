@@ -6,6 +6,8 @@ options:
   bundleIdPrefix: com.pawpixel
   deploymentTarget:
     iOS: "17.0"
+# PawPixel Pro's StoreKit test file (local purchases in the Simulator, no App Store Connect needed).
+fileGroups: [StoreKit]
 settings:
   base:
     DEVELOPMENT_TEAM: ""          # your Apple Developer Team ID
@@ -71,6 +73,8 @@ schemes:
         PawPixel: all
     run:
       config: Debug
+      # Run from Xcode: buy PawPixel Pro against this local file (Debug → StoreKit → Manage Transactions).
+      storeKitConfiguration: StoreKit/PawPixel.storekit
     test:
       config: Debug
       targets: [PawPixelUITests]

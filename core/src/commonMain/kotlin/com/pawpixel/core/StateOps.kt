@@ -211,5 +211,15 @@ object StateOps {
         return state.copy(completions = kept)
     }
 
-    fun setSettings(state: AppState, settings: Settings): AppState = state.copy(settings = settings)
+    /**
+     * The owner's settings. Pro isn't one of them: it's the app store's answer (see [ProEntitlement]),
+     * so a settings screen drawn before that answer arrived never turns it back.
+     */
+    fun setSettings(state: AppState, settings: Settings): AppState = state.copy(
+        settings = settings.copy(
+            pro = state.settings.pro,
+            proPending = state.settings.proPending,
+            proTestUnlock = state.settings.proTestUnlock,
+        ),
+    )
 }

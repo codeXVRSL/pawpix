@@ -69,7 +69,7 @@ class FakeStore(private val prefs: SharedPreferences) : Store, TestStore {
     fun reset() { prefs.edit().clear().apply() }
 
     companion object {
-        /** What Play would show for a ₱249 product in the Philippines. */
-        const val PRICE = "₱249.00"
+        /** What Play would show for a ₱199 product in the Philippines. */
+        const val PRICE = "₱199.00"
     }
 }

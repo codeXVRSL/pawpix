@@ -140,4 +140,54 @@ class ProTest {
                 .contentEquals(com.pawpixel.sprite.Chibi.sleeping(worn).pixels), "${a.name} asleep")
         }
     }
+
+    @Test fun restoreThenRefundThenRestoreAgain() {
+        var s = AppState(pets = listOf(Pet("a", "Mochi", Species.CAT, 0)))
+        s = ProEntitlement.apply(s, StoreEvent.Checked(Ownership.OWNED))
+        assertTrue(s.settings.pro)
+        s = ProEntitlement.apply(s, StoreEvent.Revoked)
+        assertFalse(s.settings.pro)
+        assertEquals(1, s.pets.size)
+        s = ProEntitlement.apply(s, StoreEvent.Checked(Ownership.OWNED))
+        assertTrue(s.settings.pro)
+        assertFalse(s.settings.proPending)
+    }
+
+    @Test fun aPendingPaymentThatNeverCameIsGoneAtTheNextCheck() {
+        assertEquals(none, ProEntitlement.next(pending, StoreEvent.Checked(Ownership.NONE)))
+        // Offline while waiting: still waiting.
+        assertEquals(pending, ProEntitlement.next(pending, StoreEvent.Unreachable))
+    }
+
+    @Test fun settingsScreensNeverTurnProBack() {
+        val stale = Settings() // drawn before the store's answer
+        val owned = AppState(settings = Settings(pro = true))
+        val after = StateOps.setSettings(owned, stale.copy(nightStart = 21 * 60))
+        assertTrue(after.settings.pro)
+        assertEquals(21 * 60, after.settings.nightStart)
+        val waiting = AppState(settings = Settings(proPending = true))
+        assertTrue(StateOps.setSettings(waiting, Settings(pro = true)).settings.proPending)
+        assertFalse(StateOps.setSettings(waiting, Settings(pro = true)).settings.pro, "only the store turns Pro on")
+    }
+
+    @Test fun theTestBuildUnlockHoldsUntilSwitchedOffAndNeverReachesARelease() {
+        var s = ProEntitlement.testUnlock(AppState(), true)
+        assertTrue(s.settings.pro)
+        assertTrue(s.settings.proTestUnlock)
+        // The (missing) store says no: the test unlock stays.
+        assertSame(s, ProEntitlement.apply(s, StoreEvent.Checked(Ownership.NONE)))
+        assertSame(s, ProEntitlement.apply(s, StoreEvent.Revoked))
+        s = StateCodec.decode(StateCodec.encode(s))
+        assertTrue(s.settings.proTestUnlock)
+        // Off: no Pro until the store says so.
+        val off = ProEntitlement.testUnlock(s, false)
+        assertFalse(off.settings.pro)
+        assertTrue(ProEntitlement.apply(off, StoreEvent.Checked(Ownership.OWNED)).settings.pro)
+        // A release build clears it.
+        val release = ProEntitlement.forRelease(s)
+        assertFalse(release.settings.pro)
+        assertFalse(release.settings.proTestUnlock)
+        val bought = AppState(settings = Settings(pro = true))
+        assertSame(bought, ProEntitlement.forRelease(bought), "a real purchase is untouched")
+    }
 }

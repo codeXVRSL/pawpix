@@ -3,7 +3,8 @@ import ComposeApp
 
 /// PawPixel Pro through StoreKit 2: a non-consumable, one-time purchase (see `IosStore` in
 /// composeApp/src/iosMain). Answers go back to Kotlin as a status word: owned, pending, none,
-/// revoked, cancelled, ok (with the price), offline, unavailable or error.
+/// revoked, cancelled, ok (with the price), offline, unavailable, notfound (Pro isn't set up in
+/// App Store Connect yet) or error.
 ///
 /// Only verified transactions count. `Transaction.updates` runs for the app's whole life, so
 /// purchases approved later (Ask to Buy) and refunds reach the app while it's open; the app also
@@ -15,7 +16,7 @@ final class ProStore {
     func price(_ id: String, _ done: StoreCallback) {
         Task {
             do {
-                guard let product = try await Product.products(for: [id]).first else { return Self.reply(done, "unavailable") }
+                guard let product = try await Product.products(for: [id]).first else { return Self.reply(done, "notfound") }
                 Self.reply(done, "ok", product.displayPrice)
             } catch {
                 Self.reply(done, Self.status(of: error))
@@ -26,7 +27,7 @@ final class ProStore {
     func buy(_ id: String, _ done: StoreCallback) {
         Task { @MainActor in
             do {
-                guard let product = try await Product.products(for: [id]).first else { return Self.reply(done, "unavailable") }
+                guard let product = try await Product.products(for: [id]).first else { return Self.reply(done, "notfound") }
                 switch try await product.purchase() {
                 case .success(let verification):
                     guard case .verified(let transaction) = verification else { return Self.reply(done, "error") }

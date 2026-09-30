@@ -93,7 +93,7 @@ interface Platform {
  * (see [com.pawpixel.core.ProEntitlement]) so Pro works offline. Prices always come from here.
  */
 interface Store {
-    /** Pro's price as the store shows it to this owner (like "₱249.00"). Throws [StoreException]. */
+    /** Pro's price as the store shows it to this owner (like "₱199.00"). Throws [StoreException]. */
     suspend fun price(): String
 
     /** Opens the store's purchase sheet and waits for the answer. Later changes arrive through [listen]. */
@@ -113,8 +113,8 @@ interface Store {
 
     /** No store on this device (or not wired up): everything says it's unavailable. */
     object None : Store {
-        override suspend fun price(): String = throw StoreException(StoreProblem.UNAVAILABLE)
-        override suspend fun buy(): BuyResult = BuyResult.Failed(StoreProblem.UNAVAILABLE)
+        override suspend fun price(): String = throw StoreException(StoreProblem.NOT_SET_UP)
+        override suspend fun buy(): BuyResult = BuyResult.Failed(StoreProblem.NOT_SET_UP)
         override suspend fun owned(sync: Boolean): com.pawpixel.core.Ownership = throw StoreException(StoreProblem.UNAVAILABLE)
         override fun listen(onEvent: (com.pawpixel.core.StoreEvent) -> Unit) {}
     }
@@ -132,8 +132,10 @@ sealed interface BuyResult {
 enum class StoreProblem {
     /** No connection. */
     OFFLINE,
-    /** No store on this phone, purchases turned off, or Pro isn't set up in the store yet. */
+    /** No store on this phone (or no store account), or purchases are turned off. */
     UNAVAILABLE,
+    /** The store works, but Pro isn't set up in Play Console / App Store Connect yet (or not in this country). */
+    NOT_SET_UP,
     /** Anything else. */
     ERROR,
 }

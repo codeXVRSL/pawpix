@@ -380,7 +380,10 @@ class PawRepository(val platform: Platform) {
             // Restored pets come back unshared: the family's copy may have moved on since the backup, and
             // re-sharing (Family sharing) merges them without deleting anyone's newer records.
             val restored = contents.state.copy(
-                settings = contents.state.settings.copy(pro = _state.value.settings.pro, proPending = _state.value.settings.proPending),
+                settings = contents.state.settings.copy(
+                    pro = _state.value.settings.pro, proPending = _state.value.settings.proPending,
+                    proTestUnlock = _state.value.settings.proTestUnlock,
+                ),
                 pets = contents.state.pets.map { it.copy(shared = false) },
             )
             val encoded = StateCodec.encode(restored)

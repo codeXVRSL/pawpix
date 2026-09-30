@@ -41,6 +41,7 @@ import com.pawpixel.i18n.tr
 const val SUPPORT_EMAIL = "support@pawpixel.app" // TODO: replace with your real support address before release
 const val APP_VERSION = "1.0.0"
 const val PRIVACY_URL = "https://pawpixel.app/privacy" // TODO: publish docs/PRIVACY.md here
+const val TERMS_URL = "https://pawpixel.app/terms" // TODO: publish docs/TERMS.md here
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -141,6 +142,11 @@ fun SettingsScreen(app: AppScope, state: AppState) {
             style = MaterialTheme.typography.bodySmall,
         )
         OutlinedButton(onClick = { app.navigate(Screen.Pro) }) { Text(tr("About PawPixel Pro")) }
+        if (app.repo.platform.isDebugBuild) {
+            SwitchRow(tr("Test build: unlock Pro features"), tr("Only in test builds: Pro without the store."), s.proTestUnlock) {
+                app.launch { app.repo.pro.testUnlock(it) }
+            }
+        }
         app.repo.platform.store.test?.let { TestStoreSwitches(app, it) }
 
         GroupLabel(tr("Backup"))
@@ -225,6 +231,7 @@ fun SettingsScreen(app: AppScope, state: AppState) {
 }
 
 /** Test builds only: a pretend store, to walk through buying Pro (and paying later) without paying. */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun TestStoreSwitches(app: AppScope, test: com.pawpixel.app.TestStore) {
     // The pretend store keeps its own state: redraw these switches after each change.

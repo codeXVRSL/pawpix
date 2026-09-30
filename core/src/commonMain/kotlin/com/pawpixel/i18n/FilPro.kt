@@ -23,6 +23,9 @@ object FilPro {
         "Buy PawPixel Pro" to "Bilhin ang PawPixel Pro",
         "Waiting for the store…" to "Hinihintay ang store…",
         "Restore purchase" to "Ibalik ang nabili",
+        "Paid through your phone's app store, with the ways it offers: GCash, Maya, a card or load. On Google Play you can also pay with cash at 7-Eleven or ECPay." to
+            "Babayaran sa app store ng phone mo, sa mga paraang alok nito: GCash, Maya, card o load. Sa Google Play, puwede ring cash sa 7-Eleven o ECPay.",
+        "Terms of use" to "Mga tuntunin ng paggamit",
         "Bought Pro before, on this phone or another one with the same store account? Restore it here, free." to
             "Nakabili ka na ng Pro dati, sa phone na ito o sa iba na may parehong store account? Ibalik ito rito nang libre.",
         "{0} in a {1}" to "Si {0} na naka-{1}",
@@ -35,6 +38,8 @@ object FilPro {
         "You seem to be offline. Connect to the internet and try again." to "Mukhang offline ka. Kumonekta sa internet at subukan ulit.",
         "The app store isn't available on this phone right now." to "Hindi available ang app store sa phone na ito ngayon.",
         "The store couldn't finish that. Please try again in a moment." to "Hindi ito natapos ng store. Pakisubukan ulit mamaya.",
+        "PawPixel Pro isn't available yet. Everything else in PawPixel works as usual." to
+            "Hindi pa available ang PawPixel Pro. Gumagana pa rin gaya ng dati ang lahat ng iba pa sa PawPixel.",
 
         // Settings
         "You have PawPixel Pro. Thank you!" to "May PawPixel Pro ka na. Salamat!",
@@ -45,6 +50,7 @@ object FilPro {
         "Your first pet is free. More pets come with PawPixel Pro." to "Libre ang una mong alaga. Kasama sa PawPixel Pro ang dagdag na alaga.",
 
         // Test builds only
+        "Only in test builds: Pro without the store." to "Sa mga test build lang: Pro nang walang store.",
         "Test build: pretend store" to "Test build: kunwaring store",
         "Buy Pro without paying. Only in test builds." to "Bilhin ang Pro nang walang bayad. Sa mga test build lang.",
         "Test build: pay later" to "Test build: magbayad mamaya",

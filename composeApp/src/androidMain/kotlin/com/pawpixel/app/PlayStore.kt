@@ -55,7 +55,7 @@ class PlayStore(private val context: Context, private val activity: () -> Activi
     override fun listen(onEvent: (StoreEvent) -> Unit) { listener = onEvent }
 
     override suspend fun price(): String = details().oneTimePurchaseOfferDetails?.formattedPrice
-        ?: throw StoreException(StoreProblem.UNAVAILABLE)
+        ?: throw StoreException(StoreProblem.NOT_SET_UP)
 
     override suspend fun buy(): BuyResult {
         val product = try { details() } catch (e: StoreException) { return BuyResult.Failed(e.problem) }
@@ -154,12 +154,13 @@ class PlayStore(private val context: Context, private val activity: () -> Activi
         }
         if (result.responseCode != BillingResponseCode.OK) throw StoreException(problemOf(result))
         // Not set up in Play Console yet (or not for this country): say it's unavailable.
-        return found.firstOrNull { it.productId == Pro.PRODUCT_ID } ?: throw StoreException(StoreProblem.UNAVAILABLE)
+        return found.firstOrNull { it.productId == Pro.PRODUCT_ID } ?: throw StoreException(StoreProblem.NOT_SET_UP)
     }
 
     private fun problemOf(result: BillingResult): StoreProblem = when (result.responseCode) {
         BillingResponseCode.SERVICE_UNAVAILABLE, BillingResponseCode.NETWORK_ERROR, BillingResponseCode.SERVICE_DISCONNECTED -> StoreProblem.OFFLINE
-        BillingResponseCode.BILLING_UNAVAILABLE, BillingResponseCode.FEATURE_NOT_SUPPORTED, BillingResponseCode.ITEM_UNAVAILABLE -> StoreProblem.UNAVAILABLE
+        BillingResponseCode.BILLING_UNAVAILABLE, BillingResponseCode.FEATURE_NOT_SUPPORTED -> StoreProblem.UNAVAILABLE
+        BillingResponseCode.ITEM_UNAVAILABLE -> StoreProblem.NOT_SET_UP
         else -> StoreProblem.ERROR
     }
 }

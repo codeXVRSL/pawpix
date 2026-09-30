@@ -89,7 +89,7 @@ interface IosHost {
     fun storeListen(productId: String, listener: StoreCallback)
 }
 
-/** A StoreKit answer: [status] is owned, pending, none, revoked, cancelled, ok, offline, unavailable or error. */
+/** A StoreKit answer: [status] is owned, pending, none, revoked, cancelled, ok, offline, unavailable, notfound or error. */
 interface StoreCallback {
     fun onResult(status: String, price: String?)
 }
@@ -278,6 +278,7 @@ class IosStore(private val host: IosHost) : Store {
     private fun problem(status: String) = when (status) {
         "offline" -> StoreProblem.OFFLINE
         "unavailable" -> StoreProblem.UNAVAILABLE
+        "notfound" -> StoreProblem.NOT_SET_UP
         else -> StoreProblem.ERROR
     }
 
