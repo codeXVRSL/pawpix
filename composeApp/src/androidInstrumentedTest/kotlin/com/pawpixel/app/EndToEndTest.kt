@@ -725,6 +725,23 @@ class EndToEndTest {
             }
         }
 
+        step("system back: up one screen inside PawPixel, out of the app from its home screen (predictive back)") {
+            goHome()
+            retrying { find(By.text("Chelsea")).click() }
+            find(By.text("Care"))
+            Thread.sleep(800)
+            device.pressBack()
+            find(By.text("Settings"))
+            check(device.currentPackageName == ctx.packageName) { "back on a pet's page left the app" }
+            Thread.sleep(800) // the back callback switches off once the home screen is showing
+            device.pressBack()
+            val end = System.currentTimeMillis() + 5_000
+            while (device.currentPackageName == ctx.packageName && System.currentTimeMillis() < end) Thread.sleep(200)
+            check(device.currentPackageName != ctx.packageName) { "back on the home screen stayed in PawPixel" }
+            scenario = ActivityScenario.launch(MainActivity::class.java)
+            find(By.text("Chelsea"))
+        }
+
         step("reopening the app keeps the pet") {
             scenario?.close()
             scenario = ActivityScenario.launch(MainActivity::class.java)

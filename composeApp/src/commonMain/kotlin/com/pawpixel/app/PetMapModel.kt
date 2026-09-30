@@ -52,6 +52,12 @@ class PetMapModel(
         val raw = Sha256.newNonce()
         val identity = platform.signInForMap(Sha256.hex(raw), settings.googleWebClientId) ?: return false
         client.signInWithIdToken(identity.provider, identity.idToken, raw)
+        // Sign in with Apple: let the server keep a revocable token for account deletion. Best effort:
+        // the owner is signed in either way (the code expires in 5 minutes, so it can't wait).
+        identity.authorizationCode?.let { code ->
+            runCatching { client.storeAppleAuthorizationCode(code) }
+                .onFailure { platform.log("Apple token not stored: ${it.message}") }
+        }
         return true
     }
 

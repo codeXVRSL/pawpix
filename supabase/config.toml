@@ -17,3 +17,8 @@ enable_signup = true
 [auth.email]
 enable_signup = true
 enable_confirmations = false
+
+# Sign in with Apple token revocation (docs/MAP_SETUP.md). The function checks the session itself
+# with Supabase Auth, which also works with the newer asymmetric JWT signing keys.
+[functions.apple-revoke]
+verify_jwt = false

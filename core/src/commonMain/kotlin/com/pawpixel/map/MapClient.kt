@@ -36,7 +36,8 @@ interface SessionStore {
     fun save(json: String?)
 }
 
-data class Session(val accessToken: String, val refreshToken: String, val expiresAtMs: Long, val userId: String)
+/** [provider] is how the owner signed in ("google", "apple"; blank for test accounts and older sessions). */
+data class Session(val accessToken: String, val refreshToken: String, val expiresAtMs: Long, val userId: String, val provider: String = "")
 
 class MapException(val kind: Kind, message: String) : Exception(message) {
     enum class Kind { NOT_SET_UP, OFFLINE, SIGNED_OUT, REFUSED, FULL, SERVER }
@@ -72,11 +73,12 @@ class SupabaseApi(
 
     val isSignedIn: Boolean get() = session != null
     val userId: String? get() = session?.userId
+    val provider: String get() = session?.provider.orEmpty()
 
     /** Google (Android) or Apple (iOS) identity token. [nonce] is the raw nonce whose hash went to the provider. */
     suspend fun signInWithIdToken(provider: String, idToken: String, nonce: String?) {
         val body = Json.obj("provider" to provider, "id_token" to idToken, "nonce" to nonce).stringify()
-        acceptSession(auth("/auth/v1/token?grant_type=id_token", body))
+        acceptSession(auth("/auth/v1/token?grant_type=id_token", body), provider)
     }
 
     /** Test builds only (a seeded test account on a local server). */
@@ -92,20 +94,21 @@ class SupabaseApi(
         return Json.parse(r.body)
     }
 
-    private fun acceptSession(j: Json) {
+    private fun acceptSession(j: Json, provider: String = session?.provider.orEmpty()) {
         val s = Session(
             accessToken = j["access_token"].str ?: throw MapException(MapException.Kind.SERVER, "No token"),
             refreshToken = j["refresh_token"].str ?: "",
             expiresAtMs = nowMs() + (j["expires_in"].long ?: 3600L) * 1000,
             userId = j["user"]["id"].str ?: throw MapException(MapException.Kind.SERVER, "No user"),
+            provider = provider,
         )
         session = s
-        store.save(Json.obj("a" to s.accessToken, "r" to s.refreshToken, "e" to s.expiresAtMs, "u" to s.userId).stringify())
+        store.save(Json.obj("a" to s.accessToken, "r" to s.refreshToken, "e" to s.expiresAtMs, "u" to s.userId, "p" to s.provider).stringify())
     }
 
     private fun parseStoredSession(text: String): Session? = runCatching {
         val j = Json.parse(text)
-        Session(j["a"].str!!, j["r"].str!!, j["e"].long!!, j["u"].str!!)
+        Session(j["a"].str!!, j["r"].str!!, j["e"].long!!, j["u"].str!!, j["p"].str.orEmpty())
     }.getOrNull()
 
     /** A fresh access token, refreshing it if it's about to expire. */
@@ -122,6 +125,9 @@ class SupabaseApi(
     }
 
     suspend fun rpc(name: String, args: Json = Json.obj()): String = rest("POST", "/rest/v1/rpc/$name", args.stringify())
+
+    /** Calls a Supabase Edge Function (supabase/functions/<name>) as the signed-in owner. */
+    suspend fun function(name: String, args: Json): String = rest("POST", "/functions/v1/$name", args.stringify())
 
     suspend fun rest(method: String, path: String, body: String? = null, prefer: String? = null): String {
         val r = send(method, path, body, bearer = token(), prefer = prefer)
@@ -223,8 +229,20 @@ class MapClient(
 
     suspend fun leaveMap() { rpc("leave_map") }
 
-    /** Deletes the sign-in account and everything on the server; signs out. */
+    /**
+     * Sign in with Apple only: hands the one-time authorization code (valid 5 minutes) to the server,
+     * which swaps it for the refresh token that [deleteAccount] later revokes. The token stays on the server.
+     */
+    suspend fun storeAppleAuthorizationCode(code: String) {
+        api.function("apple-revoke", Json.obj("action" to "store", "code" to code))
+    }
+
+    /**
+     * Deletes the sign-in account and everything on the server; signs out. An Apple sign-in is first
+     * revoked at Apple (App Store rule 5.1.1(v)), best effort: the account is deleted either way.
+     */
     suspend fun deleteAccount() {
+        if (api.provider == "apple") runCatching { api.function("apple-revoke", Json.obj("action" to "revoke")) }
         rpc("delete_account")
         signOutLocally()
     }

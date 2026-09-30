@@ -18,6 +18,8 @@ jobs:
       contents: write   # on failure, pushes the Gradle log to the ci-results/core branch
     steps:
       - uses: actions/checkout@v4
+      - name: Store version is the same for Android and iOS
+        run: bash scripts/check-versions.sh
       - uses: actions/setup-java@v4
         with: { distribution: temurin, java-version: "17" }
       - uses: gradle/actions/setup-gradle@v4
@@ -70,6 +72,16 @@ jobs:
           eval "$(supabase status -o env)"
           export SUPABASE_URL="$API_URL" ANON_KEY="${ANON_KEY:-$PUBLISHABLE_KEY}" SERVICE_KEY="${SERVICE_ROLE_KEY:-$SECRET_KEY}"
           ./gradlew :core:mapLive --quiet 2>&1 | tee backend-out/map_client_live.txt
+      - uses: denoland/setup-deno@v2
+        if: success() || failure()
+        with: { deno-version: v2.x }
+      - name: Sign in with Apple revocation function against a fake Apple (Deno)
+        if: success() || failure()
+        env: { NO_COLOR: "1" }
+        run: |
+          set -o pipefail
+          mkdir -p backend-out
+          { deno check supabase/functions/apple-revoke/index.ts && deno test supabase/functions/apple-revoke/; } 2>&1 | tee backend-out/apple_revoke_test.txt
       - name: Publish the log to the ci-results/backend branch
         if: always()
         run: |
@@ -119,12 +131,22 @@ jobs:
           PAWPIXEL_TILE_URL: ${{ secrets.PAWPIXEL_TILE_URL }}
           PAWPIXEL_TILE_ATTRIBUTION: ${{ secrets.PAWPIXEL_TILE_ATTRIBUTION }}
         run: ./gradlew :composeApp:bundleRelease :composeApp:assembleRelease --stacktrace
-      - name: Check native libraries are 16 KB aligned (Play requirement)
+      - name: Get bundletool
+        run: curl -sSfL -o bundletool.jar https://github.com/google/bundletool/releases/download/1.17.2/bundletool-all-1.17.2.jar
+      - name: Native libraries support 16 KB pages (Play requirement; fails the job if not)
         run: |
+          bash scripts/check-16kb.sh "$(ls composeApp/build/outputs/bundle/release/*.aab | head -1)" \
+            "$(ls composeApp/build/outputs/apk/release/*.apk | head -1)" bundletool.jar
+      - name: Target SDK, version and exact-alarm permission in the release manifest
+        run: |
+          AAPT2=$(ls $ANDROID_HOME/build-tools/*/aapt2 | sort -V | tail -1)
           APK=$(ls composeApp/build/outputs/apk/release/*.apk | head -1)
-          unzip -l "$APK" | grep '\.so$' || echo "No native libraries."
-          ZIPALIGN=$(ls $ANDROID_HOME/build-tools/*/zipalign | sort -V | tail -1)
-          $ZIPALIGN -c -P 16 -v 4 "$APK" | tail -5
+          $AAPT2 dump badging "$APK" | grep -E "^package:|targetSdkVersion|uses-permission" | tee badging.txt
+          grep -q "targetSdkVersion:'36'" badging.txt
+          grep -q "versionCode='${{ github.run_number }}'" badging.txt
+          grep -q "versionName='$(bash scripts/check-versions.sh)'" badging.txt
+          # SCHEDULE_EXACT_ALARM (user-granted) only: USE_EXACT_ALARM is for alarm-clock and calendar apps.
+          ! grep -q "USE_EXACT_ALARM" badging.txt
       - name: Report app size (bundle, APK, and the download for a budget arm64 phone)
         run: |
           AAB=$(ls composeApp/build/outputs/bundle/release/*.aab | head -1)
@@ -134,7 +156,6 @@ jobs:
           ARSC=$(unzip -l "$APK" | awk '/ resources\.arsc$/ {print $1}')
           SO=$(unzip -l "$APK" | grep -c '\.so$' || true)
           # What Play would deliver to a Realme/Oppo/Vivo-class phone: arm64, Android 11, xhdpi, English.
-          curl -sSL -o bundletool.jar https://github.com/google/bundletool/releases/download/1.17.2/bundletool-all-1.17.2.jar
           echo '{"supportedAbis":["arm64-v8a"],"supportedLocales":["en-US"],"screenDensity":320,"sdkVersion":30}' > budget-phone.json
           DL=$(java -jar bundletool.jar build-apks --bundle="$AAB" --output=app.apks --device-spec=budget-phone.json >/dev/null 2>&1 \
             && java -jar bundletool.jar get-size total --apks=app.apks --device-spec=budget-phone.json | tail -1 || echo "n/a")
@@ -221,10 +242,22 @@ jobs:
       - name: Build app and widget (unsigned, simulator)
         run: |
           cd iosApp
+          # Store version from gradle.properties, build number = this run (as Android's versionCode).
           xcodebuild -project PawPixel.xcodeproj -target PawPixel \
             -sdk iphonesimulator -configuration Debug -arch arm64 \
+            MARKETING_VERSION=$(bash ../scripts/check-versions.sh) CURRENT_PROJECT_VERSION=${{ github.run_number }} \
             CODE_SIGNING_ALLOWED=NO build | tail -80
           test "${PIPESTATUS[0]}" -eq 0
+      - name: Privacy manifests cover every required-reason API the binaries use; version and encryption keys
+        run: |
+          APP=iosApp/build/Debug-iphonesimulator/PawPixel.app
+          bash scripts/check-privacy-manifest.sh "$APP"
+          for plist in "$APP/Info.plist" "$APP/PlugIns/PetWidget.appex/Info.plist"; do
+            test "$(plutil -extract CFBundleVersion raw "$plist")" = "${{ github.run_number }}"
+            test "$(plutil -extract CFBundleShortVersionString raw "$plist")" = "$(bash scripts/check-versions.sh)"
+          done
+          # Export compliance: HTTPS only, so no encryption paperwork (App Store Connect won't ask).
+          test "$(plutil -extract ITSAppUsesNonExemptEncryption raw "$APP/Info.plist")" = "false"
       - name: End-to-end UI test in the Simulator (photo to pet, care, share, relaunch)
         run: |
           mkdir -p ios-out

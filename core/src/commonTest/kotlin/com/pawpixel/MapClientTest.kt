@@ -134,6 +134,60 @@ class MapClientTest {
         assertFalse(c.isSignedIn)
         assertEquals(null, saved[0])
     }
+
+    private fun signedInWithApple(): MapClient {
+        reply = { HttpResponse(200, signIn) }
+        val c = client()
+        runSync { c.signInWithIdToken("apple", "idtok", "raw-nonce") }
+        reply = { HttpResponse(200, "{}") }
+        log.clear()
+        return c
+    }
+
+    @Test fun appleSignInHandsTheAuthorizationCodeToTheServer() {
+        val c = signedInWithApple()
+        runSync { c.storeAppleAuthorizationCode("code-1") }
+        val r = log.single()
+        assertTrue(r.url.endsWith("/functions/v1/apple-revoke"))
+        assertEquals("Bearer tok1", r.headers["Authorization"])
+        assertEquals("store", com.pawpixel.core.Json.parse(r.body!!)["action"].str)
+        assertEquals("code-1", com.pawpixel.core.Json.parse(r.body!!)["code"].str)
+    }
+
+    @Test fun deletingAnAppleAccountRevokesAtAppleFirst() {
+        val c = signedInWithApple()
+        // The provider survives the app restarting (it's in the saved session).
+        val restarted = client()
+        runSync { restarted.deleteAccount() }
+        assertEquals(listOf("/functions/v1/apple-revoke", "/rest/v1/rpc/delete_account"), log.map { it.url.removePrefix("https://x.supabase.co") })
+        assertEquals("revoke", com.pawpixel.core.Json.parse(log[0].body!!)["action"].str)
+        assertFalse(restarted.isSignedIn)
+        assertTrue(c.isSignedIn, "only the client that deleted forgets in memory; the store is cleared")
+        assertEquals(null, saved[0])
+    }
+
+    @Test fun anAppleRevocationThatFailsStillDeletesTheAccount() {
+        val c = signedInWithApple()
+        reply = { r -> if (r.url.contains("/functions/")) HttpResponse(502, """{"error":"Apple refused the request"}""") else HttpResponse(200, "") }
+        runSync { c.deleteAccount() }
+        assertTrue(log.last().url.endsWith("/rest/v1/rpc/delete_account"))
+        assertFalse(c.isSignedIn)
+        // Offline for the revocation (or the function isn't deployed): the same.
+        val d = signedInWithApple()
+        reply = { r -> if (r.url.contains("/functions/")) throw IllegalStateException("timeout") else HttpResponse(200, "") }
+        runSync { d.deleteAccount() }
+        assertTrue(log.last().url.endsWith("/rest/v1/rpc/delete_account"))
+    }
+
+    @Test fun refreshingTheSessionKeepsTheProvider() {
+        val c = signedInWithApple()
+        now += 3_570_000
+        reply = { r -> if (r.url.contains("refresh_token")) HttpResponse(200, signIn.replace("tok1", "tok2")) else HttpResponse(200, "") }
+        runSync { c.leaveMap() }
+        log.clear()
+        runSync { client().deleteAccount() }
+        assertTrue(log.first().url.endsWith("/functions/v1/apple-revoke"))
+    }
 }
 
 class MapMathTest {

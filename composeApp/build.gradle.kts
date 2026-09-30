@@ -104,9 +104,10 @@ android {
         applicationId = "com.pawpixel.app"
         minSdk = libs.versions.androidMinSdk.get().toInt()
         targetSdk = libs.versions.androidTargetSdk.get().toInt()
-        // Play needs a higher versionCode for every upload: CI passes the run number.
+        // Play needs a higher versionCode for every upload: CI passes the workflow's run number
+        // (the iOS build number is the same). Local builds are 1: never upload those.
         versionCode = System.getenv("VERSION_CODE")?.toIntOrNull() ?: 1
-        versionName = "1.0.0"
+        versionName = providers.gradleProperty("pawpixel.versionName").get()
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         // PawPixel speaks English and Filipino: drop the libraries' strings in 80+ other languages.
         @Suppress("DEPRECATION")

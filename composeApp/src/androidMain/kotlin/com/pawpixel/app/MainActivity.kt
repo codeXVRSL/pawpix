@@ -11,6 +11,7 @@ import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.lifecycle.lifecycleScope
 import com.pawpixel.app.ui.App
+import com.pawpixel.app.ui.SystemBack
 import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
@@ -39,15 +40,14 @@ class MainActivity : ComponentActivity() {
             answer.await()
         }
         setContent {
-            App(app.repo, registerBack = { handler ->
-                val callback = object : OnBackPressedCallback(true) {
-                    override fun handleOnBackPressed() {
-                        if (!handler()) { isEnabled = false; onBackPressedDispatcher.onBackPressed(); isEnabled = true }
-                    }
+            // Enabled only while PawPixel has a screen to go back to: on the home screen the system
+            // handles back itself, with the predictive back-to-home animation (targetSdk 36).
+            App(app.repo, registerBack = { onBack ->
+                val callback = object : OnBackPressedCallback(false) {
+                    override fun handleOnBackPressed() = onBack()
                 }
                 onBackPressedDispatcher.addCallback(this, callback)
-                val unregister: () -> Unit = { callback.remove() }
-                unregister
+                SystemBack(setEnabled = { callback.isEnabled = it }, unregister = callback::remove)
             })
         }
         if (savedInstanceState == null) openLink(intent)

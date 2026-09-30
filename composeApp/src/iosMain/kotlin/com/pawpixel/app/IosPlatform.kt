@@ -74,7 +74,10 @@ interface IosHost {
     fun openUrl(url: String)
     /** Approximate location (asks permission; reduced accuracy is fine). */
     fun approximateLocation(completion: LocationCallback)
-    /** Sign in with Apple; the request carries [hashedNonce]. Token null + error null = cancelled. */
+    /**
+     * Sign in with Apple; the request carries [hashedNonce]. Token null + error null = cancelled.
+     * Also returns Apple's one-time authorization code, which the server keeps for revoking on account deletion.
+     */
     fun signInWithApple(hashedNonce: String, completion: TokenCallback)
 }
 
@@ -88,7 +91,7 @@ interface LocationCallback {
 }
 
 interface TokenCallback {
-    fun onResult(token: String?, error: String?)
+    fun onResult(token: String?, authorizationCode: String?, error: String?)
 }
 
 /** Entry points for Swift. */
@@ -234,10 +237,10 @@ class IosPlatform(private val host: IosHost) : Platform {
     override suspend fun signInForMap(hashedNonce: String, googleWebClientId: String): MapIdentity? =
         suspendCancellableCoroutine { cont ->
             host.signInWithApple(hashedNonce, object : TokenCallback {
-                override fun onResult(token: String?, error: String?) {
+                override fun onResult(token: String?, authorizationCode: String?, error: String?) {
                     if (!cont.isActive) return
                     when {
-                        token != null -> cont.resume(MapIdentity("apple", token))
+                        token != null -> cont.resume(MapIdentity("apple", token, authorizationCode))
                         error != null -> cont.resumeWith(Result.failure(IllegalStateException(error)))
                         else -> cont.resume(null)
                     }

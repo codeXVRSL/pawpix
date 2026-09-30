@@ -101,11 +101,17 @@ class AppScope(
 }
 
 /**
+ * The host's system back (Android). PawPixel keeps it [setEnabled] only while there's a screen to go
+ * back to, so on the home screen Android 13+ plays its predictive back-to-home animation.
+ */
+class SystemBack(val setEnabled: (Boolean) -> Unit, val unregister: () -> Unit)
+
+/**
  * Root composable for both platforms.
- * @param registerBack lets the host (Android) route the system back button; returns an unregister call.
+ * @param registerBack lets the host (Android) route the system back gesture to PawPixel's screens.
  */
 @Composable
-fun App(repo: PawRepository, registerBack: ((() -> Boolean) -> (() -> Unit))? = null) {
+fun App(repo: PawRepository, registerBack: ((onBack: () -> Unit) -> SystemBack)? = null) {
     PawTheme {
         val state by repo.state.collectAsState()
         val scope = rememberCoroutineScope()
@@ -150,10 +156,14 @@ fun App(repo: PawRepository, registerBack: ((() -> Boolean) -> (() -> Unit))? = 
         val back: () -> Boolean = {
             if (stack.size > 1) { stack = stack.dropLast(1); true } else false
         }
+        var systemBack by remember { mutableStateOf<SystemBack?>(null) }
         DisposableEffect(registerBack) {
-            val unregister = registerBack?.invoke(back)
-            onDispose { unregister?.invoke() }
+            val registered = registerBack?.invoke { back() }
+            systemBack = registered
+            onDispose { registered?.unregister?.invoke(); systemBack = null }
         }
+        val canGoBack = stack.size > 1
+        LaunchedEffect(systemBack, canGoBack) { systemBack?.setEnabled(canGoBack) }
 
         val current = stack.last()
         val app = AppScope(

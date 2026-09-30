@@ -230,8 +230,8 @@ final class SwiftHost: NSObject, IosHost {
         request.requestedScopes = []   // no name or email needed
         request.nonce = hashedNonce
         let controller = ASAuthorizationController(authorizationRequests: [request])
-        let delegate = AppleSignIn { [weak self] token, error in
-            completion.onResult(token: token, error: error)
+        let delegate = AppleSignIn { [weak self] token, code, error in
+            completion.onResult(token: token, authorizationCode: code, error: error)
             self?.appleDelegate = nil
         }
         appleDelegate = delegate
@@ -371,22 +371,24 @@ private final class ApproximateLocation: NSObject, CLLocationManagerDelegate {
     }
 }
 
-/// Sign in with Apple for the pet map. Returns the identity token; the server checks the nonce.
+/// Sign in with Apple for the pet map. Returns the identity token (the server checks the nonce) and
+/// the one-time authorization code (the server swaps it for a token it revokes when the account is deleted).
 private final class AppleSignIn: NSObject, ASAuthorizationControllerDelegate, ASAuthorizationControllerPresentationContextProviding {
-    private let done: (String?, String?) -> Void
-    init(done: @escaping (String?, String?) -> Void) { self.done = done }
+    private let done: (String?, String?, String?) -> Void
+    init(done: @escaping (String?, String?, String?) -> Void) { self.done = done }
 
     func authorizationController(controller: ASAuthorizationController, didCompleteWithAuthorization authorization: ASAuthorization) {
         guard let credential = authorization.credential as? ASAuthorizationAppleIDCredential,
               let data = credential.identityToken, let token = String(data: data, encoding: .utf8) else {
-            done(nil, "Apple didn't return a sign-in token.")
+            done(nil, nil, "Apple didn't return a sign-in token.")
             return
         }
-        done(token, nil)
+        let code = credential.authorizationCode.flatMap { String(data: $0, encoding: .utf8) }
+        done(token, code, nil)
     }
 
     func authorizationController(controller: ASAuthorizationController, didCompleteWithError error: Error) {
-        if let e = error as? ASAuthorizationError, e.code == .canceled { done(nil, nil) } else { done(nil, error.localizedDescription) }
+        if let e = error as? ASAuthorizationError, e.code == .canceled { done(nil, nil, nil) } else { done(nil, nil, error.localizedDescription) }
     }
 
     func presentationAnchor(for controller: ASAuthorizationController) -> ASPresentationAnchor {
