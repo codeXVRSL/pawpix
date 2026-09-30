@@ -1,0 +1,82 @@
+Attributes: Application, 0x1068f1cd0, pid: 24329, label: 'PawPixel'
+Element subtree:
+ →Application, 0x1068f1cd0, pid: 24329, label: 'PawPixel'
+    Window (Main), 0x1068c9690, {{0.0, 0.0}, {440.0, 956.0}}
+      Other, 0x1068ec770, {{0.0, 0.0}, {440.0, 956.0}}
+        Other, 0x10a22fbe0, {{0.0, 0.0}, {440.0, 956.0}}
+          Other, 0x1068b0cd0, {{0.0, 0.0}, {440.0, 956.0}}
+            Other, 0x1068f9fe0, {{0.0, 0.0}, {440.0, 956.0}}
+              Other, 0x10a22f3a0, {{0.0, 0.0}, {440.0, 956.0}}
+                Other, 0x10a227a10, {{0.0, 0.0}, {440.0, 956.0}}
+                Other, 0x10a213b20, {{0.0, 0.0}, {440.0, 956.0}}
+                ScrollView, 0x10a22d440, {{0.0, 0.0}, {440.0, 956.0}}
+                  Other, 0x10a225630, {{0.0, 0.0}, {440.0, 956.0}}
+                    Other, 0x10a2164e0, {{0.0, 0.0}, {440.0, 956.0}}
+                      Other, 0x10a217140, {{0.0, 0.0}, {440.0, 956.0}}
+                      Other, 0x10a215ca0, {{0.0, 62.0}, {440.0, 860.0}}
+                        Other, 0x10a225a50, {{0.0, 62.0}, {440.0, 860.0}}
+                        Button, 0x10a230420, {{16.0, 78.0}, {68.0, 48.0}}, label: 'Back'
+                        Button, 0x10a22b980, {{366.0, 78.0}, {58.0, 48.0}}, label: 'Edit mochimochimochi's name, type and birthday'
+                        Button, 0x10a2183f0, {{30.0, 152.0}, {380.0, 247.7}}, label: 'Pixel mochimochimochi, doing fine'
+                        Other, 0x10a2361e0, {{30.0, 152.0}, {380.0, 347.7}}
+                        Other, 0x10a236300, {{102.7, 399.7}, {235.0, 32.0}}, label: 'mochimochimochi'
+                        StaticText, 0x10a236420, {{96.0, 431.7}, {248.0, 24.0}}, label: 'mochimochimochi is doing fine'
+                        StaticText, 0x10a236540, {{167.0, 455.7}, {106.3, 28.0}}, label: 'Happiness 5 of 5'
+                        StaticText, 0x10a236660, {{115.7, 483.7}, {209.0, 16.0}}, label: 'Tap mochimochimochi to give pets'
+                        StaticText, 0x10a236780, {{16.0, 525.7}, {398.7, 40.0}}, label: 'Tap Done when you care for mochimochimochi, and it shows here.'
+                        Button, 0x10a2368a0, {{16.0, 577.7}, {248.3, 48.0}}, label: '👪 Share with your household'
+                        Other, 0x10a2369c0, {{16.0, 637.7}, {38.7, 24.0}}, label: 'Care'
+                        Other, 0x10a236ae0, {{30.0, 687.7}, {380.0, 96.0}}
+                        StaticText, 0x10a236c00, {{30.0, 701.7}, {62.3, 24.3}}, label: '🍖 Feed'
+                        Button, 0x10a236d20, {{326.3, 687.7}, {83.7, 48.0}}, label: 'Mark Feed done for mochimochimochi'
+                        StaticText, 0x10a236e40, {{30.0, 728.0}, {159.0, 24.0}}, label: 'Next today 6:00 PM'
+                        Button, 0x10a236f60, {{352.0, 735.7}, {58.0, 48.0}}, label: 'Edit Feed'
+                        StaticText, 0x10a237080, {{30.0, 754.0}, {50.7, 16.0}}, label: '6:00 PM'
+                        Other, 0x10a2371a0, {{30.0, 823.7}, {380.0, 96.0}}
+                        StaticText, 0x10a2372c0, {{30.0, 837.7}, {122.0, 24.3}}, label: '💧 Fresh water'
+                        Button, 0x10a2373e0, {{326.3, 823.7}, {83.7, 48.0}}, label: 'Mark Fresh water done for mochimochimochi'
+                        StaticText, 0x10a237500, {{30.0, 864.0}, {191.0, 24.0}}, label: 'Next tomorrow 8:00 AM'
+                        Button, 0x10a237620, {{352.0, 871.7}, {58.0, 48.0}}, label: 'Edit Fresh water'
+                        StaticText, 0x10a237740, {{30.0, 890.0}, {0.0, 16.0}}
+                        Button, 0x10a237860, {{326.3, 963.7}, {83.7, 40.0}}, label: 'Mark Clean litter done for mochimochimochi'
+                        StaticText, 0x10a237980, {{30.0, 973.7}, {116.3, 24.3}}, label: '🧹 Clean litter'
+                        StaticText, 0x10a237aa0, {{30.0, 1000.0}, {191.0, 24.0}}, label: 'Next tomorrow 9:00 AM'
+                        Button, 0x10a237d10, {{352.0, 1011.7}, {58.0, 40.0}}, label: 'Edit Clean litter'
+                        StaticText, 0x10a237e30, {{30.0, 1026.0}, {0.0, 16.0}}
+                        Button, 0x10a237f50, {{16.0, 1085.7}, {155.3, 40.0}}, label: '+ Add care task'
+                        Other, 0x10a238070, {{30.0, 1155.7}, {309.3, 24.3}}, label: '🔔 Reminders for mochimochimochi?'
+                        StaticText, 0x10a238190, {{30.0, 1188.0}, {380.0, 32.0}}, label: 'A gentle nudge when it's time for these, only for the tasks you set. Change them any time.'
+                        Button, 0x10a2382b0, {{30.0, 1232.0}, {173.0, 40.0}}, label: 'Turn on reminders'
+                        Button, 0x10a2383d0, {{211.0, 1232.0}, {80.7, 40.0}}, label: 'Not now'
+                        Other, 0x10a2384f0, {{16.0, 1322.0}, {54.3, 24.0}}, label: 'Health'
+                        StaticText, 0x10a238610, {{16.0, 1358.0}, {408.0, 96.0}}, label: 'Keep track of mochimochimochi's anti-rabies shot, other vaccines, deworming, tick & flea care and vet check-ups. PawPixel reminds you a few days before each is due.'
+                        Button, 0x10a238730, {{16.0, 1470.0}, {208.0, 40.0}}, label: '+ Add health reminders'
+                        Button, 0x10a238850, {{30.0, 1540.0}, {380.0, 24.0}}, label: 'Rabies rules and where to get shots
+▼'
+                        Other, 0x10a238970, {{16.0, 1610.0}, {57.7, 24.0}}, label: 'Weight'
+                        StaticText, 0x10a238a90, {{16.0, 1646.0}, {408.0, 32.0}}, label: 'Weigh mochimochimochi now and then (a bathroom scale works: weigh yourself holding them, then subtract).'
+                        Button, 0x10a238bb0, {{16.0, 1694.0}, {138.3, 40.0}}, label: '+ Add weight'
+                        Other, 0x10a238cd0, {{16.0, 1770.0}, {57.7, 24.0}}, label: 'Outfits'
+                        StaticText, 0x10a238df0, {{16.0, 1806.0}, {408.0, 32.0}}, label: 'mochimochimochi earns pixel outfits with days of care. Nothing to buy.'
+                        Button, 0x10a237bc0, {{16.0, 1858.0}, {68.0, 32.0}}, label: 'None', Selected
+                        Button, 0x10a239130, {{90.0, 1858.0}, {183.3, 32.0}}, label: '🔒 Bandana · in 3 days', Disabled
+                        Button, 0x10a239250, {{16.0, 1906.0}, {168.3, 32.0}}, label: '🔒 Flower · in 7 days', Disabled
+                        Button, 0x10a239370, {{190.3, 1906.0}, {181.3, 32.0}}, label: '🔒 Bow tie · in 14 days', Disabled
+                        Button, 0x10a239490, {{16.0, 1954.0}, {195.0, 32.0}}, label: '🔒 Party hat · in 30 days', Disabled
+                        Button, 0x10a2395b0, {{16.0, 2002.0}, {211.0, 32.0}}, label: '🔒 Sunglasses · in 50 days', Disabled
+                        Button, 0x10a2396d0, {{233.0, 2002.0}, {183.7, 32.0}}, label: '🔒 Crown · in 100 days', Disabled
+                        Other, 0x10a2397f0, {{16.0, 2074.0}, {117.0, 24.0}}, label: 'Share & sprite'
+                        Button, 0x10a239910, {{16.0, 2114.0}, {158.7, 40.0}}, label: 'Share animation'
+                        Button, 0x10a239a30, {{182.7, 2114.0}, {130.7, 40.0}}, label: 'Before/after'
+                        Button, 0x10a239b50, {{16.0, 2174.0}, {231.7, 40.0}}, label: 'Edit look: photo, face, ears'
+                        Button, 0x10a239c70, {{16.0, 2234.0}, {197.0, 40.0}}, label: 'Delete mochimochimochi'
+    Window, 0x10a239d90, {{0.0, 0.0}, {440.0, 956.0}}
+      Other, 0x10a23a450, {{0.0, 0.0}, {440.0, 956.0}}
+        Other, 0x10a23a570, {{0.0, 0.0}, {440.0, 956.0}}
+Path to element:
+ →Application, 0x1068f1cd0, pid: 24329, label: 'PawPixel'
+Query chain:
+ →Find: Target Application 'com.pawpixel.app'
+  Output: {
+    Application, 0x104aaa6a0, pid: 24329, label: 'PawPixel'
+  }
