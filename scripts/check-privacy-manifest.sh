@@ -31,6 +31,8 @@ audit() { # bundle-dir executable-name
   local syms sels declared used=""
   syms=$(for b in "${bins[@]}"; do nm -u "$b" 2>/dev/null || true; done | sed 's/^ *//' | sort -u)
   sels=$(for b in "${bins[@]}"; do otool -v -s __TEXT __objc_methname "$b" 2>/dev/null || true; done | awk '{print $NF}' | sort -u)
+  # Sanity check of the check: a binary whose imports can't be read would pass vacuously.
+  if [ -z "$syms" ]; then echo "::error::$(basename "$dir"): couldn't read the binary's imported symbols (nm)"; status=1; return; fi
   declared=$(plutil -convert json -o - "$manifest" | python3 -c 'import json,sys; print("\n".join(t["NSPrivacyAccessedAPIType"].replace("NSPrivacyAccessedAPICategory","") for t in json.load(sys.stdin).get("NSPrivacyAccessedAPITypes",[])))')
   while IFS='|' read -r cat kind names; do
     [ -z "$cat" ] && continue
@@ -50,6 +52,7 @@ audit() { # bundle-dir executable-name
   for cat in $declared; do
     grep -qw "$cat" <<<"$used" || echo "   note: declares $cat, not found in the binary (harmless; remove it if nothing needs it)"
   done
+  echo "::notice title=Privacy manifest $(basename "$dir")::uses$(tr ' ' '\n' <<<"$used" | sort -u | tr '\n' ' '| sed 's/ *$//;s/^/ /'); declares $(echo $declared)"
 }
 
 audit "$APP" "$(defaults read "$(cd "$APP" && pwd)/Info" CFBundleExecutable)"

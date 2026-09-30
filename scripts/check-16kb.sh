@@ -14,8 +14,14 @@ bad=0
 echo "== ELF alignment of the bundle's native libraries"
 unzip -q -o "$AAB" '*/lib/*' -d "$WORK/aab" 2>/dev/null || true
 libs=$(find "$WORK/aab" -name '*.so' | sort)
-if [ -z "$libs" ]; then echo "No native libraries in the bundle."; fi
+checked=0
+if [ -z "$libs" ]; then
+  echo "No native libraries in the bundle."
+  # Sanity check of the check: the APK is built from the same code, so it can't have any either.
+  if unzip -l "$APK" | grep -q '\.so$'; then echo "::error::the APK has native libraries but none were found in the bundle"; bad=1; fi
+fi
 for so in $libs; do
+  checked=$((checked + 1))
   abi=$(basename "$(dirname "$so")")
   min=$(readelf -lW "$so" | awk '$1 == "LOAD" { print $NF }' | while read -r a; do echo $((a)); done | sort -n | head -1)
   case "$abi" in
@@ -34,5 +40,9 @@ for f in $(find "$WORK/apks" -name '*.apk' | sort) "$APK"; do
   else echo "::error::$(basename "$f") is not 16 KB aligned:"; grep -v "(OK" "$WORK/zipalign.txt" | tail -20; bad=1; fi
 done
 
-[ $bad = 0 ] && echo "16 KB page size: all good."
+names=$(for so in $libs; do echo "$(basename "$(dirname "$so")")/$(basename "$so")"; done | tr '\n' ' ')
+if [ $bad = 0 ]; then
+  echo "16 KB page size: all good."
+  echo "::notice title=16 KB pages::$checked native libraries checked (${names:-none}), all 16 KB compatible"
+fi
 exit $bad
