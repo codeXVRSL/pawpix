@@ -1,0 +1,68 @@
+PASS  first open goes straight to making a pet  (1350 ms)
+PASS  photo becomes a pixel pet  (3744 ms)
+      note: memory: total PSS 166176 kB, Java heap 36740 kB, native heap 16828 kB, graphics 0 kB
+PASS  memory just after turning the photo into a pet  (301 ms)
+PASS  cat body, floppy ears, then back to pointy  (1816 ms)
+PASS  face square is shown and can be resized  (10625 ms)
+PASS  name and save  (15274 ms)
+PASS  Done on a care task counts and cheers the pet up  (1899 ms)
+PASS  add a medicine task  (5482 ms)
+PASS  health: a kitten's birthday gives her the first-year plan  (24636 ms)
+PASS  health: record a dose with a photo of the vaccination card  (15929 ms)
+      note: anti-rabies after 'a month ago': Due in 11 months
+PASS  health: an anti-rabies shot given a month ago is next due in 11 months  (11435 ms)
+PASS  weight: two weigh-ins draw the chart; the list opens  (7735 ms)
+PASS  milestone: 7 days of care is celebrated and shareable  (11615 ms)
+PASS  outfits: a week of care earns a bandana, and it shows on the pet  (10593 ms)
+PASS  share animation and before/after card open the share sheet  (1784 ms)
+PASS  home screen lists the pet  (2000 ms)
+PASS  settings open and close  (1424 ms)
+PASS  away mode pauses care and comes back  (1809 ms)
+      note: record photo restored for g6vc5unaosqz
+PASS  backup: save a file, then restore one  (7948 ms)
+FAIL  PawPixel Pro: says what it is, and buying it with cash (pretend store) turns it on once paid: AssertionError: not on screen: BySelector [TEXT='\QAbout PawPixel Pro\E']
+      java.lang.AssertionError: not on screen: BySelector [TEXT='\QAbout PawPixel Pro\E']
+      	at com.pawpixel.app.EndToEndTest.find(EndToEndTest.kt:837)
+      	at com.pawpixel.app.EndToEndTest.find$default(EndToEndTest.kt:832)
+      	at com.pawpixel.app.EndToEndTest.proJourney(EndToEndTest.kt:752)
+      	at com.pawpixel.app.EndToEndTest.ownerJourney$lambda$21(EndToEndTest.kt:361)
+      	at com.pawpixel.app.EndToEndTest.$r8$lambda$OdOkiMn0xx7um4VQOd7SiHtt3SY(Unknown Source:0)
+      	at com.pawpixel.app.EndToEndTest$$ExternalSyntheticLambda145.invoke(D8$$SyntheticClass:0)
+      	at com.pawpixel.app.EndToEndTest.step(EndToEndTest.kt:792)
+      	at com.pawpixel.app.EndToEndTest.ownerJourney(EndToEndTest.kt:360)
+      	at java.lang.reflect.Method.invoke(Native Method)
+      	at org.junit.runners.model.FrameworkMethod$1.runReflectiveCall(FrameworkMethod.java:59)
+      	at org.junit.internal.runners.model.ReflectiveCallable.run(ReflectiveCallable.java:12)
+PASS  pet map: join, see the pixel pets nearby, report, RSVP, leave  (20211 ms)
+      note: on Chelsea's page: Litter cleaned by Jamaica · 3:47 PM
+PASS  household: share Chelsea, a partner joins, her Done and her Undo show on this phone  (11729 ms)
+      note: pressed Done on the notification
+PASS  reminder notification with a working Done button  (4023 ms)
+PASS  home-screen widget can be added and draws the pet  (6578 ms)
+      note: widget 2x1: [Chelsea]
+      note: widget 4x1: [Chelsea, Chelsea is happy!]
+      note: widget 2x2: [Chelsea]
+      note: widget 2x3: [Chelsea, Next: 🍖 Feed · 7:00 AM]
+      note: widget 3x2: [Chelsea, Chelsea is happy!, Next: 🍖 Feed · 7:00 AM]
+      note: widget 4x2: [Chelsea, Chelsea is happy!, Next: 🍖 Feed · 7:00 AM]
+      note: widget 4x3: [Chelsea, Chelsea is happy!, Next: 🍖 Feed · 7:00 AM]
+      note: widget 2x2 dark: [Chelsea]
+      note: widget 4x2 dark: [Chelsea, Chelsea is happy!, Next: 🍖 Feed · 7:00 AM]
+PASS  widget: good layouts from a one-row strip to 4x3, light and dark  (2112 ms)
+      note: widget button: 💧 Done for e2ewater
+      note: widget 4x1-due: [Chelsea, Chelsea is happy!, 💧 Done]
+      note: widget 2x3-due: [Chelsea, 💧 Done]
+      note: widget 4x2-due dark: [Chelsea, Chelsea is happy!, 💧 Done]
+      note: widget after Done: Chelsea is happy!, button for null
+PASS  widget: Done on the widget logs care and cheers the pet up  (9265 ms)
+PASS  widget: tapping it opens the pet's page  (12326 ms)
+PASS  widget: each widget can show a different pet  (6615 ms)
+PASS  bundled reminder: one notification, and its Done logs everything in it  (4158 ms)
+PASS  reminders that never arrived: a one-time tip for this phone's background setting  (5996 ms)
+      note: idle 5 s: 48 frames, 35 (72.92%) janky, p50 65ms, p90 93ms, p99 101ms
+      note: scrolling: 227 frames, 170 (74.89%) janky, p50 65ms, p90 101ms, p99 117ms
+      note: memory: total PSS 154056 kB, Java heap 22144 kB, native heap 30992 kB, graphics 0 kB
+PASS  performance: frame times on Chelsea's page (living pet idle, then scrolling)  (20072 ms)
+PASS  large text (200%) on a small phone: the main screens still fit  (32141 ms)
+PASS  dark mode: the main screens  (16977 ms)
+PASS  reopening the app keeps the pet  (47104 ms)

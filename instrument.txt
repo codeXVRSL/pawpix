@@ -1,0 +1,41 @@
+INSTRUMENTATION_STATUS: class=com.pawpixel.app.EndToEndTest
+INSTRUMENTATION_STATUS: current=1
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=1
+INSTRUMENTATION_STATUS: stream=
+com.pawpixel.app.EndToEndTest:
+INSTRUMENTATION_STATUS: test=ownerJourney
+INSTRUMENTATION_STATUS_CODE: 1
+s_glBindAttribLocation: bind attrib 0 name position
+s_glBindAttribLocation: bind attrib 1 name color
+s_glBindAttribLocation: bind attrib 2 name localCoord
+INSTRUMENTATION_STATUS: class=com.pawpixel.app.EndToEndTest
+INSTRUMENTATION_STATUS: current=1
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=1
+INSTRUMENTATION_STATUS: stack=java.lang.IllegalStateException: Some steps failed:
+FAIL  PawPixel Pro: says what it is, and buying it with cash (pretend store) turns it on once paid: AssertionError: not on screen: BySelector [TEXT='\QAbout PawPixel Pro\E']
+	at com.pawpixel.app.EndToEndTest.ownerJourney(EndToEndTest.kt:739)
+
+INSTRUMENTATION_STATUS: stream=
+Error in ownerJourney(com.pawpixel.app.EndToEndTest):
+java.lang.IllegalStateException: Some steps failed:
+FAIL  PawPixel Pro: says what it is, and buying it with cash (pretend store) turns it on once paid: AssertionError: not on screen: BySelector [TEXT='\QAbout PawPixel Pro\E']
+	at com.pawpixel.app.EndToEndTest.ownerJourney(EndToEndTest.kt:739)
+
+INSTRUMENTATION_STATUS: test=ownerJourney
+INSTRUMENTATION_STATUS_CODE: -2
+INSTRUMENTATION_RESULT: stream=
+
+Time: 366.41
+There was 1 failure:
+1) ownerJourney(com.pawpixel.app.EndToEndTest)
+java.lang.IllegalStateException: Some steps failed:
+FAIL  PawPixel Pro: says what it is, and buying it with cash (pretend store) turns it on once paid: AssertionError: not on screen: BySelector [TEXT='\QAbout PawPixel Pro\E']
+	at com.pawpixel.app.EndToEndTest.ownerJourney(EndToEndTest.kt:739)
+
+FAILURES!!!
+Tests run: 1,  Failures: 1
+
+
+INSTRUMENTATION_CODE: -1
