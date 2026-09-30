@@ -1,5 +1,5 @@
 <resources>
-    <color name="widget_background">#2A2433</color>
-    <color name="widget_ink">#F3EAF7</color>
-    <color name="widget_button">#FFB2BC</color>
+    <color name="widget_background">#1F1930</color>
+    <color name="widget_ink">#F7EEE4</color>
+    <color name="widget_button">#FF8093</color>
 </resources>
