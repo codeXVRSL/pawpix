@@ -140,18 +140,19 @@ private fun WidgetTheme(content: @Composable () -> Unit) {
     if (Build.VERSION.SDK_INT >= 31) GlanceTheme(content = content) else GlanceTheme(colors = PAW_COLORS, content = content)
 }
 
+/** The app's palette (see the shared Theme.kt): warm cream and coral by day, deep plum by night. */
 private val PAW_COLORS = ColorProviders(
     light = lightColorScheme(
-        primary = Color(0xFFB3223A), onPrimary = Color.White,
-        surface = Color(0xFFFFF4E0), onSurface = Color(0xFF2B2135),
-        surfaceVariant = Color(0xFFF6E6CB), onSurfaceVariant = Color(0xFF4A3D55),
-        background = Color(0xFFFFF4E0), onBackground = Color(0xFF2B2135),
+        primary = Color(0xFFD9364F), onPrimary = Color.White,
+        surface = Color(0xFFFFF7EC), onSurface = Color(0xFF2B2135),
+        surfaceVariant = Color(0xFFFFE9CF), onSurfaceVariant = Color(0xFF6A5C78),
+        background = Color(0xFFFFF7EC), onBackground = Color(0xFF2B2135),
     ),
     dark = darkColorScheme(
-        primary = Color(0xFFFFB2BC), onPrimary = Color(0xFF5E0B1C),
-        surface = Color(0xFF2A2433), onSurface = Color(0xFFF3EAF7),
-        surfaceVariant = Color(0xFF3A3345), onSurfaceVariant = Color(0xFFD9CEE0),
-        background = Color(0xFF2A2433), onBackground = Color(0xFFF3EAF7),
+        primary = Color(0xFFFF8093), onPrimary = Color(0xFF4A0A18),
+        surface = Color(0xFF1F1930), onSurface = Color(0xFFF7EEE4),
+        surfaceVariant = Color(0xFF2B2340), onSurfaceVariant = Color(0xFFC9BDD6),
+        background = Color(0xFF1F1930), onBackground = Color(0xFFF7EEE4),
     ),
 )
 

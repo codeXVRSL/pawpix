@@ -35,6 +35,24 @@ The map is off until you add your server and sign-in settings (`docs/MAP_SETUP.m
 
 Build: see the top of `web/build_web.py`.
 
+## The look
+
+"Soft pixel": crisp pixel pets inside soft, warm, rounded chrome. One design system in
+`composeApp/.../ui/Theme.kt` (palette, shapes, type) and `Components.kt` (cards, pills, chips, hearts,
+confetti, spring motion) drives every screen on both platforms:
+
+- Warm cream by day, deep plum by night; one coral accent for what matters (Done, the pet's mood),
+  leaf green for good news, lavender for sleep. Every text colour meets WCAG AA on its surface.
+- The pet's stage has a sky that follows the real time of day (peach dawn, soft blue day,
+  apricot-to-lavender dusk, starry indigo through the owner's set bedtime), dimmed in dark mode.
+- Cards are 24dp-round and soft; every button and chip is a pill that springs when pressed
+  (Material 3 Expressive's spring tokens, on the stable Material 3 so iOS builds the same code).
+- Care feels rewarding, never nagging: pixel hearts fill as care is logged, Done sends up a burst of
+  hearts with a haptic, the pet reacts on stage, milestones get short confetti, and the week shows
+  days cared for rather than a streak that can break. Mood copy is never accusatory.
+- Big display type for names and section titles, relaxed body text, generous 16dp gutters, and
+  48dp+ touch targets; every control keeps a spoken label for screen readers.
+
 ## Project layout
 
 ```

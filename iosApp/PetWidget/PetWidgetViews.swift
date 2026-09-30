@@ -47,11 +47,12 @@ enum Palette {
             return UIColor(red: c.0, green: c.1, blue: c.2, alpha: 1)
         })
     }
-    static let paper = dynamic((1.0, 0.957, 0.878), (0.165, 0.141, 0.2))
-    static let ink = dynamic((0.17, 0.13, 0.21), (0.953, 0.918, 0.969))
-    static let soft = dynamic((0.29, 0.24, 0.33), (0.85, 0.81, 0.88))
-    static let berry = dynamic((0.70, 0.13, 0.23), (1.0, 0.70, 0.74))
-    static let onBerry = dynamic((1, 1, 1), (0.37, 0.04, 0.11))
+    // The app's palette (see the shared Theme.kt): cream #FFF7EC / plum #1F1930, ink #2B2135, coral #D9364F.
+    static let paper = dynamic((1.0, 0.969, 0.925), (0.122, 0.098, 0.188))
+    static let ink = dynamic((0.17, 0.13, 0.21), (0.969, 0.933, 0.894))
+    static let soft = dynamic((0.416, 0.361, 0.471), (0.788, 0.741, 0.839))
+    static let berry = dynamic((0.851, 0.212, 0.31), (1.0, 0.502, 0.576))
+    static let onBerry = dynamic((1, 1, 1), (0.29, 0.04, 0.094))
 }
 
 // MARK: - Views
