@@ -1,0 +1,37 @@
+PASS  an area with 2 owners stays hidden
+PASS  its pets stay hidden too
+PASS  with 3 owners the area appears, counting pets
+PASS  pets come back with look codes
+PASS  no owner ids or photos are exposed
+PASS  row security: you can't list other owners' pets
+PASS  row security: you can't read anyone's area
+PASS  signed-out callers get nothing
+PASS  blocking an owner drops the area below 3, so it hides
+PASS  blocks work both ways only for the pair (others still see it)
+PASS  reports reach the moderator
+PASS  reporters can't read reports back
+PASS  gatherings list shows no venue
+PASS  the raw gatherings table isn't readable
+PASS  venue hidden before RSVP
+PASS  RSVP reveals the venue
+PASS  capacity is enforced
+PASS  you must join the map to RSVP
+PASS  you can cancel
+PASS  a banned owner's pets disappear (area drops below 3)
+PASS  a banned owner can't unban themselves
+PASS  pet names are filtered on the server ('G4g0' -> 'A dog')
+PASS  pet names are filtered on the server ('tang!na mo' -> 'A dog')
+PASS  pet names are filtered on the server ('Grape' -> 'Grape')
+PASS  pet names are filtered on the server ('Petite' -> 'Petite')
+PASS  look codes are validated
+PASS  presence must be a grid cell id, not coordinates
+PASS  leaving the map removes your area
+PASS  the apple-revoke function (service role) can keep an Apple token
+PASS  an owner can't read their own Apple token
+PASS  signed-out callers can't read Apple tokens
+PASS  an owner can't write an Apple token
+PASS  an owner can't delete an Apple token either
+PASS  deleting the account removes it and everything with it
+PASS  a deleted account's Apple token goes with it
+
+all map backend checks passed

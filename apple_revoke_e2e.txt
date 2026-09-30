@@ -1,0 +1,24 @@
+PASS  the apple-revoke function is served
+PASS  no session: refused
+PASS  a forged session: refused
+PASS  a body that isn't JSON: refused
+PASS  an unknown action: refused
+PASS  owners can't revoke without deleting (support only)
+PASS  a non-Apple account can't hand over an Apple code
+PASS  the code hand-off needs a code
+PASS  support revocation says it isn't set up
+PASS  without Apple secrets the code hand-off succeeds but stores nothing
+PASS  no Apple token row was written
+PASS  the service role can keep an Apple token
+PASS  the owner can't read it
+PASS  the Apple owner joins the map
+PASS  deleting through the function works without Apple secrets
+PASS  the account is gone
+PASS  its map profile and Apple token went with it
+PASS  deleting again (the app's fallback) is harmless
+PASS  a Google/email account can be deleted through the function too
+PASS  that account is gone
+PASS  the function logged that revocation was skipped
+PASS  the function never logged a token
+
+all apple-revoke checks passed

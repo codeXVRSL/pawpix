@@ -1,0 +1,21 @@
+Check supabase/functions/apple-revoke/apple.ts
+Check supabase/functions/apple-revoke/handler.ts
+Check supabase/functions/apple-revoke/handler_test.ts
+Check supabase/functions/apple-revoke/index.ts
+Check supabase/functions/apple-revoke/handler_test.ts
+running 12 tests from ./supabase/functions/apple-revoke/handler_test.ts
+store: the authorization code becomes a refresh token kept only on the server ... ok (70ms)
+delete_account: Apple revokes the stored token, then the account is deleted ... ok (4ms)
+delete_account with no token on file deletes without calling Apple (and works for Google accounts) ... ok (1ms)
+if Apple refuses the revocation, the account is still deleted and the failure is logged ... ok (2ms)
+if deleting fails, the app hears an error (and can retry) ... ok (925µs)
+a code Apple refuses stores nothing ... ok (1ms)
+no session, a bad session or a Google account: refused before Apple is called ... ok (1ms)
+support can revoke by user id with the service role key, and only revoke ... ok (2ms)
+without the Apple secrets: nothing is stored, deleting still works, and the log says why ... ok (743µs)
+a private key pasted with literal \n line breaks still signs; APPLE_CLIENT_ID overrides the bundle id ... ok (1ms)
+clientSecret: an ES256 JWT for Apple, checked against the key ... ok (2ms)
+appleConfig needs team, key id and key; the client id defaults to the bundle id ... ok (150µs)
+
+ok | 12 passed | 0 failed (91ms)
+

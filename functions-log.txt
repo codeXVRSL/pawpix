@@ -1,0 +1,19 @@
+Serving functions on http://127.0.0.1:54321/functions/v1/<function-name>
+ - http://127.0.0.1:54321/functions/v1/apple-revoke
+Using supabase-edge-runtime-1.76.2 (compatible with Deno v2.1.4)
+serving the request with supabase/functions/apple-revoke
+serving the request with supabase/functions/apple-revoke
+serving the request with supabase/functions/apple-revoke
+serving the request with supabase/functions/apple-revoke
+serving the request with supabase/functions/apple-revoke
+serving the request with supabase/functions/apple-revoke
+serving the request with supabase/functions/apple-revoke
+serving the request with supabase/functions/apple-revoke
+serving the request with supabase/functions/apple-revoke
+serving the request with supabase/functions/apple-revoke
+[Info] apple-revoke: Sign in with Apple revocation isn't set up (APPLE_TEAM_ID, APPLE_KEY_ID, APPLE_PRIVATE_KEY); not keeping a token for 18fbf15b-fbf8-44ab-b62f-7be8de761e18.
+
+serving the request with supabase/functions/apple-revoke
+[Info] apple-revoke: Sign in with Apple revocation isn't set up (APPLE_TEAM_ID, APPLE_KEY_ID, APPLE_PRIVATE_KEY); deleting 18fbf15b-fbf8-44ab-b62f-7be8de761e18 without revoking at Apple.
+
+serving the request with supabase/functions/apple-revoke
