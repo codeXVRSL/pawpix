@@ -143,12 +143,15 @@ class PlayStore(private val context: Context, private val activity: () -> Activi
         }
         if (result.responseCode != BillingResponseCode.OK) {
             // Play's billing service wouldn't even connect: the store isn't usable here (not "offline").
-            throw StoreException(if (result.responseCode == BillingResponseCode.SERVICE_DISCONNECTED) StoreProblem.UNAVAILABLE else problemOf(result))
+            // Only a network error means offline; a phone without a working Play Store answers with
+            // SERVICE_UNAVAILABLE / DISCONNECTED / BILLING_UNAVAILABLE here.
+            android.util.Log.w("PawPixel", "Play Billing setup: ${result.responseCode} ${result.debugMessage}")
+            throw StoreException(if (result.responseCode == BillingResponseCode.NETWORK_ERROR) StoreProblem.OFFLINE else StoreProblem.UNAVAILABLE)
         }
     }
 
     private fun hasPlayStore(): Boolean = runCatching {
-        context.packageManager.getPackageInfo("com.android.vending", 0); true
+        context.packageManager.getApplicationInfo("com.android.vending", 0).enabled
     }.getOrDefault(false)
 
     private suspend fun details(): ProductDetails {
