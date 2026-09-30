@@ -94,7 +94,7 @@ final class OwnerJourneyTests: XCTestCase {
             let ret = app.keyboards.buttons["Return"].exists ? app.keyboards.buttons["Return"] : app.keyboards.buttons["return"]
             if tipContinue.exists { tipContinue.tap(); sleep(1) }
             if ret.exists && ret.isHittable { ret.tap() }
-            try scrollTo("Save").tap() // the header's Save
+            try scrollTo("Save \(petName)").tap() // the big Save under the form (the header's can sit under the status bar after the keyboard scrolls the page)
             allowNotificationsIfAsked()
             try find("Care", timeout: 30)
             sleep(2)
@@ -283,11 +283,14 @@ final class OwnerJourneyTests: XCTestCase {
     /// face-square photo, until iOS reports it hittable. Logs positions so a stuck scroll is visible.
     @discardableResult
     private func scrollTo(query e: XCUIElement, _ what: String) throws -> XCUIElement {
+        // "Hittable" but tucked under the status bar (a top-bar button after the keyboard scrolled the
+        // page) still can't be tapped: keep scrolling until it is clear of it.
+        func onScreen() -> Bool { e.exists && e.isHittable && e.frame.minY >= 60 }
         _ = e.waitForExistence(timeout: 5)
-        if e.exists && e.isHittable { return settled(e) }
+        if onScreen() { return settled(e) }
         for up in [true, false] {
             for i in 0..<8 {
-                if e.exists && e.isHittable { return settled(e) }
+                if onScreen() { return settled(e) }
                 let from = app.coordinate(withNormalizedOffset: CGVector(dx: 0.985, dy: up ? 0.7 : 0.3))
                 let to = app.coordinate(withNormalizedOffset: CGVector(dx: 0.985, dy: up ? 0.3 : 0.7))
                 if i % 2 == 0 { from.press(forDuration: 0.05, thenDragTo: to) }
