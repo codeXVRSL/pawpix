@@ -28,17 +28,17 @@ import com.pawpixel.i18n.tr
 fun BackgroundTipCard(platform: Platform) {
     var tip by remember { mutableStateOf(platform.backgroundTip()) }
     val shown = tip ?: return
-    PixelCard(Modifier.fillMaxWidth()) {
+    SoftCard(Modifier.fillMaxWidth(), tone = Tone.Calm) {
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text(tr("Some reminders didn't arrive"), fontWeight = FontWeight.Bold)
+            Text(tr("Some reminders didn't arrive"), style = MaterialTheme.typography.titleMedium)
             Text(
                 if (shown.brand != null) tr("Your {0} phone may be closing PawPixel in the background, so reminders can come late or not at all. To fix it:", shown.brand)
                 else tr("Your phone may be closing PawPixel in the background, so reminders can come late or not at all. To fix it:"),
             )
             Text(shown.steps, style = MaterialTheme.typography.bodySmall)
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Button(onClick = { platform.openBackgroundSettings() }) { Text(tr("Open settings")) }
-                TextButton(onClick = { platform.dismissBackgroundTip(); tip = null }) { Text(tr("Got it")) }
+                PrimaryPill(tr("Open settings")) { platform.openBackgroundSettings() }
+                LinkButton(tr("Got it"), color = MaterialTheme.colorScheme.onTertiaryContainer) { platform.dismissBackgroundTip(); tip = null }
             }
         }
     }

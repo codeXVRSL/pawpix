@@ -1,12 +1,14 @@
 package com.pawpixel.app.ui
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
@@ -14,10 +16,7 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.AssistChip
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -40,6 +39,20 @@ import com.pawpixel.i18n.tr
 const val SUPPORT_EMAIL = "support@pawpixel.app" // TODO: replace with your real support address before release
 const val APP_VERSION = "1.0.0"
 const val PRIVACY_URL = "https://pawpixel.app/privacy" // TODO: publish docs/PRIVACY.md here
+
+/** A settings group: an emoji, a title, and its rows in one soft card. */
+@Composable
+private fun Group(emoji: String, title: String, content: @Composable () -> Unit) {
+    SoftCard(Modifier.fillMaxWidth(), tone = Tone.Surface) {
+        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                IconTile(emoji, size = 36.dp)
+                GroupLabel(title, Modifier.padding(top = 0.dp))
+            }
+            content()
+        }
+    }
+}
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -69,109 +82,115 @@ fun SettingsScreen(app: AppScope, state: AppState) {
     Column(
         Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding()
             .imePadding() // keeps the focused field and buttons above the keyboard
-            .verticalScroll(rememberScrollState()).padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(14.dp),
+            .verticalScroll(rememberScrollState()).padding(horizontal = 16.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            BackButton(app)
-            ScreenTitle(tr("Settings"), Modifier.weight(1f))
+        TopBar(app, tr("Settings"))
+
+        Group("🔔", tr("Reminders")) {
+            SwitchRow(tr("Reminders"), tr("Notifications for care tasks."), s.remindersEnabled) { on ->
+                if (on) app.repo.platform.requestNotificationPermission()
+                app.launch { app.repo.setSettings(s.copy(remindersEnabled = on)) }
+            }
+            if (s.remindersEnabled) BackgroundTipCard(app.repo.platform)
         }
 
-        SwitchRow(tr("Reminders"), tr("Notifications for care tasks."), s.remindersEnabled) { on ->
-            if (on) app.repo.platform.requestNotificationPermission()
-            app.launch { app.repo.setSettings(s.copy(remindersEnabled = on)) }
+        Group("🌏", tr("Language")) {
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                // The language names themselves stay as they are, so anyone can find their own.
+                listOf("" to tr("Phone's language"), "en" to "English", "fil" to "Filipino").forEach { (code, label) ->
+                    ChoiceChip(s.language == code, { app.launch { app.repo.setSettings(s.copy(language = code)) } }, label)
+                }
+            }
+            Hint(tr("Filipino translations are new: tell us if something sounds off."))
         }
-        if (s.remindersEnabled) BackgroundTipCard(app.repo.platform)
 
-        GroupLabel(tr("Language"))
-        FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            // The language names themselves stay as they are, so anyone can find their own.
-            listOf("" to tr("Phone's language"), "en" to "English", "fil" to "Filipino").forEach { (code, label) ->
-                FilterChip(
-                    selected = s.language == code,
-                    onClick = { app.launch { app.repo.setSettings(s.copy(language = code)) } },
-                    label = { Text(label) },
-                )
+        Group("👪", tr("Household")) {
+            val household = app.repo.family.household
+            Text(
+                household?.let { if (it.members.size == 1) tr("You're in {0} (just you so far).", it.name) else tr("You're in {0} ({1} people).", it.name, it.members.size) }
+                    ?: tr("Care for your pets together: everyone's Done taps show on every phone."),
+                style = MaterialTheme.typography.bodyMedium,
+            )
+            if (household != null) {
+                TonalPill(tr("Household settings")) { app.navigate(Screen.Family()) }
+            } else {
+                TonalPill(tr("Join a household")) { app.navigate(Screen.Family(join = true)) }
             }
         }
-        Text(tr("Filipino translations are new: tell us if something sounds off."), style = MaterialTheme.typography.bodySmall)
 
-        GroupLabel(tr("Household"))
-        val household = app.repo.family.household
-        Text(
-            household?.let { if (it.members.size == 1) tr("You're in {0} (just you so far).", it.name) else tr("You're in {0} ({1} people).", it.name, it.members.size) }
-                ?: tr("Care for your pets together: everyone's Done taps show on every phone."),
-            style = MaterialTheme.typography.bodySmall,
-        )
-        if (household != null) {
-            OutlinedButton(onClick = { app.navigate(Screen.Family()) }) { Text(tr("Household settings")) }
-        } else {
-            OutlinedButton(onClick = { app.navigate(Screen.Family(join = true)) }) { Text(tr("Join a household")) }
-        }
-
-        GroupLabel(tr("Away from home"))
-        if (state.isAway(app.now)) {
-            Text(tr("Care reminders are paused until {0}. Your pets won't fret over care missed while you're away.", formatDate(s.awayUntilMs, app.repo.clock)))
-            OutlinedButton(onClick = { app.launch { app.repo.setAway(0) } }) { Text(tr("I'm back")) }
-        } else {
-            Text(
-                tr("Travelling, or a pet-sitter in charge? Pause care reminders, and your pixel pet won't fret over care it missed."),
-                style = MaterialTheme.typography.bodySmall,
-            )
-            FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                listOf(1 to "Away 1 day", 3 to "Away 3 days", 7 to "Away 1 week", 14 to "Away 2 weeks").forEach { (days, label) ->
-                    AssistChip(onClick = { app.launch { app.repo.setAway(days) } }, label = { Text(tr(label)) })
+        Group("🧳", tr("Away from home")) {
+            if (state.isAway(app.now)) {
+                Text(tr("Care reminders are paused until {0}. Your pets won't fret over care missed while you're away.", formatDate(s.awayUntilMs, app.repo.clock)), style = MaterialTheme.typography.bodyMedium)
+                PrimaryPill(tr("I'm back")) { app.launch { app.repo.setAway(0) } }
+            } else {
+                Text(
+                    tr("Travelling, or a pet-sitter in charge? Pause care reminders, and your pixel pet won't fret over care it missed."),
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    listOf(1 to "Away 1 day", 3 to "Away 3 days", 7 to "Away 1 week", 14 to "Away 2 weeks").forEach { (days, label) ->
+                        ChoiceChip(false, { app.launch { app.repo.setAway(days) } }, tr(label))
+                    }
                 }
             }
         }
 
-        GroupLabel(tr("Bedtime"))
-        Text(tr("Your pixel pet sleeps between these times unless something important is overdue."), style = MaterialTheme.typography.bodySmall)
-        TimeStepper(tr("Sleeps at"), s.nightStart) { app.launch { app.repo.setSettings(s.copy(nightStart = it)) } }
-        TimeStepper(tr("Wakes at"), s.nightEnd) { app.launch { app.repo.setSettings(s.copy(nightEnd = it)) } }
+        Group("🌙", tr("Bedtime")) {
+            Text(tr("Your pixel pet sleeps between these times unless something important is overdue."), style = MaterialTheme.typography.bodyMedium)
+            TimeStepper(tr("Sleeps at"), s.nightStart) { app.launch { app.repo.setSettings(s.copy(nightStart = it)) } }
+            TimeStepper(tr("Wakes at"), s.nightEnd) { app.launch { app.repo.setSettings(s.copy(nightEnd = it)) } }
+        }
 
-        GroupLabel(tr("PawPixel Pro"))
-        Text(tr("Your first pet is free forever. Pro (coming soon) adds more pets, AI-enhanced sprites and hand-finished sprites by a pixel artist."))
-        if (app.repo.platform.isDebugBuild) {
-            SwitchRow(tr("Test build: unlock Pro features"), tr("Only in test builds, until in-app purchases are connected."), s.pro) {
-                app.launch { app.repo.setSettings(s.copy(pro = it)) }
+        Group("✨", tr("PawPixel Pro")) {
+            Text(tr("Your first pet is free forever. Pro (coming soon) adds more pets, AI-enhanced sprites and hand-finished sprites by a pixel artist."), style = MaterialTheme.typography.bodyMedium)
+            if (app.repo.platform.isDebugBuild) {
+                SwitchRow(tr("Test build: unlock Pro features"), tr("Only in test builds, until in-app purchases are connected."), s.pro) {
+                    app.launch { app.repo.setSettings(s.copy(pro = it)) }
+                }
             }
         }
 
-        GroupLabel(tr("Backup"))
-        Text(
-            tr(
-                "Changing phones? Save a backup file (to Google Drive, Files or email) and restore it on your new phone, Android or iPhone. " +
-                    "It holds your pets, their pixel looks, care tasks and history.",
-            ),
-            style = MaterialTheme.typography.bodySmall,
-        )
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            OutlinedButton(enabled = state.pets.isNotEmpty() && !busy, onClick = {
-                busy = true; backupMessage = null
-                app.launch { try { backupMessage = app.repo.exportBackup()?.let { tr(it) } } finally { busy = false } }
-            }) { Text(tr("Save backup file")) }
-            OutlinedButton(enabled = !busy, onClick = { backupMessage = null; pickBackup() }) { Text(tr("Restore")) }
+        Group("💾", tr("Backup")) {
+            Text(
+                tr(
+                    "Changing phones? Save a backup file (to Google Drive, Files or email) and restore it on your new phone, Android or iPhone. " +
+                        "It holds your pets, their pixel looks, care tasks and history.",
+                ),
+                style = MaterialTheme.typography.bodyMedium,
+            )
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                TonalPill(tr("Save backup file"), enabled = state.pets.isNotEmpty() && !busy) {
+                    busy = true; backupMessage = null
+                    app.launch { try { backupMessage = app.repo.exportBackup()?.let { tr(it) } } finally { busy = false } }
+                }
+                GhostPill(tr("Restore"), enabled = !busy) { backupMessage = null; pickBackup() }
+            }
+            backupMessage?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = Paw.palette.good) }
         }
-        backupMessage?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.secondary) }
 
-        GroupLabel(tr("Privacy"))
-        Text(
-            tr(
-                "Everything stays on this phone: no account, no uploads, no tracking. (Your phone's own backup may include it, and backup files go only where you save them.) Your photo is turned into a sprite on the device, " +
-                    "and only a small crop is kept for your before/after card. Deleting the app deletes what's on the phone (Android's own Google backup may keep a copy until you remove it in Google Drive). " +
-                    "The pet map is optional: only if you join it, your pixel pets, their names and your rough area (about 1 km, never " +
-                    "your exact location) go to PawPixel's map server, with the Google or Apple account you sign in with. " +
-                    "Sharing with your household is optional too: only then, the pets you share (name, pixel look, care and health " +
-                    "schedules), who did each task and the name you show go to PawPixel's server, for your household only. Never photos. " +
-                    "On Android, Google's on-device pet detector (ML Kit) sends Google anonymous performance data, never your photos.",
-            ),
-        )
-        OutlinedButton(onClick = { app.repo.platform.openUrl(PRIVACY_URL) }) { Text(tr("Privacy policy")) }
-        OutlinedButton(onClick = { app.repo.platform.openUrl("mailto:$SUPPORT_EMAIL") }) { Text(tr("Contact support")) }
-        TextButton(onClick = { confirmWipe = true }) { Text(tr("Delete all my data"), color = MaterialTheme.colorScheme.error) }
+        Group("🔒", tr("Privacy")) {
+            Text(
+                tr(
+                    "Everything stays on this phone: no account, no uploads, no tracking. (Your phone's own backup may include it, and backup files go only where you save them.) Your photo is turned into a sprite on the device, " +
+                        "and only a small crop is kept for your before/after card. Deleting the app deletes what's on the phone (Android's own Google backup may keep a copy until you remove it in Google Drive). " +
+                        "The pet map is optional: only if you join it, your pixel pets, their names and your rough area (about 1 km, never " +
+                        "your exact location) go to PawPixel's map server, with the Google or Apple account you sign in with. " +
+                        "Sharing with your household is optional too: only then, the pets you share (name, pixel look, care and health " +
+                        "schedules), who did each task and the name you show go to PawPixel's server, for your household only. Never photos. " +
+                        "On Android, Google's on-device pet detector (ML Kit) sends Google anonymous performance data, never your photos.",
+                ),
+                style = MaterialTheme.typography.bodySmall,
+            )
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                GhostPill(tr("Privacy policy")) { app.repo.platform.openUrl(PRIVACY_URL) }
+                GhostPill(tr("Contact support")) { app.repo.platform.openUrl("mailto:$SUPPORT_EMAIL") }
+            }
+            LinkButton(tr("Delete all my data"), color = MaterialTheme.colorScheme.error) { confirmWipe = true }
+        }
 
-        Text("PawPixel $APP_VERSION", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Hint("PawPixel $APP_VERSION", Modifier.padding(start = 4.dp))
+        Spacer(Modifier.height(16.dp))
     }
 
     pendingRestore?.let { contents ->
@@ -225,9 +244,9 @@ private fun TimeStepper(label: String, minute: Int, onChange: (Int) -> Unit) {
     val earlier = tr("{0}: 30 minutes earlier than {1}", label, time)
     val later = tr("{0}: 30 minutes later than {1}", label, time)
     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text(label, Modifier.weight(1f))
-        OutlinedButton(onClick = { onChange((minute - 30).mod(MINUTES_PER_DAY)) }, modifier = Modifier.semantics { contentDescription = earlier }) { Text("−30") }
+        Text(label, Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium)
+        RoundIconButton("−", earlier) { onChange((minute - 30).mod(MINUTES_PER_DAY)) }
         Text(time, fontWeight = FontWeight.Bold, maxLines = 1, softWrap = false)
-        OutlinedButton(onClick = { onChange((minute + 30).mod(MINUTES_PER_DAY)) }, modifier = Modifier.semantics { contentDescription = later }) { Text("+30") }
+        RoundIconButton("+", later) { onChange((minute + 30).mod(MINUTES_PER_DAY)) }
     }
 }

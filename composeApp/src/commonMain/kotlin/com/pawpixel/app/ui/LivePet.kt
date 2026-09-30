@@ -5,6 +5,7 @@ import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.produceState
 import com.pawpixel.sprite.AnimationSet
 import kotlinx.coroutines.Dispatchers
@@ -19,6 +20,7 @@ import androidx.compose.runtime.withFrameMillis
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.FilterQuality
 import androidx.compose.ui.graphics.ImageBitmap
@@ -61,6 +63,8 @@ fun LivePet(
     reaction: Reaction? = null,
     /** What a screen reader says: the pet's name and mood (see [com.pawpixel.core.MoodEngine.describe]). */
     description: String? = null,
+    /** Sky and floor colours; the theme's plain floor when null. */
+    scene: StageScene? = null,
     onPetted: () -> Unit = {},
 ) {
     if (art == null) return
@@ -112,9 +116,11 @@ fun LivePet(
     LaunchedEffect(reaction, brain) { reaction?.let { brain.react(it.event, clock[1]) } }
 
     // In dark mode a sand floor glared under the pet: a dusky one instead.
-    val dark = androidx.compose.foundation.isSystemInDarkTheme()
-    val floorColor = if (dark) Color(0xFF4A3D5C) else PawColors.Sand
-    val floorLine = if (dark) Color(0xFF6B5A80) else Color(0xFFE9C99A)
+    val palette = Paw.palette
+    val floorColor = scene?.floor ?: palette.floor
+    val floorLine = scene?.floorLine ?: palette.floorLine
+    val sky = scene?.let { remember(it) { Brush.verticalGradient(0f to it.skyTop, 1f to it.skyBottom) } }
+    val stars = remember(scene?.stars) { if (scene?.stars == true) starField(seed) else emptyList() }
     val petLabel = tr("Give pets")
     Canvas(
         modifier
@@ -150,6 +156,15 @@ fun LivePet(
         fun sx(v: Double) = left + (v * px).toFloat()
         fun sy(v: Double) = top + (v * px).toFloat()
 
+        // Sky (only inside a stage), with a few pixel stars at night
+        if (sky != null) drawRect(sky, Offset.Zero, Size(size.width, sy(layout.floorY - 2.0)))
+        if (stars.isNotEmpty()) {
+            val skyH = sy(layout.floorY - 2.0)
+            for ((fx, fy, big) in stars) {
+                val s = if (big) 2 * px else px
+                drawRect(Color(0xCCFFF6D5), Offset((fx * size.width / px).toInt() * px, (fy * skyH / px).toInt() * px), Size(s, s))
+            }
+        }
         // Floor
         drawRect(floorLine, Offset(0f, sy(layout.floorY - 2.0)), Size(size.width, px))
         drawRect(floorColor, Offset(0f, sy(layout.floorY - 1.0)), Size(size.width, size.height - sy(layout.floorY - 1.0)))
@@ -205,4 +220,35 @@ private fun pixelScale(widthPx: Float, stageWidth: Int): Float {
 
 private inline fun DrawScope.withFlip(flip: Boolean, pivotX: Float, block: DrawScope.() -> Unit) {
     if (flip) scale(-1f, 1f, pivot = Offset(pivotX, 0f)) { block() } else block()
+}
+
+/** The colours around the pet: sky top and bottom, the floor, and whether stars show. */
+@Immutable
+data class StageScene(val skyTop: Color, val skyBottom: Color, val floor: Color, val floorLine: Color, val stars: Boolean = false)
+
+/** A handful of pixel stars at fixed places (fractions of the sky), the same for one pet. */
+private fun starField(seed: Int): List<Triple<Float, Float, Boolean>> {
+    val r = kotlin.random.Random(seed)
+    return List(14) { Triple(r.nextFloat(), r.nextFloat() * 0.75f, r.nextInt(4) == 0) }
+}
+
+/**
+ * The sky over the pet follows the real time of day: peach at dawn, soft blue by day, apricot to
+ * lavender at dusk, and deep indigo with stars during the owner's set night. In dark mode the
+ * daytime skies are dimmed, so the page stays restful.
+ */
+@Composable
+fun sceneFor(minuteOfDay: Int, nightStart: Int, nightEnd: Int): StageScene {
+    val p = Paw.palette
+    val night = if (nightStart <= nightEnd) minuteOfDay in nightStart until nightEnd else (minuteOfDay >= nightStart || minuteOfDay < nightEnd)
+    val h = minuteOfDay / 60f
+    fun dim(c: Color) = if (p.dark) Color(c.red * 0.42f, c.green * 0.40f, c.blue * 0.5f) else c
+    return when {
+        night -> StageScene(Color(0xFF1B2440), Color(0xFF3A2B4A), Color(0xFF2F2742), Color(0xFF4A3F63), stars = true)
+        h < 5.5f -> StageScene(Color(0xFF1B2440), Color(0xFF3A2B4A), Color(0xFF2F2742), Color(0xFF4A3F63), stars = true)
+        h < 8f -> StageScene(dim(Color(0xFFFFD1C2)), dim(Color(0xFFFFF1E0)), p.floor, p.floorLine)
+        h < 16.5f -> StageScene(dim(Color(0xFFCFE6FA)), dim(Color(0xFFFFF1E0)), p.floor, p.floorLine)
+        h < 19f -> StageScene(dim(Color(0xFFFFC49A)), dim(Color(0xFFD9C8EC)), p.floor, p.floorLine)
+        else -> StageScene(Color(0xFF1B2440), Color(0xFF3A2B4A), Color(0xFF2F2742), Color(0xFF4A3F63), stars = true)
+    }
 }

@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -63,24 +64,21 @@ fun HealthSection(app: AppScope, state: AppState, pet: Pet) {
             tr("Keep track of {0}'s anti-rabies shot, other vaccines, deworming, tick & flea care and vet check-ups.", pet.name) + " " +
                 tr("PawPixel reminds you a few days before each is due."),
         )
-        Button(onClick = { if (pet.birthDay == null) askBirthday = true else app.launch { app.repo.addHealthCare(pet, null) } }) {
-            Text(tr("+ Add health reminders"))
-        }
+        PrimaryPill(tr("+ Add health reminders")) { if (pet.birthDay == null) askBirthday = true else app.launch { app.repo.addHealthCare(pet, null) } }
     } else if (health.any { it.scheduled }) {
         Text(
             tr("Typical schedule — confirm with your vet."),
-            style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.secondary, fontWeight = FontWeight.Bold,
+            style = MaterialTheme.typography.labelMedium, color = Paw.palette.good,
         )
     }
     // Keyed by task, so each row keeps its own dialogs when the order changes.
     health.forEach { h -> key(h.task.id) { HealthRow(app, state, pet, h) } }
     if (health.isNotEmpty()) {
-        TextButton(onClick = { app.navigate(Screen.EditTask(pet.id, null, health = true)) }) { Text(tr("+ Add health item")) }
-        Text(
+        GhostPill(tr("+ Add health item")) { app.navigate(Screen.EditTask(pet.id, null, health = true)) }
+        Hint(
             if (HealthPlan.isYoung(pet.birthDay, today))
                 tr("The first-year plan follows common Philippine schedules. If {0} missed a dose, ask your vet how to catch up; tap Edit to change anything.", pet.name)
             else tr("Schedules are typical for adult pets in the Philippines. Your vet's advice comes first: tap Edit to change them."),
-            style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
     }
     if (pet.species != Species.OTHER) PhilippineInfoCard(app)
@@ -109,39 +107,39 @@ private fun HealthRow(app: AppScope, state: AppState, pet: Pet, h: HealthItem) {
     val latestHasPhoto = remember(latest?.completion?.id, revision) { latest != null && app.repo.hasRecordPhoto(t.petId, latest.completion.id) }
     val name = trName(t.title)
 
-    PixelCard(Modifier.fillMaxWidth(), color = MaterialTheme.colorScheme.background) {
-        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+    SoftCard(Modifier.fillMaxWidth(), tone = Tone.Surface, padding = 14.dp) {
+        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                    Text("${t.kind.emoji} $name", fontWeight = FontWeight.Bold)
+                    Text("${t.kind.emoji} $name", style = MaterialTheme.typography.titleMedium)
                     Text(
-                        CareStats.dueLabel(h, app.now, clock), fontWeight = if (h.due) FontWeight.Bold else null,
+                        CareStats.dueLabel(h, app.now, clock), style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = if (h.due) FontWeight.Bold else null,
                         color = if (h.due) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
                     )
                     val detail = listOfNotNull(
                         h.dose?.let { tr("Dose {0} of {1}", it, h.doses) },
                         h.dueMs?.let { formatDate(it, clock) },
                     ).joinToString(" · ")
-                    if (detail.isNotEmpty()) Text(detail, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.secondary)
-                    Text(
+                    if (detail.isNotEmpty()) Text(detail, style = MaterialTheme.typography.bodySmall, color = Paw.palette.good)
+                    Hint(
                         (latest?.let { tr("Last: {0}", LocalClock.shortDate(it.completion.localDay)) } ?: tr("Not recorded yet")) +
                             " · " + tr("then {0}", everyLabel(repeatNow(pet, t, clock.dayIndex(app.now)))),
-                        style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
                 val recordLabel = tr("Record {0} for {1}", name, pet.name)
-                Button(onClick = { recording = true }, modifier = Modifier.semantics { contentDescription = recordLabel }) { Text(tr("Done")) }
+                PrimaryPill(tr("Done"), modifier = Modifier.padding(start = 8.dp).semantics { contentDescription = recordLabel }) { recording = true }
             }
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 if (latest != null && latestHasPhoto) {
                     PhotoThumb(app, recordPhoto(app, t, latest, revision), tr("Photo of {0}'s card for {1}", pet.name, name), size = 48.dp) { viewing = latest }
                 }
                 if (records.isNotEmpty() || app.repo.hasCard(t)) {
-                    TextButton(onClick = { history = true }) { Text(tr("History ({0})", records.size)) }
+                    LinkButton(tr("History ({0})", records.size)) { history = true }
                 }
                 Spacer(Modifier.weight(1f))
                 val editLabel = tr("Edit {0}", name)
-                TextButton(onClick = { app.navigate(Screen.EditTask(pet.id, t.id)) }, modifier = Modifier.semantics { contentDescription = editLabel }) { Text(tr("Edit")) }
+                LinkButton(tr("Edit"), modifier = Modifier.semantics { contentDescription = editLabel }, color = MaterialTheme.colorScheme.onSurfaceVariant) { app.navigate(Screen.EditTask(pet.id, t.id)) }
             }
             message?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
         }
@@ -181,21 +179,21 @@ private fun RecordDialog(app: AppScope, pet: Pet, t: CareTask, h: HealthItem, on
         text = {
             Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 h.dose?.let { Text(tr("{0}, dose {1} of {2}", trName(t.title), it, h.doses), fontWeight = FontWeight.Bold) }
-                FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    WHEN_CHOICES.forEach { (days, label) -> FilterChip(daysAgo == days, { daysAgo = days }, label = { Text(tr(label)) }) }
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    WHEN_CHOICES.forEach { (days, label) -> ChoiceChip(daysAgo == days, { daysAgo = days }, tr(label)) }
                 }
                 Text(tr("Photo of the vaccination card or receipt (optional)"), style = MaterialTheme.typography.bodyMedium)
                 val chosen = photo
                 if (chosen == null) {
-                    OutlinedButton(onClick = pick) { Text(tr("📷 Add photo")) }
+                    GhostPill(tr("📷 Add photo"), onClick = pick)
                 } else {
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         PhotoThumb(app, HealthPhoto("new", picks.toLong()) { chosen }, tr("The photo you picked"), onClick = null)
                         Text(tr("Photo added"), modifier = Modifier.weight(1f))
-                        TextButton(onClick = { photo = null }) { Text(tr("Remove")) }
+                        LinkButton(tr("Remove")) { photo = null }
                     }
                 }
-                Text(tr("Photos stay on this phone (and in your backup files)."), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Hint(tr("Photos stay on this phone (and in your backup files)."))
             }
         },
         confirmButton = {
@@ -293,8 +291,8 @@ private fun HistoryRow(
             ).joinToString(" · ")
             if (detail.isNotEmpty()) Text(detail, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             Row {
-                if (!hasPhoto) TextButton(onClick = onAddPhoto) { Text(tr("📷 Add photo")) }
-                if (canDelete) TextButton(onClick = onDelete) { Text(tr("Delete"), color = MaterialTheme.colorScheme.error) }
+                if (!hasPhoto) LinkButton(tr("📷 Add photo"), onClick = onAddPhoto)
+                if (canDelete) LinkButton(tr("Delete"), color = MaterialTheme.colorScheme.error, onClick = onDelete)
             }
         }
     }

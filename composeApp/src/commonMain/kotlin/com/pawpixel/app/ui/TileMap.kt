@@ -210,7 +210,7 @@ fun TileMap(
 private fun MapButton(label: String, description: String, onClick: () -> Unit) {
     OutlinedButton(
         onClick = onClick, modifier = Modifier.padding(bottom = 4.dp).size(48.dp).semantics { contentDescription = description },
-        contentPadding = androidx.compose.foundation.layout.PaddingValues(0.dp),
+        contentPadding = androidx.compose.foundation.layout.PaddingValues(0.dp), shape = Pill,
         // Readable over any street map, light or dark mode.
         colors = androidx.compose.material3.ButtonDefaults.outlinedButtonColors(containerColor = Cream, contentColor = Ink),
     ) {

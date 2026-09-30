@@ -30,6 +30,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
@@ -80,10 +81,10 @@ fun BirthdayDialog(
         Column(Modifier.verticalScroll(rememberScrollState())) {
             Column(Modifier.padding(start = 24.dp, end = 16.dp, top = 20.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text(tr("When was {0} born?", petName), style = MaterialTheme.typography.titleLarge)
-                Text(tr("A guess is fine. It plans puppy and kitten shots and deworming."), style = MaterialTheme.typography.bodySmall)
+                Hint(tr("A guess is fine. It plans puppy and kitten shots and deworming."))
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    FilterChip(!exact, { exact = false }, label = { Text(tr("About how old")) })
-                    FilterChip(exact, { exact = true }, label = { Text(tr("Exact date")) })
+                    ChoiceChip(!exact, { exact = false }, tr("About how old"))
+                    ChoiceChip(exact, { exact = true }, tr("Exact date"))
                 }
             }
             if (exact) {
@@ -102,9 +103,9 @@ fun BirthdayDialog(
                         )
                         StepperButton("+", tr("Older"), enabled = amount < limit) { amount++ }
                     }
-                    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         AgeUnit.entries.forEach { u ->
-                            FilterChip(unit == u, { unit = u; amount = amount.coerceAtMost(maxAmount(u)) }, label = { Text(unitLabel(u)) })
+                            ChoiceChip(unit == u, { unit = u; amount = amount.coerceAtMost(maxAmount(u)) }, unitLabel(u))
                         }
                     }
                     chosen?.let {
@@ -132,10 +133,7 @@ private fun ageText(n: Int, unit: AgeUnit) = when (unit) {
 
 @Composable
 private fun StepperButton(label: String, description: String, enabled: Boolean, onClick: () -> Unit) {
-    OutlinedButton(
-        onClick = onClick, enabled = enabled, contentPadding = PaddingValues(0.dp),
-        modifier = Modifier.size(48.dp).semantics { contentDescription = description },
-    ) { Text(label, style = MaterialTheme.typography.titleLarge) }
+    RoundIconButton(label, description, modifier = Modifier.alpha(if (enabled) 1f else 0.4f)) { if (enabled) onClick() }
 }
 
 /** The pet's birthday in a form: "4 months old · born May 29, 2026   Change", or an invitation to add it. */
@@ -143,13 +141,12 @@ private fun StepperButton(label: String, description: String, enabled: Boolean, 
 fun BirthdayRow(birthDay: Long?, today: Long, onEdit: () -> Unit) {
     Row(verticalAlignment = Alignment.CenterVertically) {
         Column(Modifier.weight(1f)) {
-            Text(tr("Birthday"), fontWeight = FontWeight.Bold)
-            Text(
+            Text(tr("Birthday"), style = MaterialTheme.typography.titleSmall)
+            Hint(
                 birthDay?.let { tr("{0} · born {1}", HealthPlan.ageLabel(it, today), LocalClock.shortDate(it)) }
                     ?: tr("Optional. It plans puppy and kitten shots."),
-                style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
-        TextButton(onClick = onEdit) { Text(if (birthDay == null) tr("Add birthday") else tr("Change")) }
+        LinkButton(if (birthDay == null) tr("Add birthday") else tr("Change"), onClick = onEdit)
     }
 }

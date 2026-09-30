@@ -1,26 +1,23 @@
 package com.pawpixel.app.ui
 
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.defaultMinSize
-import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Button
-import androidx.compose.material3.FilterChip
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
@@ -32,6 +29,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.pawpixel.core.AppState
@@ -44,12 +44,6 @@ import com.pawpixel.core.TaskDefaults
 import com.pawpixel.core.TaskKind
 import com.pawpixel.i18n.tr
 import com.pawpixel.i18n.trName
-import androidx.compose.foundation.selection.toggleable
-import androidx.compose.material3.AlertDialog
-import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.semantics
-
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -96,7 +90,7 @@ fun TaskEditorScreen(app: AppScope, state: AppState, pet: Pet, taskId: String?, 
     Column(
         Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding()
             .imePadding() // keeps the focused field and buttons above the keyboard
-            .verticalScroll(rememberScrollState()).padding(16.dp),
+            .verticalScroll(rememberScrollState()).padding(horizontal = 16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         // Save sits in the top bar, always visible; the form below can be long.
@@ -107,100 +101,100 @@ fun TaskEditorScreen(app: AppScope, state: AppState, pet: Pet, taskId: String?, 
             else -> tr("Edit care task")
         }
         val big = largeText()
-        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            BackButton(app)
-            // A big font puts the title on its own line instead of three squeezed ones.
-            if (big) Spacer(Modifier.weight(1f)) else ScreenTitle(title, modifier = Modifier.weight(1f))
-            Button(onClick = save, enabled = !saving) { Text(tr("Save")) }
-        }
+        // A big font puts the title on its own line instead of three squeezed ones.
+        TopBar(app, if (big) null else title) { PrimaryPill(tr("Save"), enabled = !saving, onClick = save) }
         if (big) ScreenTitle(title)
 
-        // All kinds visible at once (wrapping), so Medicine or Litter aren't hidden off-screen.
-        FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            TaskKind.entries.filter { it.health == health }.forEach { k ->
-                FilterChip(task.kind == k, { setKind(k) }, label = { Text("${k.emoji} ${tr(k.label)}") })
-            }
-        }
-        OutlinedTextField(task.title, { task = task.copy(title = it.take(30)) }, label = { Text(tr("Name")) }, singleLine = true, modifier = Modifier.fillMaxWidth())
-
-        GroupLabel(if (health) tr("Reminder time on the day") else tr("Times"))
-        task.slots.forEachIndexed { i, minute ->
-            val time = formatMinute(minute)
-            // Time first, never wrapped; compact steppers so a row fits a small phone with the ✕.
-            // With very large text the steppers move under the time instead of squeezing it.
-            FlowRow(
-                Modifier.fillMaxWidth(), verticalArrangement = Arrangement.Center, horizontalArrangement = Arrangement.spacedBy(4.dp),
-            ) {
-                Text(
-                    time, fontWeight = FontWeight.Bold, maxLines = 1, softWrap = false,
-                    modifier = Modifier.weight(1f).align(Alignment.CenterVertically).padding(end = 4.dp),
+        SoftCard(Modifier.fillMaxWidth(), tone = Tone.Surface) {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                GroupLabel(tr("What"))
+                // All kinds visible at once (wrapping), so Medicine or Litter aren't hidden off-screen.
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    TaskKind.entries.filter { it.health == health }.forEach { k ->
+                        ChoiceChip(task.kind == k, { setKind(k) }, "${k.emoji} ${tr(k.label)}")
+                    }
+                }
+                OutlinedTextField(
+                    task.title, { task = task.copy(title = it.take(30)) }, label = { Text(tr("Name")) }, singleLine = true,
+                    modifier = Modifier.fillMaxWidth(), shape = MaterialTheme.shapes.small,
                 )
-                StepButton("−1h", tr("1 hour earlier than {0}", time)) { task = task.copy(slots = task.slots.shift(i, -60)) }
-                StepButton("−15", tr("15 minutes earlier than {0}", time)) { task = task.copy(slots = task.slots.shift(i, -15)) }
-                StepButton("+15", tr("15 minutes later than {0}", time)) { task = task.copy(slots = task.slots.shift(i, 15)) }
-                StepButton("+1h", tr("1 hour later than {0}", time)) { task = task.copy(slots = task.slots.shift(i, 60)) }
-                if (task.slots.size > 1) {
-                    val removeLabel = tr("Remove {0}", time)
-                    TextButton(
-                        onClick = { task = task.copy(slots = task.slots.filterIndexed { j, _ -> j != i }) },
-                        contentPadding = PaddingValues(horizontal = 6.dp),
-                        modifier = Modifier.defaultMinSize(minWidth = 48.dp).semantics { contentDescription = removeLabel },
-                    ) { Text("✕") }
+            }
+        }
+
+        SoftCard(Modifier.fillMaxWidth(), tone = Tone.Surface) {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                GroupLabel(if (health) tr("Reminder time on the day") else tr("Times"))
+                task.slots.forEachIndexed { i, minute ->
+                    val time = formatMinute(minute)
+                    // The time on its own line (never squeezed), the steppers wrapping under it.
+                    Column(verticalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.padding(top = if (i > 0) 6.dp else 0.dp)) {
+                        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                            Text(time, style = MaterialTheme.typography.titleLarge, maxLines = 1, softWrap = false, modifier = Modifier.weight(1f))
+                            if (task.slots.size > 1) {
+                                val removeLabel = tr("Remove {0}", time)
+                                RoundIconButton("✕", removeLabel) { task = task.copy(slots = task.slots.filterIndexed { j, _ -> j != i }) }
+                            }
+                        }
+                        FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                            StepButton("−1h", tr("1 hour earlier than {0}", time)) { task = task.copy(slots = task.slots.shift(i, -60)) }
+                            StepButton("−15", tr("15 minutes earlier than {0}", time)) { task = task.copy(slots = task.slots.shift(i, -15)) }
+                            StepButton("+15", tr("15 minutes later than {0}", time)) { task = task.copy(slots = task.slots.shift(i, 15)) }
+                            StepButton("+1h", tr("1 hour later than {0}", time)) { task = task.copy(slots = task.slots.shift(i, 60)) }
+                        }
+                    }
+                }
+                if (!health && task.slots.size < 4 && task.everyDays == 1) {
+                    LinkButton(tr("+ Add a time")) {
+                        val last = task.slots.maxOrNull() ?: (8 * 60)
+                        task = task.copy(slots = (task.slots + ((last + 4 * 60) % MINUTES_PER_DAY)).distinct())
+                    }
+                }
+
+                GroupLabel(tr("Repeat"))
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    val choices = if (health) listOf(14 to "Every 2 weeks", 30 to "Monthly", 90 to "Every 3 months", 180 to "Every 6 months", 365 to "Yearly")
+                    else listOf(1 to "Daily", 2 to "Every 2 days", 7 to "Weekly", 14 to "Every 2 weeks", 30 to "Monthly")
+                    // Health items keep their cycle (it counts from when they were last done).
+                    choices.forEach { (d, label) ->
+                        ChoiceChip(task.everyDays == d, {
+                            task = task.copy(everyDays = d, anchorDay = if (health) task.anchorDay else today, slots = if (d > 1) task.slots.take(1) else task.slots)
+                        }, tr(label))
+                    }
+                }
+
+                if (health && HealthPlan.scheduleFor(pet, task) != null) {
+                    Text(
+                        tr("{0}'s first doses follow the typical schedule for their age; this repeat comes after. Rename the item to use only the repeat.", pet.name),
+                        style = MaterialTheme.typography.bodySmall, color = Paw.palette.good,
+                    )
+                }
+
+                if (health && original == null) {
+                    GroupLabel(tr("Last done"))
+                    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        ChoiceChip(lastDoneDaysAgo == null, { lastDoneDaysAgo = null }, tr("Never / not sure"))
+                        WHEN_CHOICES.forEach { (days, label) -> ChoiceChip(lastDoneDaysAgo == days, { lastDoneDaysAgo = days }, tr(label)) }
+                    }
+                    Hint(if (lastDoneDaysAgo == null) tr("It'll show as due now. Tap Done once it's given.") else tr("The next one is counted from then."))
                 }
             }
         }
-        if (!health && task.slots.size < 4 && task.everyDays == 1) {
-            TextButton(onClick = {
-                val last = task.slots.maxOrNull() ?: (8 * 60)
-                task = task.copy(slots = (task.slots + ((last + 4 * 60) % MINUTES_PER_DAY)).distinct())
-            }) { Text(tr("+ Add a time")) }
-        }
 
-        GroupLabel(tr("Repeat"))
-        FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            val choices = if (health) listOf(14 to "Every 2 weeks", 30 to "Monthly", 90 to "Every 3 months", 180 to "Every 6 months", 365 to "Yearly")
-            else listOf(1 to "Daily", 2 to "Every 2 days", 7 to "Weekly", 14 to "Every 2 weeks", 30 to "Monthly")
-            // Health items keep their cycle (it counts from when they were last done).
-            choices.forEach { (d, label) ->
-                FilterChip(task.everyDays == d, {
-                    task = task.copy(everyDays = d, anchorDay = if (health) task.anchorDay else today, slots = if (d > 1) task.slots.take(1) else task.slots)
-                }, label = { Text(tr(label)) })
-            }
-        }
-
-        if (health && HealthPlan.scheduleFor(pet, task) != null) {
-            Text(
-                tr("{0}'s first doses follow the typical schedule for their age; this repeat comes after. Rename the item to use only the repeat.", pet.name),
-                style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.secondary,
-            )
-        }
-
-        if (health && original == null) {
-            GroupLabel(tr("Last done"))
-            FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                FilterChip(lastDoneDaysAgo == null, { lastDoneDaysAgo = null }, label = { Text(tr("Never / not sure")) })
-                WHEN_CHOICES.forEach { (days, label) ->
-                    FilterChip(lastDoneDaysAgo == days, { lastDoneDaysAgo = days }, label = { Text(tr(label)) })
+        SoftCard(Modifier.fillMaxWidth(), tone = Tone.Surface) {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                SwitchRow(tr("Reminders"), if (health) tr("A heads-up 3 days before, and on the day.") else tr("Get a notification when it's time."), task.remindersOn) {
+                    task = task.copy(remindersOn = it)
                 }
+                if (!health) SwitchRow(tr("Learn my routine"), tr("Moves reminders toward when you actually do this (up to 2 hours)."), task.adaptive) { task = task.copy(adaptive = it) }
+                if (!health) SwitchRow(tr("Exact time"), tr("Remind at the exact minute. Good for medicine. Android may ask for permission."), task.exactAlarm) { task = task.copy(exactAlarm = it) }
             }
-            Text(
-                if (lastDoneDaysAgo == null) tr("It'll show as due now. Tap Done once it's given.") else tr("The next one is counted from then."),
-                style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
         }
 
-        SwitchRow(tr("Reminders"), if (health) tr("A heads-up 3 days before, and on the day.") else tr("Get a notification when it's time."), task.remindersOn) {
-            task = task.copy(remindersOn = it)
-        }
-        if (!health) SwitchRow(tr("Learn my routine"), tr("Moves reminders toward when you actually do this (up to 2 hours)."), task.adaptive) { task = task.copy(adaptive = it) }
-        if (!health) SwitchRow(tr("Exact time"), tr("Remind at the exact minute. Good for medicine. Android may ask for permission."), task.exactAlarm) { task = task.copy(exactAlarm = it) }
-
-        Button(onClick = save, enabled = !saving, modifier = Modifier.fillMaxWidth()) { Text(tr("Save")) }
+        PrimaryPill(tr("Save"), enabled = !saving, big = true, modifier = Modifier.fillMaxWidth(), onClick = save)
         if (original != null) {
-            TextButton(onClick = { confirmDelete = true }) {
-                Text(tr("Delete task"), color = MaterialTheme.colorScheme.error)
-            }
+            LinkButton(tr("Delete task"), color = MaterialTheme.colorScheme.error) { confirmDelete = true }
         }
+        Spacer(Modifier.height(16.dp))
     }
     if (confirmDelete && original != null) {
         // Deleting takes the task's history with it (and for health care, its card photos): ask first.
@@ -234,9 +228,9 @@ fun SwitchRow(title: String, subtitle: String, checked: Boolean, onChange: (Bool
         Modifier.fillMaxWidth().toggleable(value = checked, role = Role.Switch, onValueChange = onChange),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Column(Modifier.weight(1f).padding(end = 8.dp)) {
-            Text(title, fontWeight = FontWeight.Bold)
-            Text(subtitle, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Column(Modifier.weight(1f).padding(end = 12.dp)) {
+            Text(title, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+            Hint(subtitle)
         }
         Switch(checked, onCheckedChange = null)
     }
@@ -245,9 +239,5 @@ fun SwitchRow(title: String, subtitle: String, checked: Boolean, onChange: (Bool
 /** A time stepper ("+15"): its [description] says what it does ("15 minutes later than 8:00 AM"). */
 @Composable
 private fun StepButton(label: String, description: String, onClick: () -> Unit) {
-    OutlinedButton(
-        onClick = onClick,
-        contentPadding = PaddingValues(horizontal = 8.dp),
-        modifier = Modifier.defaultMinSize(minWidth = 48.dp).semantics { contentDescription = description },
-    ) { Text(label, maxLines = 1, softWrap = false) }
+    ChoiceChip(false, onClick, label, modifier = Modifier.semantics { contentDescription = description })
 }

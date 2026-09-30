@@ -1,34 +1,42 @@
 package com.pawpixel.app.ui
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.pawpixel.core.Milestones
 import com.pawpixel.core.Pet
 import com.pawpixel.i18n.tr
+import com.pawpixel.sprite.Accessory
 
-/** "100 days of care!" once, when a milestone is reached, with a card to share. */
+/** "100 days of care!" once, when a milestone is reached, with confetti and a card to share. */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun MilestoneBanner(app: AppScope, pet: Pet) {
     val days = Milestones.toCelebrate(pet) ?: return
-    PixelCard(Modifier.fillMaxWidth(), color = MaterialTheme.colorScheme.primaryContainer) {
-        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text("🎉 ${Milestones.title(days)}!", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-            Text(tr("You've looked after {0} on {1} different days.", pet.name, days) + " " + tr("That's a lot of love."))
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Button(onClick = { app.launch { app.repo.shareMilestone(pet, days) } }) { Text(tr("Share the card")) }
-                TextButton(onClick = { app.launch { app.repo.celebrate(pet.id, days) } }) { Text(tr("Nice!")) }
+    // Confetti falls once per milestone shown, never again for the same one.
+    val party = remember(pet.id, days) { "${pet.id}:$days" }
+    Box(Modifier.fillMaxWidth()) {
+        SoftCard(Modifier.fillMaxWidth(), tone = Tone.Accent) {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text("🎉 ${Milestones.title(days)}!", style = MaterialTheme.typography.titleLarge)
+                Text(tr("You've looked after {0} on {1} different days.", pet.name, days) + " " + tr("That's a lot of love."), style = MaterialTheme.typography.bodyMedium)
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    PrimaryPill(tr("Share the card")) { app.launch { app.repo.shareMilestone(pet, days) } }
+                    LinkButton(tr("Nice!"), color = MaterialTheme.colorScheme.onPrimaryContainer) { app.launch { app.repo.celebrate(pet.id, days) } }
+                }
             }
         }
+        Confetti(party, Modifier.matchParentSize())
     }
 }
 
@@ -42,20 +50,20 @@ fun nextMilestoneLine(pet: Pet): String? = Milestones.next(pet)?.let { (at, left
 }
 
 /** Outfits the pet has earned with days of care (and the next ones, with how long to go). */
-@OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun OutfitSection(app: AppScope, pet: Pet) {
     val earned = Milestones.unlocked(pet)
     val days = Milestones.caredDays(pet)
     SectionTitle(tr("Outfits"))
-    Text(tr("{0} earns pixel outfits with days of care. Nothing to buy.", pet.name), style = MaterialTheme.typography.bodySmall)
-    androidx.compose.foundation.layout.FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-        androidx.compose.material3.FilterChip(pet.accessory == null, { app.launch { app.repo.wear(pet, null) } }, label = { Text(tr("None")) })
-        com.pawpixel.sprite.Accessory.entries.forEach { a ->
+    Hint(tr("{0} earns pixel outfits with days of care. Nothing to buy.", pet.name))
+    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        ChoiceChip(pet.accessory == null, { app.launch { app.repo.wear(pet, null) } }, tr("None"))
+        Accessory.entries.forEach { a ->
             if (a in earned) {
-                androidx.compose.material3.FilterChip(pet.accessory == a.name, { app.launch { app.repo.wear(pet, a) } }, label = { Text(tr(a.label)) })
+                ChoiceChip(pet.accessory == a.name, { app.launch { app.repo.wear(pet, a) } }, tr(a.label))
             } else {
-                androidx.compose.material3.AssistChip(onClick = {}, enabled = false, label = { Text(tr("🔒 {0} · in {1} days", tr(a.label), a.unlockDays - days)) })
+                ChoiceChip(false, {}, tr("🔒 {0} · in {1} days", tr(a.label), a.unlockDays - days), enabled = false)
             }
         }
     }

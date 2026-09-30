@@ -126,9 +126,7 @@ fun PetMapScreen(app: AppScope, state: AppState) {
     }
 
     Column(Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding()) {
-        Row(Modifier.fillMaxWidth().padding(horizontal = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-            BackButton(app)
-            ScreenTitle(tr("Pet map"), Modifier.weight(1f))
+        TopBar(app, tr("Pet map"), Modifier.padding(horizontal = 16.dp)) {
             if (phase is MapPhase.Ready) MapMenu(app, map, state, onChanged = { act { load() } }, onLeft = { phase = MapPhase.Join }, act = ::act)
         }
         message?.let {
@@ -154,9 +152,9 @@ fun PetMapScreen(app: AppScope, state: AppState) {
 
 @Composable
 private fun NotSetUp() {
-    PixelCard(Modifier.fillMaxWidth().padding(16.dp)) {
+    SoftCard(Modifier.fillMaxWidth().padding(16.dp), tone = Tone.Calm) {
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text(tr("The pet map is coming soon"), fontWeight = FontWeight.Bold)
+            Text(tr("The pet map is coming soon"), style = MaterialTheme.typography.titleMedium)
             Text(tr("Meet other pet owners in Naga at public pet walks. The map isn't switched on in this version of the app yet."))
         }
     }
@@ -172,9 +170,9 @@ private fun JoinMap(app: AppScope, map: PetMapModel, state: AppState, busy: Bool
         Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        PixelCard(Modifier.fillMaxWidth()) {
+        SoftCard(Modifier.fillMaxWidth(), tone = Tone.Surface) {
             Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                Text(tr("Meet pet owners near you"), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                Text(tr("Meet pet owners near you"), style = MaterialTheme.typography.titleLarge)
                 Text(tr("• Other owners see your pixel pets and their names. Never your photos."))
                 Text(tr("• Your area shows as a square about 1 km wide. Your exact location never leaves your phone."))
                 Text(tr("• An area only appears once 3 or more owners are in it."))
@@ -182,24 +180,20 @@ private fun JoinMap(app: AppScope, map: PetMapModel, state: AppState, busy: Bool
                 Text(tr("• Leave any time, and delete your map account from this screen."))
             }
         }
-        Text(tr("Pets to show"), fontWeight = FontWeight.Bold)
-        FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+        GroupLabel(tr("Pets to show"))
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             state.pets.forEach { pet ->
-                FilterChip(pet.id in chosen, { chosen = if (pet.id in chosen) chosen - pet.id else chosen + pet.id }, label = { Text(pet.name) })
+                ChoiceChip(pet.id in chosen, { chosen = if (pet.id in chosen) chosen - pet.id else chosen + pet.id }, pet.name)
             }
         }
         CheckRow(tr("I'm 18 or older"), adult) { adult = it }
         CheckRow(tr("Show my pixel pets, their names and my rough area to other PawPixel owners"), consent) { consent = it }
-        TextButton(onClick = { app.repo.platform.openUrl(PRIVACY_URL) }) { Text(tr("Privacy policy")) }
-        Button(
-            enabled = adult && consent && chosen.isNotEmpty() && !busy,
-            onClick = { onJoin(state.pets.filter { it.id in chosen }) },
-            modifier = Modifier.fillMaxWidth(),
-        ) { Text(if (busy) tr("Joining…") else tr("{0} and join", map.signInLabel)) }
-        Text(
-            tr("Pilot: the map starts in Naga City. Signing in lets us remove people who break the rules."),
-            style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
+        LinkButton(tr("Privacy policy")) { app.repo.platform.openUrl(PRIVACY_URL) }
+        PrimaryPill(
+            if (busy) tr("Joining…") else tr("{0} and join", map.signInLabel),
+            enabled = adult && consent && chosen.isNotEmpty() && !busy, big = true, modifier = Modifier.fillMaxWidth(),
+        ) { onJoin(state.pets.filter { it.id in chosen }) }
+        Hint(tr("Pilot: the map starts in Naga City. Signing in lets us remove people who break the rules."))
     }
 }
 
@@ -223,7 +217,7 @@ private fun MapMenu(
     var open by remember { mutableStateOf(false) }
     var confirm by remember { mutableStateOf<String?>(null) }
     Box {
-        TextButton(onClick = { open = true }) { Text(tr("More")) }
+        GhostPill(tr("More")) { open = true }
         DropdownMenu(open, { open = false }) {
             DropdownMenuItem({ Text(tr("Update my area")) }, onClick = {
                 open = false
@@ -260,9 +254,9 @@ private fun ReadyMap(app: AppScope, map: PetMapModel, areas: List<MapArea>, act:
     var tab by remember { mutableStateOf(0) }
     var selected by remember { mutableStateOf<MapArea?>(null) }
     Column(Modifier.fillMaxSize()) {
-        Row(Modifier.padding(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            FilterChip(tab == 0, { tab = 0 }, label = { Text(tr("Nearby")) })
-            FilterChip(tab == 1, { tab = 1 }, label = { Text(tr("Gatherings")) })
+        Row(Modifier.padding(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            ChoiceChip(tab == 0, { tab = 0 }, tr("Nearby"))
+            ChoiceChip(tab == 1, { tab = 1 }, tr("Gatherings"))
         }
         if (tab == 0) {
             Box(Modifier.weight(1f).fillMaxWidth().padding(top = 8.dp)) {
@@ -274,8 +268,8 @@ private fun ReadyMap(app: AppScope, map: PetMapModel, areas: List<MapArea>, act:
                     modifier = Modifier.fillMaxSize(),
                 )
                 if (areas.isEmpty()) {
-                    PixelCard(Modifier.align(Alignment.TopCenter).padding(12.dp)) {
-                        Text(tr("No areas with 3+ owners near you yet. Invite pet friends in your area to PawPixel!"))
+                    SoftCard(Modifier.align(Alignment.TopCenter).padding(12.dp), tone = Tone.Surface) {
+                        Text(tr("No areas with 3+ owners near you yet. Invite pet friends in your area to PawPixel!"), style = MaterialTheme.typography.bodyMedium)
                     }
                 }
                 selected?.let { a -> AreaPets(app, map, a, act, onClose = { selected = null }, modifier = Modifier.align(Alignment.BottomCenter)) }
@@ -297,11 +291,11 @@ private fun AreaPets(
     var blockFor by remember { mutableStateOf<MapPet?>(null) }
     LaunchedEffect(area.cellId) { act { pets = map.client.petsInArea(area.cellId) } }
     val label = map.myArea?.let { if (it.id == area.cellId) tr("Your area") else null } ?: tr("An area near you")
-    PixelCard(modifier.fillMaxWidth().padding(8.dp)) {
+    SoftCard(modifier.fillMaxWidth().padding(8.dp), tone = Tone.Surface) {
         Column {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(tr("{0} · {1} pets", label, area.pets), fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
-                TextButton(onClick = onClose) { Text(tr("Close")) }
+                Text(tr("{0} · {1} pets", label, area.pets), style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
+                LinkButton(tr("Close"), onClick = onClose)
             }
             val list = pets
             if (list == null) CircularProgressIndicator(Modifier.padding(8.dp))
@@ -393,16 +387,16 @@ private fun Gatherings(app: AppScope, map: PetMapModel, act: (suspend () -> Unit
     val items = list
     when {
         items == null -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
-        items.isEmpty() -> PixelCard(Modifier.fillMaxWidth().padding(16.dp)) {
-            Text(tr("No gatherings yet. The first Naga pet walk will be announced here."))
+        items.isEmpty() -> SoftCard(Modifier.fillMaxWidth().padding(16.dp), tone = Tone.Tonal) {
+            Text(tr("No gatherings yet. The first Naga pet walk will be announced here."), style = MaterialTheme.typography.bodyMedium)
         }
         else -> LazyColumn(Modifier.fillMaxSize().padding(horizontal = 16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             item { Spacer(Modifier.height(4.dp)) }
             // The key includes the RSVP, so the card is rebuilt (and re-announced to screen readers) when it changes.
             items(items, key = { "${it.id}:${it.iAmGoing}:${it.id in venues.value}" }) { g ->
-                PixelCard(Modifier.fillMaxWidth()) {
-                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        Text(g.title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                SoftCard(Modifier.fillMaxWidth(), tone = Tone.Surface) {
+                    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Text(g.title, style = MaterialTheme.typography.titleLarge)
                         Text(IsoTime.parseMs(g.startsAt)?.let { formatDateTime(it, app.repo.clock) } ?: g.startsAt)
                         Text(g.areaLabel, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         val left = (g.capacity - g.going).coerceAtLeast(0)
@@ -410,11 +404,12 @@ private fun Gatherings(app: AppScope, map: PetMapModel, act: (suspend () -> Unit
                         val venue = venues.value[g.id]
                         if (g.iAmGoing && venue != null) {
                             Text(tr("Meet at: {0}", venue.name), fontWeight = FontWeight.Bold)
-                            OutlinedButton(onClick = {
+                            GhostPill(tr("Open in maps")) {
                                 app.repo.platform.openUrl("https://www.google.com/maps/search/?api=1&query=${venue.lat},${venue.lng}")
-                            }) { Text(tr("Open in maps")) }
+                            }
                         }
-                        Button(
+                        PrimaryPill(
+                            if (g.iAmGoing) tr("Can't make it") else tr("I'm going"),
                             enabled = g.iAmGoing || left > 0,
                             onClick = {
                                 act {
@@ -425,7 +420,7 @@ private fun Gatherings(app: AppScope, map: PetMapModel, act: (suspend () -> Unit
                                         else venues.value - g.id
                                 }
                             },
-                        ) { Text(if (g.iAmGoing) tr("Can't make it") else tr("I'm going")) }
+                        )
                     }
                 }
             }

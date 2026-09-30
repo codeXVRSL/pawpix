@@ -51,9 +51,9 @@ fun PhotoThumb(app: AppScope, photo: HealthPhoto, description: String, size: Dp 
             runCatching { photo.read()?.let { app.repo.platform.decodePhoto(it, THUMB_SIDE)?.toImageBitmap() } }.getOrNull()
         }
     }
-    val shape = MaterialTheme.shapes.small
-    val base = Modifier.size(size).clip(shape).border(2.dp, MaterialTheme.colorScheme.outline, shape)
-        .background(MaterialTheme.colorScheme.surfaceVariant)
+    val shape = MaterialTheme.shapes.extraSmall
+    val base = Modifier.size(size).clip(shape).border(1.dp, Paw.palette.hairline, shape)
+        .background(MaterialTheme.colorScheme.surfaceContainerHigh)
     val box = if (onClick != null) base.clickable(onClickLabel = tr("Open photo"), role = Role.Image, onClick = onClick) else base
     // Described while it's still loading too (a bare "📷" would be read out as "camera").
     Box(box.semantics(mergeDescendants = true) { contentDescription = description }, contentAlignment = Alignment.Center) {

@@ -3,6 +3,8 @@ package com.pawpixel.app.ui
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.imePadding
@@ -97,20 +99,17 @@ fun FamilyScreen(app: AppScope, state: AppState, sharePetId: String?, join: Bool
 
     Column(
         Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding().imePadding()
-            .verticalScroll(rememberScrollState()).padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(14.dp),
+            .verticalScroll(rememberScrollState()).padding(horizontal = 16.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            BackButton(app)
-            ScreenTitle(tr("Your household"), Modifier.weight(1f))
-        }
+        TopBar(app, tr("Your household"))
         status.notice?.let { Text(it, style = MaterialTheme.typography.bodyMedium) }
         message?.let { Text(it, color = MaterialTheme.colorScheme.error) }
         val h = status.household
         when {
-            !family.isSetUp -> PixelCard(Modifier.fillMaxWidth()) {
+            !family.isSetUp -> SoftCard(Modifier.fillMaxWidth(), tone = Tone.Calm) {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text(tr("Coming soon"), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                    Text(tr("Coming soon"), style = MaterialTheme.typography.titleMedium)
                     Text(
                         tr(
                             "Sharing with your household isn't available yet: this build isn't connected to PawPixel's server. " +
@@ -147,11 +146,8 @@ fun FamilyScreen(app: AppScope, state: AppState, sharePetId: String?, join: Bool
                         val pose = remember(pet.lookKey) { app.repo.pose(pet, Mood.CONTENT) }
                         SpriteView(pose, Modifier.size(48.dp), animate = false)
                         Column(Modifier.weight(1f).padding(start = 8.dp)) {
-                            Text(pet.name, fontWeight = FontWeight.Bold)
-                            Text(
-                                if (pet.shared) tr("Shared: care, health and who did it") else tr("Only on this phone"),
-                                style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
+                            Text(pet.name, style = MaterialTheme.typography.titleSmall)
+                            Hint(if (pet.shared) tr("Shared: care, health and who did it") else tr("Only on this phone"))
                         }
                         Switch(
                             pet.shared, enabled = !busy, onCheckedChange = { on -> act { family.share(pet, on) } },
@@ -162,30 +158,28 @@ fun FamilyScreen(app: AppScope, state: AppState, sharePetId: String?, join: Bool
 
                 if (inviteCode == null) {
                     GroupLabel(tr("Invite someone"))
-                    Text(tr("Send a code to the people you care for your pets with (up to 8 in a household)."), style = MaterialTheme.typography.bodySmall)
-                    OutlinedButton(enabled = !busy, onClick = { act { inviteCode = family.invite() } }) { Text(tr("New invite code")) }
+                    Hint(tr("Send a code to the people you care for your pets with (up to 8 in a household)."))
+                    TonalPill(tr("New invite code"), enabled = !busy) { act { inviteCode = family.invite() } }
                 }
                 Column {
                     if (iAmOwner) {
-                        TextButton(enabled = !busy, onClick = { act { family.revokeInvites(); inviteCode = null; message = tr("All invite codes are cancelled.") } }) {
-                            Text(tr("Cancel all invite codes"))
-                        }
+                        LinkButton(tr("Cancel all invite codes"), enabled = !busy) { act { family.revokeInvites(); inviteCode = null; message = tr("All invite codes are cancelled.") } }
                     }
-                    TextButton(enabled = !busy, onClick = { confirmLeave = true }) { Text(tr("Leave {0}", h.name), color = MaterialTheme.colorScheme.error) }
+                    LinkButton(tr("Leave {0}", h.name), enabled = !busy, color = MaterialTheme.colorScheme.error) { confirmLeave = true }
                     if (iAmOwner) {
-                        TextButton(enabled = !busy, onClick = { confirmStop = true }) { Text(tr("Stop sharing for everyone"), color = MaterialTheme.colorScheme.error) }
+                        LinkButton(tr("Stop sharing for everyone"), enabled = !busy, color = MaterialTheme.colorScheme.error) { confirmStop = true }
                     }
                 }
-                Text(
+                Hint(
                     tr(
                         "What's shared: pet names, their pixel looks, care tasks, health dates and who tapped Done. Never photos " +
                             "(card photos stay on your phone) and never your location. Reminder settings stay your own.",
                     ),
-                    style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
         }
         if (busy) CircularProgressIndicator(Modifier.align(Alignment.CenterHorizontally))
+        Spacer(Modifier.height(16.dp))
     }
 
     removing?.let { m ->
@@ -233,26 +227,25 @@ private fun Pitch(app: AppScope, pet: Pet?) {
         Column(Modifier.weight(1f).padding(start = if (pet != null) 10.dp else 0.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Text(
                 pet?.let { tr("Care for {0} together", it.name) } ?: tr("Care for your pets together"),
-                style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold,
+                style = MaterialTheme.typography.titleLarge,
             )
-            Text(tr("When someone at home feeds or walks your pet, it shows on everyone's phone and widget, with who did it. No more double breakfasts."))
+            Text(tr("When someone at home feeds or walks your pet, it shows on everyone's phone and widget, with who did it. No more double breakfasts."), style = MaterialTheme.typography.bodyMedium)
         }
     }
 }
 
 @Composable
 private fun SignInCard(app: AppScope, pet: Pet?, busy: Boolean, onSignIn: () -> Unit) {
-    PixelCard(Modifier.fillMaxWidth()) {
-        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+    SoftCard(Modifier.fillMaxWidth(), tone = Tone.Surface) {
+        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Pitch(app, pet)
-            Text(
+            Hint(
                 tr(
                     "Sharing needs an account, so PawPixel's server can pass your Done taps between phones. " +
                         "Everything else keeps working on this phone without one.",
                 ),
-                style = MaterialTheme.typography.bodySmall,
             )
-            Button(enabled = !busy, onClick = onSignIn) { Text(tr(app.repo.map.signInLabel)) }
+            PrimaryPill(tr(app.repo.map.signInLabel), enabled = !busy, onClick = onSignIn)
         }
     }
 }
@@ -266,32 +259,32 @@ private fun StartOrJoin(
     var code by remember { mutableStateOf("") }
     val named = you.isNotBlank()
     val start = @Composable {
-        PixelCard(Modifier.fillMaxWidth()) {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                GroupLabel(tr("Start a household"))
-                Text(tr("You'll get a code to send to the people you care for your pets with."), style = MaterialTheme.typography.bodySmall)
-                Button(enabled = !busy && named, onClick = { onStart(you.trim()) }) { Text(tr("Create household")) }
+        SoftCard(Modifier.fillMaxWidth(), tone = Tone.Surface) {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Text(tr("Start a household"), style = MaterialTheme.typography.titleMedium)
+                Hint(tr("You'll get a code to send to the people you care for your pets with."))
+                PrimaryPill(tr("Create household"), enabled = !busy && named) { onStart(you.trim()) }
             }
         }
     }
     val join = @Composable {
-        PixelCard(Modifier.fillMaxWidth()) {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                GroupLabel(tr("Join a household"))
-                Text(tr("Got a code from someone at home? Enter it here, and their pets appear on this phone."), style = MaterialTheme.typography.bodySmall)
+        SoftCard(Modifier.fillMaxWidth(), tone = Tone.Surface) {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Text(tr("Join a household"), style = MaterialTheme.typography.titleMedium)
+                Hint(tr("Got a code from someone at home? Enter it here, and their pets appear on this phone."))
                 OutlinedTextField(
                     code, { code = it.uppercase().take(12) }, label = { Text(tr("Invite code")) }, singleLine = true, modifier = Modifier.fillMaxWidth(),
-                    keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Characters),
+                    keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Characters), shape = MaterialTheme.shapes.small,
                 )
-                Button(enabled = !busy && named && code.count { it.isLetterOrDigit() } >= 8, onClick = { onJoin(code, you.trim()) }) { Text(tr("Join")) }
+                PrimaryPill(tr("Join"), enabled = !busy && named && code.count { it.isLetterOrDigit() } >= 8) { onJoin(code, you.trim()) }
             }
         }
     }
-    PixelCard(Modifier.fillMaxWidth()) { Pitch(app, pet) }
+    SoftCard(Modifier.fillMaxWidth(), tone = Tone.Tonal) { Pitch(app, pet) }
     OutlinedTextField(
         you, { you = it.take(24) }, label = { Text(tr("Your name")) }, singleLine = true, modifier = Modifier.fillMaxWidth(),
         supportingText = { Text(tr("What your household sees, e.g. \"Fed by {0}\"", you.trim().ifEmpty { "Jamaica" })) },
-        keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Words),
+        keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Words), shape = MaterialTheme.shapes.small,
     )
     if (joinFirst) { join(); start() } else { start(); join() }
 }
@@ -302,17 +295,17 @@ private fun InviteCard(app: AppScope, code: String, sharedPets: List<Pet>) {
     val pretty = code.chunked(4).joinToString("-")
     val clipboard = LocalClipboardManager.current
     var copied by remember(code) { mutableStateOf(false) }
-    PixelCard(Modifier.fillMaxWidth()) {
+    SoftCard(Modifier.fillMaxWidth(), tone = Tone.Accent) {
         Column(verticalArrangement = Arrangement.spacedBy(8.dp), horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
-            GroupLabel(tr("Your invite code"))
+            Text(tr("Your invite code"), style = MaterialTheme.typography.titleMedium)
             Text(
                 pretty, fontFamily = FontFamily.Monospace, fontSize = 34.sp, fontWeight = FontWeight.Bold, letterSpacing = 2.sp,
                 modifier = Modifier.semantics { contentDescription = tr("Invite code {0}", code.toList().joinToString(" ")) },
             )
             Text(tr("Works for 7 days, for up to 8 people in a household."), style = MaterialTheme.typography.bodySmall, textAlign = TextAlign.Center)
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                OutlinedButton(onClick = { clipboard.setText(AnnotatedString(pretty)); copied = true }) { Text(if (copied) tr("Copied ✓") else tr("Copy")) }
-                Button(onClick = { app.repo.platform.shareText(inviteText(sharedPets, pretty)) }) { Text(tr("Share")) }
+                GhostPill(if (copied) tr("Copied ✓") else tr("Copy")) { clipboard.setText(AnnotatedString(pretty)); copied = true }
+                PrimaryPill(tr("Share")) { app.repo.platform.shareText(inviteText(sharedPets, pretty)) }
             }
         }
     }
@@ -334,16 +327,16 @@ private fun MembersCard(
     onRemove: (Household.Member) -> Unit, onSync: () -> Unit,
 ) {
     val me = app.repo.family.myUserId
-    PixelCard(Modifier.fillMaxWidth()) {
+    SoftCard(Modifier.fillMaxWidth(), tone = Tone.Surface) {
         Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            Text(h.name, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+            Text(h.name, style = MaterialTheme.typography.titleLarge)
             h.members.forEach { m ->
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Column(Modifier.weight(1f)) {
                         Text(m.name + if (m.userId == me) " " + tr("(you)") else "", fontWeight = FontWeight.Medium)
                         if (m.userId == h.ownerId) Text(tr("Started the household"), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
-                    if (iAmOwner && m.userId != me) TextButton(enabled = !busy, onClick = { onRemove(m) }) { Text(tr("Remove")) }
+                    if (iAmOwner && m.userId != me) LinkButton(tr("Remove"), enabled = !busy) { onRemove(m) }
                 }
             }
             if (h.members.size == 1) Text(tr("Just you so far. Send an invite code to someone at home."), style = MaterialTheme.typography.bodySmall)
@@ -352,7 +345,7 @@ private fun MembersCard(
                     syncLine(syncing, lastSyncMs, error, app), style = MaterialTheme.typography.bodySmall, modifier = Modifier.weight(1f),
                     color = if (error != null) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
                 )
-                TextButton(enabled = !busy && !syncing, onClick = onSync) { Text(tr("Sync now")) }
+                LinkButton(tr("Sync now"), enabled = !busy && !syncing, onClick = onSync)
             }
         }
     }

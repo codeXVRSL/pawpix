@@ -5,6 +5,8 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -23,7 +25,6 @@ import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.withLink
-import androidx.compose.ui.unit.dp
 import com.pawpixel.i18n.tr
 
 /**
@@ -44,14 +45,15 @@ import com.pawpixel.i18n.tr
 @Composable
 fun PhilippineInfoCard(app: AppScope) {
     var open by rememberSaveable { mutableStateOf(false) }
-    PixelCard(Modifier.fillMaxWidth()) {
+    SoftCard(Modifier.fillMaxWidth(), tone = Tone.Tonal) {
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Row(
                 Modifier.fillMaxWidth().clickable(onClickLabel = if (open) tr("Hide") else tr("Show"), role = Role.Button) { open = !open },
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Text(tr("Rabies rules and where to get shots"), fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
-                Text(if (open) "▲" else "▼")
+                IconTile("🩺", size = 36.dp)
+                Text(tr("Rabies rules and where to get shots"), style = MaterialTheme.typography.titleSmall, modifier = Modifier.weight(1f).padding(horizontal = 10.dp))
+                Text(if (open) "▲" else "▼", color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             if (open) {
                 Text(

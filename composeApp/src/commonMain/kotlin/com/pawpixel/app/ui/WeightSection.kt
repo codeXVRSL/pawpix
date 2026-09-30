@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.text.KeyboardOptions
@@ -61,33 +62,35 @@ fun WeightSection(app: AppScope, state: AppState, pet: Pet) {
 
     SectionTitle(tr("Weight"))
     if (weights.isEmpty()) {
-        Text(tr("Weigh {0} now and then (a bathroom scale works: weigh yourself holding them, then subtract).", pet.name), style = MaterialTheme.typography.bodySmall)
+        Hint(tr("Weigh {0} now and then (a bathroom scale works: weigh yourself holding them, then subtract).", pet.name))
     } else {
         val last = weights.last()
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(WeightTrend.kg(last.grams), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-            Text("  " + tr("on {0}", LocalClock.shortDate(last.day)), style = MaterialTheme.typography.bodySmall)
+        SoftCard(Modifier.fillMaxWidth(), tone = Tone.Surface) {
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(WeightTrend.kg(last.grams), style = MaterialTheme.typography.headlineMedium)
+                    Hint(tr("on {0}", LocalClock.shortDate(last.day)), Modifier.padding(bottom = 6.dp))
+                }
+                WeightTrend.change(weights)?.let { Hint(it) }
+                if (weights.size >= 2) WeightChart(weights.takeLast(CHART_POINTS))
+                else Hint(tr("Add another weigh-in later to see the trend."))
+            }
         }
-        WeightTrend.change(weights)?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
-        if (weights.size >= 2) WeightChart(weights.takeLast(CHART_POINTS))
-        else Text(tr("Add another weigh-in later to see the trend."), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        OutlinedButton(onClick = { adding = true }) { Text(tr("+ Add weight")) }
-        if (weights.isNotEmpty()) TextButton(onClick = { showAll = !showAll }) {
-            Text(if (showAll) tr("Hide weigh-ins") else tr("All weigh-ins ({0})", weights.size))
-        }
+        GhostPill(tr("+ Add weight")) { adding = true }
+        if (weights.isNotEmpty()) LinkButton(if (showAll) tr("Hide weigh-ins") else tr("All weigh-ins ({0})", weights.size)) { showAll = !showAll }
     }
     if (showAll) {
-        PixelCard(Modifier.fillMaxWidth(), color = MaterialTheme.colorScheme.background) {
+        SoftCard(Modifier.fillMaxWidth(), tone = Tone.Surface) {
             Column {
                 weights.asReversed().forEachIndexed { i, w ->
-                    if (i > 0) HorizontalDivider()
+                    if (i > 0) HorizontalDivider(color = Paw.palette.hairline)
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text(LocalClock.shortDate(w.day), modifier = Modifier.weight(1f))
+                        Text(LocalClock.shortDate(w.day), modifier = Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium)
                         Text(WeightTrend.kg(w.grams), fontWeight = FontWeight.Bold)
                         val editLabel = tr("Edit the weigh-in on {0}", LocalClock.shortDate(w.day))
-                        TextButton(onClick = { editing = w }, modifier = Modifier.semantics { contentDescription = editLabel }) { Text(tr("Edit")) }
+                        LinkButton(tr("Edit"), modifier = Modifier.semantics { contentDescription = editLabel }, color = MaterialTheme.colorScheme.onSurfaceVariant) { editing = w }
                     }
                 }
             }
@@ -116,7 +119,7 @@ private fun WeightChart(weights: List<Weight>) {
     val grid = MaterialTheme.colorScheme.outline.copy(alpha = 0.25f)
     val ink = MaterialTheme.colorScheme.onSurfaceVariant
     val strong = MaterialTheme.colorScheme.onBackground
-    val background = MaterialTheme.colorScheme.background
+    val background = MaterialTheme.colorScheme.surfaceContainerLowest
     val measurer = rememberTextMeasurer()
     val small = MaterialTheme.typography.labelSmall.copy(color = ink)
     val bold = MaterialTheme.typography.labelMedium.copy(color = strong, fontWeight = FontWeight.Bold)
@@ -200,7 +203,7 @@ private fun WeightDialog(
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 OutlinedTextField(
                     text, { text = it.take(6) }, label = { Text(tr("Kilograms, e.g. 4.2")) }, singleLine = true,
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal), shape = MaterialTheme.shapes.small,
                     isError = text.isNotBlank() && grams == null, modifier = Modifier.fillMaxWidth(),
                 )
                 // Or step from the last weigh-in, without the keyboard.
@@ -211,11 +214,11 @@ private fun WeightDialog(
                     StepKg("+1", tr("Add 1 kg")) { nudge(10 * WeightTrend.STEP_G) }
                 }
                 Text(tr("Weighed on"), style = MaterialTheme.typography.bodyMedium)
-                FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    FilterChip(day == today, { day = today }, label = { Text(tr("Today")) })
-                    FilterChip(day == today - 1, { day = today - 1 }, label = { Text(tr("Yesterday")) })
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    ChoiceChip(day == today, { day = today }, tr("Today"))
+                    ChoiceChip(day == today - 1, { day = today - 1 }, tr("Yesterday"))
                     val other = day != today && day != today - 1
-                    FilterChip(other, { picking = true }, label = { Text(if (other) LocalClock.shortDate(day) else tr("Other date…")) })
+                    ChoiceChip(other, { picking = true }, if (other) LocalClock.shortDate(day) else tr("Other date…"))
                 }
             }
         },
@@ -247,10 +250,7 @@ private fun WeightDialog(
 
 @Composable
 private fun StepKg(label: String, description: String, onClick: () -> Unit) {
-    OutlinedButton(
-        onClick = onClick, contentPadding = PaddingValues(horizontal = 4.dp),
-        modifier = Modifier.defaultMinSize(minWidth = 52.dp, minHeight = 48.dp).semantics { contentDescription = description },
-    ) { Text(label, maxLines = 1, softWrap = false) }
+    ChoiceChip(false, onClick, label, modifier = Modifier.defaultMinSize(minHeight = 44.dp).semantics { contentDescription = description })
 }
 
 private const val CHART_POINTS = 12
