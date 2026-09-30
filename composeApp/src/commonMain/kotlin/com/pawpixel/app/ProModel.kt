@@ -63,7 +63,9 @@ class ProModel(private val repo: PawRepository) {
         try {
             listen()
             apply(
-                try { StoreEvent.Checked(store.owned()) } catch (e: StoreException) {
+                try {
+                    kotlinx.coroutines.withTimeoutOrNull(STORE_TIMEOUT_MS) { StoreEvent.Checked(store.owned()) } ?: StoreEvent.Unreachable
+                } catch (e: StoreException) {
                     repo.platform.log("Store check failed: ${e.problem}")
                     StoreEvent.Unreachable
                 },
@@ -87,7 +89,10 @@ class ProModel(private val repo: PawRepository) {
         if (_ui.value.price != null) return
         _ui.update { it.copy(priceProblem = null) }
         try {
-            val price = store.price()
+            // A store that never answers (StoreKit with no product, a stuck connection) mustn't leave
+            // the screen at "Getting the price…": after a while, say so and offer Try again.
+            val price = kotlinx.coroutines.withTimeoutOrNull(STORE_TIMEOUT_MS) { store.price() }
+                ?: throw StoreException(StoreProblem.NOT_SET_UP)
             _ui.update { it.copy(price = price) }
         } catch (e: StoreException) {
             _ui.update { it.copy(priceProblem = problemText(e.problem)) }
@@ -158,5 +163,10 @@ class ProModel(private val repo: PawRepository) {
         StoreProblem.UNAVAILABLE -> tr("The app store isn't available on this phone right now.")
         StoreProblem.NOT_SET_UP -> tr("PawPixel Pro isn't available yet. Everything else in PawPixel works as usual.")
         StoreProblem.ERROR -> tr("The store couldn't finish that. Please try again in a moment.")
+    }
+
+    private companion object {
+        /** How long a quiet check (price, what's owned) waits for the store. Purchases wait for the owner. */
+        const val STORE_TIMEOUT_MS = 20_000L
     }
 }

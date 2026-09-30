@@ -226,11 +226,11 @@ final class OwnerJourneyTests: XCTestCase {
             try scrollTo("About PawPixel Pro").tap()
             try find("One-time purchase. No subscription.", timeout: 15)
             // With the StoreKit test file the price shows; without a product, it says Pro isn't available yet.
-            let buy = element(containing: "Buy PawPixel Pro")
+            let buy = element(containing: "Buy PawPixel Pro ·") // only with a price
             let unavailable = element(containing: "isn't available")
             let problem = element(containing: "Try again")
             var ready = false
-            for _ in 0..<30 where !ready { ready = buy.exists || unavailable.exists || problem.exists; if !ready { sleep(1) } }
+            for _ in 0..<45 where !ready { ready = buy.exists || unavailable.exists || problem.exists; if !ready { sleep(1) } }
             shot("pro")
             guard ready else { throw Failure("the Pro screen never showed a price or why not") }
             log.append("      pro: buy=\(buy.exists) unavailable=\(unavailable.exists) problem=\(problem.exists)")
