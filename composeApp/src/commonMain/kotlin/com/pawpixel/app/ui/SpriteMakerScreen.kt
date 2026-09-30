@@ -1,6 +1,8 @@
 package com.pawpixel.app.ui
 
+import androidx.compose.animation.core.Animatable
 import androidx.compose.foundation.Canvas
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.ui.draw.clip
@@ -142,6 +144,15 @@ fun SpriteMakerScreen(app: AppScope, state: AppState, existingPetId: String?) {
 
     val r = result
     val art = remember(r, species, ears) { r?.let { PetArt(it.head, species, ears) } }
+    // The reveal: the first time a new pet appears, its stage springs in under a little confetti.
+    var revealed by remember { mutableStateOf<Int?>(null) }
+    val entrance = remember { Animatable(if (existing != null) 1f else 0.88f) }
+    LaunchedEffect(r != null) {
+        if (r != null && revealed == null && existing == null) {
+            revealed = r.hashCode()
+            entrance.animateTo(1f, defaultSpatial())
+        }
+    }
     val upToDate = source == null || madeFor == Triple(source, settings, face)
 
     val canSave = r != null && art != null && upToDate && !saving && !loading && (existing != null || name.isNotBlank())
@@ -211,7 +222,7 @@ fun SpriteMakerScreen(app: AppScope, state: AppState, existingPetId: String?) {
                 }
             }
         } else {
-            SoftCard(Modifier.fillMaxWidth(), tone = Tone.Surface, padding = 0.dp) {
+            SoftCard(Modifier.fillMaxWidth().graphicsLayer { scaleX = entrance.value; scaleY = entrance.value }, tone = Tone.Surface, padding = 0.dp) {
                 Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
                     val shownName = name.trim().ifEmpty { existing?.name ?: tr("your pet") }
                     Box(Modifier.fillMaxWidth()) {
@@ -220,6 +231,7 @@ fun SpriteMakerScreen(app: AppScope, state: AppState, existingPetId: String?) {
                             description = MoodEngine.describe(shownName, Mood.HAPPY), scene = scene,
                         )
                         if (loading) CircularProgressIndicator(Modifier.align(Alignment.TopEnd).padding(12.dp).size(22.dp), strokeWidth = 3.dp)
+                        Confetti(revealed, Modifier.matchParentSize())
                     }
                     Column(Modifier.padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(10.dp)) {
                         Text(tr("Is that your pet? Tap to give pets."), style = MaterialTheme.typography.titleMedium, textAlign = TextAlign.Center)
