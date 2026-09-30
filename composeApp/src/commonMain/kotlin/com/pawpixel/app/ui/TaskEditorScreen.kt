@@ -239,5 +239,5 @@ fun SwitchRow(title: String, subtitle: String, checked: Boolean, onChange: (Bool
 /** A time stepper ("+15"): its [description] says what it does ("15 minutes later than 8:00 AM"). */
 @Composable
 private fun StepButton(label: String, description: String, onClick: () -> Unit) {
-    ChoiceChip(false, onClick, label, modifier = Modifier.semantics { contentDescription = description })
+    ChoiceChip(false, onClick, label, modifier = Modifier.semantics { contentDescription = description }, role = Role.Button)
 }

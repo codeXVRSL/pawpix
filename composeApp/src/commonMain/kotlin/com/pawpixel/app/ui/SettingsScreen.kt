@@ -26,6 +26,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
@@ -130,7 +131,7 @@ fun SettingsScreen(app: AppScope, state: AppState) {
                 )
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     listOf(1 to "Away 1 day", 3 to "Away 3 days", 7 to "Away 1 week", 14 to "Away 2 weeks").forEach { (days, label) ->
-                        ChoiceChip(false, { app.launch { app.repo.setAway(days) } }, tr(label))
+                        ChoiceChip(false, { app.launch { app.repo.setAway(days) } }, tr(label), role = Role.Button)
                     }
                 }
             }

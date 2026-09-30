@@ -36,6 +36,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
@@ -250,7 +251,7 @@ private fun WeightDialog(
 
 @Composable
 private fun StepKg(label: String, description: String, onClick: () -> Unit) {
-    ChoiceChip(false, onClick, label, modifier = Modifier.defaultMinSize(minHeight = 44.dp).semantics { contentDescription = description })
+    ChoiceChip(false, onClick, label, modifier = Modifier.defaultMinSize(minHeight = 44.dp).semantics { contentDescription = description }, role = Role.Button)
 }
 
 private const val CHART_POINTS = 12

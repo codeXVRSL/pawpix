@@ -270,7 +270,11 @@ fun LinkButton(text: String, modifier: Modifier = Modifier, enabled: Boolean = t
 
 /** One choice among a few (dog/cat, daily/weekly): a pill that fills when chosen. */
 @Composable
-fun ChoiceChip(selected: Boolean, onClick: () -> Unit, label: String, modifier: Modifier = Modifier, enabled: Boolean = true) {
+fun ChoiceChip(
+    selected: Boolean, onClick: () -> Unit, label: String, modifier: Modifier = Modifier, enabled: Boolean = true,
+    /** [Role.Button] for a chip that acts rather than chooses (a "+15" stepper). */
+    role: Role = Role.RadioButton,
+) {
     val interaction = remember { MutableInteractionSource() }
     val bg = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceContainerHigh
     val fg = if (selected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface
@@ -280,8 +284,8 @@ fun ChoiceChip(selected: Boolean, onClick: () -> Unit, label: String, modifier: 
             .heightIn(min = 40.dp)
             .clip(Pill)
             .background(if (enabled) bg else bg.copy(alpha = 0.5f))
-            .clickable(interaction, indication = null, enabled = enabled, role = Role.RadioButton, onClick = onClick)
-            .semantics { this.selected = selected }
+            .clickable(interaction, indication = null, enabled = enabled, role = role, onClick = onClick)
+            .semantics { if (role == Role.RadioButton) this.selected = selected }
             .padding(horizontal = 16.dp, vertical = 8.dp),
         contentAlignment = Alignment.Center,
     ) {
