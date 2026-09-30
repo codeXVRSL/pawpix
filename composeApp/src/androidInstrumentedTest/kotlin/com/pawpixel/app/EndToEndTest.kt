@@ -259,8 +259,7 @@ class EndToEndTest {
             retrying { find(By.text("Save")).click() }
             waitFor("second weigh-in saved") { repo.state.value.weightsFor(petId).map { it.grams } == listOf(4000, 4200) }
             scrollTo(By.descStartsWith("Weight chart"))
-            scrollTo(By.text("+ Add weight"))
-            find(By.text("4.2 kg"))
+            scrollTo(By.text("4.2 kg")) // the latest weigh-in, big, at the top of the weight card
             Thread.sleep(500)
             shot("weight")
             retrying { scrollTo(By.text("All weigh-ins (2)")).click() }
@@ -310,7 +309,7 @@ class EndToEndTest {
 
         step("settings open and close") {
             retrying { find(By.text("Settings")).click() }
-            find(By.text("Bedtime"))
+            scrollTo(By.text("Bedtime")) // a few groups down the page
             shot("10-settings")
             device.pressBack()
             find(By.text("Chelsea"))
