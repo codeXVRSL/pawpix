@@ -1,0 +1,66 @@
+PASS  first open goes straight to making a pet  (7708 ms)
+PASS  photo becomes a pixel pet  (7885 ms)
+PASS  cat body and ears  (9176 ms)
+      attempt 1: typing didn't land yet
+      attempt 2: typing didn't land yet
+      attempt 3: typing didn't land yet
+FAIL  name and save: not on screen: Care
+      scroll down #0 for Done: exists=false frame=- hittable=false
+      scroll down #1 for Done: exists=false frame=- hittable=false
+      scroll down #2 for Done: exists=false frame=- hittable=false
+      scroll up #0 for Done: exists=false frame=- hittable=false
+      scroll up #1 for Done: exists=false frame=- hittable=false
+      scroll up #2 for Done: exists=false frame=- hittable=false
+FAIL  Done on a care task: not found after scrolling: Done
+      scroll down #0 for + Add care task: exists=false frame=- hittable=false
+      scroll down #1 for + Add care task: exists=false frame=- hittable=false
+      scroll down #2 for + Add care task: exists=false frame=- hittable=false
+      scroll up #0 for + Add care task: exists=false frame=- hittable=false
+      scroll up #1 for + Add care task: exists=false frame=- hittable=false
+      scroll up #2 for + Add care task: exists=false frame=- hittable=false
+FAIL  add a medicine task: not found after scrolling: + Add care task
+      scroll down #0 for + Add health reminders: exists=false frame=- hittable=false
+      scroll down #1 for + Add health reminders: exists=false frame=- hittable=false
+      scroll down #2 for + Add health reminders: exists=false frame=- hittable=false
+      scroll up #0 for + Add health reminders: exists=false frame=- hittable=false
+      scroll up #1 for + Add health reminders: exists=false frame=- hittable=false
+      scroll up #2 for + Add health reminders: exists=false frame=- hittable=false
+FAIL  health: a kitten's birthday gives her the first-year plan: not found after scrolling: + Add health reminders
+      scroll down #0 for + Add weight: exists=false frame=- hittable=false
+      scroll down #1 for + Add weight: exists=false frame=- hittable=false
+      scroll down #2 for + Add weight: exists=false frame=- hittable=false
+      scroll up #0 for + Add weight: exists=false frame=- hittable=false
+      scroll up #1 for + Add weight: exists=false frame=- hittable=false
+      scroll up #2 for + Add weight: exists=false frame=- hittable=false
+FAIL  weight: two weigh-ins draw the chart: not found after scrolling: + Add weight
+      scroll down #0 for Before/after: exists=false frame=- hittable=false
+      scroll down #1 for Before/after: exists=false frame=- hittable=false
+      scroll down #2 for Before/after: exists=false frame=- hittable=false
+      scroll up #0 for Before/after: exists=false frame=- hittable=false
+      scroll up #1 for Before/after: exists=false frame=- hittable=false
+      scroll up #2 for Before/after: exists=false frame=- hittable=false
+FAIL  before/after card opens the share sheet: not found after scrolling: Before/after
+      scroll down #0 for Share animation: exists=false frame=- hittable=false
+      scroll down #1 for Share animation: exists=false frame=- hittable=false
+      scroll down #2 for Share animation: exists=false frame=- hittable=false
+      scroll up #0 for Share animation: exists=false frame=- hittable=false
+      scroll up #1 for Share animation: exists=false frame=- hittable=false
+      scroll up #2 for Share animation: exists=false frame=- hittable=false
+FAIL  share animation opens the share sheet: not found after scrolling: Share animation
+      scroll down #0 for Back: exists=false frame=- hittable=false
+      scroll down #1 for Back: exists=false frame=- hittable=false
+      scroll down #2 for Back: exists=false frame=- hittable=false
+      scroll up #0 for Back: exists=false frame=- hittable=false
+      scroll up #1 for Back: exists=false frame=- hittable=false
+      scroll up #2 for Back: exists=false frame=- hittable=false
+FAIL  home lists the pet, settings open: not found after scrolling: Back
+FAIL  pet map opens (this CI build has no map server: it says so): not on screen: Pet map
+      scroll down #0 for Share with your household: exists=false frame=- hittable=false
+      scroll down #1 for Share with your household: exists=false frame=- hittable=false
+      scroll down #2 for Share with your household: exists=false frame=- hittable=false
+      scroll up #0 for Share with your household: exists=false frame=- hittable=false
+      scroll up #1 for Share with your household: exists=false frame=- hittable=false
+      scroll up #2 for Share with your household: exists=false frame=- hittable=false
+FAIL  share with your household (no server in this CI build: says it's not available yet): not found after scrolling: Share with your household
+FAIL  PawPixel Pro screen: what it is, one-time, and (no product in this CI build) not available yet: not on screen: Settings
+FAIL  relaunch keeps the pet: pet not listed after relaunch

@@ -1,0 +1,54 @@
+Attributes: Application, 0x10830f4c0, pid: 31868, label: 'PawPixel'
+Element subtree:
+ →Application, 0x10830f4c0, pid: 31868, label: 'PawPixel'
+    Window (Main), 0x1083177e0, {{0.0, 0.0}, {440.0, 956.0}}
+      Other, 0x10831a260, {{0.0, 0.0}, {440.0, 956.0}}
+        Other, 0x10831a380, {{0.0, 0.0}, {440.0, 956.0}}
+          Other, 0x10831a110, {{0.0, 0.0}, {440.0, 956.0}}
+            Other, 0x1048fe180, {{0.0, 0.0}, {440.0, 956.0}}
+              Other, 0x10831a4a0, {{0.0, 0.0}, {440.0, 956.0}}
+                Other, 0x10831a5c0, {{0.0, 0.0}, {440.0, 956.0}}
+                Other, 0x10831a6e0, {{0.0, 0.0}, {440.0, 956.0}}
+                ScrollView, 0x10831a800, {{0.0, 0.0}, {440.0, 956.0}}
+                  Other, 0x10831a920, {{0.0, 0.0}, {440.0, 956.0}}
+                    Other, 0x10831aa40, {{0.0, 0.0}, {440.0, 956.0}}
+                      Other, 0x102feb990, {{0.0, 0.0}, {440.0, 956.0}}
+                      Other, 0x102f0b4c0, {{0.0, 62.0}, {440.0, 860.0}}
+                        Other, 0x10831ab60, {{0.0, 62.0}, {440.0, 860.0}}
+                        Other, 0x102e89440, {{16.0, 67.3}, {327.0, 28.0}}, label: 'Make your pixel pet'
+                        Button, 0x102feeb90, {{343.0, 57.3}, {81.0, 48.0}}, label: 'Save'
+                        Button, 0x102fea1d0, {{30.0, 131.3}, {380.0, 247.7}}, label: 'Pixel mochimochimochi, happy'
+                        Other, 0x102fe27d0, {{30.0, 131.3}, {380.0, 385.7}}
+                        StaticText, 0x102fe0c50, {{77.7, 385.0}, {285.0, 24.0}}, label: 'Is that your pet? Tap to give pets.'
+                        Image, 0x102e943e0, {{86.0, 415.0}, {64.0, 64.0}}, label: 'Pixel mochimochimochi, hungry'
+                        Image, 0x102e82d90, {{154.0, 415.0}, {64.0, 64.0}}, label: 'Pixel mochimochimochi, restless'
+                        Image, 0x102fec130, {{222.0, 415.0}, {64.0, 64.0}}, label: 'Pixel mochimochimochi, sleepy'
+                        Image, 0x102fb2390, {{290.0, 415.0}, {64.0, 64.0}}, label: 'Pixel mochimochimochi, missing you'
+                        StaticText, 0x102fec550, {{30.0, 485.0}, {380.0, 32.0}}, label: 'Colours look off? Move the face square below, or try a photo with a plainer background.'
+                        TextView, 0x10820a880, {{16.0, 543.0}, {408.0, 64.0}}, label: 'mochimochimochi', Keyboard Focused
+                        StaticText, 0x108209c20, {{16.0, 623.0}, {73.0, 24.0}}, label: 'Birthday'
+                        Button, 0x10820b0c0, {{311.7, 619.0}, {112.3, 48.0}}, label: 'Add birthday'
+                        StaticText, 0x10820a040, {{16.0, 647.0}, {249.0, 16.0}}, label: 'Optional. It plans puppy and kitten shots.'
+                        Other, 0x108219c30, {{16.0, 679.0}, {43.0, 24.0}}, label: 'Body'
+                        Button, 0x108219d50, {{16.0, 715.0}, {98.0, 48.0}}, label: 'Dog body'
+                        Button, 0x108219e70, {{120.0, 715.0}, {94.0, 48.0}}, label: 'Cat body', Selected
+                        Other, 0x108219f90, {{16.0, 775.0}, {37.3, 24.0}}, label: 'Ears'
+                        Button, 0x10821a0b0, {{16.0, 811.0}, {108.7, 48.0}}, label: 'Pointy ears', Selected
+                        Button, 0x102e848b0, {{130.7, 811.0}, {111.7, 48.0}}, label: 'Floppy ears'
+                        Other, 0x102e84f70, {{16.0, 871.0}, {39.7, 24.0}}, label: 'Face'
+                        StaticText, 0x102e83b20, {{16.0, 907.0}, {408.0, 15.0}}, label: 'Drag the square over your pet's face. Its colours and markings go on your pixel pet.'
+                        Other, 0x102e837b0, {{16.0, 951.0}, {408.0, 271.0}}, label: 'Your photo, with a square on your pet's face. Drag it to move it; the Smaller and Bigger buttons resize it.'
+                        Button, 0x102e82a00, {{16.0, 1238.0}, {99.7, 40.0}}, label: 'Make the face square smaller'
+                        Button, 0x102e84200, {{123.7, 1238.0}, {93.0, 40.0}}, label: 'Make the face square bigger'
+                        Button, 0x102e67320, {{16.0, 1298.0}, {193.3, 40.0}}, label: 'Use a different photo'
+                        Button, 0x102ea24b0, {{16.0, 1358.0}, {408.0, 40.0}}, label: 'Save mochimochimochi'
+    Window, 0x102ea1e10, {{0.0, 0.0}, {440.0, 956.0}}
+      Other, 0x102ea2820, {{0.0, 0.0}, {440.0, 956.0}}
+        Other, 0x102ea1ac0, {{0.0, 0.0}, {440.0, 956.0}}
+Path to element:
+ →Application, 0x10830f4c0, pid: 31868, label: 'PawPixel'
+Query chain:
+ →Find: Target Application 'com.pawpixel.app'
+  Output: {
+    Application, 0x102ea2160, pid: 31868, label: 'PawPixel'
+  }

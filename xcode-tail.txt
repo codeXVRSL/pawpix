@@ -1,0 +1,200 @@
+    t =   549.42s         Capturing element debug description
+    t =   550.35s     Checking `Expect predicate `existsNoRetry == 1` for object Any (First Match)`
+    t =   550.35s         Checking existence of `Any (First Match)`
+    t =   550.40s         Capturing element debug description
+    t =   551.32s     Checking `Expect predicate `existsNoRetry == 1` for object Any (First Match)`
+    t =   551.32s         Checking existence of `Any (First Match)`
+    t =   551.37s         Capturing element debug description
+    t =   552.31s     Checking `Expect predicate `existsNoRetry == 1` for object Any (First Match)`
+    t =   552.31s         Checking existence of `Any (First Match)`
+    t =   552.38s         Capturing element debug description
+    t =   553.32s     Checking `Expect predicate `existsNoRetry == 1` for object Any (First Match)`
+    t =   553.32s         Checking existence of `Any (First Match)`
+    t =   553.38s         Capturing element debug description
+    t =   554.33s     Checking `Expect predicate `existsNoRetry == 1` for object Any (First Match)`
+    t =   554.33s         Checking existence of `Any (First Match)`
+    t =   554.41s         Capturing element debug description
+    t =   555.33s     Checking `Expect predicate `existsNoRetry == 1` for object Any (First Match)`
+    t =   555.33s         Checking existence of `Any (First Match)`
+    t =   555.39s         Capturing element debug description
+    t =   556.33s     Checking `Expect predicate `existsNoRetry == 1` for object Any (First Match)`
+    t =   556.33s         Checking existence of `Any (First Match)`
+    t =   556.36s         Capturing element debug description
+    t =   557.30s     Checking `Expect predicate `existsNoRetry == 1` for object Any (First Match)`
+    t =   557.30s         Checking existence of `Any (First Match)`
+    t =   557.36s         Capturing element debug description
+    t =   558.31s     Checking `Expect predicate `existsNoRetry == 1` for object Any (First Match)`
+    t =   558.31s         Checking existence of `Any (First Match)`
+    t =   558.37s         Capturing element debug description
+    t =   559.30s     Checking `Expect predicate `existsNoRetry == 1` for object Any (First Match)`
+    t =   559.30s         Checking existence of `Any (First Match)`
+    t =   559.41s         Capturing element debug description
+    t =   560.37s     Checking `Expect predicate `existsNoRetry == 1` for object Any (First Match)`
+    t =   560.37s         Checking existence of `Any (First Match)`
+    t =   560.49s         Capturing element debug description
+    t =   561.29s     Checking `Expect predicate `existsNoRetry == 1` for object Any (First Match)`
+    t =   561.29s         Checking existence of `Any (First Match)`
+    t =   561.32s         Capturing element debug description
+    t =   561.32s     Checking existence of `Any (First Match)`
+    t =   561.36s Collecting debug information to assist test failure triage
+    t =   561.36s     Requesting snapshot of accessibility hierarchy for app with pid 31868
+    t =   561.63s Added attachment named 'FAILED-PawPixel-Pro-screen:-what-it-i'
+    t =   561.63s Requesting snapshot of accessibility hierarchy for app with pid 31868
+    t =   561.77s Requesting snapshot of accessibility hierarchy for app with pid 31868
+    t =   561.80s Terminate com.pawpixel.app:31868
+    t =   562.80s Open com.pawpixel.app
+    t =   562.80s     Launch com.pawpixel.app
+    t =   564.52s         Setting up automation session
+    t =   567.88s         Wait for com.pawpixel.app to idle
+    t =   570.36s Waiting 30.0s for Any (First Match) to exist
+    t =   571.36s     Checking `Expect predicate `existsNoRetry == 1` for object Any (First Match)`
+    t =   571.36s         Checking existence of `Any (First Match)`
+    t =   571.46s         Capturing element debug description
+    t =   572.38s     Checking `Expect predicate `existsNoRetry == 1` for object Any (First Match)`
+    t =   572.38s         Checking existence of `Any (First Match)`
+    t =   572.43s         Capturing element debug description
+    t =   573.36s     Checking `Expect predicate `existsNoRetry == 1` for object Any (First Match)`
+    t =   573.36s         Checking existence of `Any (First Match)`
+    t =   573.39s         Capturing element debug description
+    t =   574.43s     Checking `Expect predicate `existsNoRetry == 1` for object Any (First Match)`
+    t =   574.43s         Checking existence of `Any (First Match)`
+    t =   574.45s         Capturing element debug description
+    t =   575.38s     Checking `Expect predicate `existsNoRetry == 1` for object Any (First Match)`
+    t =   575.38s         Checking existence of `Any (First Match)`
+    t =   575.41s         Capturing element debug description
+    t =   576.45s     Checking `Expect predicate `existsNoRetry == 1` for object Any (First Match)`
+    t =   576.45s         Checking existence of `Any (First Match)`
+    t =   576.47s         Capturing element debug description
+    t =   577.41s     Checking `Expect predicate `existsNoRetry == 1` for object Any (First Match)`
+    t =   577.41s         Checking existence of `Any (First Match)`
+    t =   577.44s         Capturing element debug description
+    t =   578.38s     Checking `Expect predicate `existsNoRetry == 1` for object Any (First Match)`
+    t =   578.38s         Checking existence of `Any (First Match)`
+    t =   578.44s         Capturing element debug description
+    t =   579.36s     Checking `Expect predicate `existsNoRetry == 1` for object Any (First Match)`
+    t =   579.36s         Checking existence of `Any (First Match)`
+    t =   579.44s         Capturing element debug description
+    t =   580.36s     Checking `Expect predicate `existsNoRetry == 1` for object Any (First Match)`
+    t =   580.36s         Checking existence of `Any (First Match)`
+    t =   580.38s         Capturing element debug description
+    t =   581.43s     Checking `Expect predicate `existsNoRetry == 1` for object Any (First Match)`
+    t =   581.43s         Checking existence of `Any (First Match)`
+    t =   581.45s         Capturing element debug description
+    t =   582.38s     Checking `Expect predicate `existsNoRetry == 1` for object Any (First Match)`
+    t =   582.38s         Checking existence of `Any (First Match)`
+    t =   582.40s         Capturing element debug description
+    t =   583.36s     Checking `Expect predicate `existsNoRetry == 1` for object Any (First Match)`
+    t =   583.36s         Checking existence of `Any (First Match)`
+    t =   583.38s         Capturing element debug description
+    t =   584.41s     Checking `Expect predicate `existsNoRetry == 1` for object Any (First Match)`
+    t =   584.41s         Checking existence of `Any (First Match)`
+    t =   584.43s         Capturing element debug description
+    t =   585.38s     Checking `Expect predicate `existsNoRetry == 1` for object Any (First Match)`
+    t =   585.38s         Checking existence of `Any (First Match)`
+    t =   585.40s         Capturing element debug description
+    t =   586.45s     Checking `Expect predicate `existsNoRetry == 1` for object Any (First Match)`
+    t =   586.45s         Checking existence of `Any (First Match)`
+    t =   586.48s         Capturing element debug description
+    t =   587.41s     Checking `Expect predicate `existsNoRetry == 1` for object Any (First Match)`
+    t =   587.41s         Checking existence of `Any (First Match)`
+    t =   587.43s         Capturing element debug description
+    t =   588.36s     Checking `Expect predicate `existsNoRetry == 1` for object Any (First Match)`
+    t =   588.36s         Checking existence of `Any (First Match)`
+    t =   588.38s         Capturing element debug description
+    t =   589.43s     Checking `Expect predicate `existsNoRetry == 1` for object Any (First Match)`
+    t =   589.43s         Checking existence of `Any (First Match)`
+    t =   589.47s         Capturing element debug description
+    t =   590.40s     Checking `Expect predicate `existsNoRetry == 1` for object Any (First Match)`
+    t =   590.40s         Checking existence of `Any (First Match)`
+    t =   590.43s         Capturing element debug description
+    t =   591.37s     Checking `Expect predicate `existsNoRetry == 1` for object Any (First Match)`
+    t =   591.37s         Checking existence of `Any (First Match)`
+    t =   591.39s         Capturing element debug description
+    t =   592.41s     Checking `Expect predicate `existsNoRetry == 1` for object Any (First Match)`
+    t =   592.41s         Checking existence of `Any (First Match)`
+    t =   592.44s         Capturing element debug description
+    t =   593.38s     Checking `Expect predicate `existsNoRetry == 1` for object Any (First Match)`
+    t =   593.38s         Checking existence of `Any (First Match)`
+    t =   593.41s         Capturing element debug description
+    t =   594.36s     Checking `Expect predicate `existsNoRetry == 1` for object Any (First Match)`
+    t =   594.36s         Checking existence of `Any (First Match)`
+    t =   594.39s         Capturing element debug description
+    t =   595.44s     Checking `Expect predicate `existsNoRetry == 1` for object Any (First Match)`
+    t =   595.45s         Checking existence of `Any (First Match)`
+    t =   595.49s         Capturing element debug description
+    t =   596.47s     Checking `Expect predicate `existsNoRetry == 1` for object Any (First Match)`
+    t =   596.47s         Checking existence of `Any (First Match)`
+    t =   596.58s         Capturing element debug description
+    t =   597.41s     Checking `Expect predicate `existsNoRetry == 1` for object Any (First Match)`
+    t =   597.41s         Checking existence of `Any (First Match)`
+    t =   597.43s         Capturing element debug description
+    t =   598.38s     Checking `Expect predicate `existsNoRetry == 1` for object Any (First Match)`
+    t =   598.38s         Checking existence of `Any (First Match)`
+    t =   598.40s         Capturing element debug description
+    t =   599.36s     Checking `Expect predicate `existsNoRetry == 1` for object Any (First Match)`
+    t =   599.37s         Checking existence of `Any (First Match)`
+    t =   599.39s         Capturing element debug description
+    t =   600.36s     Checking `Expect predicate `existsNoRetry == 1` for object Any (First Match)`
+    t =   600.36s         Checking existence of `Any (First Match)`
+    t =   600.38s         Capturing element debug description
+    t =   600.38s     Checking existence of `Any (First Match)`
+    t =   600.40s Collecting debug information to assist test failure triage
+    t =   600.40s     Requesting snapshot of accessibility hierarchy for app with pid 53828
+    t =   600.66s Added attachment named 'FAILED-relaunch-keeps-the-pet'
+    t =   600.66s Requesting snapshot of accessibility hierarchy for app with pid 53828
+    t =   600.70s Requesting snapshot of accessibility hierarchy for app with pid 53828
+/Users/runner/work/pawpix/pawpix/iosApp/PawPixelUITests/OwnerJourneyTests.swift:255: error: -[PawPixelUITests.OwnerJourneyTests testOwnerJourney] : XCTAssertTrue failed - Failed steps:
+FAIL  name and save: not on screen: Care
+FAIL  Done on a care task: not found after scrolling: Done
+FAIL  add a medicine task: not found after scrolling: + Add care task
+FAIL  health: a kitten's birthday gives her the first-year plan: not found after scrolling: + Add health reminders
+FAIL  weight: two weigh-ins draw the chart: not found after scrolling: + Add weight
+FAIL  before/after card opens the share sheet: not found after scrolling: Before/after
+FAIL  share animation opens the share sheet: not found after scrolling: Share animation
+FAIL  home lists the pet, settings open: not found after scrolling: Back
+FAIL  pet map opens (this CI build has no map server: it says so): not on screen: Pet map
+FAIL  share with your household (no server in this CI build: says it's not available yet): not found after scrolling: Share with your household
+FAIL  PawPixel Pro screen: what it is, one-time, and (no product in this CI build) not available yet: not on screen: Settings
+FAIL  relaunch keeps the pet: pet not listed after relaunch
+    t =   608.90s Tear Down
+Test Case '-[PawPixelUITests.OwnerJourneyTests testOwnerJourney]' failed (610.465 seconds).
+Test Suite 'OwnerJourneyTests' failed at 2026-09-30 16:07:44.594.
+	 Executed 1 test, with 1 failure (0 unexpected) in 610.465 (610.466) seconds
+Test Suite 'WidgetRenderTests' started at 2026-09-30 16:07:44.595.
+Test Case '-[PawPixelUITests.WidgetRenderTests testReaderMatchesKotlin]' started.
+    t =     0.00s Start Test at 2026-09-30 16:07:44.595
+    t =     0.11s Set Up
+    t =     0.21s Tear Down
+Test Case '-[PawPixelUITests.WidgetRenderTests testReaderMatchesKotlin]' passed (0.380 seconds).
+Test Case '-[PawPixelUITests.WidgetRenderTests testRenderEveryFamily]' started.
+    t =     0.00s Start Test at 2026-09-30 16:07:44.976
+    t =     0.04s Set Up
+2026-09-30 16:07:45.261079+0000 PawPixelUITests-Runner[30123:86042] [framework] CoreUI: CUIThemeStore: No theme registered with id=0
+2026-09-30 16:07:45.266661+0000 PawPixelUITests-Runner[30123:86042] [framework] CoreUI: CUIThemeStore: No theme registered with id=0
+IOSurfaceClientSetSurfaceNotify failed e00002c7
+2026-09-30 16:07:47.868780+0000 PawPixelUITests-Runner[30123:122695] fopen failed for data file: errno = 2 (No such file or directory)
+2026-09-30 16:07:47.869381+0000 PawPixelUITests-Runner[30123:122695] Errors found! Invalidating cache...
+2026-09-30 16:07:49.000494+0000 PawPixelUITests-Runner[30123:122695] fopen failed for data file: errno = 2 (No such file or directory)
+2026-09-30 16:07:49.030512+0000 PawPixelUITests-Runner[30123:122695] Errors found! Invalidating cache...
+2026-09-30 16:07:58.753913+0000 PawPixelUITests-Runner[30123:122695] [error] building pipeline primitive_color-faba5ca7ge2ba4 took 10.892291 seconds
+    t =    15.00s Tear Down
+Test Case '-[PawPixelUITests.WidgetRenderTests testRenderEveryFamily]' passed (15.207 seconds).
+Test Suite 'WidgetRenderTests' passed at 2026-09-30 16:08:00.187.
+	 Executed 2 tests, with 0 failures (0 unexpected) in 15.587 (15.592) seconds
+Test Suite 'PawPixelUITests.xctest' failed at 2026-09-30 16:08:00.189.
+	 Executed 3 tests, with 1 failure (0 unexpected) in 626.052 (626.062) seconds
+Test Suite 'All tests' failed at 2026-09-30 16:08:00.190.
+	 Executed 3 tests, with 1 failure (0 unexpected) in 626.052 (626.067) seconds
+2026-09-30 16:08:26.877 xcodebuild[21582:62970] [MT] IDETestOperationsObserverDebug: 732.459 elapsed -- Testing started completed.
+2026-09-30 16:08:26.878 xcodebuild[21582:62970] [MT] IDETestOperationsObserverDebug: 0.000 sec, +0.000 sec -- start
+2026-09-30 16:08:26.878 xcodebuild[21582:62970] [MT] IDETestOperationsObserverDebug: 732.459 sec, +732.459 sec -- end
+
+Test session results, code coverage, and logs:
+	/Users/runner/work/_temp/PawPixel.xcresult
+
+Failing tests:
+	OwnerJourneyTests.testOwnerJourney()
+
+** TEST FAILED **
+
+Testing started

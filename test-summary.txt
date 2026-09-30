@@ -1,0 +1,22 @@
+Ignoring --strip-bitcode because --sign was not passed
+Ignoring --strip-bitcode because --sign was not passed
+2026-09-30 15:56:14.120 appintentsnltrainingprocessor[28362:79122] error: Unable to parse extract.actionsdata
+Test Suite 'All tests' started at 2026-09-30 15:57:34.122.
+Test Suite 'PawPixelUITests.xctest' started at 2026-09-30 15:57:34.127.
+Test Suite 'OwnerJourneyTests' started at 2026-09-30 15:57:34.128.
+Test Case '-[PawPixelUITests.OwnerJourneyTests testOwnerJourney]' started.
+/Users/runner/work/pawpix/pawpix/iosApp/PawPixelUITests/OwnerJourneyTests.swift:255: error: -[PawPixelUITests.OwnerJourneyTests testOwnerJourney] : XCTAssertTrue failed - Failed steps:
+Test Case '-[PawPixelUITests.OwnerJourneyTests testOwnerJourney]' failed (610.465 seconds).
+Test Suite 'OwnerJourneyTests' failed at 2026-09-30 16:07:44.594.
+Test Suite 'WidgetRenderTests' started at 2026-09-30 16:07:44.595.
+Test Case '-[PawPixelUITests.WidgetRenderTests testReaderMatchesKotlin]' started.
+Test Case '-[PawPixelUITests.WidgetRenderTests testReaderMatchesKotlin]' passed (0.380 seconds).
+Test Case '-[PawPixelUITests.WidgetRenderTests testRenderEveryFamily]' started.
+IOSurfaceClientSetSurfaceNotify failed e00002c7
+2026-09-30 16:07:47.868780+0000 PawPixelUITests-Runner[30123:122695] fopen failed for data file: errno = 2 (No such file or directory)
+2026-09-30 16:07:49.000494+0000 PawPixelUITests-Runner[30123:122695] fopen failed for data file: errno = 2 (No such file or directory)
+Test Case '-[PawPixelUITests.WidgetRenderTests testRenderEveryFamily]' passed (15.207 seconds).
+Test Suite 'WidgetRenderTests' passed at 2026-09-30 16:08:00.187.
+Test Suite 'PawPixelUITests.xctest' failed at 2026-09-30 16:08:00.189.
+Test Suite 'All tests' failed at 2026-09-30 16:08:00.190.
+** TEST FAILED **

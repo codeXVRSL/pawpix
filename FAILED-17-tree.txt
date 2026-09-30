@@ -1,0 +1,34 @@
+Attributes: Application, 0x10818c980, pid: 53828, label: 'PawPixel'
+Element subtree:
+ →Application, 0x10818c980, pid: 53828, label: 'PawPixel'
+    Window (Main), 0x10818d200, {{0.0, 0.0}, {440.0, 956.0}}
+      Other, 0x1081bd960, {{0.0, 0.0}, {440.0, 956.0}}
+        Other, 0x102e9c1b0, {{0.0, 0.0}, {440.0, 956.0}}
+          Other, 0x1081bdcc0, {{0.0, 0.0}, {440.0, 956.0}}
+            Other, 0x102ea2820, {{0.0, 0.0}, {440.0, 956.0}}
+              Other, 0x102ea1740, {{0.0, 0.0}, {440.0, 956.0}}
+                Other, 0x102e9f530, {{0.0, 0.0}, {440.0, 956.0}}
+                Other, 0x102e82a00, {{0.0, 0.0}, {440.0, 956.0}}
+                ScrollView, 0x102e9b420, {{0.0, 0.0}, {440.0, 956.0}}
+                  Other, 0x102e9a2d0, {{0.0, 0.0}, {440.0, 956.0}}
+                    Other, 0x102e9cf60, {{0.0, 0.0}, {440.0, 956.0}}
+                      Other, 0x102e9a670, {{0.0, 0.0}, {440.0, 956.0}}
+                      Other, 0x102e9d9e0, {{0.0, 62.0}, {440.0, 860.0}}
+                        Other, 0x102e939a0, {{0.0, 62.0}, {440.0, 860.0}}
+                        Other, 0x102e9c520, {{16.0, 78.0}, {408.0, 28.0}}, label: 'Make your pixel pet'
+                        StaticText, 0x102ea1e10, {{30.0, 132.0}, {202.7, 24.0}}, label: 'Pick a photo of your pet'
+                        Other, 0x102e9d2f0, {{30.0, 132.0}, {380.0, 224.0}}
+                        StaticText, 0x102e67320, {{30.0, 164.0}, {380.0, 96.0}}, label: '• Your pet's face clearly visible, looking at the camera
+• Good light; one pet per photo
+• A close-up or a full-body photo both work'
+                        StaticText, 0x102ea02c0, {{30.0, 268.0}, {380.0, 32.0}}, label: 'Your photo stays on this phone. PawPixel keeps only a small crop for your before/after card.'
+                        Button, 0x102ea0d00, {{30.0, 308.0}, {155.7, 48.0}}, label: 'Choose a photo'
+                        StaticText, 0x102e994f0, {{16.0, 382.0}, {316.7, 16.0}}, label: 'Someone at home already has your pet on PawPixel?'
+                        Button, 0x102e9f1f0, {{16.0, 410.0}, {158.0, 48.0}}, label: '👪 Join a household'
+Path to element:
+ →Application, 0x10818c980, pid: 53828, label: 'PawPixel'
+Query chain:
+ →Find: Target Application 'com.pawpixel.app'
+  Output: {
+    Application, 0x102e84f70, pid: 53828, label: 'PawPixel'
+  }
