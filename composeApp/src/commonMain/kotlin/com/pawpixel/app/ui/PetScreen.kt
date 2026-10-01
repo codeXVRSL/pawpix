@@ -151,6 +151,17 @@ fun PetScreen(app: AppScope, state: AppState, pet: Pet) {
         OutfitSection(app, pet)
 
         Spacer(Modifier.height(4.dp))
+        SectionTitle(tr("Look"))
+        SoftCard(Modifier.fillMaxWidth(), tone = Tone.Accent, onClick = { app.navigate(Screen.Studio(pet.id)) }, onClickLabel = tr("Open the Pet Studio")) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                IconTile("✨", tone = Tone.Surface)
+                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                    Text(tr("Pet Studio"), style = MaterialTheme.typography.titleMedium)
+                    Text(tr("Eyes, ears, coat, colours and more: 70+ ways to make {0} yours.", pet.name), style = MaterialTheme.typography.bodySmall)
+                }
+                Text("›", style = MaterialTheme.typography.headlineSmall)
+            }
+        }
         SectionTitle(tr("Share & sprite"))
         FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             PrimaryPill(

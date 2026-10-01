@@ -27,6 +27,7 @@ object StateCodec {
                 "careDays" to p.careDays,
                 "milestoneSeen" to p.milestoneSeen,
                 "accessory" to p.accessory,
+                "style" to p.style,
                 "edited" to p.editedAtMs,
                 "sprite" to Json.obj(
                     "size" to p.sprite.size, "colors" to p.sprite.colors,
@@ -117,6 +118,7 @@ object StateCodec {
                 careDays = p["careDays"].list.mapNotNull { it.long }.distinct().sorted().takeLast(AppState.MAX_CARE_DAYS),
                 milestoneSeen = p["milestoneSeen"].int ?: 0,
                 accessory = p["accessory"].str?.takeIf { com.pawpixel.sprite.Accessory.of(it) != null },
+                style = p["style"].str?.takeIf { com.pawpixel.sprite.PetStyle.decode(it) != null },
                 editedAtMs = p["edited"].long ?: 0L,
                 sprite = SpriteSettings(
                     size = sp["size"].int ?: spriteDefaults.size,

@@ -26,6 +26,7 @@ import com.pawpixel.sprite.Ears
 import com.pawpixel.sprite.FaceBox
 import com.pawpixel.sprite.PetArt
 import com.pawpixel.sprite.PetLook
+import com.pawpixel.sprite.PetStyle
 import com.pawpixel.sprite.PixelImage
 import com.pawpixel.sprite.Png
 import com.pawpixel.sprite.Poses
@@ -433,8 +434,24 @@ class PawRepository(val platform: Platform) {
      */
     fun art(pet: Pet): PetArt? {
         val outfit = com.pawpixel.sprite.Accessory.of(pet.accessory)
-        return head(pet.id)?.let { PetArt(it, pet.species, Ears.of(pet.ears), outfit) }
-            ?: pet.lookCode?.let { PetLook.decode(it) }?.let { PetArt(it, pet.species, Ears.of(pet.ears), outfit) }
+        val style = pet.style?.let { PetStyle.decode(it) }
+        // A pet from a household phone has no face here; its style travelled inside the look code.
+        return head(pet.id)?.let { PetArt(it, pet.species, Ears.of(pet.ears), outfit, style) }
+            ?: pet.lookCode?.let { PetLook.decode(it) }?.let { PetArt(it, pet.species, Ears.of(pet.ears), outfit, style) }
+    }
+
+    /**
+     * The Pet Studio: saves the owner's choices, puts them in the look code (so the household and
+     * the map draw the same pet) and redraws the widget poses.
+     */
+    suspend fun restyle(pet: Pet, style: PetStyle) {
+        val code = if (style.isDefault) null else style.encode()
+        val draft = pet.copy(style = code, spriteVersion = pet.spriteVersion + 1)
+        val updated = withContext(Dispatchers.Default) {
+            draft.copy(lookCode = art(draft)?.look?.encode() ?: pet.lookCode).also { writeWidgetPoses(it) }
+        }
+        update { StateOps.updatePet(it, updated) }
+        platform.refreshWidgets(null)
     }
 
     /** Puts on (or takes off) an outfit the pet has earned, and redraws the widget poses. */

@@ -38,7 +38,7 @@ enum class Ears(val label: String) {
  * What the pet looks like, read from its face in the photo: up to three fur tones and where on
  * the face each tone goes (a coarse [GRID] x [GRID] patch map, e.g. a white muzzle or dark ears).
  */
-class PetLook(val tones: List<Int>, private val patches: IntArray) {
+class PetLook(val tones: List<Int>, private val patches: IntArray, val style: PetStyle = PetStyle.DEFAULT) {
     /** Index into [tones] of the most common fur colour. Always 0. */
     val base = 0
     /** A clearly lighter tone for chest and paws, if the pet has one. */
@@ -46,12 +46,17 @@ class PetLook(val tones: List<Int>, private val patches: IntArray) {
         .maxByOrNull { Lab.fromArgb(tones[it]).l }
 
     /**
-     * A short text form of the look (about 90 characters): what the pet map shares instead of any
-     * photo. Format: `1;<tone>,<tone>,...;<64 patch digits>`, tones as RGB hex.
+     * A short text form of the look (about 90 characters, 150 with a Studio style): what the pet map
+     * and a household share instead of any photo. Format: `1;<tone>,<tone>,...;<64 patch digits>`,
+     * tones as RGB hex; `2;...;...;<style>` when the owner styled the pet (see [PetStyle.encode]).
      */
-    fun encode(): String =
-        "1;" + tones.joinToString(",") { (it and 0xFFFFFF).toString(16).padStart(6, '0') } + ";" +
-            patches.joinToString("") { it.toString() }
+    fun encode(): String {
+        val base = tones.joinToString(",") { (it and 0xFFFFFF).toString(16).padStart(6, '0') } + ";" + patches.joinToString("") { it.toString() }
+        return if (style.isDefault) "1;$base" else "2;$base;${style.encode()}"
+    }
+
+    /** The same colours and markings with another Studio style. */
+    fun withStyle(s: PetStyle): PetLook = PetLook(tones, patches, s)
 
     /** Tone at a point of the face, [u] and [v] from 0 to 1. */
     fun toneAt(u: Double, v: Double): Int {
@@ -66,7 +71,11 @@ class PetLook(val tones: List<Int>, private val patches: IntArray) {
         /** Reads [encode]'s format; null if it isn't a valid look (e.g. from an older or bad client). */
         fun decode(code: String): PetLook? {
             val parts = code.split(';')
-            if (parts.size != 3 || parts[0] != "1") return null
+            val style = when {
+                parts.size == 3 && parts[0] == "1" -> PetStyle.DEFAULT
+                parts.size == 4 && parts[0] == "2" -> PetStyle.decode(parts[3]) ?: return null
+                else -> return null
+            }
             val tones = parts[1].split(',').map { h ->
                 if (h.length != 6 || !h.all { it in '0'..'9' || it in 'a'..'f' || it in 'A'..'F' }) return null
                 h.toInt(16) or (0xFF shl 24)
@@ -78,7 +87,7 @@ class PetLook(val tones: List<Int>, private val patches: IntArray) {
                 if (d !in tones.indices) return null
                 d
             }
-            return PetLook(tones, patches)
+            return PetLook(tones, patches, style)
         }
         private val DEFAULT = 0xFFB07A4A.toInt()
 
@@ -169,15 +178,18 @@ class PetLook(val tones: List<Int>, private val patches: IntArray) {
 }
 
 /** Everything needed to draw a pet: its face (a colour source only), species and ear shape. */
-class PetArt(val look: PetLook, val species: Species, ears: Ears? = null, val accessory: Accessory? = null) {
+class PetArt(look: PetLook, val species: Species, ears: Ears? = null, val accessory: Accessory? = null, style: PetStyle? = null) {
     /** From the pet's face in the photo (its colours and markings). */
-    constructor(head: PixelImage, species: Species, ears: Ears? = null, accessory: Accessory? = null) :
-        this(PetLook.from(head), species, ears, accessory)
+    constructor(head: PixelImage, species: Species, ears: Ears? = null, accessory: Accessory? = null, style: PetStyle? = null) :
+        this(PetLook.from(head), species, ears, accessory, style)
 
+    /** The Studio style: given here, or the one that travelled inside the look code. */
+    val style: PetStyle = style ?: look.style
+    val look: PetLook = look.withStyle(this.style)
     val ears: Ears = ears ?: if (species == Species.CAT) Ears.POINTY else Ears.FLOPPY
     val fur: FurColors get() {
-        val base = look.tones[0]
-        val light = look.light?.let { look.tones[it] } ?: Chibi.ramp(base).hi
+        val base = style.furBase ?: look.tones[0]
+        val light = style.furLight ?: look.light?.let { look.tones[it] } ?: Chibi.ramp(base).hi
         return FurColors(base, light, Chibi.ramp(base).shade)
     }
     /** The standing pose, for widgets, poses and the reveal card. */
@@ -235,10 +247,25 @@ object Chibi {
 
     fun compose(art: PetArt, pose: Pose): PixelImage {
         val look = art.look
-        val ramps = look.tones.map { ramp(it) }
-        val baseR = ramps[0]
-        val lightR = look.light?.let { ramps[it] }
+        val style = art.style
         val cat = art.species == Species.CAT
+        // Colours: the photo's tones, with the Studio's fur colours put in their place.
+        val tones = look.tones.toMutableList()
+        style.furBase?.let { tones[0] = it }
+        val lightIdx = look.light
+        if (style.furLight != null && lightIdx != null) tones[lightIdx] = style.furLight
+        val ramps = tones.map { ramp(it) }
+        val baseR = ramps[0]
+        // A light tone: the photo's, the owner's, or a pale version of the base when a pattern needs one.
+        val lightR: Ramp? = when {
+            style.furLight != null && lightIdx == null -> ramp(style.furLight)
+            lightIdx != null -> ramps[lightIdx]
+            else -> null
+        }
+        val paleR = lightR ?: ramp(Argb.mix(tones[0], WHITE, 0.72))
+        // A dark tone for masks, spots and stripes.
+        val darkR = ramp(style.furDark ?: baseR.deep)
+        val pattern = style.pattern
         val w = WIDTH; val h = HEIGHT
         val col = IntArray(w * h)
         val part = IntArray(w * h)
@@ -265,18 +292,63 @@ object Chibi {
 
         val cx = 20.5
         val oy = pose.bob
-        val light = lightR ?: baseR
-        val pawR = lightR ?: baseR
+        // Paws: light when the pet has a light tone, or always with socks or a tuxedo coat.
+        val pawR = when (pattern) { Pattern.SOCKS, Pattern.TUXEDO -> paleR; else -> lightR ?: baseR }
 
         // ---------- Head geometry (shared by standing and lying) ----------
         val hcx = cx + pose.headDx
         val hcy = 12.6 + oy + pose.headDy + (if (pose.lying) 8.0 else 0.0)
-        val hrx = 10.6; val hry = 8.4
-        fun faceTone(x: Int, y: Int): Int = look.toneAt((x + 0.5 - (hcx - hrx)) / (2 * hrx), (y + 0.5 - (hcy - hry)) / (2 * hry))
+        val (hrx, hry, headE) = when (style.head) {
+            HeadShape.ROUND -> Triple(10.6, 8.4, 2.4)
+            HeadShape.WIDE -> Triple(11.6, 8.0, 2.4)
+            HeadShape.TALL -> Triple(9.8, 9.4, 2.2)
+            HeadShape.CHUBBY -> Triple(11.2, 8.6, 2.9)
+        }
+        fun faceU(x: Int) = (x + 0.5 - (hcx - hrx)) / (2 * hrx)
+        fun faceV(y: Int) = (y + 0.5 - (hcy - hry)) / (2 * hry)
+        fun faceTone(x: Int, y: Int): Int = look.toneAt(faceU(x), faceV(y))
+        val eyeTopY = (hcy - 0.6).toInt()
+        val eyeXs = listOf((hcx - 6.0).toInt(), (hcx + 5.0).toInt())
+
+        /** The head's fur at a pixel, by the chosen coat pattern (or the photo's own markings). */
+        fun headRamp(x: Int, y: Int): Ramp {
+            val u = faceU(x) * 2 - 1; val v = faceV(y) * 2 - 1 // -1..1 across the head
+            return when (pattern) {
+                Pattern.AUTO -> ramps[faceTone(x, y)]
+                Pattern.SOLID -> baseR
+                Pattern.TUXEDO -> if (v > 0.2 && abs(u) < 0.62 - (v - 0.2) * 0.3) paleR else baseR
+                Pattern.MASK -> if (v > -0.62 && v < 0.28) darkR else baseR
+                Pattern.SOCKS -> baseR
+                Pattern.SPOTS -> if (listOf(Triple(-0.45, -0.55, 0.26), Triple(0.5, -0.3, 0.2), Triple(0.3, 0.55, 0.18)).any { (su, sv, r) -> (u - su) * (u - su) + (v - sv) * (v - sv) < r * r }) darkR else baseR
+                Pattern.TABBY -> {
+                    val dx = x - hcx.toInt()
+                    if (v < -0.3 && (dx == 0 || abs(dx) == 3)) darkR
+                    else if (abs(u) > 0.7 && v in -0.2..0.5 && (y + (if (u < 0) 0 else 1)) % 3 == 0) darkR
+                    else baseR
+                }
+                Pattern.PATCH -> {
+                    val ex = eyeXs[1] + 1.0; val ey = eyeTopY + 1.0
+                    if ((x + 0.5 - ex) * (x + 0.5 - ex) + (y + 0.5 - ey) * (y + 0.5 - ey) * 1.3 < 14.0) darkR else baseR
+                }
+            }
+        }
+        /** The body's fur at a pixel: solid, or with spots and stripes continuing from the head. */
+        fun bodyRamp(x: Int, y: Int, nx: Double, ny: Double): Ramp = when (pattern) {
+            Pattern.SPOTS -> if (listOf(Triple(-0.45, -0.1, 0.3), Triple(0.5, 0.35, 0.25)).any { (su, sv, r) -> (nx - su) * (nx - su) + (ny - sv) * (ny - sv) < r * r }) darkR else baseR
+            Pattern.TABBY -> if (ny < 0.35 && ((x - cx.toInt()) % 4 == 0)) darkR else baseR
+            Pattern.PATCH -> if ((nx + 0.45) * (nx + 0.45) + (ny + 0.2) * (ny + 0.2) < 0.12) darkR else baseR
+            else -> baseR
+        }
 
         if (!pose.lying) {
+            val (brx0, bry0, bodyE) = when (style.body) {
+                BodyShape.NORMAL -> Triple(8.2, 5.6, 2.0)
+                BodyShape.CHUBBY -> Triple(9.6, 6.4, 2.1)
+                BodyShape.SLIM -> Triple(7.0, 5.0, 2.0)
+                BodyShape.FLUFFY -> Triple(9.0, 6.2, 1.7)
+            }
             val bcy = 25.0 + oy - pose.breathe * 0.3
-            val brx = 8.2; val bry = 5.6 + pose.breathe * 0.4
+            val brx = brx0; val bry = bry0 + pose.breathe * 0.4
             val feet = 32
             // Back legs peeking out at the sides, in shadow.
             for ((i, lx) in listOf(12, 26).withIndex()) {
@@ -284,10 +356,28 @@ object Chibi {
                 rect(lx, 27 + oy, lx + 2, bottom, { _, y -> if (y >= bottom - 1) pawR.shade else baseR.shade }, LEG)
             }
             // Tail, behind the body on the right.
-            tail(cat, pose.tail, 27.5, 25.5 + oy, baseR, lightR, ::put)
-            blob(cx, bcy, brx, bry, BODY) { _, _, nx, ny -> shaded(baseR, nx, ny, hiAt = 0.75, shAt = 0.5) }
-            // Light chest, if the pet has a light tone.
-            if (lightR != null) blob(cx, bcy - 1.0, 3.6, 3.4, BODY) { _, _, nx, ny -> if (ny > 0.55) lightR.mid else if (ny < -0.5 && nx < 0) lightR.hi else lightR.mid }
+            tail(cat, style.tail, pose.tail, 27.5, 25.5 + oy, baseR, lightR, ::put)
+            blob(cx, bcy, brx, bry, BODY, e = bodyE) { x, y, nx, ny -> shaded(bodyRamp(x, y, nx, ny), nx, ny, hiAt = 0.75, shAt = 0.5) }
+            if (style.body == BodyShape.FLUFFY) {
+                // Tufts along the top of the back.
+                for (k in -3..3) put((cx + k * 2.4).toInt(), (bcy - bry - (if (k % 2 == 0) 1 else 0)).toInt(), baseR.hi, BODY)
+            }
+            // Chest: the photo's light tone, a light patch, a heart, or plain.
+            val chestR = when (style.chest) {
+                Chest.AUTO -> if (pattern == Pattern.TUXEDO) paleR else lightR
+                Chest.LIGHT -> paleR
+                Chest.HEART -> paleR
+                Chest.PLAIN -> null
+            }
+            if (chestR != null) {
+                if (style.chest == Chest.HEART) {
+                    blob(cx - 1.4, bcy - 2.0, 1.7, 1.5, BODY) { _, _, _, _ -> chestR.mid }
+                    blob(cx + 1.4, bcy - 2.0, 1.7, 1.5, BODY) { _, _, _, _ -> chestR.mid }
+                    blob(cx, bcy - 0.4, 2.9, 2.0, BODY, e = 1.3) { _, _, _, ny -> if (ny > 0.6) chestR.shade else chestR.mid }
+                } else {
+                    blob(cx, bcy - 1.0, 3.6, 3.4, BODY) { _, _, nx, ny -> if (ny > 0.55) chestR.mid else if (ny < -0.5 && nx < 0) chestR.hi else chestR.mid }
+                }
+            }
             // Front legs.
             for ((i, lx) in listOf(15, 23).withIndex()) {
                 val bottom = feet - pose.legs[i]
@@ -303,49 +393,70 @@ object Chibi {
             }
         } else {
             val bcy = 27.8 - pose.breathe * 0.3
-            tail(cat, 0, 29.5, 29.0, baseR, lightR, ::put, lying = true)
-            blob(cx, bcy, 11.2, 4.8 + pose.breathe * 0.4, BODY, e = 2.3) { _, _, nx, ny -> shaded(baseR, nx, ny, hiAt = 0.8, shAt = 0.5) }
+            val wide = when (style.body) { BodyShape.CHUBBY -> 12.2; BodyShape.SLIM -> 10.2; else -> 11.2 }
+            tail(cat, style.tail, 0, 29.5, 29.0, baseR, lightR, ::put, lying = true)
+            blob(cx, bcy, wide, 4.8 + pose.breathe * 0.4, BODY, e = 2.3) { x, y, nx, ny -> shaded(bodyRamp(x, y, nx, ny), nx, ny, hiAt = 0.8, shAt = 0.5) }
             for (px in listOf(15.5, 25.5)) blob(px, 31.6, 2.2, 1.3, LEG) { _, _, nx, _ -> if (nx > 0.5) pawR.shade else pawR.mid }
         }
 
         // ---------- Ears behind/around the head ----------
-        val earToneL = ramps[look.toneAt(0.2, 0.1)]
-        val earToneR = ramps[look.toneAt(0.8, 0.1)]
-        val pointy = art.ears == Ears.POINTY
+        val earToneL = if (pattern == Pattern.AUTO) ramps[look.toneAt(0.2, 0.1)] else if (pattern == Pattern.MASK) darkR else baseR
+        val earToneR = if (pattern == Pattern.AUTO) ramps[look.toneAt(0.8, 0.1)] else if (pattern == Pattern.MASK) darkR else baseR
+        val earStyle = when (style.ears) {
+            EarStyle.AUTO -> if (art.ears == Ears.POINTY) EarStyle.POINTY else EarStyle.FLOPPY
+            else -> style.ears
+        }
+        val pointy = earStyle == EarStyle.POINTY || earStyle == EarStyle.BIG || earStyle == EarStyle.TUFTED || earStyle == EarStyle.FOLDED
         if (pointy) {
+            val big = earStyle == EarStyle.BIG
+            val folded = earStyle == EarStyle.FOLDED
             for (side in listOf(-1, 1)) {
                 val r = if (side < 0) earToneL else earToneR
                 // Triangle: apex, and two base points on the head's top edge.
-                val ax = hcx + side * (if (cat) 8.4 else 7.9); val ay = hcy - 11.8
-                val b1x = hcx + side * 10.4; val b1y = hcy - 4.2
-                val b2x = hcx + side * 3.4; val b2y = hcy - 7.6
-                for (y in (ay - 1).toInt()..(b1y + 1).toInt()) for (x in (hcx - 13).toInt()..(hcx + 13).toInt()) {
+                val ax = hcx + side * (if (cat) 8.4 else 7.9) * (if (big) 1.15 else 1.0)
+                val ay = hcy - (if (big) 14.6 else if (folded) 9.4 else 11.8)
+                val b1x = hcx + side * (if (big) 11.4 else 10.4); val b1y = hcy - 4.2
+                val b2x = hcx + side * (if (big) 2.6 else 3.4); val b2y = hcy - 7.6
+                for (y in (ay - 1).toInt()..(b1y + 1).toInt()) for (x in (hcx - 14).toInt()..(hcx + 14).toInt()) {
                     val px = x + 0.5; val py = y + 0.5
                     if (!inTri(px, py, ax, ay, b1x, b1y, b2x, b2y)) continue
                     // Inner ear: a smaller triangle towards the middle.
                     val inner = inTri(px, py, ax + side * -0.3, ay + 2.6, b1x - side * 2.2, b1y - 0.4, b2x + side * 1.8, b2y + 0.4)
                     val outerEdge = if (side < 0) px < (ax + b1x) / 2 + 0.5 else px > (ax + b1x) / 2 - 0.5
                     put(x, y, when {
+                        folded && py < ay + 2.5 -> r.deep
                         inner -> Argb.mix(PINK, r.mid, if (cat) 0.35 else 0.55)
                         side > 0 && outerEdge -> r.shade
                         else -> r.mid
                     }, HEAD)
                 }
+                if (earStyle == EarStyle.TUFTED) {
+                    put(ax.toInt(), (ay - 1).toInt(), r.mid, HEAD)
+                    put((ax + side * 0.6).toInt(), (ay - 2).toInt(), r.mid, HEAD)
+                    put((ax - side * 1.2).toInt(), (ay - 1.4).toInt(), r.hi, HEAD)
+                }
+            }
+        } else if (earStyle == EarStyle.ROUND) {
+            for (side in listOf(-1, 1)) {
+                val r = if (side < 0) earToneL else earToneR
+                val ecx = hcx + side * 8.4; val ecy = hcy - 7.2
+                blob(ecx, ecy, 3.4, 3.2, HEAD) { _, _, nx, ny -> if (nx * side > 0.45 || ny > 0.6) r.shade else r.mid }
+                blob(ecx + side * 0.2, ecy + 0.3, 1.6, 1.5, HEAD) { _, _, _, _ -> Argb.mix(PINK, r.mid, 0.4) }
             }
         }
 
         // ---------- Head ----------
-        blob(hcx, hcy, hrx, hry, HEAD, e = 2.4) { x, y, nx, ny -> shaded(ramps[faceTone(x, y)], nx, ny, hiAt = 0.8, shAt = 0.62, rim = 0.6) }
+        blob(hcx, hcy, hrx, hry, HEAD, e = headE) { x, y, nx, ny -> shaded(headRamp(x, y), nx, ny, hiAt = 0.8, shAt = 0.62, rim = 0.6) }
 
         // Muzzle: a lighter, rounder snout for dogs; a small soft one for cats.
         val mcy = hcy + 3.7
         val (mrx, mry) = if (cat) 3.0 to 1.9 else 3.9 to 2.5
         blob(hcx, mcy, mrx, mry, HEAD) { x, y, nx, ny ->
-            val r = ramps[faceTone(x, y)]
+            val r = if (pattern == Pattern.TUXEDO) paleR else headRamp(x, y)
             if (ny > 0.55 && nx > -0.2) r.mid else r.hi
         }
 
-        if (!pointy) {
+        if (earStyle == EarStyle.FLOPPY) {
             // Floppy ears: attached at the top of the head, hanging down past the cheeks.
             for (side in listOf(-1, 1)) {
                 val r = if (side < 0) earToneL else earToneR
@@ -371,34 +482,116 @@ object Chibi {
         }
 
         // ---------- Face ----------
-        val ex = listOf((hcx - 6.0).toInt(), (hcx + 5.0).toInt())
-        val eyTop = (hcy - 0.6).toInt()
+        val ex = eyeXs
+        val eyTop = eyeTopY
         // Dark fur round the eyes: coloured irises (both eyes alike) so they still show.
-        val darkEyes = ex.map { Lab.fromArgb(ramps[faceTone(it, eyTop + 1)].mid).l }.average() < 0.42
-        for (x0 in ex) {
-            if (pose.eyesClosed) {
-                // Content, closed eyes: a little downward curve.
-                put(x0, eyTop + 1, EYE_DARK, HEAD); put(x0 + 1, eyTop + 1, EYE_DARK, HEAD)
-                put(x0 - 1, eyTop, ramps[faceTone(x0 - 1, eyTop)].deep, HEAD); put(x0 + 2, eyTop, ramps[faceTone(x0 + 2, eyTop)].deep, HEAD)
-            } else {
-                val iris = if (darkEyes) (if (cat) 0xFFB8D24A.toInt() else 0xFFC98A3C.toInt()) else EYE_DARK
-                for (dy in 0..2) for (dx in 0..1) put(x0 + dx, eyTop + dy, iris, HEAD)
-                if (iris != EYE_DARK) put(x0 + 1, eyTop + 1, EYE_DARK, HEAD)
-                put(x0, eyTop, WHITE, HEAD)
+        val darkEyes = ex.map { Lab.fromArgb(headRamp(it, eyTop + 1).mid).l }.average() < 0.42
+        val autoIris = if (darkEyes) (if (cat) 0xFFB8D24A.toInt() else 0xFFC98A3C.toInt()) else EYE_DARK
+        fun closedEye(x0: Int) {
+            // Content, closed eyes: a little downward curve.
+            put(x0, eyTop + 1, EYE_DARK, HEAD); put(x0 + 1, eyTop + 1, EYE_DARK, HEAD)
+            put(x0 - 1, eyTop, headRamp(x0 - 1, eyTop).deep, HEAD); put(x0 + 2, eyTop, headRamp(x0 + 2, eyTop).deep, HEAD)
+        }
+        for ((side, x0) in ex.withIndex()) {
+            val inner = if (side == 0) 1 else 0 // the column nearer the nose
+            if (pose.eyesClosed || (style.eyes == EyeShape.WINK && side == 0)) { closedEye(x0); continue }
+            val iris = when (style.eyeColor) {
+                EyeColor.AUTO -> autoIris
+                EyeColor.ODD -> if (side == 0) EyeColor.GREEN.argb else EyeColor.BLUE.argb
+                else -> style.eyeColor.argb
+            }
+            // The eye's pixels, as (dx, dy) from its top-left.
+            val cells: List<Pair<Int, Int>> = when (style.eyes) {
+                EyeShape.ROUND, EyeShape.SPARKLE, EyeShape.WINK -> listOf(0 to 0, 1 to 0, 0 to 1, 1 to 1, 0 to 2, 1 to 2)
+                EyeShape.BIG -> listOf(0 to -1, 1 to -1, -1 to 0, 0 to 0, 1 to 0, 2 to 0, -1 to 1, 0 to 1, 1 to 1, 2 to 1, 0 to 2, 1 to 2)
+                EyeShape.ALMOND -> if (side == 0) listOf(0 to 0, 1 to 0, 2 to 0, 1 to 1, 2 to 1, 2 to 2) else listOf(-1 to 0, 0 to 0, 1 to 0, -1 to 1, 0 to 1, -1 to 2)
+                EyeShape.SLEEPY -> listOf(0 to 1, 1 to 1, 0 to 2, 1 to 2)
+            }
+            for ((dx, dy) in cells) put(x0 + dx, eyTop + dy, iris, HEAD)
+            if (style.eyes == EyeShape.SLEEPY) { put(x0, eyTop, headRamp(x0, eyTop).deep, HEAD); put(x0 + 1, eyTop, headRamp(x0 + 1, eyTop).deep, HEAD) }
+            // Pupil in a coloured iris, then the shine.
+            if (iris != EYE_DARK) put(x0 + inner, eyTop + 1, EYE_DARK, HEAD)
+            val shineAt = if (style.eyes == EyeShape.ALMOND) (if (side == 0) 1 to 0 else 0 to 0) else 0 to 0
+            put(x0 + shineAt.first, eyTop + shineAt.second, WHITE, HEAD)
+            when (if (style.eyes == EyeShape.SPARKLE) EyeShine.DOUBLE else style.shine) {
+                EyeShine.SINGLE -> Unit
+                EyeShine.DOUBLE -> put(x0 + 1 - inner + inner, eyTop + 2, Argb.mix(WHITE, iris, 0.35), HEAD)
+                EyeShine.STAR -> { put(x0 + 1, eyTop + 2, WHITE, HEAD); put(x0 + 1 - inner, eyTop + 1, Argb.mix(WHITE, iris, 0.5), HEAD) }
+            }
+            // Brows.
+            val browC = headRamp(x0, eyTop - 2).deep
+            when (style.brows) {
+                Brows.NONE -> Unit
+                Brows.SOFT -> { put(x0, eyTop - 2, browC, HEAD); put(x0 + 1, eyTop - 2, browC, HEAD) }
+                Brows.WORRIED -> { put(x0 + inner, eyTop - 3, browC, HEAD); put(x0 + 1 - inner, eyTop - 2, browC, HEAD) }
+                Brows.FIERCE -> { put(x0 + inner, eyTop - 2, browC, HEAD); put(x0 + 1 - inner, eyTop - 3, browC, HEAD) }
             }
         }
         // Blush.
-        for (x0 in listOf(ex[0] - 2, ex[1] + 2)) {
-            val y = eyTop + 3
-            for (dx in 0..1) { val i = y * w + x0 + dx; if (i in col.indices && part[i] == HEAD) col[i] = Argb.mix(col[i], PINK, 0.45) }
+        if (style.blush != Blush.NONE) {
+            val rosy = style.blush == Blush.ROSY
+            for ((side, x0) in listOf(ex[0] - (if (rosy) 3 else 2), ex[1] + 2).withIndex()) {
+                val y = eyTop + 3
+                for (dx in 0 until (if (rosy) 3 else 2)) {
+                    val x = x0 + dx + (if (rosy && side == 1) 0 else 0)
+                    val i = y * w + x
+                    if (i in col.indices && part[i] == HEAD) col[i] = Argb.mix(col[i], PINK, if (rosy) 0.75 else 0.45)
+                }
+            }
         }
         // Nose and mouth.
         val nx0 = (hcx - 0.5).toInt(); val ny0 = (mcy - 1.2).toInt()
-        val noseC = if (cat) Argb.mix(PINK, 0xFFB0506A.toInt(), 0.35) else NOSE_DOG
-        put(nx0 - 1, ny0, noseC, HEAD); put(nx0, ny0, noseC, HEAD); put(nx0 + 1, ny0, noseC, HEAD); put(nx0, ny0 + 1, noseC, HEAD)
-        if (!cat) put(nx0 - 1, ny0, 0xFF6A5560.toInt(), HEAD) // tiny shine on the nose
-        val mouthC = ramps[faceTone(nx0, ny0 + 2)].deep
-        put(nx0 - 1, ny0 + 2, mouthC, HEAD); put(nx0 + 1, ny0 + 2, mouthC, HEAD)
+        val noseC = when (style.noseColor) {
+            NoseColor.AUTO -> if (cat) Argb.mix(PINK, 0xFFB0506A.toInt(), 0.35) else NOSE_DOG
+            else -> style.noseColor.argb
+        }
+        val noseCells: List<Pair<Int, Int>> = when (style.nose) {
+            NoseShape.AUTO, NoseShape.TRIANGLE -> listOf(-1 to 0, 0 to 0, 1 to 0, 0 to 1)
+            NoseShape.BUTTON -> listOf(-1 to 0, 0 to 0, 1 to 0, -1 to 1, 0 to 1, 1 to 1)
+            NoseShape.HEART -> listOf(-1 to -1, 1 to -1, -1 to 0, 0 to 0, 1 to 0, 0 to 1)
+            NoseShape.WIDE -> listOf(-2 to 0, -1 to 0, 0 to 0, 1 to 0, 2 to 0, -1 to 1, 0 to 1, 1 to 1)
+        }
+        for ((dx, dy) in noseCells) put(nx0 + dx, ny0 + dy, noseC, HEAD)
+        if (!cat && style.nose == NoseShape.AUTO && style.noseColor == NoseColor.AUTO) put(nx0 - 1, ny0, 0xFF6A5560.toInt(), HEAD) // tiny shine on the nose
+        else if (style.nose != NoseShape.AUTO || style.noseColor != NoseColor.AUTO) put(nx0 - 1, ny0 + (if (style.nose == NoseShape.HEART) -1 else 0), Argb.mix(noseC, WHITE, 0.3), HEAD)
+        val mouthC = headRamp(nx0, ny0 + 2).deep
+        val my = ny0 + (if (style.nose == NoseShape.BUTTON || style.nose == NoseShape.WIDE) 3 else 2)
+        when (style.mouth) {
+            Mouth.SMILE -> { put(nx0 - 1, my, mouthC, HEAD); put(nx0 + 1, my, mouthC, HEAD) }
+            Mouth.OPEN -> { for (dx in -1..1) put(nx0 + dx, my, mouthC, HEAD); put(nx0, my + 1, Argb.mix(PINK, 0xFFC84A6A.toInt(), 0.5), HEAD) }
+            Mouth.CAT -> { put(nx0 - 2, my, mouthC, HEAD); put(nx0 + 2, my, mouthC, HEAD); put(nx0 - 1, my + 1, mouthC, HEAD); put(nx0 + 1, my + 1, mouthC, HEAD) }
+            Mouth.TONGUE -> { put(nx0 - 1, my, mouthC, HEAD); put(nx0 + 1, my, mouthC, HEAD); put(nx0, my + 1, 0xFFF07A98.toInt(), HEAD); put(nx0, my + 2, 0xFFE0607F.toInt(), HEAD) }
+            Mouth.CALM -> { for (dx in -1..1) put(nx0 + dx, my, mouthC, HEAD) }
+        }
+        // Whiskers: thin lines out from the cheeks.
+        if (style.whiskers != Whiskers.NONE) {
+            val len = if (style.whiskers == Whiskers.LONG) 4 else 2
+            val wc = Argb.mix(baseR.deep, WHITE, 0.25)
+            for (side in listOf(-1, 1)) {
+                val edge = (hcx + side * (hrx - 0.5)).toInt()
+                for ((k, yy) in listOf(ny0, ny0 + 2).withIndex()) {
+                    for (d in 1..len) put(edge + side * d, yy + (if (k == 0) -(d / 3) else d / 3), wc, HEAD)
+                }
+            }
+        }
+        // Collar, round the neck where the head meets the body.
+        if (style.collar != Collar.NONE && !pose.lying) {
+            val cc = style.collarColor ?: 0xFFE8374E.toInt()
+            val y = (hcy + hry).toInt()
+            for (x in (cx - 5.5).toInt()..(cx + 5.5).toInt()) for (dy in 0..1) {
+                val i = (y + dy) * w + x
+                if (i in col.indices && part[i] != NONE) { col[i] = if (dy == 1) Argb.mix(cc, EYE_DARK, 0.25) else cc }
+            }
+            when (style.collar) {
+                Collar.BELL -> { for (dx in 0..1) for (dy in 1..2) put(cx.toInt() + dx - 1, y + dy, if (dy == 1 && dx == 0) 0xFFFFE28A.toInt() else 0xFFF6C744.toInt(), BODY) }
+                Collar.BOW -> {
+                    for (dx in listOf(-2, -1, 1, 2)) put(cx.toInt() + dx - 1, y + 1, cc, BODY)
+                    put(cx.toInt() - 1, y + 1, Argb.mix(cc, WHITE, 0.4), BODY)
+                    put(cx.toInt() - 3, y, cc, BODY); put(cx.toInt() + 1, y, cc, BODY)
+                }
+                else -> Unit
+            }
+        }
 
         // ---------- Inner lines: under the chin, between legs and body ----------
         val out = col.copyOf()
@@ -406,12 +599,6 @@ object Chibi {
             val i = y * w + x
             if (part[i] == NONE || part[i] == HEAD) continue
             if (partAt(x, y - 1) == HEAD) out[i] = ramp(col[i]).let { Argb.mix(it.deep, it.shade, 0.3) }
-        }
-        for (y in 0 until h) for (x in 0 until w) {
-            val i = y * w + x
-            if (part[i] != LEG) continue
-            // Gap between a leg and the next part of the same colour.
-            if ((partAt(x - 1, y) == LEG) != (partAt(x + 1, y) == LEG) && partAt(x - 1, y) != NONE && partAt(x + 1, y) != NONE) { /* keep */ }
         }
 
         // ---------- Outline: a deep version of the fur next to it, never pure black ----------
@@ -445,24 +632,32 @@ object Chibi {
         return !(neg && pos)
     }
 
-    private fun tail(cat: Boolean, swing: Int, bx: Double, by: Double, r: Ramp, light: Ramp?, put: (Int, Int, Int, Int) -> Unit, lying: Boolean = false) {
+    private fun tail(cat: Boolean, style: TailStyle, swing: Int, bx: Double, by: Double, r: Ramp, light: Ramp?, put: (Int, Int, Int, Int) -> Unit, lying: Boolean = false) {
+        val thick = when (style) { TailStyle.FLUFFY -> 1.6; TailStyle.STUB -> 1.2; else -> 1.0 }
+        val span = if (style == TailStyle.STUB) 0.4 else 1.0
         val pts: List<DoubleArray> = if (lying) {
             (0..12).map { k ->
-                val t = k / 12.0
+                val t = k / 12.0 * span
                 // Along the ground, the tip curling up.
-                doubleArrayOf(bx + t * 6.0, by + 1.8 - t * t * t * 4.5, (if (cat) 1.25 else 1.55) * (1 - 0.3 * t), t)
+                doubleArrayOf(bx + t * 6.0, by + 1.8 - t * t * t * 4.5, (if (cat) 1.25 else 1.55) * (1 - 0.3 * t) * thick, t)
             }
         } else {
-            val tipX = bx + (if (cat) 7.0 else 5.0) + swing * 2.0
-            val tipY = by - (if (cat) 11.0 else 6.5)
-            val cX = bx + (if (cat) 8.0 else 5.5); val cY = by + 0.5
+            var tipX = bx + (if (cat) 7.0 else 5.0) + swing * 2.0
+            var tipY = by - (if (cat) 11.0 else 6.5)
+            var cX = bx + (if (cat) 8.0 else 5.5); var cY = by + 0.5
+            when (style) {
+                TailStyle.CURLY -> { tipX = bx + 2.5 + swing * 1.0; tipY = by - 8.5; cX = bx + 9.5; cY = by - 3.0 }
+                TailStyle.STRAIGHT -> { tipX = bx + 8.5 + swing * 1.5; tipY = by - 2.5; cX = bx + 4.5; cY = by - 0.5 }
+                TailStyle.LONG -> { tipX = bx + 9.0 + swing * 2.0; tipY = by - 13.0; cX = bx + 9.0; cY = by + 0.5 }
+                else -> Unit
+            }
             val n = 16
             (0..n).map { k ->
-                val t = k.toDouble() / n
+                val t = k.toDouble() / n * span
                 doubleArrayOf(
                     (1 - t) * (1 - t) * bx + 2 * (1 - t) * t * cX + t * t * tipX,
                     (1 - t) * (1 - t) * by + 2 * (1 - t) * t * cY + t * t * tipY,
-                    (if (cat) 1.25 else 1.75) * (1 - 0.35 * t), t,
+                    (if (cat) 1.25 else 1.75) * (1 - 0.35 * t) * thick, t,
                 )
             }
         }

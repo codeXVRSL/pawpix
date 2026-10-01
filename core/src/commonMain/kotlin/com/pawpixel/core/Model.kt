@@ -68,12 +68,14 @@ data class Pet(
     val accessory: String? = null,
     /** When this phone last changed something the household shares (name, look, ...): the later edit wins. */
     val editedAtMs: Long = 0,
+    /** The owner's Pet Studio choices ([com.pawpixel.sprite.PetStyle.encode]); null = as the photo says. */
+    val style: String? = null,
 ) {
     /**
      * Everything the pixel pet is drawn from. A screen that keeps a drawing of the pet keys it by
      * this, so a new outfit, ears or a look from the household shows at once (a name change doesn't redraw).
      */
-    val lookKey: List<Any?> get() = listOf(id, spriteVersion, species, ears, accessory, lookCode)
+    val lookKey: List<Any?> get() = listOf(id, spriteVersion, species, ears, accessory, lookCode, style)
 }
 
 data class SpriteSettings(
