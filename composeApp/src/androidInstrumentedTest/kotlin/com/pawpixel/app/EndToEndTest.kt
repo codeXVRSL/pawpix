@@ -848,7 +848,21 @@ class EndToEndTest {
      * Finds [selector], scrolling the screen down (then back up) to reach it. Scrolls the way a
      * screen reader does (the accessibility scroll action), so it never drags the face-square photo.
      */
-    private fun scrollTo(selector: BySelector): UiObject2 {
+    private fun scrollTo(selector: BySelector): UiObject2 = settled(scrollToRaw(selector))
+
+    /** Waits until a scroll has stopped moving [obj] (a tap during the animation lands somewhere else). */
+    private fun settled(obj: UiObject2): UiObject2 {
+        var last = runCatching { obj.visibleBounds }.getOrNull() ?: return obj
+        repeat(12) {
+            Thread.sleep(150)
+            val now = runCatching { obj.visibleBounds }.getOrNull() ?: return obj
+            if (now == last) return obj
+            last = now
+        }
+        return obj
+    }
+
+    private fun scrollToRaw(selector: BySelector): UiObject2 {
         runCatching { find(selector, 3_000) }.getOrNull()?.let { return it }
         var moved = 0
         for (forward in listOf(true, false)) {

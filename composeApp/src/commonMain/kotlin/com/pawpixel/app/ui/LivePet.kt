@@ -23,6 +23,7 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.FilterQuality
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.scale
@@ -127,6 +128,8 @@ fun LivePet(
     Canvas(
         modifier
             .let { if (keepAspect) it.aspectRatio(layout.stageWidth.toFloat() / layout.stageHeight) else it }
+            // Its own layer: the pet redraws a few times a second, and only this stage repaints, never the whole page.
+            .graphicsLayer()
             // A picture only shows the mood: say it, and let screen-reader users give pets too.
             .semantics {
                 if (description != null) contentDescription = description

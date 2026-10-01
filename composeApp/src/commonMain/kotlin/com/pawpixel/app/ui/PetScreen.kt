@@ -32,7 +32,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.semantics.contentDescription
@@ -99,17 +98,20 @@ fun PetScreen(app: AppScope, state: AppState, pet: Pet) {
                 Spacer(Modifier.weight(1f))
                 GlassPill(tr("Edit"), tr("Edit {0}'s name, type and birthday", pet.name), night = night) { renaming = true }
             }
+            // The page's rounded top rises over the floor. Drawn inside the hero, in the layout's own
+            // flow: a sheet placed over its neighbour with a layout trick lost taps far down the page.
+            Box(
+                Modifier.align(Alignment.BottomCenter).fillMaxWidth().height(28.dp)
+                    .background(MaterialTheme.colorScheme.background, RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp)),
+            )
         }
         Column(
-            Modifier.fillMaxWidth().pullUp(28.dp)
-                .clip(RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp))
-                .background(MaterialTheme.colorScheme.background)
-                .padding(horizontal = 16.dp),
+            Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.background).padding(horizontal = 16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
         // Name, age, mood and hearts, right under the pet.
         Column(
-            Modifier.fillMaxWidth().padding(top = 18.dp, bottom = 2.dp),
+            Modifier.fillMaxWidth().padding(top = 2.dp, bottom = 2.dp),
             horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(6.dp),
         ) {
             Text(pet.name, style = MaterialTheme.typography.petName, modifier = Modifier.semantics { heading() }, textAlign = TextAlign.Center)
