@@ -72,8 +72,11 @@ final class OwnerJourneyTests: XCTestCase {
             // If the text input session wasn't ready yet, nothing lands: wait and type again.
             let saveButton = element("Save \(petName)")
             // The name may land even when that button is below the fold: the field's value says so.
-            let typed = app.descendants(matching: .any).matching(NSPredicate(format: "value CONTAINS %@", petName)).firstMatch
+            // Compose exposes the field's text as its label on iOS (and as a value on some versions).
+            let typed = app.descendants(matching: .any).matching(NSPredicate(format: "value CONTAINS %@ OR label CONTAINS %@", petName, petName)).firstMatch
             for attempt in 1...3 {
+                // Never type the name twice: the first round may have landed while the tree was catching up.
+                if typed.waitForExistence(timeout: attempt == 1 ? 0.5 : 6) { log.append("      name already in the field"); break }
                 // The typing tip can also appear late, over the keyboard.
                 if tipContinue.exists { tipContinue.tap(); sleep(1) }
                 for ch in petName {
@@ -85,7 +88,7 @@ final class OwnerJourneyTests: XCTestCase {
                     guard key.isHittable else { log.append("      key \(ch) not ready"); break }
                     key.tap()
                 }
-                if saveButton.waitForExistence(timeout: 2) || typed.exists { log.append("      typed on attempt \(attempt)"); break }
+                if saveButton.waitForExistence(timeout: 6) || typed.waitForExistence(timeout: 2) { log.append("      typed on attempt \(attempt)"); break }
                 log.append("      attempt \(attempt): typing didn't land yet")
                 field.tap()
                 sleep(2)

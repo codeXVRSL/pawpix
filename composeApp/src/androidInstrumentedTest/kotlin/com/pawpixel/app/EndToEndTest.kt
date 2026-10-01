@@ -136,8 +136,10 @@ class EndToEndTest {
             Thread.sleep(500)
             // The header's Save (the bottom one says "Save Chelsea").
             retrying { scrollTo(By.text("Save")).click() }
-            find(By.text("Care"), 30_000)
-            check(repo.state.value.pets.singleOrNull()?.name == "Chelsea") { "pet not saved: ${repo.state.value.pets}" }
+            // The pet's page opens on its world; the care list is a scroll below it.
+            waitFor("pet saved", 30_000) { repo.state.value.pets.singleOrNull()?.name == "Chelsea" }
+            find(By.desc(Pattern.compile("Chelsea: .*")), 30_000)
+            scrollTo(By.text("Care"))
             Thread.sleep(1_500)
             shot("05-pet-screen")
         }
@@ -164,7 +166,7 @@ class EndToEndTest {
             shot("07-task-editor")
             retrying { scrollTo(By.text("Save")).click() }
             waitFor("medicine task saved") { repo.state.value.tasksFor(petId).any { it.kind.name == "MEDS" } }
-            find(By.text("Care"))
+            scrollTo(By.text("Care"))
         }
 
         /** The Done button in the same card as [row] (the nearest one vertically). */

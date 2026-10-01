@@ -110,7 +110,7 @@ final class WidgetRenderTests: XCTestCase {
                 rendered += save(view, dir, "lock-\(name)-\(state)")
             }
         }
-        XCTAssertEqual(rendered, home.count * 6 + 1 + lock.count * 2)
+        XCTAssertEqual(rendered, home.count * 8 + 1 + lock.count * 2)
     }
 
     @MainActor
