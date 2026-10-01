@@ -50,8 +50,15 @@ confetti, spring motion) drives every screen on both platforms:
 - Care feels rewarding, never nagging: pixel hearts fill as care is logged, Done sends up a burst of
   hearts with a haptic, the pet reacts on stage, milestones get short confetti, and the week shows
   days cared for rather than a streak that can break. Mood copy is never accusatory.
-- Big display type for names and section titles, relaxed body text, generous 16dp gutters, and
+- Two typefaces of its own (both Open Font License, in `docs/fonts`): Fredoka, round and chunky,
+  for names and titles; Nunito, soft and readable, for everything else. Generous 16dp gutters,
   48dp+ touch targets; every control keeps a spoken label for screen readers.
+- The shell of a 2026 app: screens slide in and back out, the home screen keeps its main places in
+  a floating dock, and a pet's page opens on its world edge to edge (sky, sun or moon, drifting
+  pixel clouds, the pet on its floor) with chunky one-tap care tiles under the name.
+- The **Pet Studio**: 70+ ways to draw the pet (head, eyes, eye colour, shine, brows, nose, mouth,
+  ears, body, tail, coat pattern, chest, blush, whiskers, collar, and fur, marking and collar
+  colours). Choices travel in the look code, so the household and the map draw the same pet.
 
 ## Project layout
 
