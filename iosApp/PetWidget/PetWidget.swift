@@ -28,12 +28,33 @@ struct PetQuery: EntityQuery {
     }
 }
 
+/// The sky behind the pet: the hour's, a fixed one, or plain paper.
+enum SkyChoice: String, AppEnum {
+    case auto, day, night, paper
+
+    static var typeDisplayRepresentation: TypeDisplayRepresentation = "Sky"
+    static var caseDisplayRepresentations: [SkyChoice: DisplayRepresentation] = [
+        .auto: "Follows the time of day", .day: "Always day", .night: "Always night", .paper: "Plain",
+    ]
+
+    func phase(at date: Date, nightStart: Int, nightEnd: Int) -> SkyPhase? {
+        switch self {
+        case .auto: return SkyPhase.at(date, nightStart: nightStart, nightEnd: nightEnd)
+        case .day: return .day
+        case .night: return .night
+        case .paper: return nil
+        }
+    }
+}
+
 struct SelectPetIntent: WidgetConfigurationIntent {
-    static var title: LocalizedStringResource = "Choose a pet"
-    static var description = IntentDescription("Which pet this widget shows.")
+    static var title: LocalizedStringResource = "Widget settings"
+    static var description = IntentDescription("Which pet this widget shows, the sky behind it, and whether its name is written.")
 
     /// Unset: the first pet.
     @Parameter(title: "Pet") var pet: PetEntity?
+    @Parameter(title: "Sky", default: .auto) var sky: SkyChoice
+    @Parameter(title: "Show the name", default: true) var showName: Bool
 }
 
 // MARK: - Timeline
@@ -46,7 +67,7 @@ struct Provider: AppIntentTimelineProvider {
 
     func snapshot(for configuration: SelectPetIntent, in context: Context) async -> PetEntry {
         guard let snap = WidgetStore.snapshot(), !snap.pets.isEmpty else { return .sample }
-        return entry(snap, at: .now, choice: configuration.pet?.id, taps: WidgetStore.pendingTaps(), images: ImageCache())
+        return entry(snap, at: .now, configuration: configuration, taps: WidgetStore.pendingTaps(), images: ImageCache())
     }
 
     func timeline(for configuration: SelectPetIntent, in context: Context) async -> Timeline<PetEntry> {
@@ -55,14 +76,24 @@ struct Provider: AppIntentTimelineProvider {
         let now = Date()
         let taps = WidgetStore.pendingTaps()
         let images = ImageCache()
-        let dates = [now] + snap.changeDates(after: now, taps: taps).prefix(Self.maxEntries)
-        let entries = dates.map { entry(snap, at: $0, choice: configuration.pet?.id, taps: taps, images: images) }
+        // Entries whenever the pet changes, and (with the hour's sky) whenever the sky does.
+        var changes = snap.changeDates(after: now, taps: taps)
+        if configuration.sky == .auto { changes = Array(Set(changes + SkyPhase.changeDates(after: now, nightStart: snap.nightStart, nightEnd: snap.nightEnd))).sorted() }
+        let dates = [now] + changes.prefix(Self.maxEntries)
+        let entries = dates.map { entry(snap, at: $0, configuration: configuration, taps: taps, images: images) }
         return Timeline(entries: entries, policy: .atEnd)
     }
 
     private func entry(_ snap: Snapshot, at date: Date, choice: String?, taps: [PendingTap], images: ImageCache) -> PetEntry {
         guard let face = snap.face(at: date, choice: choice, taps: taps) else { return .empty(snap.labels) }
         return PetEntry(date: date, face: face, image: images.image(face.sprite), labels: snap.labels ?? [:])
+    }
+
+    private func entry(_ snap: Snapshot, at date: Date, configuration: SelectPetIntent, taps: [PendingTap], images: ImageCache) -> PetEntry {
+        var e = entry(snap, at: date, choice: configuration.pet?.id, taps: taps, images: images)
+        e.sky = configuration.sky.phase(at: date, nightStart: snap.nightStart, nightEnd: snap.nightEnd)
+        e.showName = configuration.showName
+        return e
     }
 }
 
@@ -90,7 +121,7 @@ struct PetWidgetEntryView: View {
             .containerBackground(for: .widget) {
                 switch family {
                 case .accessoryCircular, .accessoryRectangular, .accessoryInline: Color.clear
-                default: Palette.paper
+                default: if let sky = entry.sky { SkyBackground(phase: sky) } else { Palette.paper }
                 }
             }
     }

@@ -140,12 +140,16 @@ class PawRepository(val platform: Platform) {
         val now = now()
         // Two days of widget timelines is real work: off the main thread (update() and publish() already are).
         val (snapshot, reminders) = withContext(Dispatchers.Default) {
+            // Pets made before the widgets animated get their idle frames drawn once.
+            for (pet in state.pets) if (!files.exists(WidgetSnapshot.framePath(pet.id, Mood.CONTENT, 0))) writeWidgetPoses(pet)
             WidgetSnapshot.build(state, now, clock) to ReminderPlanner.plan(state, now, clock)
         }
         files.writeText(WidgetSnapshot.FILE_NAME, snapshot.stringify())
         _widgetRevision.value = _widgetRevision.value + 1
         platform.scheduleReminders(reminders)
-        platform.refreshWidgets(WidgetSnapshot.nextChangeMs(snapshot, now))
+        // Redraw when the pet's state changes, and when the sky over it does.
+        val skyChange = now + com.pawpixel.core.Sky.minutesToNextChange(clock.minuteOfDay(now), state.settings.nightStart, state.settings.nightEnd) * com.pawpixel.core.MINUTE_MS
+        platform.refreshWidgets(minOf(WidgetSnapshot.nextChangeMs(snapshot, now) ?: skyChange, skyChange))
     }
 
     /** A link into the app ("pawpixel://pet/<id>" from a widget) for the screens to follow, until [consumeLink]. */
@@ -422,6 +426,10 @@ class PawRepository(val platform: Platform) {
         val sleeping = Chibi.sleeping(art)
         for ((mood, img) in Poses.renderAll(art.still, sleeping)) {
             files.writeBytes(root + WidgetSnapshot.spritePath(pet.id, mood), Png.encode(img.scaled(WIDGET_SCALE)))
+            // The idle animation the Android widget plays (iOS shows the still above).
+            Poses.distinctFrames(art, mood).forEachIndexed { i, frame ->
+                files.writeBytes(root + WidgetSnapshot.framePath(pet.id, mood, i), Png.encode(frame.scaled(WIDGET_SCALE)))
+            }
         }
     }
 

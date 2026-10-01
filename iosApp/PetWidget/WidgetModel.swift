@@ -19,6 +19,16 @@ struct Snapshot: Decodable {
     let pets: [SnapshotPet]
     /// The widget's own words in the owner's language (Done, the empty message, "Next: ...").
     let labels: [String: String]?
+    /// The owner's night (minutes of the day), for the sky; absent on an older file.
+    let night: Night?
+
+    var nightStart: Int { night?.start ?? 22 * 60 }
+    var nightEnd: Int { night?.end ?? 6 * 60 }
+}
+
+struct Night: Decodable {
+    let start: Int
+    let end: Int
 }
 
 /// A pet's timeline, Done buttons and next care; each list is change points (the last one at or before now applies).

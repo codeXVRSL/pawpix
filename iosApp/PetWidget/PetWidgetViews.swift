@@ -11,6 +11,10 @@ struct PetEntry: TimelineEntry {
     let image: UIImage?
     /// The widget's words in the owner's language (see WidgetSnapshot.build).
     let labels: [String: String]
+    /// The sky behind the pet at this moment, or nil for plain paper.
+    var sky: SkyPhase? = .day
+    /// Whether the pet's name is written on the widget.
+    var showName: Bool = true
 
     /// Taps open the pet's page, or the pet maker.
     var url: URL { URL(string: face.map { "pawpixel://pet/\($0.petId)" } ?? "pawpixel://new")! }
@@ -53,6 +57,9 @@ enum Palette {
     static let soft = dynamic((0.416, 0.361, 0.471), (0.788, 0.741, 0.839))
     static let berry = dynamic((0.851, 0.212, 0.31), (1.0, 0.502, 0.576))
     static let onBerry = dynamic((1, 1, 1), (0.29, 0.04, 0.094))
+    /// Ink over the night sky, whatever the phone's appearance.
+    static let nightInk = Color(red: 0.969, green: 0.933, blue: 0.894)
+    static let nightSoft = Color(red: 0.788, green: 0.741, blue: 0.839)
 }
 
 // MARK: - Views
@@ -64,8 +71,11 @@ struct PetWidgetView: View {
     let family: WidgetFamily
     var showsBackground: Bool = true
 
-    private var ink: Color { showsBackground ? Palette.ink : .primary }
-    private var soft: Color { showsBackground ? Palette.soft : .secondary }
+    private var night: Bool { showsBackground && entry.sky?.dark == true }
+    private var ink: Color { night ? Palette.nightInk : (showsBackground ? Palette.ink : .primary) }
+    private var soft: Color { night ? Palette.nightSoft : (showsBackground ? Palette.soft : .secondary) }
+    /// The caption's pill over the sky, so it reads on any gradient.
+    private var pill: Color { night ? Color.black.opacity(0.35) : Color.white.opacity(0.75) }
 
     var body: some View {
         content.widgetURL(entry.url)
@@ -90,6 +100,8 @@ struct PetWidgetView: View {
             if let face = entry.face {
                 Text(face.caption).font(.caption.bold()).foregroundStyle(ink)
                     .lineLimit(2).multilineTextAlignment(.center).minimumScaleFactor(0.8)
+                    .padding(.horizontal, 8).padding(.vertical, 2)
+                    .background(entry.sky == nil || !showsBackground ? Color.clear : pill, in: Capsule())
                 if let action = face.actionTaskId {
                     doneButton(action, face)
                 } else if let next = nextLine(face) {
@@ -118,8 +130,10 @@ struct PetWidgetView: View {
 
     @ViewBuilder private var details: some View {
         if let face = entry.face {
-            Text(face.name).font(.headline).foregroundStyle(ink).lineLimit(1)
-            Text(face.caption).font(.subheadline).foregroundStyle(ink.opacity(0.85)).lineLimit(2)
+            if entry.showName { Text(face.name).font(.headline).foregroundStyle(ink).lineLimit(1) }
+            Text(face.caption).font(.subheadline.weight(.medium)).foregroundStyle(ink).lineLimit(2)
+                .padding(.horizontal, 8).padding(.vertical, 2)
+                .background(entry.sky == nil || !showsBackground ? Color.clear : pill, in: Capsule())
             if let action = face.actionTaskId {
                 doneButton(action, face).padding(.top, 2)
             } else if let next = nextLine(face) {
@@ -154,7 +168,7 @@ struct PetWidgetView: View {
             sprite.frame(width: 44)
             VStack(alignment: .leading, spacing: 0) {
                 if let face = entry.face {
-                    Text(face.name).font(.headline).widgetAccentable().lineLimit(1)
+                    if entry.showName { Text(face.name).font(.headline).widgetAccentable().lineLimit(1) }
                     Text(face.caption).font(.caption).lineLimit(1)
                     if let label = dueLine(face) ?? nextLine(face) { Text(label).font(.caption2).lineLimit(1) }
                 } else {

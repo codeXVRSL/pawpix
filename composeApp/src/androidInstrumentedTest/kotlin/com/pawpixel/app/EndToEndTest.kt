@@ -506,6 +506,38 @@ class EndToEndTest {
             check(!device.hasObject(By.textContains("Problem loading widget"))) { "the widget failed to load" }
         }
 
+        step("widget: the pet is alive on the home screen") {
+            // The idle animation plays in the launcher itself (a ViewFlipper): two screenshots a
+            // beat apart differ below the status bar, where nothing else on the home screen moves.
+            val first = instr.uiAutomation.takeScreenshot()
+            Thread.sleep(700)
+            val second = instr.uiAutomation.takeScreenshot()
+            val top = (first.height * 0.08).toInt()
+            var differ = 0
+            for (y in top until first.height step 2) for (x in 0 until first.width step 2) if (first.getPixel(x, y) != second.getPixel(x, y)) differ++
+            note("home screen pixels that changed in 700 ms: $differ")
+            File(out, "14-home-screen-widget-a-beat-later.png").outputStream().use { second.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, it) }
+            check(differ > 50) { "the widget's pet did not move on the home screen" }
+            // And the frames themselves: the widget hands the launcher several distinct pictures.
+            val remote = runBlocking {
+                com.pawpixel.app.widget.PetWidget().compose(ctx, size = androidx.compose.ui.unit.DpSize(120.dp, 120.dp),
+                    state = androidx.datastore.preferences.core.emptyPreferences())
+            }
+            instr.runOnMainSync {
+                val frame = android.widget.FrameLayout(ctx)
+                val view = remote.apply(ctx, frame)
+                var flipper: android.widget.ViewFlipper? = null
+                fun walk(v: android.view.View) { if (v is android.widget.ViewFlipper) flipper = v; if (v is android.view.ViewGroup) for (i in 0 until v.childCount) walk(v.getChildAt(i)) }
+                walk(view)
+                val f = flipper ?: throw AssertionError("no ViewFlipper in the widget")
+                check(f.isAutoStart) { "the flipper doesn't start by itself" }
+                check(f.childCount >= 6) { "only ${f.childCount} frames" }
+                val bitmaps = (0 until f.childCount).map { ((f.getChildAt(it) as android.widget.ImageView).drawable as android.graphics.drawable.BitmapDrawable).bitmap }
+                check(bitmaps.toSet().size >= 3) { "the frames are all the same picture" }
+                note("widget animation: ${f.childCount} steps, ${bitmaps.toSet().size} distinct frames, every ${f.flipInterval} ms")
+            }
+        }
+
         step("widget: good layouts from a one-row strip to 4x3, light and dark") {
             // Launchers can't be resized from a test, so the widget is drawn off-screen at each size,
             // exactly as a launcher would (Glance → RemoteViews → views).

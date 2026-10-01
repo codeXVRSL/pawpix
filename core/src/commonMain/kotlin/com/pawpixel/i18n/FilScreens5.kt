@@ -43,5 +43,9 @@ object FilScreens5 {
         "Light chest" to "Maliwanag na dibdib", "Heart mark" to "Markang puso", "Plain" to "Plain",
         "Rosy" to "Mapula", "Short" to "Maikli",
         "Collar with bell" to "Kwelyo na may kampanilya", "Collar with bow" to "Kwelyo na may ribbon",
+        // Widget settings (Android)
+        "Widget settings" to "Mga setting ng widget", "Sky" to "Langit", "The sky behind your pet." to "Ang langit sa likod ng alaga mo.",
+        "Follows the time of day" to "Sumusunod sa oras ng araw", "Always day" to "Laging araw", "Always night" to "Laging gabi",
+        "Show the name" to "Ipakita ang pangalan",
     )
 }

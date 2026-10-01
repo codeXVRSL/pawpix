@@ -58,11 +58,17 @@ final class WidgetRenderTests: XCTestCase {
         let dir = outDir()
         func entry(_ hours: Double, taps: [PendingTap] = []) -> PetEntry {
             let face = snap.face(at: at(hours), choice: nil, taps: taps, timeZone: manila)
-            return PetEntry(date: at(hours), face: face, image: WidgetImages.sample, labels: snap.labels ?? [:])
+            var cal = Calendar.current
+            cal.timeZone = manila
+            let sky = SkyPhase.at(at(hours), nightStart: snap.nightStart, nightEnd: snap.nightEnd, calendar: cal)
+            return PetEntry(date: at(hours), face: face, image: WidgetImages.sample, labels: snap.labels ?? [:], sky: sky)
         }
         let hungry = entry(3)
         let fine = entry(0.5)
+        let night = entry(17) // 11 PM: asleep under the stars
         let empty = PetEntry.empty(snap.labels)
+        XCTAssertEqual(night.sky, .night)
+        XCTAssertEqual(hungry.sky, .day)
         // Point sizes on a 6.7" iPhone.
         let home: [(String, WidgetFamily, CGSize)] = [
             ("small", .systemSmall, CGSize(width: 170, height: 170)),
@@ -76,12 +82,15 @@ final class WidgetRenderTests: XCTestCase {
         ]
         var rendered = 0
         for (name, family, size) in home {
-            for (state, e) in [("hungry", hungry), ("fine", fine), ("empty", empty)] {
+            for (state, e) in [("hungry", hungry), ("fine", fine), ("night", night), ("empty", empty)] {
                 for scheme in [ColorScheme.light, .dark] {
                     let view = PetWidgetView(entry: e, family: family)
                         .padding(16)
                         .frame(width: size.width, height: size.height)
-                        .background(Palette.paper, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+                        .background {
+                            Group { if let sky = e.sky { SkyBackground(phase: sky) } else { Palette.paper } }
+                                .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
+                        }
                         .environment(\.colorScheme, scheme)
                     rendered += save(view, dir, "home-\(name)-\(state)-\(scheme == .dark ? "dark" : "light")")
                 }

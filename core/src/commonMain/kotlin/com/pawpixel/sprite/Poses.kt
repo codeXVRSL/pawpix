@@ -21,7 +21,47 @@ object Poses {
     fun renderAll(sprite: PixelImage, eyesClosed: PixelImage? = null): Map<Mood, PixelImage> =
         Mood.entries.associateWith { render(if (it == Mood.SLEEPY && eyesClosed != null) eyesClosed else sprite, it) }
 
-    fun render(sprite: PixelImage, mood: Mood): PixelImage {
+    /**
+     * The idle animation of a widget: the pet's own poses (breathing, a blink, a glance, a hop) with
+     * the mood's icons moving along, as a list of frames shown one after another at [FRAME_MS].
+     * Frames repeat, so a widget loads each distinct picture once ([distinctFrames]).
+     */
+    const val FRAME_MS = 300
+
+    private class Key(val pose: Chibi.Pose, val tick: Int)
+
+    private fun keys(mood: Mood): List<Key> {
+        val base = Key(Chibi.Pose(), 0)
+        val breathe = Key(Chibi.Pose(breathe = 1, tail = 1), 1)
+        val blink = Key(Chibi.Pose(eyesClosed = true), 0)
+        val look = Key(Chibi.Pose(headDx = 1, tail = 1), 1)
+        val hop = Key(Chibi.Pose(bob = -1, tail = -1), 1)
+        val sleep = Key(Chibi.Pose(lying = true, eyesClosed = true), 0)
+        val sleepBreathe = Key(Chibi.Pose(lying = true, breathe = 1, eyesClosed = true), 1)
+        return when (mood) {
+            Mood.SLEEPY -> listOf(sleep, sleep, sleep, sleepBreathe, sleepBreathe, sleepBreathe)
+            Mood.SAD -> listOf(base, base, base, breathe, breathe, breathe, base, base, blink, base, breathe, breathe)
+            Mood.HAPPY -> listOf(base, base, breathe, breathe, hop, base, breathe, breathe, base, blink, breathe, breathe)
+            else -> listOf(base, base, breathe, breathe, base, blink, base, breathe, look, look, breathe, base)
+        }
+    }
+
+    /** The frames of [mood]'s idle animation, as indices into [distinctFrames]. */
+    fun frameSequence(mood: Mood): List<Int> {
+        val keys = keys(mood)
+        val distinct = ArrayList<Key>()
+        return keys.map { k -> distinct.indexOfFirst { it.pose == k.pose && it.tick == k.tick }.takeIf { it >= 0 } ?: run { distinct += k; distinct.size - 1 } }
+    }
+
+    /** Each distinct picture of [mood]'s idle animation, in [frameSequence]'s numbering. */
+    fun distinctFrames(art: PetArt, mood: Mood): List<PixelImage> {
+        val distinct = ArrayList<Key>()
+        for (k in keys(mood)) if (distinct.none { it.pose == k.pose && it.tick == k.tick }) distinct += k
+        return distinct.map { render(Chibi.compose(art, it.pose), mood, it.tick) }
+    }
+
+    /** One mood pose; [tick] (0 or 1) moves the mood's icons for the idle animation. */
+    fun render(sprite: PixelImage, mood: Mood, tick: Int = 0): PixelImage {
         val s = iconScale(sprite)
         val (w, h) = canvasSize(sprite)
         val canvas = PixelImage(w, h)
@@ -45,27 +85,29 @@ object Poses {
             val i = icon(img)
             canvas.draw(i, if (right) w - 1 - x * s - i.width else x * s, h - i.height)
         }
+        val t = tick and 1 // icons bob by a pixel between the two ticks
         when (mood) {
             Mood.HAPPY -> {
-                atRight(Icons.HEART, 0, 0)
-                atRight(Icons.HEART_SMALL, 8, 4)
-                canvas.draw(icon(Icons.SPARKLE), s, 3 * s)
+                atRight(Icons.HEART, 0, t)
+                atRight(Icons.HEART_SMALL, 8, 4 - t)
+                if (t == 0) canvas.draw(icon(Icons.SPARKLE), s, 3 * s) else canvas.draw(icon(Icons.SPARKLE), 2 * s, 6 * s)
             }
             Mood.HUNGRY -> {
                 atBottom(Icons.BOWL, 0, right = true)
-                atRight(Icons.QUESTION, 0, 0)
+                atRight(Icons.QUESTION, 0, t)
             }
             Mood.RESTLESS -> {
-                atBottom(Icons.BALL, 0, right = false)
-                atRight(Icons.EXCLAIM, 0, 0)
-                atRight(Icons.EXCLAIM, 3, 0)
+                atBottom(Icons.BALL, t, right = false)
+                atRight(Icons.EXCLAIM, 0, t)
+                atRight(Icons.EXCLAIM, 3, 1 - t)
             }
-            Mood.NEEDS_MEDS -> atRight(Icons.PILL, 0, 1)
+            Mood.NEEDS_MEDS -> atRight(Icons.PILL, 0, 1 + t)
             Mood.SLEEPY -> {
-                atRight(Icons.Z_BIG, 0, 3)
-                atRight(Icons.Z_SMALL, 5, 0)
+                // The Zs drift up and swap sizes: a slow, cosy breath.
+                if (t == 0) { atRight(Icons.Z_BIG, 0, 3); atRight(Icons.Z_SMALL, 5, 0) }
+                else { atRight(Icons.Z_SMALL, 1, 4); atRight(Icons.Z_BIG, 4, 0) }
             }
-            Mood.SAD -> { val c = icon(Icons.RAIN_CLOUD); canvas.draw(c, (w - c.width) / 2, 0) }
+            Mood.SAD -> { val c = icon(if (t == 0) Icons.RAIN_CLOUD else Icons.RAIN_CLOUD_2); canvas.draw(c, (w - c.width) / 2, 0) }
             Mood.CONTENT -> Unit
         }
         return canvas
@@ -228,5 +270,15 @@ object Icons {
         ".ooooooooooo.",
         "..d...d...d..",
         ".d...d...d...",
+    )
+    /** The same cloud, its drops a step further down. */
+    val RAIN_CLOUD_2 = grid(
+        "....ooo......",
+        "..oogggoo....",
+        ".oggggggooo..",
+        "ogggggggggggo",
+        ".ooooooooooo.",
+        ".d...d...d...",
+        "..d...d...d..",
     )
 }

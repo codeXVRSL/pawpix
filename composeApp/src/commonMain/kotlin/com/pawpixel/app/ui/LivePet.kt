@@ -240,15 +240,8 @@ private fun starField(seed: Int): List<Triple<Float, Float, Boolean>> {
 @Composable
 fun sceneFor(minuteOfDay: Int, nightStart: Int, nightEnd: Int): StageScene {
     val p = Paw.palette
-    val night = if (nightStart <= nightEnd) minuteOfDay in nightStart until nightEnd else (minuteOfDay >= nightStart || minuteOfDay < nightEnd)
-    val h = minuteOfDay / 60f
+    val phase = com.pawpixel.core.Sky.phase(minuteOfDay, nightStart, nightEnd)
     fun dim(c: Color) = if (p.dark) Color(c.red * 0.42f, c.green * 0.40f, c.blue * 0.5f) else c
-    return when {
-        night -> StageScene(Color(0xFF1B2440), Color(0xFF3A2B4A), Color(0xFF2F2742), Color(0xFF4A3F63), stars = true)
-        h < 5.5f -> StageScene(Color(0xFF1B2440), Color(0xFF3A2B4A), Color(0xFF2F2742), Color(0xFF4A3F63), stars = true)
-        h < 8f -> StageScene(dim(Color(0xFFFFD1C2)), dim(Color(0xFFFFF1E0)), p.floor, p.floorLine)
-        h < 16.5f -> StageScene(dim(Color(0xFFCFE6FA)), dim(Color(0xFFFFF1E0)), p.floor, p.floorLine)
-        h < 19f -> StageScene(dim(Color(0xFFFFC49A)), dim(Color(0xFFD9C8EC)), p.floor, p.floorLine)
-        else -> StageScene(Color(0xFF1B2440), Color(0xFF3A2B4A), Color(0xFF2F2742), Color(0xFF4A3F63), stars = true)
-    }
+    return if (phase.stars) StageScene(Color(phase.top), Color(phase.bottom), Color(phase.floor), Color(phase.floorLine), stars = true)
+    else StageScene(dim(Color(phase.top)), dim(Color(phase.bottom)), p.floor, p.floorLine)
 }

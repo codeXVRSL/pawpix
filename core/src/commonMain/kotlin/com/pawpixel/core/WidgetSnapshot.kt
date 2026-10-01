@@ -35,6 +35,13 @@ object WidgetSnapshot {
 
     fun spritePath(petId: String, mood: Mood) = "sprites/$petId/${mood.key}.png"
 
+    /** The [i]th distinct frame of the mood's idle animation (see [com.pawpixel.sprite.Poses.distinctFrames]). */
+    fun framePath(petId: String, mood: Mood, i: Int) = "sprites/$petId/${mood.key}-f$i.png"
+
+    /** The idle animation's frames, one path per step of [com.pawpixel.sprite.Poses.frameSequence]. */
+    fun frames(petId: String, mood: Mood): List<String> =
+        com.pawpixel.sprite.Poses.frameSequence(mood).map { framePath(petId, mood, it) }
+
     fun build(state: AppState, nowMs: Long, clock: LocalClock, horizonMs: Long = HORIZON_MS): Json {
         val pets = state.pets.map { pet -> petJson(state, pet, nowMs, clock, horizonMs) }
         // The widgets' own words, in the owner's language (the iOS widget can't run Kotlin).
@@ -49,6 +56,9 @@ object WidgetSnapshot {
         return Json.obj(
             "version" to VERSION, "generatedAt" to nowMs, "utcOffsetMs" to clock.offsetMs(nowMs),
             "pets" to pets, "labels" to labels,
+            // The owner's night, so the widgets' sky goes dark with the app's (see Sky).
+            "night" to Json.obj("start" to state.settings.nightStart, "end" to state.settings.nightEnd),
+            "frameMs" to com.pawpixel.sprite.Poses.FRAME_MS,
         )
     }
 
@@ -60,6 +70,8 @@ object WidgetSnapshot {
             "name" to pet.name,
             "spriteVersion" to pet.spriteVersion,
             "sprites" to Mood.entries.associate { it.key to spritePath(pet.id, it) },
+            // The idle animation per mood: frames shown in turn, every "frameMs" (Android plays it live).
+            "frames" to Mood.entries.associate { it.key to frames(pet.id, it) },
             // Shown for a while after a Done tap on the widget (see [face]).
             "happy" to tr("{0} is happy!", pet.name),
         )
@@ -184,6 +196,7 @@ object WidgetSnapshot {
             mood = mood,
             caption = caption,
             sprite = pet["sprites"][mood.key].str,
+            frames = pet["frames"][mood.key].list.mapNotNull { it.str },
             actionTaskId = action?.get("taskId")?.str,
             actionEmoji = action?.get("emoji")?.str,
             actionTitle = action?.get("title")?.str,
@@ -239,6 +252,8 @@ data class WidgetFace(
     val caption: String,
     /** The mood's pose, relative to the shared folder. */
     val sprite: String?,
+    /** The mood's idle animation: the frames in order (paths repeat), empty on an older snapshot. */
+    val frames: List<String> = emptyList(),
     /** The one-tap Done ("🍖 Done"), when something is due now, and what it's for ("🍖", "Feed"). */
     val actionTaskId: String?,
     val actionEmoji: String?,

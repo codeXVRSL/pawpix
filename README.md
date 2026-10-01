@@ -126,9 +126,9 @@ Only the system photo picker is stubbed in these tests; everything else is the r
 - [ ] Android 14+: "Exact time" reminders need the user to allow alarms (Settings, Apps, PawPixel, Alarms & reminders). Without it they arrive a few minutes late.
 
 ## Known limits (by design, for the MVP)
-- Widgets show still mood poses, not animation. iOS doesn't allow animated widgets, and it keeps battery use low. The app itself animates.
+- The Android widget is alive (its idle animation plays on the home screen through a `ViewFlipper`, the one thing launchers animate on their own); the iOS widget shows the mood's still pose, as iOS doesn't allow animated widgets. Both draw the sky of the hour behind the pet.
 - Body markings (spots, socks) aren't copied yet; the chest and paws use the pet's lighter tone when it has one. A hand-drawn body from the owner's photos is a natural Pro upgrade, and a fit for your pixel art commissions.
 - Likeness comes from colours and markings, not a pixelated copy of the photo. Pasting the real (pixelated) face on a drawn body was tried and dropped: the two styles clashed and the head looked out of proportion. Fine stripes (tabby) are not reproduced yet.
-- One widget pet: with several pets, the widget shows whichever needs attention most.
+- A widget shows one pet: the one you pick in its settings, or whichever needs attention most.
 - Adaptive timing learns from the last 4 weeks and needs 3 completions near a time before moving it.
 - Daylight-saving shifts may move a reminder by an hour on the change day (not an issue in the Philippines).

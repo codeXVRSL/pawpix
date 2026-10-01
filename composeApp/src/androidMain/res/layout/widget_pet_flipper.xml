@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  The pet's idle animation on the home screen. A ViewFlipper plays its children in turn on its own,
+  inside RemoteViews, with no update from the app: the widget adds one frame (widget_pet_frame) per
+  step of the mood's animation, each with its pre-rendered picture, and sets the interval.
+-->
+<ViewFlipper xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/pet_flipper"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:autoStart="true"
+    android:flipInterval="300"
+    android:measureAllChildren="true" />
