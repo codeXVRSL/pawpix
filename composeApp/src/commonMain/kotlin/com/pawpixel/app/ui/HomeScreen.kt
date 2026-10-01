@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -58,36 +59,20 @@ fun HomeScreen(app: AppScope, state: AppState) {
     val clock = app.repo.clock
     val minute = clock.minuteOfDay(app.now)
     Box(Modifier.fillMaxSize().background(heroGlow())) {
-        Column(Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding().padding(horizontal = 16.dp)) {
-            // Wordmark and the two doors out: the map and settings. (Their texts are what the
-            // end-to-end tests tap, so they stay plain words.)
-            val title = @Composable { m: Modifier ->
-                Text("PawPixel", style = MaterialTheme.typography.headlineMedium, maxLines = 1, modifier = m.semantics { heading() })
+        Column(Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding()) {
+            // Wordmark and the day's greeting. (The main places live in the dock below.)
+            Column(Modifier.fillMaxWidth().padding(horizontal = 20.dp).padding(top = 14.dp, bottom = 12.dp)) {
+                Text("PawPixel", style = MaterialTheme.typography.headlineMedium, maxLines = 1, modifier = Modifier.semantics { heading() })
+                Hint("${greeting(minute)} · ${LocalClock.shortDate(clock.dayIndex(app.now))}")
             }
-            val links = @Composable {
-                if (state.pets.isNotEmpty()) TonalPill(tr("Pet map")) { app.navigate(Screen.PetMap) }
-                TonalPill(tr("Settings")) { app.navigate(Screen.Settings) }
-            }
-            if (largeText()) {
-                Column(Modifier.fillMaxWidth().padding(top = 12.dp, bottom = 4.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    title(Modifier)
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) { links() }
-                }
-            } else {
-                Row(Modifier.fillMaxWidth().padding(top = 12.dp, bottom = 4.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    title(Modifier.weight(1f))
-                    links()
-                }
-            }
-            Hint(
-                "${greeting(minute)} · ${LocalClock.shortDate(clock.dayIndex(app.now))}",
-                Modifier.padding(bottom = 14.dp),
-            )
 
             if (state.pets.isEmpty()) {
-                EmptyHome(app)
+                Box(Modifier.weight(1f).padding(horizontal = 16.dp)) { EmptyHome(app) }
             } else {
-                LazyColumn(verticalArrangement = Arrangement.spacedBy(14.dp), modifier = Modifier.weight(1f)) {
+                LazyColumn(
+                    verticalArrangement = Arrangement.spacedBy(14.dp), modifier = Modifier.weight(1f),
+                    contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 16.dp),
+                ) {
                     items(state.pets, key = { it.id }) { pet -> PetCard(app, state, pet, minute) }
                     item {
                         Row(Modifier.padding(top = 2.dp), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -97,12 +82,18 @@ fun HomeScreen(app: AppScope, state: AppState) {
                             if (app.repo.family.household == null) JoinHouseholdLink(app)
                         }
                     }
-                    item {
-                        WidgetTip(app, state)
-                        Spacer(Modifier.height(28.dp))
-                    }
+                    item { WidgetTip(app, state) }
                 }
             }
+
+            // The dock: the main places, one thumb away. (Its words are what the end-to-end tests tap.)
+            val doors = buildList {
+                add(DockItem("🐾", tr("Pets"), selected = true) {})
+                if (state.pets.isNotEmpty()) add(DockItem("🗺️", tr("Pet map")) { app.navigate(Screen.PetMap) })
+                add(DockItem("👪", tr("Family")) { app.navigate(Screen.Family()) })
+                add(DockItem("⚙️", tr("Settings")) { app.navigate(Screen.Settings) })
+            }
+            Box(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp), contentAlignment = Alignment.Center) { FloatingDock(doors) }
         }
     }
     if (showProDialog) {
@@ -181,11 +172,11 @@ private fun PetCard(app: AppScope, state: AppState, pet: Pet, minute: Int) {
         Column {
             // A window onto the pet's little world: the sky of the hour, the pet standing on its floor.
             Box(
-                Modifier.fillMaxWidth().height(150.dp)
+                Modifier.fillMaxWidth().height(176.dp)
                     .background(Brush.verticalGradient(0f to scene.skyTop, 0.8f to scene.skyBottom, 0.8f to scene.floor, 1f to scene.floor)),
                 contentAlignment = Alignment.BottomCenter,
             ) {
-                SpriteView(pose, Modifier.size(112.dp).padding(bottom = 18.dp), description = MoodEngine.describe(pet.name, reading.mood))
+                SpriteView(pose, Modifier.size(128.dp).padding(bottom = 22.dp), description = MoodEngine.describe(pet.name, reading.mood))
                 StatusPill(
                     reading.caption, moodColor(reading.mood), tone = Tone.Surface,
                     modifier = Modifier.align(Alignment.TopStart).padding(12.dp),

@@ -65,6 +65,8 @@ fun LivePet(
     description: String? = null,
     /** Sky and floor colours; the theme's plain floor when null. */
     scene: StageScene? = null,
+    /** Keep the stage's own proportions (false when the caller gives it a height: a hero stage, all sky above). */
+    keepAspect: Boolean = true,
     onPetted: () -> Unit = {},
 ) {
     if (art == null) return
@@ -87,7 +89,7 @@ fun LivePet(
     val current = built
     if (current == null) {
         // The stage's usual shape, so nothing jumps when the pet appears.
-        Box(modifier.aspectRatio(PLACEHOLDER_ASPECT).semantics { if (description != null) contentDescription = description })
+        Box(modifier.let { if (keepAspect) it.aspectRatio(PLACEHOLDER_ASPECT) else it }.semantics { if (description != null) contentDescription = description })
         return
     }
     val layout = current.layout
@@ -124,7 +126,7 @@ fun LivePet(
     val petLabel = tr("Give pets")
     Canvas(
         modifier
-            .aspectRatio(layout.stageWidth.toFloat() / layout.stageHeight)
+            .let { if (keepAspect) it.aspectRatio(layout.stageWidth.toFloat() / layout.stageHeight) else it }
             // A picture only shows the mood: say it, and let screen-reader users give pets too.
             .semantics {
                 if (description != null) contentDescription = description
@@ -163,6 +165,30 @@ fun LivePet(
             for ((fx, fy, big) in stars) {
                 val s = if (big) 2 * px else px
                 drawRect(Color(0xCCFFF6D5), Offset((fx * size.width / px).toInt() * px, (fy * skyH / px).toInt() * px), Size(s, s))
+            }
+        }
+        if (sky != null) {
+            // A sun by day (warmer at dawn and dusk), a moon at night, and two drifting pixel clouds: the same sky as the widget.
+            val skyH = sy(layout.floorY - 2.0)
+            val unit = 2 * px
+            // Clear of the glass buttons a hero stage carries in its top corners.
+            val cx = size.width - 13 * unit
+            val cy = 11 * unit
+            if (stars.isNotEmpty()) {
+                drawCircle(Color(0xFFFFF1C9), 3.2f * unit, Offset(cx, cy))
+                drawCircle(scene!!.skyTop.copy(alpha = 1f), 2.7f * unit, Offset(cx + 1.6f * unit, cy - 0.9f * unit))
+            } else {
+                val sun = if (scene!!.skyTop.red > 0.95f) Color(0xFFFFD98A) else Color(0xFFFFF4C2)
+                drawCircle(sun.copy(alpha = 0.45f), 4.4f * unit, Offset(cx, cy))
+                drawCircle(sun, 3f * unit, Offset(cx, cy))
+            }
+            val drift = ((clock[1] / 400L) % (size.width / unit).toLong().coerceAtLeast(1L)) * unit
+            for ((ox, oy, alpha) in listOf(Triple(2f * unit, 8f * unit, 0.85f), Triple(size.width * 0.5f, 15f * unit, 0.65f))) {
+                val x0 = (ox + drift) % (size.width + 10 * unit) - 8 * unit
+                if (oy + 3 * unit > skyH) continue
+                CLOUD.forEachIndexed { row, cells ->
+                    cells.forEachIndexed { col, c -> if (c == '#') drawRect(Color.White.copy(alpha = alpha), Offset(x0 + col * unit, oy + row * unit), Size(unit, unit)) }
+                }
             }
         }
         // Floor
@@ -208,6 +234,8 @@ private class Built(val set: AnimationSet, val layout: StageLayout, val icons: M
 
 /** The frames of one mood, and which drawings they came from. */
 private class MoodFrames(val set: AnimationSet, val frames: Map<Frame, ImageBitmap>)
+
+private val CLOUD = listOf("..####..", ".######.", "########")
 
 /** Width / height of the stage for most looks (between 1.53 and 1.60). */
 private const val PLACEHOLDER_ASPECT = 1.55f

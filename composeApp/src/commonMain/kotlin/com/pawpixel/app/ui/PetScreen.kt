@@ -3,6 +3,7 @@ package com.pawpixel.app.ui
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
@@ -15,7 +16,9 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
@@ -29,6 +32,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.semantics.contentDescription
@@ -71,40 +75,69 @@ fun PetScreen(app: AppScope, state: AppState, pet: Pet) {
     val clock = app.repo.clock
     val scene = sceneFor(clock.minuteOfDay(app.now), state.settings.nightStart, state.settings.nightEnd)
 
-    Box(Modifier.fillMaxSize().background(heroGlow())) {
+    BoxWithConstraints(Modifier.fillMaxSize().background(heroGlow())) {
+    // The pet's world fills the top of the screen, edge to edge and under the status bar, like the
+    // 2026 pet apps do: the sky of the hour, the pet living on its floor. The page rises over it.
+    val heroHeight = (maxHeight * 0.46f).coerceIn(300.dp, 460.dp)
+    val night = scene.stars
     Column(
-        Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding()
-            .verticalScroll(rememberScrollState()).padding(horizontal = 16.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
+        Modifier.fillMaxSize().navigationBarsPadding().verticalScroll(rememberScrollState()),
     ) {
-        TopBar(app, title = null) {
-            val editLabel = tr("Edit {0}'s name, type and birthday", pet.name)
-            GhostPill(tr("Edit"), modifier = Modifier.semantics { contentDescription = editLabel }) { renaming = true }
+        Box(Modifier.fillMaxWidth().height(heroHeight).background(scene.floor)) {
+            // The floor runs on under the page's rounded top, so the pet's feet are never hidden.
+            LivePet(
+                art, pet.eyes, reading.mood, seed = pet.id.hashCode(), modifier = Modifier.fillMaxWidth().height(heroHeight).padding(bottom = 30.dp), reaction = reaction,
+                description = MoodEngine.describe(pet.name, reading.mood), scene = scene, keepAspect = false,
+                onPetted = { haptics.performHapticFeedback(HapticFeedbackType.LongPress) },
+            )
+            HeartBurst(burst, Modifier.matchParentSize())
+            Row(
+                Modifier.fillMaxWidth().statusBarsPadding().padding(horizontal = 12.dp, vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                GlassButton("‹", tr("Back"), night = night, onClick = app.back)
+                Spacer(Modifier.weight(1f))
+                GlassPill(tr("Edit"), tr("Edit {0}'s name, type and birthday", pet.name), night = night) { renaming = true }
+            }
+        }
+        Column(
+            Modifier.fillMaxWidth().pullUp(28.dp)
+                .clip(RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp))
+                .background(MaterialTheme.colorScheme.background)
+                .padding(horizontal = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+        // Name, age, mood and hearts, right under the pet.
+        Column(
+            Modifier.fillMaxWidth().padding(top = 18.dp, bottom = 2.dp),
+            horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
+            Text(pet.name, style = MaterialTheme.typography.petName, modifier = Modifier.semantics { heading() }, textAlign = TextAlign.Center)
+            pet.birthDay?.let { born -> Hint(HealthPlan.ageLabel(born, clock.dayIndex(app.now))) }
+            StatusPill(reading.caption, moodColor(reading.mood), modifier = Modifier.padding(top = 2.dp))
+            Hearts(
+                reading.score, Modifier.padding(top = 6.dp),
+                description = tr("Happiness {0} of 5", (reading.score + 10) / 20),
+            )
+            Hint(tr("Tap {0} to give pets", pet.name), align = TextAlign.Center)
         }
 
-        // The pet's little world: the sky of the hour, the pet living on its floor, its name and mood under it.
-        SoftCard(Modifier.fillMaxWidth(), tone = Tone.Surface, padding = 0.dp) {
-            Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
-                Box(Modifier.fillMaxWidth()) {
-                    LivePet(
-                        art, pet.eyes, reading.mood, seed = pet.id.hashCode(), modifier = Modifier.fillMaxWidth(), reaction = reaction,
-                        description = MoodEngine.describe(pet.name, reading.mood), scene = scene,
-                        onPetted = { haptics.performHapticFeedback(HapticFeedbackType.LongPress) },
-                    )
-                    HeartBurst(burst, Modifier.matchParentSize())
-                }
-                Column(
-                    Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 14.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(6.dp),
-                ) {
-                    Text(pet.name, style = MaterialTheme.typography.petName, modifier = Modifier.semantics { heading() }, textAlign = TextAlign.Center)
-                    pet.birthDay?.let { born -> Hint(HealthPlan.ageLabel(born, clock.dayIndex(app.now))) }
-                    StatusPill(reading.caption, moodColor(reading.mood), modifier = Modifier.padding(top = 2.dp))
-                    Hearts(
-                        reading.score, Modifier.padding(top = 6.dp),
-                        description = tr("Happiness {0} of 5", (reading.score + 10) / 20),
-                    )
-                    Hint(tr("Tap {0} to give pets", pet.name), align = TextAlign.Center)
+        // Quick care: one chunky tile per everyday task, the way a virtual pet is fed and played with.
+        if (statuses.isNotEmpty()) {
+            Row(
+                Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                for (s in statuses) {
+                    val name = trName(s.task.title)
+                    val done = s.allDoneThisCycle
+                    CareTile(
+                        s.task.kind.emoji, name,
+                        tone = when { s.isOverdue -> Tone.Accent; done -> Tone.Good; else -> Tone.Surface }, done = done,
+                        description = if (done) tr("{0}: all done today", name) else tr("Mark {0} done for {1}", name, pet.name),
+                    ) {
+                        if (!done) { react(PetEvent.Cared(s.task.kind)); app.launch { app.repo.complete(s.task.id) } }
+                    }
                 }
             }
         }
@@ -198,6 +231,7 @@ fun PetScreen(app: AppScope, state: AppState, pet: Pet) {
         shareError?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
         LinkButton(tr("Delete {0}", pet.name), color = MaterialTheme.colorScheme.error) { confirmDelete = true }
         Spacer(Modifier.height(20.dp))
+        }
     }
     }
 

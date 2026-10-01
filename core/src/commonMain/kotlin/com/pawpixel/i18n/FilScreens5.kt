@@ -47,5 +47,7 @@ object FilScreens5 {
         "Widget settings" to "Mga setting ng widget", "Sky" to "Langit", "The sky behind your pet." to "Ang langit sa likod ng alaga mo.",
         "Follows the time of day" to "Sumusunod sa oras ng araw", "Always day" to "Laging araw", "Always night" to "Laging gabi",
         "Show the name" to "Ipakita ang pangalan",
+        // The shell: the dock and the quick-care tiles
+        "Pets" to "Mga alaga", "Family" to "Pamilya", "{0}: all done today" to "{0}: tapos na lahat ngayon",
     )
 }

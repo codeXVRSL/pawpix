@@ -70,6 +70,7 @@ kotlin {
             implementation(compose.foundation)
             implementation(compose.material3)
             implementation(compose.ui)
+            implementation(compose.components.resources) // the app's fonts (Fredoka, Nunito; see docs/fonts)
             implementation(libs.kotlinx.coroutines.core)
         }
         androidMain.dependencies {
@@ -94,6 +95,12 @@ kotlin {
             implementation(libs.junit)
         }
     }
+}
+
+compose.resources {
+    publicResClass = false
+    packageOfResClass = "com.pawpixel.app.res"
+    generateResClass = always
 }
 
 android {

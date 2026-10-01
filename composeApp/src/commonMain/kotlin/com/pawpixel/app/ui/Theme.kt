@@ -12,13 +12,23 @@ import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.Immutable
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.pawpixel.app.res.Res
+import com.pawpixel.app.res.fredoka_bold
+import com.pawpixel.app.res.fredoka_semibold
+import com.pawpixel.app.res.nunito_bold
+import com.pawpixel.app.res.nunito_extrabold
+import com.pawpixel.app.res.nunito_regular
+import com.pawpixel.app.res.nunito_semibold
+import org.jetbrains.compose.resources.Font
 
 /**
  * PawPixel's look: crisp pixel pets living inside soft, warm, rounded chrome ("soft pixel").
@@ -134,24 +144,43 @@ val Pill = CircleShape
 
 private val base = Typography()
 
-/** Friendly weights: display and titles heavy with tight spacing, body relaxed with tall lines. */
-val PawTypography = Typography(
-    displayLarge = base.displayLarge.copy(fontWeight = FontWeight.Black, letterSpacing = (-1.5).sp),
-    displayMedium = base.displayMedium.copy(fontWeight = FontWeight.Black, letterSpacing = (-1).sp),
-    displaySmall = base.displaySmall.copy(fontWeight = FontWeight.Black, letterSpacing = (-0.5).sp),
-    headlineLarge = base.headlineLarge.copy(fontWeight = FontWeight.ExtraBold, letterSpacing = (-0.5).sp),
-    headlineMedium = base.headlineMedium.copy(fontWeight = FontWeight.ExtraBold, letterSpacing = (-0.25).sp),
-    headlineSmall = base.headlineSmall.copy(fontWeight = FontWeight.ExtraBold),
-    titleLarge = base.titleLarge.copy(fontWeight = FontWeight.Bold),
-    titleMedium = base.titleMedium.copy(fontWeight = FontWeight.Bold),
-    titleSmall = base.titleSmall.copy(fontWeight = FontWeight.Bold),
-    bodyLarge = base.bodyLarge.copy(lineHeight = 26.sp),
-    bodyMedium = base.bodyMedium.copy(lineHeight = 22.sp),
-    bodySmall = base.bodySmall.copy(lineHeight = 18.sp),
-    labelLarge = base.labelLarge.copy(fontWeight = FontWeight.Bold, letterSpacing = 0.2.sp),
-    labelMedium = base.labelMedium.copy(fontWeight = FontWeight.Bold),
-    labelSmall = base.labelSmall.copy(fontWeight = FontWeight.Bold, letterSpacing = 0.6.sp),
-)
+/**
+ * The app's two voices (both Open Font License, see docs/fonts): Fredoka, round and chunky, for
+ * names, headlines and titles; Nunito, soft and very readable, for everything else. Display and
+ * titles are tight, body relaxed with tall lines.
+ */
+@Composable
+fun pawTypography(): Typography {
+    val display = FontFamily(
+        Font(Res.font.fredoka_semibold, FontWeight.SemiBold),
+        Font(Res.font.fredoka_bold, FontWeight.Bold),
+    )
+    val body = FontFamily(
+        Font(Res.font.nunito_regular, FontWeight.Normal),
+        Font(Res.font.nunito_semibold, FontWeight.SemiBold),
+        Font(Res.font.nunito_bold, FontWeight.Bold),
+        Font(Res.font.nunito_extrabold, FontWeight.ExtraBold),
+    )
+    return remember(display, body) {
+        Typography(
+            displayLarge = base.displayLarge.copy(fontFamily = display, fontWeight = FontWeight.Bold, letterSpacing = (-1).sp),
+            displayMedium = base.displayMedium.copy(fontFamily = display, fontWeight = FontWeight.Bold, letterSpacing = (-0.5).sp),
+            displaySmall = base.displaySmall.copy(fontFamily = display, fontWeight = FontWeight.Bold, letterSpacing = (-0.25).sp),
+            headlineLarge = base.headlineLarge.copy(fontFamily = display, fontWeight = FontWeight.Bold, letterSpacing = (-0.25).sp),
+            headlineMedium = base.headlineMedium.copy(fontFamily = display, fontWeight = FontWeight.Bold),
+            headlineSmall = base.headlineSmall.copy(fontFamily = display, fontWeight = FontWeight.Bold),
+            titleLarge = base.titleLarge.copy(fontFamily = display, fontWeight = FontWeight.SemiBold),
+            titleMedium = base.titleMedium.copy(fontFamily = body, fontWeight = FontWeight.ExtraBold),
+            titleSmall = base.titleSmall.copy(fontFamily = body, fontWeight = FontWeight.Bold),
+            bodyLarge = base.bodyLarge.copy(fontFamily = body, fontWeight = FontWeight.SemiBold, lineHeight = 26.sp),
+            bodyMedium = base.bodyMedium.copy(fontFamily = body, fontWeight = FontWeight.SemiBold, lineHeight = 22.sp),
+            bodySmall = base.bodySmall.copy(fontFamily = body, fontWeight = FontWeight.SemiBold, lineHeight = 18.sp),
+            labelLarge = base.labelLarge.copy(fontFamily = body, fontWeight = FontWeight.ExtraBold, letterSpacing = 0.1.sp),
+            labelMedium = base.labelMedium.copy(fontFamily = body, fontWeight = FontWeight.ExtraBold),
+            labelSmall = base.labelSmall.copy(fontFamily = body, fontWeight = FontWeight.Bold, letterSpacing = 0.5.sp),
+        )
+    }
+}
 
 @Composable
 fun PawTheme(dark: Boolean = isSystemInDarkTheme(), content: @Composable () -> Unit) {
@@ -159,7 +188,7 @@ fun PawTheme(dark: Boolean = isSystemInDarkTheme(), content: @Composable () -> U
         MaterialTheme(
             colorScheme = if (dark) Dark else Light,
             shapes = PawShapes,
-            typography = PawTypography,
+            typography = pawTypography(),
             content = content,
         )
     }

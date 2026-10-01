@@ -1,5 +1,12 @@
 package com.pawpixel.app.ui
 
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
@@ -172,9 +179,27 @@ fun App(repo: PawRepository, registerBack: ((() -> Boolean) -> (() -> Unit))? = 
         // A new language redraws everything (remembered texts included).
         key(com.pawpixel.i18n.I18n.lang, state.settings.language) {
         Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
-            // Each screen on the stack gets its own state (two pets' pages never share scroll or dialogs).
-            key(stack.size, current) {
-            when (val screen = current) {
+            // Screens slide in from the right and settle; going back slides them out again, the way
+            // the phone's own apps move. Each screen on the stack gets its own state (two pets'
+            // pages never share scroll or dialogs).
+            AnimatedContent(
+                targetState = stack,
+                contentKey = { it.size to it.last() },
+                transitionSpec = {
+                    val forward = targetState.size >= initialState.size
+                    if (forward) {
+                        (slideInHorizontally(defaultSpatial()) { it / 3 } + fadeIn(tween(220))) togetherWith
+                            (slideOutHorizontally(tween(260)) { -it / 6 } + fadeOut(tween(200)))
+                    } else {
+                        (slideInHorizontally(tween(260)) { -it / 6 } + fadeIn(tween(220))) togetherWith
+                            (slideOutHorizontally(defaultSpatial()) { it / 3 } + fadeOut(tween(200)))
+                    }
+                },
+                label = "screens",
+            ) { shown ->
+            val screen = shown.last()
+            key(shown.size, screen) {
+            when (screen) {
                 Screen.Home -> HomeScreen(app, state)
                 Screen.CreatePet -> SpriteMakerScreen(app, state, existingPetId = null)
                 is Screen.RemakeSprite -> SpriteMakerScreen(app, state, existingPetId = screen.petId)
@@ -193,6 +218,7 @@ fun App(repo: PawRepository, registerBack: ((() -> Boolean) -> (() -> Unit))? = 
                 Screen.Settings -> SettingsScreen(app, state)
                 Screen.PetMap -> PetMapScreen(app, state)
                 is Screen.Family -> FamilyScreen(app, state, screen.sharePetId, screen.join)
+            }
             }
             }
         }
