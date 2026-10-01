@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The day sky (see core Sky.DAY) for the widget's first frame and its picker preview on Android 12 to 14. -->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item>
+        <shape android:shape="rectangle">
+            <gradient android:angle="270" android:startColor="#CFE6FA" android:endColor="#FFF1E0" />
+            <corners android:radius="16dp" />
+        </shape>
+    </item>
+    <item android:gravity="bottom" android:height="14dp">
+        <shape android:shape="rectangle">
+            <solid android:color="#DCEBC9" />
+            <corners android:bottomLeftRadius="16dp" android:bottomRightRadius="16dp" />
+        </shape>
+    </item>
+</layer-list>
