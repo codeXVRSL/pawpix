@@ -138,7 +138,7 @@ class EndToEndTest {
             retrying { scrollTo(By.text("Save")).click() }
             // The pet's page opens on its world; the care list is a scroll below it.
             waitFor("pet saved", 30_000) { repo.state.value.pets.singleOrNull()?.name == "Chelsea" }
-            find(By.desc(Pattern.compile("Chelsea: .*")), 30_000)
+            find(By.text("Chelsea"), 30_000) // her name, under her world
             scrollTo(By.text("Care"))
             Thread.sleep(1_500)
             shot("05-pet-screen")
@@ -509,17 +509,21 @@ class EndToEndTest {
         }
 
         step("widget: the pet is alive on the home screen") {
-            // The idle animation plays in the launcher itself (a ViewFlipper): two screenshots a
-            // beat apart differ below the status bar, where nothing else on the home screen moves.
-            val first = instr.uiAutomation.takeScreenshot()
-            Thread.sleep(700)
-            val second = instr.uiAutomation.takeScreenshot()
+            // The idle animation plays in the launcher itself (a ViewFlipper): screenshots a beat
+            // apart differ below the status bar, where nothing else on the home screen moves. (Some
+            // steps repeat a frame, so a few beats are compared and any change counts.)
+            val shots = (0 until 5).map { if (it > 0) Thread.sleep(350); instr.uiAutomation.takeScreenshot() }
+            val first = shots[0]
             val top = (first.height * 0.08).toInt()
-            var differ = 0
-            for (y in top until first.height step 2) for (x in 0 until first.width step 2) if (first.getPixel(x, y) != second.getPixel(x, y)) differ++
-            note("home screen pixels that changed in 700 ms: $differ")
-            File(out, "14-home-screen-widget-a-beat-later.png").outputStream().use { second.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, it) }
-            check(differ > 50) { "the widget's pet did not move on the home screen" }
+            var most = 0
+            for (second in shots.drop(1)) {
+                var differ = 0
+                for (y in top until first.height step 2) for (x in 0 until first.width step 2) if (first.getPixel(x, y) != second.getPixel(x, y)) differ++
+                most = maxOf(most, differ)
+            }
+            note("home screen pixels that changed within 1.4 s: $most")
+            File(out, "14-home-screen-widget-a-beat-later.png").outputStream().use { shots[2].compress(android.graphics.Bitmap.CompressFormat.PNG, 100, it) }
+            check(most > 50) { "the widget's pet did not move on the home screen" }
             // And the frames themselves: the widget hands the launcher several distinct pictures.
             val remote = runBlocking {
                 com.pawpixel.app.widget.PetWidget().compose(ctx, size = androidx.compose.ui.unit.DpSize(120.dp, 120.dp),

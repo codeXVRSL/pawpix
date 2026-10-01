@@ -73,7 +73,8 @@ class PetPickerActivity : ComponentActivity() {
         val manager = GlanceAppWidgetManager(this)
         val glanceId = runCatching { manager.getGlanceIdBy(widgetId) }.getOrNull() ?: run { finish(); return }
 
-        fun save(choice: String?, theme: PetWidget.Theme, showName: Boolean) {
+        // Every change goes to the widget at once (so the home screen shows it behind this screen); Done closes.
+        fun save(choice: String?, theme: PetWidget.Theme, showName: Boolean, close: Boolean) {
             lifecycleScope.launch {
                 updateAppWidgetState(this@PetPickerActivity, glanceId) {
                     if (choice != null) it[PetWidget.PET] = choice
@@ -81,7 +82,7 @@ class PetPickerActivity : ComponentActivity() {
                     it[PetWidget.SHOW_NAME] = showName
                 }
                 PetWidget().update(this@PetPickerActivity, glanceId)
-                finish()
+                if (close) finish()
             }
         }
 
@@ -92,7 +93,7 @@ class PetPickerActivity : ComponentActivity() {
     }
 
     @Composable
-    private fun Settings(pets: List<Pet>, prefs: Preferences?, save: (String?, PetWidget.Theme, Boolean) -> Unit) {
+    private fun Settings(pets: List<Pet>, prefs: Preferences?, save: (String?, PetWidget.Theme, Boolean, Boolean) -> Unit) {
         val repo = PawPixelApplication.repo(this)
         var choice by remember { mutableStateOf(prefs?.get(PetWidget.PET) ?: pets.firstOrNull()?.id) }
         var theme by remember { mutableStateOf(PetWidget.Theme.of(prefs?.get(PetWidget.THEME))) }
@@ -111,7 +112,7 @@ class PetPickerActivity : ComponentActivity() {
                         val pet = pets.firstOrNull { it.id == id }
                         Row(
                             Modifier.fillMaxWidth().heightIn(min = 56.dp)
-                                .clickable(role = Role.RadioButton, onClickLabel = label) { choice = id },
+                                .clickable(role = Role.RadioButton, onClickLabel = label) { choice = id; save(id, theme, showName, false) },
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(12.dp),
                         ) {
@@ -132,18 +133,18 @@ class PetPickerActivity : ComponentActivity() {
                         PetWidget.Theme.AUTO to tr("Follows the time of day"), PetWidget.Theme.DAY to tr("Always day"),
                         PetWidget.Theme.NIGHT to tr("Always night"), PetWidget.Theme.PAPER to tr("Plain"),
                     )
-                    for ((t, label) in labels) FilterChip(selected = theme == t, onClick = { theme = t }, label = { Text(label) })
+                    for ((t, label) in labels) FilterChip(selected = theme == t, onClick = { theme = t; save(choice, t, showName, false) }, label = { Text(label) })
                 }
                 Spacer(Modifier.height(8.dp))
                 Row(
-                    Modifier.fillMaxWidth().heightIn(min = 48.dp).clickable(role = Role.Switch) { showName = !showName },
+                    Modifier.fillMaxWidth().heightIn(min = 48.dp).clickable(role = Role.Switch) { showName = !showName; save(choice, theme, showName, false) },
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Text(tr("Show the name"), Modifier.weight(1f), style = MaterialTheme.typography.titleMedium)
-                    Switch(checked = showName, onCheckedChange = { showName = it })
+                    Switch(checked = showName, onCheckedChange = { showName = it; save(choice, theme, it, false) })
                 }
                 Spacer(Modifier.height(16.dp))
-                Button(onClick = { save(choice, theme, showName) }, Modifier.fillMaxWidth().height(52.dp)) { Text(tr("Done")) }
+                Button(onClick = { save(choice, theme, showName, true) }, Modifier.fillMaxWidth().height(52.dp)) { Text(tr("Done")) }
             }
         }
     }
