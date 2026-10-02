@@ -131,18 +131,16 @@ private val Dark: ColorScheme = darkColorScheme(
     errorContainer = Color(0xFF6E1A24), onErrorContainer = Color(0xFFFFDAD9),
 )
 
-/** Big and round, like the pets: cards 24, sheets 28, controls are pills. */
+/** Round, like the pets: cards 20, sheets 28, controls are pills. */
 val PawShapes = Shapes(
-    extraSmall = RoundedCornerShape(10.dp),
-    small = RoundedCornerShape(14.dp),
-    medium = RoundedCornerShape(20.dp),
-    large = RoundedCornerShape(24.dp),
+    extraSmall = RoundedCornerShape(8.dp),
+    small = RoundedCornerShape(12.dp),
+    medium = RoundedCornerShape(16.dp),
+    large = RoundedCornerShape(20.dp),
     extraLarge = RoundedCornerShape(28.dp),
 )
 
 val Pill = CircleShape
-
-private val base = Typography()
 
 /**
  * The app's two voices (both Open Font License, see docs/fonts): Fredoka, round and chunky, for
@@ -162,22 +160,25 @@ fun pawTypography(): Typography {
         Font(Res.font.nunito_extrabold, FontWeight.ExtraBold),
     )
     return remember(display, body) {
+        // Sizes follow what 2026's best apps and both platform guides settle on: body 15 regular,
+        // captions 13, card titles 16, section titles 18, one display size per screen (the pet's
+        // name at 26), never more than three sizes on a screen. Fredoka for names and titles only.
         Typography(
-            displayLarge = base.displayLarge.copy(fontFamily = display, fontWeight = FontWeight.Bold, letterSpacing = (-1).sp),
-            displayMedium = base.displayMedium.copy(fontFamily = display, fontWeight = FontWeight.Bold, letterSpacing = (-0.5).sp),
-            displaySmall = base.displaySmall.copy(fontFamily = display, fontWeight = FontWeight.Bold, letterSpacing = (-0.25).sp),
-            headlineLarge = base.headlineLarge.copy(fontFamily = display, fontWeight = FontWeight.Bold, letterSpacing = (-0.25).sp),
-            headlineMedium = base.headlineMedium.copy(fontFamily = display, fontWeight = FontWeight.Bold),
-            headlineSmall = base.headlineSmall.copy(fontFamily = display, fontWeight = FontWeight.Bold),
-            titleLarge = base.titleLarge.copy(fontFamily = display, fontWeight = FontWeight.SemiBold),
-            titleMedium = base.titleMedium.copy(fontFamily = body, fontWeight = FontWeight.ExtraBold),
-            titleSmall = base.titleSmall.copy(fontFamily = body, fontWeight = FontWeight.Bold),
-            bodyLarge = base.bodyLarge.copy(fontFamily = body, fontWeight = FontWeight.SemiBold, lineHeight = 26.sp),
-            bodyMedium = base.bodyMedium.copy(fontFamily = body, fontWeight = FontWeight.SemiBold, lineHeight = 22.sp),
-            bodySmall = base.bodySmall.copy(fontFamily = body, fontWeight = FontWeight.SemiBold, lineHeight = 18.sp),
-            labelLarge = base.labelLarge.copy(fontFamily = body, fontWeight = FontWeight.ExtraBold, letterSpacing = 0.1.sp),
-            labelMedium = base.labelMedium.copy(fontFamily = body, fontWeight = FontWeight.ExtraBold),
-            labelSmall = base.labelSmall.copy(fontFamily = body, fontWeight = FontWeight.Bold, letterSpacing = 0.5.sp),
+            displayLarge = TextStyle(fontFamily = display, fontWeight = FontWeight.Bold, fontSize = 36.sp, lineHeight = 42.sp, letterSpacing = (-0.5).sp),
+            displayMedium = TextStyle(fontFamily = display, fontWeight = FontWeight.Bold, fontSize = 30.sp, lineHeight = 36.sp, letterSpacing = (-0.25).sp),
+            displaySmall = TextStyle(fontFamily = display, fontWeight = FontWeight.Bold, fontSize = 26.sp, lineHeight = 32.sp, letterSpacing = (-0.25).sp),
+            headlineLarge = TextStyle(fontFamily = display, fontWeight = FontWeight.Bold, fontSize = 26.sp, lineHeight = 32.sp, letterSpacing = (-0.25).sp),
+            headlineMedium = TextStyle(fontFamily = display, fontWeight = FontWeight.Bold, fontSize = 22.sp, lineHeight = 28.sp),
+            headlineSmall = TextStyle(fontFamily = display, fontWeight = FontWeight.SemiBold, fontSize = 20.sp, lineHeight = 26.sp),
+            titleLarge = TextStyle(fontFamily = body, fontWeight = FontWeight.ExtraBold, fontSize = 18.sp, lineHeight = 24.sp),
+            titleMedium = TextStyle(fontFamily = body, fontWeight = FontWeight.Bold, fontSize = 16.sp, lineHeight = 22.sp),
+            titleSmall = TextStyle(fontFamily = body, fontWeight = FontWeight.Bold, fontSize = 14.sp, lineHeight = 20.sp),
+            bodyLarge = TextStyle(fontFamily = body, fontWeight = FontWeight.Normal, fontSize = 16.sp, lineHeight = 24.sp),
+            bodyMedium = TextStyle(fontFamily = body, fontWeight = FontWeight.Normal, fontSize = 15.sp, lineHeight = 22.sp),
+            bodySmall = TextStyle(fontFamily = body, fontWeight = FontWeight.Normal, fontSize = 13.sp, lineHeight = 18.sp),
+            labelLarge = TextStyle(fontFamily = body, fontWeight = FontWeight.Bold, fontSize = 15.sp, lineHeight = 20.sp),
+            labelMedium = TextStyle(fontFamily = body, fontWeight = FontWeight.Bold, fontSize = 13.sp, lineHeight = 18.sp),
+            labelSmall = TextStyle(fontFamily = body, fontWeight = FontWeight.Bold, fontSize = 11.sp, lineHeight = 16.sp, letterSpacing = 0.3.sp),
         )
     }
 }

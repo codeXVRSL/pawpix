@@ -145,7 +145,7 @@ fun largeText(): Boolean = androidx.compose.ui.platform.LocalDensity.current.fon
 /** A section title ("Care", "Health"), marked as a heading so screen readers can jump between sections. */
 @Composable
 fun SectionTitle(text: String, modifier: Modifier = Modifier, trailing: (@Composable () -> Unit)? = null) {
-    Row(modifier.fillMaxWidth().padding(top = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+    Row(modifier.fillMaxWidth().padding(top = 12.dp, bottom = 2.dp), verticalAlignment = Alignment.CenterVertically) {
         Text(
             text, style = MaterialTheme.typography.titleLarge,
             modifier = Modifier.weight(1f).semantics { heading() },
@@ -167,7 +167,7 @@ fun GroupLabel(text: String, modifier: Modifier = Modifier) {
 @Composable
 fun ScreenTitle(text: String, modifier: Modifier = Modifier) {
     Text(
-        text, style = MaterialTheme.typography.titleLarge, maxLines = 2, overflow = TextOverflow.Ellipsis,
+        text, style = MaterialTheme.typography.headlineSmall, maxLines = 2, overflow = TextOverflow.Ellipsis,
         modifier = modifier.semantics { heading() },
     )
 }
@@ -195,7 +195,7 @@ fun RoundIconButton(glyph: String, label: String, modifier: Modifier = Modifier,
     Box(
         modifier
             .pressScale(interaction, down = 0.9f)
-            .size(44.dp)
+            .size(40.dp)
             .clip(Pill)
             .background(MaterialTheme.colorScheme.surfaceContainerHigh)
             .clickable(interaction, indication = null, role = Role.Button, onClickLabel = label, onClick = onClick)
@@ -203,7 +203,7 @@ fun RoundIconButton(glyph: String, label: String, modifier: Modifier = Modifier,
         contentAlignment = Alignment.Center,
     ) {
         Text(
-            glyph, fontSize = if (glyph.length == 1 && glyph[0].code < 0x2000) 26.sp else 20.sp, fontWeight = FontWeight.Bold,
+            glyph, fontSize = if (glyph.length == 1 && glyph[0].code < 0x2000) 24.sp else 18.sp, fontWeight = FontWeight.Bold,
             color = MaterialTheme.colorScheme.onSurface, modifier = Modifier.clearAndSetSemantics {},
         )
     }
@@ -212,14 +212,14 @@ fun RoundIconButton(glyph: String, label: String, modifier: Modifier = Modifier,
 /** A screen's top bar: back, a title that never squeezes, and up to a few actions on the right. */
 @Composable
 fun TopBar(app: AppScope?, title: String?, modifier: Modifier = Modifier, actions: @Composable RowScope.() -> Unit = {}) {
-    Row(modifier.fillMaxWidth().heightIn(min = 56.dp).padding(vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+    Row(modifier.fillMaxWidth().heightIn(min = 52.dp).padding(vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
         if (app != null) { BackButton(app); Spacer(Modifier.width(10.dp)) }
         if (title != null) ScreenTitle(title, Modifier.weight(1f)) else Spacer(Modifier.weight(1f))
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) { actions() }
     }
 }
 
-/** The main action: a 52dp coral pill that springs when pressed. */
+/** The main action: a 44dp coral pill (52 when big) that springs when pressed. */
 @Composable
 fun PrimaryPill(
     text: String, modifier: Modifier = Modifier, enabled: Boolean = true, big: Boolean = false,
@@ -228,8 +228,8 @@ fun PrimaryPill(
     val interaction = remember { MutableInteractionSource() }
     Button(
         onClick = onClick, enabled = enabled, interactionSource = interaction, shape = Pill,
-        contentPadding = PaddingValues(horizontal = if (big) 28.dp else 22.dp, vertical = 0.dp),
-        modifier = modifier.pressScale(interaction).heightIn(min = if (big) 56.dp else 48.dp),
+        contentPadding = PaddingValues(horizontal = if (big) 28.dp else 20.dp, vertical = 0.dp),
+        modifier = modifier.pressScale(interaction).heightIn(min = if (big) 52.dp else 44.dp),
     ) { Text(text, style = if (big) MaterialTheme.typography.titleMedium else MaterialTheme.typography.labelLarge, maxLines = 1) }
 }
 
@@ -242,29 +242,30 @@ fun TonalPill(text: String, modifier: Modifier = Modifier, enabled: Boolean = tr
         colors = ButtonDefaults.filledTonalButtonColors(
             containerColor = MaterialTheme.colorScheme.surfaceContainerHigh, contentColor = MaterialTheme.colorScheme.onSurface,
         ),
-        contentPadding = PaddingValues(horizontal = 20.dp, vertical = 0.dp),
-        modifier = modifier.pressScale(interaction).heightIn(min = 48.dp),
+        contentPadding = PaddingValues(horizontal = 18.dp, vertical = 0.dp),
+        modifier = modifier.pressScale(interaction).heightIn(min = 40.dp),
     ) { Text(text, style = MaterialTheme.typography.labelLarge, maxLines = 1) }
 }
 
-/** A light action: a pill with only a hairline. */
+/** A quiet action ("+ Add care task"): a soft pill in the page's own tint, no outline. */
 @Composable
 fun GhostPill(text: String, modifier: Modifier = Modifier, enabled: Boolean = true, onClick: () -> Unit) {
     val interaction = remember { MutableInteractionSource() }
-    OutlinedButton(
+    FilledTonalButton(
         onClick = onClick, enabled = enabled, interactionSource = interaction, shape = Pill,
-        border = androidx.compose.foundation.BorderStroke(1.5.dp, MaterialTheme.colorScheme.outlineVariant),
-        colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.onSurface),
-        contentPadding = PaddingValues(horizontal = 18.dp, vertical = 0.dp),
-        modifier = modifier.pressScale(interaction).heightIn(min = 44.dp),
-    ) { Text(text, style = MaterialTheme.typography.labelLarge, maxLines = 1) }
+        colors = ButtonDefaults.filledTonalButtonColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainer, contentColor = MaterialTheme.colorScheme.onSurface,
+        ),
+        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 0.dp),
+        modifier = modifier.pressScale(interaction).heightIn(min = 40.dp),
+    ) { Text(text, style = MaterialTheme.typography.labelMedium, maxLines = 1) }
 }
 
 /** A plain text action ("Undo", "Edit"), coloured like a link. */
 @Composable
 fun LinkButton(text: String, modifier: Modifier = Modifier, enabled: Boolean = true, color: Color = MaterialTheme.colorScheme.primary, onClick: () -> Unit) {
-    TextButton(onClick = onClick, enabled = enabled, modifier = modifier, shape = Pill, contentPadding = PaddingValues(horizontal = 12.dp)) {
-        Text(text, style = MaterialTheme.typography.labelLarge, color = if (enabled) color else MaterialTheme.colorScheme.onSurfaceVariant)
+    TextButton(onClick = onClick, enabled = enabled, modifier = modifier.heightIn(min = 36.dp), shape = Pill, contentPadding = PaddingValues(horizontal = 10.dp)) {
+        Text(text, style = MaterialTheme.typography.labelMedium, color = if (enabled) color else MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
 
@@ -281,15 +282,15 @@ fun ChoiceChip(
     Box(
         modifier
             .pressScale(interaction)
-            .heightIn(min = 40.dp)
+            .heightIn(min = 36.dp)
             .clip(Pill)
             .background(if (enabled) bg else bg.copy(alpha = 0.5f))
             .clickable(interaction, indication = null, enabled = enabled, role = role, onClick = onClick)
             .semantics { if (role == Role.RadioButton) this.selected = selected }
-            .padding(horizontal = 16.dp, vertical = 8.dp),
+            .padding(horizontal = 14.dp, vertical = 6.dp),
         contentAlignment = Alignment.Center,
     ) {
-        Text(label, style = MaterialTheme.typography.labelLarge, color = if (enabled) fg else fg.copy(alpha = 0.6f), maxLines = 1)
+        Text(label, style = MaterialTheme.typography.labelMedium, color = if (enabled) fg else fg.copy(alpha = 0.6f), maxLines = 1)
     }
 }
 
@@ -325,10 +326,11 @@ fun SoftCard(
     }
     val interaction = remember { MutableInteractionSource() }
     val base = if (onClick != null) modifier.pressScale(interaction, down = 0.985f) else modifier
+    // No outlines: a white card floats on the cream by a soft shadow; by night the tonal step is the edge.
     Surface(
-        base.border(1.dp, p.hairline, shape),
+        base,
         shape = shape, color = bg, contentColor = fg,
-        shadowElevation = if (tone == Tone.Surface && !p.dark) 1.dp else 0.dp,
+        shadowElevation = if (tone == Tone.Surface && !p.dark) 2.dp else 0.dp,
     ) {
         val inner = if (onClick != null) Modifier.clickable(interaction, indication = null, onClickLabel = onClickLabel, onClick = onClick) else Modifier
         Box(inner.padding(padding)) { content() }
@@ -341,9 +343,9 @@ fun PixelCard(modifier: Modifier = Modifier, color: Color? = null, content: @Com
     SoftCard(modifier, tone = if (color == null) Tone.Tonal else Tone.Surface, content = content)
 }
 
-/** A 44dp rounded tile holding an emoji: the icon of a care task or a setting. */
+/** A 40dp rounded tile holding an emoji: the icon of a care task or a setting. */
 @Composable
-fun IconTile(emoji: String, modifier: Modifier = Modifier, tone: Tone = Tone.Tonal, size: Dp = 44.dp) {
+fun IconTile(emoji: String, modifier: Modifier = Modifier, tone: Tone = Tone.Tonal, size: Dp = 40.dp) {
     val cs = MaterialTheme.colorScheme
     val bg = when (tone) {
         Tone.Surface -> cs.surfaceContainerLow; Tone.Tonal -> cs.surfaceContainerHigh
@@ -363,10 +365,10 @@ fun StatusPill(text: String, dot: Color, modifier: Modifier = Modifier, tone: To
         Tone.Accent -> cs.primaryContainer; Tone.Good -> cs.secondaryContainer; Tone.Calm -> cs.tertiaryContainer
     }
     Row(
-        modifier.clip(Pill).background(bg).padding(start = 10.dp, end = 12.dp, top = 6.dp, bottom = 6.dp),
+        modifier.clip(Pill).background(bg).padding(start = 10.dp, end = 12.dp, top = 5.dp, bottom = 5.dp),
         verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp),
     ) {
-        Box(Modifier.size(8.dp).clip(Pill).background(dot))
+        Box(Modifier.size(7.dp).clip(Pill).background(dot))
         Text(text, style = MaterialTheme.typography.labelMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
     }
 }
@@ -382,7 +384,7 @@ private val HEART = listOf(".xx.xx.", "xxxxxxx", "xxxxxxx", ".xxxxx.", "..xxx.."
  * for the rest). The fill animates when the score changes, so a Done tap visibly adds love.
  */
 @Composable
-fun Hearts(score: Int, modifier: Modifier = Modifier, heart: Dp = 22.dp, description: String? = null) {
+fun Hearts(score: Int, modifier: Modifier = Modifier, heart: Dp = 18.dp, description: String? = null) {
     val filled by animateFloatAsState((score.coerceIn(0, 100) / 20f), defaultSpatial(), label = "hearts")
     val on = MaterialTheme.colorScheme.primary
     val off = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.14f)
@@ -417,7 +419,7 @@ fun WeekDots(week: List<Boolean>, todayWeekday: Int, modifier: Modifier = Modifi
             Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 val today = i == week.lastIndex
                 Box(
-                    Modifier.size(22.dp).clip(Pill)
+                    Modifier.size(18.dp).clip(Pill)
                         .background(if (cared) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceContainerHighest)
                         .then(if (today) Modifier.border(2.dp, MaterialTheme.colorScheme.primary, Pill) else Modifier),
                 )

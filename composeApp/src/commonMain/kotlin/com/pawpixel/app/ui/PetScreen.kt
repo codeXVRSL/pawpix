@@ -77,7 +77,7 @@ fun PetScreen(app: AppScope, state: AppState, pet: Pet) {
     BoxWithConstraints(Modifier.fillMaxSize().background(heroGlow())) {
     // The pet's world fills the top of the screen, edge to edge and under the status bar, like the
     // 2026 pet apps do: the sky of the hour, the pet living on its floor. The page rises over it.
-    val heroHeight = (maxHeight * 0.46f).coerceIn(300.dp, 460.dp)
+    val heroHeight = (maxHeight * 0.4f).coerceIn(260.dp, 400.dp)
     val night = scene.stars
     Column(
         Modifier.fillMaxSize().navigationBarsPadding().verticalScroll(rememberScrollState()),
@@ -101,27 +101,28 @@ fun PetScreen(app: AppScope, state: AppState, pet: Pet) {
             // The page's rounded top rises over the floor. Drawn inside the hero, in the layout's own
             // flow: a sheet placed over its neighbour with a layout trick lost taps far down the page.
             Box(
-                Modifier.align(Alignment.BottomCenter).fillMaxWidth().height(28.dp)
-                    .background(MaterialTheme.colorScheme.background, RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp)),
+                Modifier.align(Alignment.BottomCenter).fillMaxWidth().height(24.dp)
+                    .background(MaterialTheme.colorScheme.background, RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)),
             )
         }
         Column(
             Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.background).padding(horizontal = 16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-        // Name, age, mood and hearts, right under the pet.
+        // Name, age, mood and hearts, right under the pet: one display size, then captions.
         Column(
-            Modifier.fillMaxWidth().padding(top = 2.dp, bottom = 2.dp),
+            Modifier.fillMaxWidth().padding(top = 2.dp, bottom = 4.dp),
             horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(6.dp),
         ) {
             Text(pet.name, style = MaterialTheme.typography.petName, modifier = Modifier.semantics { heading() }, textAlign = TextAlign.Center)
-            pet.birthDay?.let { born -> Hint(HealthPlan.ageLabel(born, clock.dayIndex(app.now))) }
-            StatusPill(reading.caption, moodColor(reading.mood), modifier = Modifier.padding(top = 2.dp))
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                StatusPill(reading.caption, moodColor(reading.mood))
+                pet.birthDay?.let { born -> Hint(HealthPlan.ageLabel(born, clock.dayIndex(app.now))) }
+            }
             Hearts(
-                reading.score, Modifier.padding(top = 6.dp),
+                reading.score, Modifier.padding(top = 4.dp),
                 description = tr("Happiness {0} of 5", (reading.score + 10) / 20),
             )
-            Hint(tr("Tap {0} to give pets", pet.name), align = TextAlign.Center)
         }
 
         // Quick care: one chunky tile per everyday task, the way a virtual pet is fed and played with.
@@ -313,16 +314,16 @@ private fun TaskRow(app: AppScope, state: AppState, pet: Pet, s: TaskStatus, onD
     val times = s.slotTimes.joinToString(" · ") { formatTime(it, clock) } +
         if (t.everyDays > 1) "  " + tr("(every {0} days)", t.everyDays) else ""
     val done = s.allDoneThisCycle
-    SoftCard(Modifier.fillMaxWidth(), tone = if (done) Tone.Tonal else Tone.Surface, padding = 14.dp) {
-        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+    SoftCard(Modifier.fillMaxWidth(), tone = if (done) Tone.Tonal else Tone.Surface, padding = 12.dp) {
+        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 IconTile(t.kind.emoji, tone = if (s.isOverdue) Tone.Accent else if (done) Tone.Good else Tone.Tonal)
                 Spacer(Modifier.width(12.dp))
-                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(1.dp)) {
                     Text(name, style = MaterialTheme.typography.titleMedium)
                     Text(
-                        detail, style = MaterialTheme.typography.bodyMedium,
-                        color = when { s.isOverdue -> MaterialTheme.colorScheme.primary; done -> Paw.palette.good; else -> MaterialTheme.colorScheme.onSurface },
+                        detail, style = MaterialTheme.typography.bodySmall,
+                        color = when { s.isOverdue -> MaterialTheme.colorScheme.primary; done -> Paw.palette.good; else -> MaterialTheme.colorScheme.onSurfaceVariant },
                     )
                     Hint(times)
                 }
@@ -343,7 +344,7 @@ private fun TaskRow(app: AppScope, state: AppState, pet: Pet, s: TaskStatus, onD
             if (t.adaptive && AdaptiveTiming.effectiveSlots(t, state.completions, app.now, clock) != t.slots.sorted()) {
                 Text(tr("Adjusted to your routine"), style = MaterialTheme.typography.bodySmall, color = Paw.palette.good)
             }
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+            Row(Modifier.fillMaxWidth().padding(top = 2.dp), horizontalArrangement = Arrangement.End) {
                 // Undo takes back your own Done, never someone else's.
                 val mineThisCycle = s.logged > 0 && state.completions
                     .any { it.taskId == t.id && it.localDay >= s.cycleStartDay && app.repo.family.isMine(it.by) }

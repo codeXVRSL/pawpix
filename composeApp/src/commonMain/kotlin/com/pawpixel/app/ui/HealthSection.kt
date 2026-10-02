@@ -60,7 +60,7 @@ fun HealthSection(app: AppScope, state: AppState, pet: Pet) {
 
     SectionTitle(tr("Health"))
     if (health.isEmpty()) {
-        Text(
+        Hint(
             tr("Keep track of {0}'s anti-rabies shot, other vaccines, deworming, tick & flea care and vet check-ups.", pet.name) + " " +
                 tr("PawPixel reminds you a few days before each is due."),
         )

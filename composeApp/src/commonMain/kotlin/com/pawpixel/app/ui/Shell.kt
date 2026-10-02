@@ -1,7 +1,6 @@
 package com.pawpixel.app.ui
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
@@ -47,11 +46,11 @@ fun FloatingDock(items: List<DockItem>, modifier: Modifier = Modifier) {
     val cs = MaterialTheme.colorScheme
     val p = Paw.palette
     Surface(
-        modifier.border(1.dp, p.hairline, Pill),
+        modifier,
         shape = Pill, color = if (p.dark) cs.surfaceContainerHigh else cs.surfaceContainerLowest,
-        shadowElevation = if (p.dark) 0.dp else 6.dp,
+        shadowElevation = if (p.dark) 0.dp else 8.dp,
     ) {
-        Row(Modifier.padding(6.dp), horizontalArrangement = Arrangement.spacedBy(2.dp), verticalAlignment = Alignment.CenterVertically) {
+        Row(Modifier.padding(5.dp), horizontalArrangement = Arrangement.spacedBy(2.dp), verticalAlignment = Alignment.CenterVertically) {
             for (item in items) {
                 val interaction = remember { MutableInteractionSource() }
                 Column(
@@ -59,10 +58,10 @@ fun FloatingDock(items: List<DockItem>, modifier: Modifier = Modifier) {
                         .background(if (item.selected) cs.primaryContainer else Color.Transparent)
                         .clickable(interaction, indication = null, role = Role.Tab, onClick = item.onClick)
                         .semantics { selected = item.selected }
-                        .widthIn(min = 68.dp).height(56.dp).padding(horizontal = 10.dp),
+                        .widthIn(min = 64.dp).height(52.dp).padding(horizontal = 10.dp),
                     horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center,
                 ) {
-                    Text(item.emoji, fontSize = 20.sp, modifier = Modifier.clearAndSetSemantics {})
+                    Text(item.emoji, fontSize = 18.sp, modifier = Modifier.clearAndSetSemantics {})
                     Text(
                         item.label, style = MaterialTheme.typography.labelSmall, maxLines = 1, overflow = TextOverflow.Ellipsis,
                         color = if (item.selected) cs.onPrimaryContainer else cs.onSurfaceVariant,
@@ -88,9 +87,9 @@ fun CareTile(emoji: String, label: String, tone: Tone, done: Boolean, descriptio
     }
     val interaction = remember { MutableInteractionSource() }
     Surface(
-        modifier.pressScale(interaction, down = 0.93f).width(100.dp).height(92.dp).border(1.dp, p.hairline, MaterialTheme.shapes.medium),
+        modifier.pressScale(interaction, down = 0.93f).width(88.dp).height(80.dp),
         shape = MaterialTheme.shapes.medium, color = bg, contentColor = fg,
-        shadowElevation = if (tone == Tone.Accent && !p.dark) 4.dp else 0.dp,
+        shadowElevation = if (!p.dark) (if (tone == Tone.Accent) 4.dp else 2.dp) else 0.dp,
     ) {
         Column(
             Modifier.clickable(interaction, indication = null, role = Role.Button, onClickLabel = description, onClick = onClick)
@@ -98,14 +97,14 @@ fun CareTile(emoji: String, label: String, tone: Tone, done: Boolean, descriptio
             horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center,
         ) {
             Box(contentAlignment = Alignment.TopEnd) {
-                Text(emoji, fontSize = 28.sp, modifier = Modifier.clearAndSetSemantics {})
-                if (done) Box(Modifier.size(16.dp).clip(Pill).background(p.good), contentAlignment = Alignment.Center) {
-                    Text("✓", color = Color.White, fontSize = 10.sp, modifier = Modifier.clearAndSetSemantics {})
+                Text(emoji, fontSize = 24.sp, modifier = Modifier.clearAndSetSemantics {})
+                if (done) Box(Modifier.size(14.dp).clip(Pill).background(p.good), contentAlignment = Alignment.Center) {
+                    Text("✓", color = Color.White, fontSize = 9.sp, modifier = Modifier.clearAndSetSemantics {})
                 }
             }
             Text(
                 label, style = MaterialTheme.typography.labelSmall, maxLines = 2, overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center,
-                lineHeight = 14.sp, modifier = Modifier.padding(top = 4.dp),
+                lineHeight = 13.sp, modifier = Modifier.padding(top = 3.dp),
             )
         }
     }
@@ -116,14 +115,14 @@ fun CareTile(emoji: String, label: String, tone: Tone, done: Boolean, descriptio
 fun GlassButton(glyph: String, label: String, modifier: Modifier = Modifier, night: Boolean = false, onClick: () -> Unit) {
     val interaction = remember { MutableInteractionSource() }
     Box(
-        modifier.pressScale(interaction, down = 0.9f).size(44.dp).clip(Pill)
+        modifier.pressScale(interaction, down = 0.9f).size(40.dp).clip(Pill)
             .background(if (night) Color(0x59000000) else Color(0xBFFFFFFF))
             .clickable(interaction, indication = null, role = Role.Button, onClickLabel = label, onClick = onClick)
             .semantics { contentDescription = label },
         contentAlignment = Alignment.Center,
     ) {
         Text(
-            glyph, fontSize = if (glyph.length == 1 && glyph[0].code < 0x2000) 26.sp else 15.sp,
+            glyph, fontSize = if (glyph.length == 1 && glyph[0].code < 0x2000) 24.sp else 14.sp,
             style = MaterialTheme.typography.labelLarge, color = if (night) Color(0xFFF7EEE4) else Color(0xFF2B2135),
             modifier = Modifier.clearAndSetSemantics {},
         )
@@ -135,12 +134,12 @@ fun GlassButton(glyph: String, label: String, modifier: Modifier = Modifier, nig
 fun GlassPill(text: String, label: String, modifier: Modifier = Modifier, night: Boolean = false, onClick: () -> Unit) {
     val interaction = remember { MutableInteractionSource() }
     Box(
-        modifier.pressScale(interaction, down = 0.94f).height(44.dp).clip(Pill)
+        modifier.pressScale(interaction, down = 0.94f).height(40.dp).clip(Pill)
             .background(if (night) Color(0x59000000) else Color(0xBFFFFFFF))
             .clickable(interaction, indication = null, role = Role.Button, onClickLabel = label, onClick = onClick)
-            .semantics { contentDescription = label }.padding(horizontal = 18.dp),
+            .semantics { contentDescription = label }.padding(horizontal = 16.dp),
         contentAlignment = Alignment.Center,
     ) {
-        Text(text, style = MaterialTheme.typography.labelLarge, color = if (night) Color(0xFFF7EEE4) else Color(0xFF2B2135), modifier = Modifier.clearAndSetSemantics {})
+        Text(text, style = MaterialTheme.typography.labelMedium, color = if (night) Color(0xFFF7EEE4) else Color(0xFF2B2135), modifier = Modifier.clearAndSetSemantics {})
     }
 }

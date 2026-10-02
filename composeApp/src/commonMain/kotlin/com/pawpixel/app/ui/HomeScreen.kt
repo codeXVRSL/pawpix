@@ -61,7 +61,7 @@ fun HomeScreen(app: AppScope, state: AppState) {
     Box(Modifier.fillMaxSize().background(heroGlow())) {
         Column(Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding()) {
             // Wordmark and the day's greeting. (The main places live in the dock below.)
-            Column(Modifier.fillMaxWidth().padding(horizontal = 20.dp).padding(top = 14.dp, bottom = 12.dp)) {
+            Column(Modifier.fillMaxWidth().padding(horizontal = 20.dp).padding(top = 12.dp, bottom = 10.dp)) {
                 Text("PawPixel", style = MaterialTheme.typography.headlineMedium, maxLines = 1, modifier = Modifier.semantics { heading() })
                 Hint("${greeting(minute)} · ${LocalClock.shortDate(clock.dayIndex(app.now))}")
             }
@@ -70,7 +70,7 @@ fun HomeScreen(app: AppScope, state: AppState) {
                 Box(Modifier.weight(1f).padding(horizontal = 16.dp)) { EmptyHome(app) }
             } else {
                 LazyColumn(
-                    verticalArrangement = Arrangement.spacedBy(14.dp), modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.weight(1f),
                     contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 16.dp),
                 ) {
                     items(state.pets, key = { it.id }) { pet -> PetCard(app, state, pet, minute) }
@@ -172,18 +172,18 @@ private fun PetCard(app: AppScope, state: AppState, pet: Pet, minute: Int) {
         Column {
             // A window onto the pet's little world: the sky of the hour, the pet standing on its floor.
             Box(
-                Modifier.fillMaxWidth().height(176.dp)
+                Modifier.fillMaxWidth().height(164.dp)
                     .background(Brush.verticalGradient(0f to scene.skyTop, 0.8f to scene.skyBottom, 0.8f to scene.floor, 1f to scene.floor)),
                 contentAlignment = Alignment.BottomCenter,
             ) {
-                SpriteView(pose, Modifier.size(128.dp).padding(bottom = 22.dp), description = MoodEngine.describe(pet.name, reading.mood))
+                SpriteView(pose, Modifier.size(120.dp).padding(bottom = 20.dp), description = MoodEngine.describe(pet.name, reading.mood))
                 StatusPill(
                     reading.caption, moodColor(reading.mood), tone = Tone.Surface,
                     modifier = Modifier.align(Alignment.TopStart).padding(12.dp),
                 )
                 HeartBurst(burst, Modifier.fillMaxSize())
             }
-            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(pet.name, style = MaterialTheme.typography.headlineSmall, modifier = Modifier.weight(1f))
                     if (urgent != null) {
