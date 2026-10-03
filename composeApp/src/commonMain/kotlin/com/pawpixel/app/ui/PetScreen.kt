@@ -239,9 +239,10 @@ private fun TaskRow(app: AppScope, state: AppState, pet: Pet, s: TaskStatus, onD
     val done = s.allDoneThisCycle
     // How much is left before it's needed again: full right after care, empty when overdue.
     val interval = if (t.everyDays > 1) t.everyDays * com.pawpixel.core.DAY_MS else com.pawpixel.core.DAY_MS / t.slots.size.coerceAtLeast(1)
+    val nextDue = s.nextDueMs
     val fraction = when {
         s.isOverdue -> 0f
-        s.nextDueMs != null -> ((s.nextDueMs - app.now).toFloat() / interval).coerceIn(0.1f, 1f)
+        nextDue != null -> ((nextDue - app.now).toFloat() / interval).coerceIn(0.1f, 1f)
         else -> 1f
     }
     SoftCard(Modifier.fillMaxWidth(), tone = Tone.Surface, padding = 12.dp) {
