@@ -1,6 +1,9 @@
 package com.pawpixel.app.ui
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
@@ -50,99 +53,49 @@ fun FloatingDock(items: List<DockItem>, modifier: Modifier = Modifier) {
     // At the biggest fonts the words no longer fit four across: the dock shows icons only, each
     // still spoken by name.
     val iconsOnly = largeText()
-    Surface(
-        modifier,
-        shape = Pill, color = if (p.dark) cs.surfaceContainerHigh else cs.surfaceContainerLowest,
-        shadowElevation = if (p.dark) 0.dp else 8.dp,
-    ) {
-        Row(Modifier.padding(5.dp), horizontalArrangement = Arrangement.spacedBy(2.dp), verticalAlignment = Alignment.CenterVertically) {
+    val face = if (p.dark) cs.surfaceContainerHigh else Color.White
+    val lip = if (p.dark) Color(0xFF3B3150) else Color(0xFFE6D5C3)
+    ToyPanel(modifier, face = face, lip = lip, outline = lip, shape = Pill, padding = 5.dp) {
+        Row(horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.CenterVertically) {
             for (item in items) {
-                val interaction = remember { MutableInteractionSource() }
-                Column(
-                    Modifier.pressScale(interaction, down = 0.92f).clip(Pill)
-                        .background(if (item.selected) cs.primaryContainer else Color.Transparent)
-                        .clickable(interaction, indication = null, role = Role.Tab, onClickLabel = item.label, onClick = item.onClick)
-                        .semantics { selected = item.selected; if (iconsOnly) contentDescription = item.label }
-                        .widthIn(min = if (iconsOnly) 52.dp else 64.dp).height(52.dp).padding(horizontal = 10.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center,
+                val toy = Candy.Coral
+                Pressable(
+                    Modifier.semantics { selected = item.selected; if (iconsOnly) contentDescription = item.label },
+                    face = if (item.selected) toy.face else Color.Transparent, lip = if (item.selected) toy.lip else Color.Transparent,
+                    shape = Pill, lipHeight = 3.dp, role = Role.Tab, onClickLabel = item.label, onClick = item.onClick,
                 ) {
-                    PixelIcon(item.icon, tint = if (item.selected) cs.onPrimaryContainer else cs.onSurfaceVariant, size = if (iconsOnly) 24.dp else 20.dp)
-                    if (!iconsOnly) Text(
-                        item.label, style = MaterialTheme.typography.labelSmall, maxLines = 1, overflow = TextOverflow.Ellipsis,
-                        color = if (item.selected) cs.onPrimaryContainer else cs.onSurfaceVariant, modifier = Modifier.padding(top = 2.dp),
-                    )
+                    Column(
+                        Modifier.widthIn(min = if (iconsOnly) 52.dp else 64.dp).height(50.dp).padding(horizontal = 10.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center,
+                    ) {
+                        PixelIcon(item.icon, tint = if (item.selected) toy.ink else cs.onSurfaceVariant, size = if (iconsOnly) 24.dp else 20.dp)
+                        if (!iconsOnly) Text(
+                            item.label, style = MaterialTheme.typography.labelSmall, maxLines = 1, overflow = TextOverflow.Ellipsis,
+                            color = if (item.selected) toy.ink else cs.onSurfaceVariant, modifier = Modifier.padding(top = 2.dp),
+                        )
+                    }
                 }
             }
         }
     }
 }
 
-/**
- * A chunky care tile (🍖 Feed), the one-tap care under the pet: coral when it's waiting, green
- * with a tick once done today, soft otherwise. 88dp wide so a thumb never misses.
- */
-@Composable
-fun CareTile(icon: PixelIcon, label: String, tone: Tone, done: Boolean, description: String, modifier: Modifier = Modifier, onClick: () -> Unit) {
-    val cs = MaterialTheme.colorScheme
-    val p = Paw.palette
-    val (bg, fg) = when (tone) {
-        Tone.Accent -> cs.primary to cs.onPrimary
-        Tone.Good -> cs.secondaryContainer to cs.onSecondaryContainer
-        else -> (if (p.dark) cs.surfaceContainerHigh else cs.surfaceContainerLowest) to cs.onSurface
-    }
-    val interaction = remember { MutableInteractionSource() }
-    Surface(
-        modifier.pressScale(interaction, down = 0.93f).width(88.dp).height(80.dp),
-        shape = MaterialTheme.shapes.medium, color = bg, contentColor = fg,
-        shadowElevation = if (!p.dark) (if (tone == Tone.Accent) 4.dp else 2.dp) else 0.dp,
-    ) {
-        Column(
-            Modifier.clickable(interaction, indication = null, role = Role.Button, onClickLabel = description, onClick = onClick)
-                .semantics { contentDescription = description }.padding(6.dp),
-            horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center,
-        ) {
-            Box(contentAlignment = Alignment.TopEnd) {
-                PixelIcon(icon, tint = fg, size = 26.dp, modifier = Modifier.padding(2.dp))
-                if (done) Box(Modifier.size(14.dp).clip(Pill).background(p.good), contentAlignment = Alignment.Center) {
-                    PixelIcon(PixelIcons.CHECK, tint = Color.White, size = 10.dp)
-                }
-            }
-            Text(
-                label, style = MaterialTheme.typography.labelSmall, maxLines = 2, overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center,
-                lineHeight = 13.sp, modifier = Modifier.padding(top = 3.dp),
-            )
-        }
-    }
-}
-
-/** A round glass button over the pet's room (back, edit): readable on any wall, day or night. */
+/** A key over the pet's room (back, edit): a white sticker key, readable on any wall. */
 @Composable
 fun GlassButton(icon: PixelIcon, label: String, modifier: Modifier = Modifier, night: Boolean = false, onClick: () -> Unit) {
-    val interaction = remember { MutableInteractionSource() }
-    Box(
-        modifier.pressScale(interaction, down = 0.9f).size(40.dp).clip(Pill)
-            .background(if (night) Color(0x59000000) else Color(0xBFFFFFFF))
-            .clickable(interaction, indication = null, role = Role.Button, onClickLabel = label, onClick = onClick)
-            .semantics { contentDescription = label },
-        contentAlignment = Alignment.Center,
-    ) {
-        PixelIcon(icon, tint = if (night) Color(0xFFF7EEE4) else Color(0xFF2B2135), size = 18.dp)
-    }
+    Pressable(
+        modifier.semantics { contentDescription = label }, face = Color.White, lip = Color(0xFFE6D5C3), outline = Color(0xFFE6D5C3),
+        shape = Pill, onClickLabel = label, onClick = onClick,
+    ) { Box(Modifier.size(38.dp), contentAlignment = Alignment.Center) { PixelIcon(icon, tint = Color(0xFF2B2135), size = 18.dp) } }
 }
 
-/** A glass pill of text over the sky (the Edit action), same glass as [GlassButton]. */
+/** A key of text over the room (the Edit action). */
 @Composable
 fun GlassPill(text: String, label: String, modifier: Modifier = Modifier, night: Boolean = false, onClick: () -> Unit) {
-    val interaction = remember { MutableInteractionSource() }
-    Box(
-        modifier.pressScale(interaction, down = 0.94f).height(40.dp).clip(Pill)
-            .background(if (night) Color(0x59000000) else Color(0xBFFFFFFF))
-            .clickable(interaction, indication = null, role = Role.Button, onClickLabel = label, onClick = onClick)
-            .semantics { contentDescription = label }.padding(horizontal = 16.dp),
-        contentAlignment = Alignment.Center,
-    ) {
-        Text(text, style = MaterialTheme.typography.labelMedium, color = if (night) Color(0xFFF7EEE4) else Color(0xFF2B2135), modifier = Modifier.clearAndSetSemantics {})
-    }
+    Pressable(
+        modifier.semantics { contentDescription = label }, face = Color.White, lip = Color(0xFFE6D5C3), outline = Color(0xFFE6D5C3),
+        shape = Pill, onClickLabel = label, onClick = onClick, contentPadding = PaddingValues(horizontal = 16.dp),
+    ) { Box(Modifier.height(38.dp), contentAlignment = Alignment.Center) { Text(text, style = MaterialTheme.typography.labelMedium, color = Color(0xFF2B2135), modifier = Modifier.clearAndSetSemantics {}) } }
 }
 
 /**
@@ -150,10 +103,15 @@ fun GlassPill(text: String, label: String, modifier: Modifier = Modifier, night:
  * what's inside, in a card that opens its own screen. Four of them make a 2x2 grid.
  */
 @Composable
-fun DoorTile(icon: PixelIcon, title: String, detail: String, modifier: Modifier = Modifier, tone: Tone = Tone.Tonal, onClick: () -> Unit) {
-    SoftCard(modifier, tone = Tone.Surface, padding = 14.dp, onClick = onClick, onClickLabel = title) {
+fun DoorTile(icon: PixelIcon, title: String, detail: String, modifier: Modifier = Modifier, toy: Toy = Candy.Peach, onClick: () -> Unit) {
+    val p = Paw.palette
+    val face = if (p.dark) MaterialTheme.colorScheme.surfaceContainerHigh else Color.White
+    val lip = if (p.dark) Color(0xFF3B3150) else Color(0xFFE6D5C3)
+    ToyPanel(modifier, face = face, lip = lip, outline = lip, padding = 14.dp, onClick = onClick, onClickLabel = title) {
         Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            IconTile(icon, tone = tone, size = 36.dp)
+            Box(Modifier.size(38.dp).clip(RoundedCornerShape(12.dp)).background(toy.face).border(2.dp, toy.lip, RoundedCornerShape(12.dp)), contentAlignment = Alignment.Center) {
+                PixelIcon(icon, tint = toy.ink, size = 20.dp)
+            }
             Column(verticalArrangement = Arrangement.spacedBy(1.dp)) {
                 Text(title, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 Text(detail, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 2, overflow = TextOverflow.Ellipsis)

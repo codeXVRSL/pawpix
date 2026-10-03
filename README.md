@@ -45,13 +45,17 @@ confetti, spring motion) drives every screen on both platforms:
   leaf green for good news, lavender for sleep. Every text colour meets WCAG AA on its surface.
 - The pet's stage has a sky that follows the real time of day (peach dawn, soft blue day,
   apricot-to-lavender dusk, starry indigo through the owner's set bedtime), dimmed in dark mode.
-- Cards are 24dp-round and soft; every button and chip is a pill that springs when pressed
-  (Material 3 Expressive's spring tokens, on the stable Material 3 so iOS builds the same code).
+- Its own chrome, the "toy box" (`composeApp/.../ui/Toy.kt`), not stock Material: every button,
+  chip, tab and card is a chunky key with a hard lip under it in a darker shade of its own colour
+  that squashes flat when pressed (the way Duolingo's and Pou's buttons do), panels are outlined
+  stickers, and care meters are segmented pixel bars. Each kind of care has a candy colour (feeding
+  is butter, water is sky, litter is mint) used for its icon, its meter and its Done key.
 - Care feels rewarding, never nagging: pixel hearts fill as care is logged, Done sends up a burst of
   hearts with a haptic, the pet reacts on stage, milestones get short confetti, and the week shows
   days cared for rather than a streak that can break. Mood copy is never accusatory.
-- Two typefaces of its own (both Open Font License, in `docs/fonts`): Fredoka, round and chunky,
-  for names and titles; Nunito, soft and readable, for everything else. Generous 16dp gutters,
+- Two typefaces of its own (both Open Font License, in `docs/fonts`): Pixelify Sans, a pixel
+  display face, for names and screen titles so the type matches the pet; Nunito, soft and
+  readable, for everything else. Generous 16dp gutters,
   48dp+ touch targets; every control keeps a spoken label for screen readers.
 - The pet lives in a room (`core/.../sprite/Room.kt`), drawn in its own pixels: papered walls, a
   window onto the sky of the hour, a shelf with a plant and a framed paw, a clock, a lamp that comes

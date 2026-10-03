@@ -70,7 +70,7 @@ kotlin {
             implementation(compose.foundation)
             implementation(compose.material3)
             implementation(compose.ui)
-            implementation(compose.components.resources) // the app's fonts (Fredoka, Nunito; see docs/fonts)
+            implementation(compose.components.resources) // the app's fonts (Pixelify Sans, Nunito; see docs/fonts)
             implementation(libs.kotlinx.coroutines.core)
         }
         androidMain.dependencies {

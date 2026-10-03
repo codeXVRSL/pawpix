@@ -22,8 +22,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.pawpixel.app.res.Res
-import com.pawpixel.app.res.fredoka_bold
-import com.pawpixel.app.res.fredoka_semibold
+import com.pawpixel.app.res.pixelify_bold
+import com.pawpixel.app.res.pixelify_medium
 import com.pawpixel.app.res.nunito_bold
 import com.pawpixel.app.res.nunito_extrabold
 import com.pawpixel.app.res.nunito_regular
@@ -143,15 +143,16 @@ val PawShapes = Shapes(
 val Pill = CircleShape
 
 /**
- * The app's two voices (both Open Font License, see docs/fonts): Fredoka, round and chunky, for
- * names, headlines and titles; Nunito, soft and very readable, for everything else. Display and
- * titles are tight, body relaxed with tall lines.
+ * The app's two voices (both Open Font License, see docs/fonts): Pixelify Sans, a pixel display
+ * face, for names, headlines and screen titles so the type matches the pet; Nunito, soft and very
+ * readable, for everything else. Display is tight, body relaxed with tall lines.
  */
 @Composable
 fun pawTypography(): Typography {
+    // Pixelify Sans: a pixel face with round corners, the pet's own hand, for names and headlines.
     val display = FontFamily(
-        Font(Res.font.fredoka_semibold, FontWeight.SemiBold),
-        Font(Res.font.fredoka_bold, FontWeight.Bold),
+        Font(Res.font.pixelify_medium, FontWeight.Medium),
+        Font(Res.font.pixelify_bold, FontWeight.Bold),
     )
     val body = FontFamily(
         Font(Res.font.nunito_regular, FontWeight.Normal),
@@ -162,14 +163,14 @@ fun pawTypography(): Typography {
     return remember(display, body) {
         // Sizes follow what 2026's best apps and both platform guides settle on: body 15 regular,
         // captions 13, card titles 16, section titles 18, one display size per screen (the pet's
-        // name at 26), never more than three sizes on a screen. Fredoka for names and titles only.
+        // name at 26), never more than three sizes on a screen. Pixelify for names and screen titles only.
         Typography(
-            displayLarge = TextStyle(fontFamily = display, fontWeight = FontWeight.Bold, fontSize = 36.sp, lineHeight = 42.sp, letterSpacing = (-0.5).sp),
-            displayMedium = TextStyle(fontFamily = display, fontWeight = FontWeight.Bold, fontSize = 30.sp, lineHeight = 36.sp, letterSpacing = (-0.25).sp),
-            displaySmall = TextStyle(fontFamily = display, fontWeight = FontWeight.Bold, fontSize = 26.sp, lineHeight = 32.sp, letterSpacing = (-0.25).sp),
-            headlineLarge = TextStyle(fontFamily = display, fontWeight = FontWeight.Bold, fontSize = 26.sp, lineHeight = 32.sp, letterSpacing = (-0.25).sp),
-            headlineMedium = TextStyle(fontFamily = display, fontWeight = FontWeight.Bold, fontSize = 22.sp, lineHeight = 28.sp),
-            headlineSmall = TextStyle(fontFamily = display, fontWeight = FontWeight.SemiBold, fontSize = 20.sp, lineHeight = 26.sp),
+            displayLarge = TextStyle(fontFamily = display, fontWeight = FontWeight.Bold, fontSize = 38.sp, lineHeight = 44.sp),
+            displayMedium = TextStyle(fontFamily = display, fontWeight = FontWeight.Bold, fontSize = 32.sp, lineHeight = 38.sp),
+            displaySmall = TextStyle(fontFamily = display, fontWeight = FontWeight.Bold, fontSize = 28.sp, lineHeight = 34.sp),
+            headlineLarge = TextStyle(fontFamily = display, fontWeight = FontWeight.Bold, fontSize = 30.sp, lineHeight = 36.sp),
+            headlineMedium = TextStyle(fontFamily = display, fontWeight = FontWeight.Bold, fontSize = 26.sp, lineHeight = 32.sp),
+            headlineSmall = TextStyle(fontFamily = display, fontWeight = FontWeight.Bold, fontSize = 22.sp, lineHeight = 28.sp),
             titleLarge = TextStyle(fontFamily = body, fontWeight = FontWeight.ExtraBold, fontSize = 18.sp, lineHeight = 24.sp),
             titleMedium = TextStyle(fontFamily = body, fontWeight = FontWeight.Bold, fontSize = 16.sp, lineHeight = 22.sp),
             titleSmall = TextStyle(fontFamily = body, fontWeight = FontWeight.Bold, fontSize = 14.sp, lineHeight = 20.sp),

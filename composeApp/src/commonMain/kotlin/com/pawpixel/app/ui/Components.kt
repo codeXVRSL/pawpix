@@ -212,37 +212,29 @@ fun PixelIcon(icon: PixelIcon, modifier: Modifier = Modifier, tint: Color = Loca
 /** A 40dp round tonal button with a pixel icon and a spoken [label]. */
 @Composable
 fun RoundIconButton(icon: PixelIcon, label: String, modifier: Modifier = Modifier, onClick: () -> Unit) {
-    val interaction = remember { MutableInteractionSource() }
-    Box(
-        modifier
-            .pressScale(interaction, down = 0.9f)
-            .size(40.dp)
-            .clip(Pill)
-            .background(MaterialTheme.colorScheme.surfaceContainerHigh)
-            .clickable(interaction, indication = null, role = Role.Button, onClickLabel = label, onClick = onClick)
-            .semantics { contentDescription = label },
-        contentAlignment = Alignment.Center,
-    ) { PixelIcon(icon, tint = MaterialTheme.colorScheme.onSurface, size = 18.dp) }
+    val p = Paw.palette
+    Pressable(
+        modifier.semantics { contentDescription = label }, face = if (p.dark) MaterialTheme.colorScheme.surfaceContainerHigh else Color.White,
+        lip = if (p.dark) Color(0xFF3B3150) else Color(0xFFE6D5C3), outline = if (p.dark) Color(0xFF3B3150) else Color(0xFFE6D5C3),
+        shape = Pill, onClickLabel = label, onClick = onClick,
+    ) { Box(Modifier.size(36.dp), contentAlignment = Alignment.Center) { PixelIcon(icon, tint = MaterialTheme.colorScheme.onSurface, size = 18.dp) } }
 }
 
 /** The same button with a text glyph ("+", "−"): for steppers, where a sign reads better than an icon. */
 @Composable
 fun RoundIconButton(glyph: String, label: String, modifier: Modifier = Modifier, onClick: () -> Unit) {
-    val interaction = remember { MutableInteractionSource() }
-    Box(
-        modifier
-            .pressScale(interaction, down = 0.9f)
-            .size(40.dp)
-            .clip(Pill)
-            .background(MaterialTheme.colorScheme.surfaceContainerHigh)
-            .clickable(interaction, indication = null, role = Role.Button, onClickLabel = label, onClick = onClick)
-            .semantics { contentDescription = label },
-        contentAlignment = Alignment.Center,
+    val p = Paw.palette
+    Pressable(
+        modifier.semantics { contentDescription = label }, face = if (p.dark) MaterialTheme.colorScheme.surfaceContainerHigh else Color.White,
+        lip = if (p.dark) Color(0xFF3B3150) else Color(0xFFE6D5C3), outline = if (p.dark) Color(0xFF3B3150) else Color(0xFFE6D5C3),
+        shape = Pill, onClickLabel = label, onClick = onClick,
     ) {
-        Text(
-            glyph, fontSize = if (glyph.length == 1 && glyph[0].code < 0x2000) 24.sp else 18.sp, fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.onSurface, modifier = Modifier.clearAndSetSemantics {},
-        )
+        Box(Modifier.size(36.dp), contentAlignment = Alignment.Center) {
+            Text(
+                glyph, fontSize = if (glyph.length == 1 && glyph[0].code < 0x2000) 22.sp else 16.sp, fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurface, modifier = Modifier.clearAndSetSemantics {},
+            )
+        }
     }
 }
 
@@ -256,56 +248,22 @@ fun TopBar(app: AppScope?, title: String?, modifier: Modifier = Modifier, action
     }
 }
 
-/** The main action: a 44dp coral pill (52 when big) that springs when pressed. */
+/** The main action: the coral key. */
 @Composable
 fun PrimaryPill(
     text: String, modifier: Modifier = Modifier, enabled: Boolean = true, big: Boolean = false, icon: PixelIcon? = null,
     onClick: () -> Unit,
-) {
-    val interaction = remember { MutableInteractionSource() }
-    Button(
-        onClick = onClick, enabled = enabled, interactionSource = interaction, shape = Pill,
-        contentPadding = PaddingValues(start = if (icon != null) 16.dp else if (big) 28.dp else 20.dp, end = if (big) 28.dp else 20.dp),
-        modifier = modifier.pressScale(interaction).heightIn(min = if (big) 52.dp else 44.dp),
-    ) {
-        if (icon != null) { PixelIcon(icon, size = 16.dp); Spacer(Modifier.width(8.dp)) }
-        Text(text, style = if (big) MaterialTheme.typography.titleMedium else MaterialTheme.typography.labelLarge, maxLines = 1)
-    }
-}
+) = ToyButton(text, modifier, style = ToyStyle.Primary, enabled = enabled, big = big, icon = icon, onClick = onClick)
 
-/** A secondary action on a soft tinted pill. */
+/** A secondary action: a white key. */
 @Composable
-fun TonalPill(text: String, modifier: Modifier = Modifier, enabled: Boolean = true, icon: PixelIcon? = null, onClick: () -> Unit) {
-    val interaction = remember { MutableInteractionSource() }
-    FilledTonalButton(
-        onClick = onClick, enabled = enabled, interactionSource = interaction, shape = Pill,
-        colors = ButtonDefaults.filledTonalButtonColors(
-            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh, contentColor = MaterialTheme.colorScheme.onSurface,
-        ),
-        contentPadding = PaddingValues(start = if (icon != null) 14.dp else 18.dp, end = 18.dp),
-        modifier = modifier.pressScale(interaction).heightIn(min = 40.dp),
-    ) {
-        if (icon != null) { PixelIcon(icon, size = 16.dp); Spacer(Modifier.width(8.dp)) }
-        Text(text, style = MaterialTheme.typography.labelLarge, maxLines = 1)
-    }
-}
+fun TonalPill(text: String, modifier: Modifier = Modifier, enabled: Boolean = true, icon: PixelIcon? = null, onClick: () -> Unit) =
+    ToyButton(text, modifier, style = ToyStyle.Secondary, enabled = enabled, icon = icon, onClick = onClick)
 
-/** A quiet action ("+ Add care task"): a soft pill in the page's own tint, no outline. */
+/** A quiet action ("+ Add care task"): a sand key. */
 @Composable
-fun GhostPill(text: String, modifier: Modifier = Modifier, enabled: Boolean = true, icon: PixelIcon? = null, onClick: () -> Unit) {
-    val interaction = remember { MutableInteractionSource() }
-    FilledTonalButton(
-        onClick = onClick, enabled = enabled, interactionSource = interaction, shape = Pill,
-        colors = ButtonDefaults.filledTonalButtonColors(
-            containerColor = MaterialTheme.colorScheme.surfaceContainer, contentColor = MaterialTheme.colorScheme.onSurface,
-        ),
-        contentPadding = PaddingValues(start = if (icon != null) 12.dp else 16.dp, end = 16.dp),
-        modifier = modifier.pressScale(interaction).heightIn(min = 40.dp),
-    ) {
-        if (icon != null) { PixelIcon(icon, size = 14.dp); Spacer(Modifier.width(6.dp)) }
-        Text(text, style = MaterialTheme.typography.labelMedium, maxLines = 1)
-    }
-}
+fun GhostPill(text: String, modifier: Modifier = Modifier, enabled: Boolean = true, icon: PixelIcon? = null, onClick: () -> Unit) =
+    ToyButton(text, modifier, style = ToyStyle.Quiet, enabled = enabled, icon = icon, onClick = onClick)
 
 /** A plain text action ("Undo", "Edit"), coloured like a link. */
 @Composable
@@ -317,34 +275,14 @@ fun LinkButton(text: String, modifier: Modifier = Modifier, enabled: Boolean = t
     }
 }
 
-/** One choice among a few (dog/cat, daily/weekly): a pill that fills when chosen. */
+/** One choice among a few (dog/cat, daily/weekly): a small key, coral when chosen. */
 @Composable
 fun ChoiceChip(
     selected: Boolean, onClick: () -> Unit, label: String, modifier: Modifier = Modifier, enabled: Boolean = true,
     /** [Role.Button] for a chip that acts rather than chooses (a "+15" stepper). */
     role: Role = Role.RadioButton,
     icon: PixelIcon? = null,
-) {
-    val interaction = remember { MutableInteractionSource() }
-    val bg = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceContainerHigh
-    val fg = if (selected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface
-    Box(
-        modifier
-            .pressScale(interaction)
-            .heightIn(min = 36.dp)
-            .clip(Pill)
-            .background(if (enabled) bg else bg.copy(alpha = 0.5f))
-            .clickable(interaction, indication = null, enabled = enabled, role = role, onClick = onClick)
-            .semantics { if (role == Role.RadioButton) this.selected = selected }
-            .padding(start = if (icon != null) 10.dp else 14.dp, end = 14.dp, top = 6.dp, bottom = 6.dp),
-        contentAlignment = Alignment.Center,
-    ) {
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            if (icon != null) PixelIcon(icon, tint = if (enabled) fg else fg.copy(alpha = 0.6f), size = 14.dp)
-            Text(label, style = MaterialTheme.typography.labelMedium, color = if (enabled) fg else fg.copy(alpha = 0.6f), maxLines = 1)
-        }
-    }
-}
+) = ToyChip(selected, onClick, label, modifier, enabled, role, icon)
 
 // ---------------------------------------------------------------------------------------------
 // Cards
@@ -368,24 +306,16 @@ fun SoftCard(
 ) {
     val cs = MaterialTheme.colorScheme
     val p = Paw.palette
-    val (bg, fg) = when (tone) {
-        // By day a white card floats on the cream; by night cards are lifted a step above the plum.
-        Tone.Surface -> (if (p.dark) cs.surfaceContainerLow else cs.surfaceContainerLowest) to cs.onSurface
-        Tone.Tonal -> (if (p.dark) cs.surfaceContainerHigh else cs.surfaceContainer) to cs.onSurface
-        Tone.Accent -> cs.primaryContainer to cs.onPrimaryContainer
-        Tone.Good -> cs.secondaryContainer to cs.onSecondaryContainer
-        Tone.Calm -> cs.tertiaryContainer to cs.onTertiaryContainer
+    // A sticker: a face, a 2dp edge and a 4dp lip in a darker shade of the same hue.
+    val (face, lip, fg) = when (tone) {
+        Tone.Surface -> Triple(if (p.dark) cs.surfaceContainerHigh else Color.White, if (p.dark) Color(0xFF3B3150) else Color(0xFFE6D5C3), cs.onSurface)
+        Tone.Tonal -> Triple(if (p.dark) cs.surfaceContainerHighest else PawColors.Sand, if (p.dark) Color(0xFF4A3F63) else Color(0xFFE2C39E), cs.onSurface)
+        Tone.Accent -> Triple(cs.primaryContainer, if (p.dark) Color(0xFF8A2F42) else Color(0xFFF2A9B6), cs.onPrimaryContainer)
+        Tone.Good -> Triple(cs.secondaryContainer, if (p.dark) Color(0xFF2E6A48) else Color(0xFF9FD9B8), cs.onSecondaryContainer)
+        Tone.Calm -> Triple(cs.tertiaryContainer, if (p.dark) Color(0xFF574A9A) else Color(0xFFC4B9F0), cs.onTertiaryContainer)
     }
-    val interaction = remember { MutableInteractionSource() }
-    val base = if (onClick != null) modifier.pressScale(interaction, down = 0.985f) else modifier
-    // No outlines: a white card floats on the cream by a soft shadow; by night the tonal step is the edge.
-    Surface(
-        base,
-        shape = shape, color = bg, contentColor = fg,
-        shadowElevation = if (tone == Tone.Surface && !p.dark) 2.dp else 0.dp,
-    ) {
-        val inner = if (onClick != null) Modifier.clickable(interaction, indication = null, onClickLabel = onClickLabel, onClick = onClick) else Modifier
-        Box(inner.padding(padding)) { content() }
+    ToyPanel(modifier, face = face, lip = lip, outline = lip, shape = shape, padding = padding, onClick = onClick, onClickLabel = onClickLabel) {
+        androidx.compose.runtime.CompositionLocalProvider(LocalContentColor provides fg) { content() }
     }
 }
 
@@ -417,8 +347,9 @@ fun StatusPill(text: String, dot: Color, modifier: Modifier = Modifier, tone: To
         Tone.Surface -> cs.surfaceContainerLowest; Tone.Tonal -> cs.surfaceContainerHigh
         Tone.Accent -> cs.primaryContainer; Tone.Good -> cs.secondaryContainer; Tone.Calm -> cs.tertiaryContainer
     }
+    val p = Paw.palette
     Row(
-        modifier.clip(Pill).background(bg).padding(start = 10.dp, end = 12.dp, top = 5.dp, bottom = 5.dp),
+        modifier.clip(Pill).background(bg).border(2.dp, if (p.dark) Color(0xFF4A3F63) else Color(0xFFE6D5C3), Pill).padding(start = 10.dp, end = 12.dp, top = 5.dp, bottom = 5.dp),
         verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp),
     ) {
         Box(Modifier.size(7.dp).clip(Pill).background(dot))

@@ -171,15 +171,12 @@ private fun PetCard(app: AppScope, state: AppState, pet: Pet, minute: Int) {
             // A window onto the pet's room: the window shows the hour's sky, the pet stands on the rug.
             RoomBackdrop(phase, Modifier.fillMaxWidth().height(172.dp), floorDepth = 22.dp) { floor ->
                 SpriteView(pose, Modifier.align(Alignment.BottomCenter).size(116.dp).padding(bottom = floor - 10.dp), description = MoodEngine.describe(pet.name, reading.mood))
-                StatusPill(
-                    reading.caption, moodColor(reading.mood), tone = Tone.Surface,
-                    modifier = Modifier.align(Alignment.TopStart).padding(12.dp),
-                )
                 HeartBurst(burst, Modifier.fillMaxSize())
             }
             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(pet.name, style = MaterialTheme.typography.headlineSmall, modifier = Modifier.weight(1f))
+                    if (urgent == null) StatusPill(reading.caption, moodColor(reading.mood), tone = Tone.Tonal)
                     if (urgent != null) {
                         val label = tr("Mark {0} done for {1}", trName(urgent.task.title), pet.name)
                         PrimaryPill(

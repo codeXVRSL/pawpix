@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -20,7 +21,6 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -125,27 +125,10 @@ fun PetScreen(app: AppScope, state: AppState, pet: Pet) {
             Hearts(reading.score, Modifier.padding(top = 4.dp), description = tr("Happiness {0} of 5", (reading.score + 10) / 20))
         }
 
-        // Quick care: one tile per everyday task, the way a virtual pet is fed and played with.
-        if (statuses.isNotEmpty()) {
-            Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                for (s in statuses) {
-                    val name = trName(s.task.title)
-                    val done = s.allDoneThisCycle
-                    CareTile(
-                        PixelIcons.forKind(s.task.kind), name,
-                        tone = when { s.isOverdue -> Tone.Accent; done -> Tone.Good; else -> Tone.Surface }, done = done,
-                        description = if (done) tr("{0}: all done today", name) else tr("Mark {0} done for {1}", name, pet.name),
-                    ) {
-                        if (!done) { react(PetEvent.Cared(s.task.kind)); app.launch { app.repo.complete(s.task.id) } }
-                    }
-                }
-            }
-        }
-
         MilestoneBanner(app, pet)
         RemindersCard(app, state, pet)
 
-        // Today's care, one compact row each.
+        // Today's care: one meter per task, the way a virtual pet shows hunger and energy.
         SectionTitle(tr("Care")) {
             LinkButton(tr("+ Add care task"), color = MaterialTheme.colorScheme.primary) { app.navigate(Screen.EditTask(pet.id, null)) }
         }
@@ -184,12 +167,12 @@ fun PetScreen(app: AppScope, state: AppState, pet: Pet) {
         val wardrobeDetail = if (outfit != null) tr("Wearing: {0}", tr(outfit.label)) else tr("Outfits and the Pet Studio")
         Column(Modifier.padding(top = 4.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                DoorTile(PixelIcons.HEART, tr("Health"), healthDetail, Modifier.weight(1f), tone = if (healthItems.any { it.due }) Tone.Accent else Tone.Calm) { app.navigate(Screen.PetSection(pet.id, "health")) }
-                DoorTile(PixelIcons.SCALE, tr("Weight"), weightDetail, Modifier.weight(1f), tone = Tone.Good) { app.navigate(Screen.PetSection(pet.id, "weight")) }
+                DoorTile(PixelIcons.HEART, tr("Health"), healthDetail, Modifier.weight(1f), toy = Candy.Coral) { app.navigate(Screen.PetSection(pet.id, "health")) }
+                DoorTile(PixelIcons.SCALE, tr("Weight"), weightDetail, Modifier.weight(1f), toy = Candy.Sky) { app.navigate(Screen.PetSection(pet.id, "weight")) }
             }
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                DoorTile(PixelIcons.SHIRT, tr("Wardrobe"), wardrobeDetail, Modifier.weight(1f), tone = Tone.Accent) { app.navigate(Screen.PetSection(pet.id, "wardrobe")) }
-                DoorTile(PixelIcons.SHARE, tr("Share"), tr("GIF, before/after, household"), Modifier.weight(1f), tone = Tone.Tonal) { app.navigate(Screen.PetSection(pet.id, "share")) }
+                DoorTile(PixelIcons.SHIRT, tr("Wardrobe"), wardrobeDetail, Modifier.weight(1f), toy = Candy.Pink) { app.navigate(Screen.PetSection(pet.id, "wardrobe")) }
+                DoorTile(PixelIcons.SHARE, tr("Share"), tr("GIF, before/after, household"), Modifier.weight(1f), toy = Candy.Lavender) { app.navigate(Screen.PetSection(pet.id, "share")) }
             }
         }
         Spacer(Modifier.height(20.dp))
@@ -246,27 +229,36 @@ private fun TaskRow(app: AppScope, state: AppState, pet: Pet, s: TaskStatus, onD
     val clock = app.repo.clock
     val t = s.task
     val name = trName(t.title)
+    val toy = Candy.forKind(t.kind)
     val detail = when {
         s.isOverdue -> tr("Waiting since {0}", formatTime(s.overdueSinceMs!!, clock))
         s.allDoneThisCycle && t.everyDays > 1 -> tr("Done · next {0}", s.nextDueMs?.let { relativeDay(it, app.now, clock) } ?: "-")
         s.allDoneThisCycle -> tr("All done today ✓")
         else -> tr("Next {0}", s.nextDueMs?.let { relativeDay(it, app.now, clock) } ?: "-")
     }
-    val times = s.slotTimes.joinToString(" · ") { formatTime(it, clock) } +
-        if (t.everyDays > 1) "  " + tr("(every {0} days)", t.everyDays) else ""
     val done = s.allDoneThisCycle
-    SoftCard(Modifier.fillMaxWidth(), tone = if (done) Tone.Tonal else Tone.Surface, padding = 12.dp) {
-        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+    // How much is left before it's needed again: full right after care, empty when overdue.
+    val interval = if (t.everyDays > 1) t.everyDays * com.pawpixel.core.DAY_MS else com.pawpixel.core.DAY_MS / t.slots.size.coerceAtLeast(1)
+    val fraction = when {
+        s.isOverdue -> 0f
+        s.nextDueMs != null -> ((s.nextDueMs - app.now).toFloat() / interval).coerceIn(0.1f, 1f)
+        else -> 1f
+    }
+    SoftCard(Modifier.fillMaxWidth(), tone = Tone.Surface, padding = 12.dp) {
+        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                IconTile(PixelIcons.forKind(t.kind), tone = if (s.isOverdue) Tone.Accent else if (done) Tone.Good else Tone.Tonal)
+                Box(
+                    Modifier.size(40.dp).clip(RoundedCornerShape(12.dp)).background(toy.face).border(2.dp, toy.lip, RoundedCornerShape(12.dp)),
+                    contentAlignment = Alignment.Center,
+                ) { PixelIcon(PixelIcons.forKind(t.kind), tint = toy.ink, size = 20.dp) }
                 Spacer(Modifier.width(12.dp))
-                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(1.dp)) {
+                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
                     Text(name, style = MaterialTheme.typography.titleMedium)
+                    Meter(fraction, toy, Modifier.padding(end = 8.dp))
                     Text(
                         detail, style = MaterialTheme.typography.bodySmall,
                         color = when { s.isOverdue -> MaterialTheme.colorScheme.primary; done -> Paw.palette.good; else -> MaterialTheme.colorScheme.onSurfaceVariant },
                     )
-                    Hint(times)
                 }
                 // Undo takes back your own Done, never someone else's.
                 val mineThisCycle = s.logged > 0 && state.completions
@@ -275,15 +267,15 @@ private fun TaskRow(app: AppScope, state: AppState, pet: Pet, s: TaskStatus, onD
                 val editLabel = tr("Edit {0}", name)
                 if (!done) {
                     val doneLabel = tr("Mark {0} done for {1}", name, pet.name)
-                    PrimaryPill(
-                        tr("Done"), modifier = Modifier.padding(start = 8.dp).semantics { contentDescription = doneLabel },
-                    ) { onDone(); app.launch { app.repo.complete(t.id) } }
+                    ToyButton(tr("Done"), modifier = Modifier.padding(start = 4.dp).semantics { contentDescription = doneLabel }, style = ToyStyle.Colored(toy)) {
+                        onDone(); app.launch { app.repo.complete(t.id) }
+                    }
                 } else if (mineThisCycle) {
                     LinkButton(tr("Undo"), modifier = Modifier.semantics { contentDescription = undoLabel }) { app.launch { app.repo.undo(t.id) } }
                 }
                 // A small pencil opens the task (times, repeat, reminders); the row stays one line.
                 Box(
-                    Modifier.padding(start = 4.dp).size(36.dp).clip(Pill)
+                    Modifier.padding(start = 2.dp).size(36.dp).clip(Pill)
                         .clickable(role = Role.Button, onClickLabel = editLabel) { app.navigate(Screen.EditTask(pet.id, t.id)) }
                         .semantics { contentDescription = editLabel },
                     contentAlignment = Alignment.Center,

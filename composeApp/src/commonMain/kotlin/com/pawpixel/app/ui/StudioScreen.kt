@@ -34,6 +34,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
@@ -220,25 +221,24 @@ private fun <T> OptionGrid(category: Category<T>, style: PetStyle, base: PetArt?
 
 @Composable
 private fun OptionTile(label: String, selected: Boolean, onClick: () -> Unit, content: @Composable () -> Unit) {
-    val interaction = remember { MutableInteractionSource() }
     val cs = MaterialTheme.colorScheme
-    Column(
-        Modifier
-            .pressScale(interaction)
-            .width(78.dp)
-            .clip(MaterialTheme.shapes.medium)
-            .background(if (selected) cs.primaryContainer else cs.surfaceContainerLowest)
-            .border(if (selected) 2.dp else 1.dp, if (selected) cs.primary else Paw.palette.hairline, MaterialTheme.shapes.medium)
-            .clickable(interaction, indication = null, role = Role.RadioButton, onClick = onClick)
-            .semantics { this.selected = selected }
-            .padding(vertical = 8.dp, horizontal = 4.dp),
-        horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(4.dp),
+    val p = Paw.palette
+    val toy = Candy.Coral
+    Pressable(
+        Modifier.semantics { this.selected = selected },
+        face = if (selected) toy.face else if (p.dark) cs.surfaceContainerHigh else Color.White,
+        lip = if (selected) toy.lip else if (p.dark) Color(0xFF3B3150) else Color(0xFFE6D5C3),
+        outline = if (selected) toy.lip else if (p.dark) Color(0xFF3B3150) else Color(0xFFE6D5C3),
+        shape = MaterialTheme.shapes.medium, role = Role.RadioButton, onClick = onClick,
+        contentPadding = PaddingValues(vertical = 8.dp, horizontal = 4.dp),
     ) {
-        content()
-        Text(
-            label, style = MaterialTheme.typography.labelSmall, textAlign = TextAlign.Center, maxLines = 2, overflow = TextOverflow.Ellipsis,
-            color = if (selected) cs.onPrimaryContainer else cs.onSurfaceVariant,
-        )
+        Column(Modifier.width(70.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            content()
+            Text(
+                label, style = MaterialTheme.typography.labelSmall, textAlign = TextAlign.Center, maxLines = 2, overflow = TextOverflow.Ellipsis,
+                color = if (selected) toy.ink else cs.onSurfaceVariant,
+            )
+        }
     }
 }
 
