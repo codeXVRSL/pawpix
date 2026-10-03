@@ -200,7 +200,7 @@ class EndToEndTest {
             retrying { doneNextTo(scrollTo(By.text("FVRCP vaccine"))).click() }
             find(By.text("When was it done?"))
             // The stubbed photo picker returns the test photo.
-            retrying { find(By.text("📷 Add photo")).click() }
+            retrying { find(By.text("Add photo")).click() }
             find(By.text("Photo added"), 20_000)
             shot("health-record")
             retrying { find(By.text("Save")).click() }

@@ -124,7 +124,7 @@ final class OwnerJourneyTests: XCTestCase {
         }
 
         step("health: a kitten's birthday gives her the first-year plan") {
-            try scrollTo("Health").tap() // the Health door on the pet's page
+            try scrollTo(query: element(containing: "Health"), "Health door").tap()
             try scrollTo("+ Add health reminders").tap()
             // "About how old" is the default, at 8 weeks: two taps make the pet a 10-week-old kitten.
             let older = element(containing: "Older")
@@ -143,7 +143,7 @@ final class OwnerJourneyTests: XCTestCase {
         }
 
         step("weight: two weigh-ins draw the chart") {
-            try scrollTo("Weight").tap() // the Weight door
+            try scrollTo(query: element(containing: "Weight"), "Weight door").tap()
             // Without the keyboard: +1 kg four times (4.0 kg) yesterday, then +0.1 kg twice from it (4.2 kg) today.
             try scrollTo("+ Add weight").tap()
             let addKilo = element(containing: "Add 1 kg")
@@ -166,7 +166,7 @@ final class OwnerJourneyTests: XCTestCase {
         }
 
         step("before/after card opens the share sheet") {
-            try scrollTo("Share").tap() // the Share door
+            try scrollTo(query: element(containing: "GIF, before/after"), "Share door").tap()
             let button = try scrollTo("Before/after")
             sleep(1) // let the list settle after scrolling, or the tap can miss
             button.tap()
@@ -221,7 +221,7 @@ final class OwnerJourneyTests: XCTestCase {
             let card = element(containing: petName)
             guard card.waitForExistence(timeout: 15) else { throw Failure("pet not listed") }
             card.tap()
-            try scrollTo("Share").tap() // the Share door
+            try scrollTo(query: element(containing: "GIF, before/after"), "Share door").tap()
             try scrollTo(query: element(containing: "Share with your household"), "Share with your household").tap()
             let ready = element("Coming soon").waitForExistence(timeout: 10)
             shot("household")
