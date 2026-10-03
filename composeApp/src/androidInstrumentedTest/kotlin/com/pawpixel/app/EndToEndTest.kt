@@ -272,7 +272,7 @@ class EndToEndTest {
             shot("weight-list")
             retrying { find(By.text("Hide weigh-ins")).click() }
             device.pressBack()
-            scrollTo(By.text("4.2 kg")) // the Weight door shows the latest weigh-in
+            scrollTo(By.textStartsWith("4.2 kg")) // the Weight door shows the latest weigh-in
         }
 
         step("milestone: 7 days of care is celebrated and shareable") {
@@ -282,7 +282,7 @@ class EndToEndTest {
             val before = choosers()
             retrying { scrollTo(By.text("Share the card")).click() }
             waitFor("milestone share sheet") { choosers() == before + 1 }
-            scrollTo(By.textStartsWith("🎉 7 days of care"))
+            scrollTo(By.textStartsWith("7 days of care"))
             shot("milestone")
             retrying { find(By.text("Nice!")).click() }
             waitFor("celebrated once") { repo.state.value.pet(petId)?.milestoneSeen == 7 }
@@ -453,8 +453,9 @@ class EndToEndTest {
             scrollTo(By.text("Jamaica"))
             shot("h-household-members")
             // Back to Chelsea's page: "Litter cleaned by Jamaica · <time>".
-            device.pressBack()
-            scrollTo(By.text("+ Add care task")) // her page is open
+            device.pressBack() // the Share page
+            device.pressBack() // her page
+            scrollTo(By.text("+ Add care task"))
             val row = scrollTo(By.textStartsWith("Litter cleaned by Jamaica"))
             note("on Chelsea's page: " + row.text)
             Thread.sleep(500)
