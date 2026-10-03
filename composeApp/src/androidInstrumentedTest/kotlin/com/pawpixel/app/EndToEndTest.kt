@@ -736,7 +736,7 @@ class EndToEndTest {
                 device.pressBack()
                 scrollTo(By.text("+ Add care task"))
                 device.pressBack()
-                retrying { find(By.text("Settings")).click() }
+                retrying { find(By.desc("Settings")).click() } // the dock shows icons only at this size, each spoken by name
                 Thread.sleep(800)
                 shot("large-settings")
                 pageDown(); Thread.sleep(900)

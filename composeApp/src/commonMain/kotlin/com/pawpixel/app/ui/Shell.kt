@@ -47,6 +47,9 @@ class DockItem(val icon: PixelIcon, val label: String, val selected: Boolean = f
 fun FloatingDock(items: List<DockItem>, modifier: Modifier = Modifier) {
     val cs = MaterialTheme.colorScheme
     val p = Paw.palette
+    // At the biggest fonts the words no longer fit four across: the dock shows icons only, each
+    // still spoken by name.
+    val iconsOnly = largeText()
     Surface(
         modifier,
         shape = Pill, color = if (p.dark) cs.surfaceContainerHigh else cs.surfaceContainerLowest,
@@ -58,13 +61,13 @@ fun FloatingDock(items: List<DockItem>, modifier: Modifier = Modifier) {
                 Column(
                     Modifier.pressScale(interaction, down = 0.92f).clip(Pill)
                         .background(if (item.selected) cs.primaryContainer else Color.Transparent)
-                        .clickable(interaction, indication = null, role = Role.Tab, onClick = item.onClick)
-                        .semantics { selected = item.selected }
-                        .widthIn(min = 64.dp).height(52.dp).padding(horizontal = 10.dp),
+                        .clickable(interaction, indication = null, role = Role.Tab, onClickLabel = item.label, onClick = item.onClick)
+                        .semantics { selected = item.selected; if (iconsOnly) contentDescription = item.label }
+                        .widthIn(min = if (iconsOnly) 52.dp else 64.dp).height(52.dp).padding(horizontal = 10.dp),
                     horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center,
                 ) {
-                    PixelIcon(item.icon, tint = if (item.selected) cs.onPrimaryContainer else cs.onSurfaceVariant, size = 20.dp)
-                    Text(
+                    PixelIcon(item.icon, tint = if (item.selected) cs.onPrimaryContainer else cs.onSurfaceVariant, size = if (iconsOnly) 24.dp else 20.dp)
+                    if (!iconsOnly) Text(
                         item.label, style = MaterialTheme.typography.labelSmall, maxLines = 1, overflow = TextOverflow.Ellipsis,
                         color = if (item.selected) cs.onPrimaryContainer else cs.onSurfaceVariant, modifier = Modifier.padding(top = 2.dp),
                     )

@@ -53,6 +53,7 @@ import com.pawpixel.sprite.PixelIcons
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun HomeScreen(app: AppScope, state: AppState) {
     var showProDialog by remember { mutableStateOf(false) }
@@ -75,7 +76,8 @@ fun HomeScreen(app: AppScope, state: AppState) {
                 ) {
                     items(state.pets, key = { it.id }) { pet -> PetCard(app, state, pet, minute) }
                     item {
-                        Row(Modifier.padding(top = 2.dp), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                        // Wraps at big fonts, so the household link never breaks into letters.
+                        FlowRow(Modifier.padding(top = 2.dp), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                             GhostPill(tr("+ Add another pet")) {
                                 if (StateOps.canAddPet(state)) app.navigate(Screen.CreatePet) else showProDialog = true
                             }
