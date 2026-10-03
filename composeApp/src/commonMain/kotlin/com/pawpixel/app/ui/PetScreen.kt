@@ -199,7 +199,10 @@ private fun RemindersCard(app: AppScope, state: AppState, pet: Pet) {
     if (allowed == true) return
     SoftCard(Modifier.fillMaxWidth(), tone = Tone.Calm) {
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text(tr("🔔 Reminders for {0}?", pet.name), style = MaterialTheme.typography.titleMedium, modifier = Modifier.semantics { heading() })
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                PixelIcon(PixelIcons.BELL, size = 18.dp)
+                Text(tr("Reminders for {0}?", pet.name), style = MaterialTheme.typography.titleMedium, modifier = Modifier.semantics { heading() })
+            }
             Text(
                 tr("A gentle nudge when it's time for these, only for the tasks you set. Change them any time."),
                 style = MaterialTheme.typography.bodyMedium,

@@ -50,7 +50,7 @@ object FilAccess {
         "Back to your area" to "Bumalik sa area mo",
 
         // Reminders, asked on the pet's page
-        "🔔 Reminders for {0}?" to "🔔 Mga paalala para kay {0}?",
+        "Reminders for {0}?" to "Mga paalala para kay {0}?",
         "A gentle nudge when it's time for these, only for the tasks you set. Change them any time." to
             "Isang mahinahong paalala kapag oras na para sa mga ito, para lang sa mga gawaing itinakda mo. Mababago mo ang mga ito anumang oras.",
         "Turn on reminders" to "I-on ang mga paalala",
