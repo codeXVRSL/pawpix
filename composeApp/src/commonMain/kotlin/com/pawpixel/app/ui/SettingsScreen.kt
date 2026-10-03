@@ -36,18 +36,19 @@ import com.pawpixel.core.AppState
 import com.pawpixel.core.Backup
 import com.pawpixel.core.MINUTES_PER_DAY
 import com.pawpixel.i18n.tr
+import com.pawpixel.sprite.PixelIcons
 
 const val SUPPORT_EMAIL = "support@pawpixel.app" // TODO: replace with your real support address before release
 const val APP_VERSION = "1.0.0"
 const val PRIVACY_URL = "https://pawpixel.app/privacy" // TODO: publish docs/PRIVACY.md here
 
-/** A settings group: an emoji, a title, and its rows in one soft card. */
+/** A settings group: an icon, a title, and its rows in one soft card. */
 @Composable
-private fun Group(emoji: String, title: String, content: @Composable () -> Unit) {
+private fun Group(icon: com.pawpixel.sprite.PixelIcon, title: String, content: @Composable () -> Unit) {
     SoftCard(Modifier.fillMaxWidth(), tone = Tone.Surface) {
         Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                IconTile(emoji, size = 36.dp)
+                IconTile(icon, size = 36.dp)
                 GroupLabel(title, Modifier.padding(top = 0.dp))
             }
             content()
@@ -88,7 +89,7 @@ fun SettingsScreen(app: AppScope, state: AppState) {
     ) {
         TopBar(app, tr("Settings"))
 
-        Group("🔔", tr("Reminders")) {
+        Group(PixelIcons.BELL, tr("Reminders")) {
             SwitchRow(tr("Reminders"), tr("Notifications for care tasks."), s.remindersEnabled) { on ->
                 if (on) app.repo.platform.requestNotificationPermission()
                 app.launch { app.repo.setSettings(s.copy(remindersEnabled = on)) }
@@ -96,7 +97,7 @@ fun SettingsScreen(app: AppScope, state: AppState) {
             if (s.remindersEnabled) BackgroundTipCard(app.repo.platform)
         }
 
-        Group("🌏", tr("Language")) {
+        Group(PixelIcons.GLOBE, tr("Language")) {
             FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 // The language names themselves stay as they are, so anyone can find their own.
                 listOf("" to tr("Phone's language"), "en" to "English", "fil" to "Filipino").forEach { (code, label) ->
@@ -106,7 +107,7 @@ fun SettingsScreen(app: AppScope, state: AppState) {
             Hint(tr("Filipino translations are new: tell us if something sounds off."))
         }
 
-        Group("👪", tr("Household")) {
+        Group(PixelIcons.PEOPLE, tr("Household")) {
             val household = app.repo.family.household
             Text(
                 household?.let { if (it.members.size == 1) tr("You're in {0} (just you so far).", it.name) else tr("You're in {0} ({1} people).", it.name, it.members.size) }
@@ -120,7 +121,7 @@ fun SettingsScreen(app: AppScope, state: AppState) {
             }
         }
 
-        Group("🧳", tr("Away from home")) {
+        Group(PixelIcons.BAG, tr("Away from home")) {
             if (state.isAway(app.now)) {
                 Text(tr("Care reminders are paused until {0}. Your pets won't fret over care missed while you're away.", formatDate(s.awayUntilMs, app.repo.clock)), style = MaterialTheme.typography.bodyMedium)
                 PrimaryPill(tr("I'm back")) { app.launch { app.repo.setAway(0) } }
@@ -137,13 +138,13 @@ fun SettingsScreen(app: AppScope, state: AppState) {
             }
         }
 
-        Group("🌙", tr("Bedtime")) {
+        Group(PixelIcons.MOON, tr("Bedtime")) {
             Text(tr("Your pixel pet sleeps between these times unless something important is overdue."), style = MaterialTheme.typography.bodyMedium)
             TimeStepper(tr("Sleeps at"), s.nightStart) { app.launch { app.repo.setSettings(s.copy(nightStart = it)) } }
             TimeStepper(tr("Wakes at"), s.nightEnd) { app.launch { app.repo.setSettings(s.copy(nightEnd = it)) } }
         }
 
-        Group("✨", tr("PawPixel Pro")) {
+        Group(PixelIcons.STAR, tr("PawPixel Pro")) {
             Text(tr("Your first pet is free forever. Pro (coming soon) adds more pets, AI-enhanced sprites and hand-finished sprites by a pixel artist."), style = MaterialTheme.typography.bodyMedium)
             if (app.repo.platform.isDebugBuild) {
                 SwitchRow(tr("Test build: unlock Pro features"), tr("Only in test builds, until in-app purchases are connected."), s.pro) {
@@ -152,7 +153,7 @@ fun SettingsScreen(app: AppScope, state: AppState) {
             }
         }
 
-        Group("💾", tr("Backup")) {
+        Group(PixelIcons.SAVE, tr("Backup")) {
             Text(
                 tr(
                     "Changing phones? Save a backup file (to Google Drive, Files or email) and restore it on your new phone, Android or iPhone. " +
@@ -170,7 +171,7 @@ fun SettingsScreen(app: AppScope, state: AppState) {
             backupMessage?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = Paw.palette.good) }
         }
 
-        Group("🔒", tr("Privacy")) {
+        Group(PixelIcons.LOCK, tr("Privacy")) {
             Text(
                 tr(
                     "Everything stays on this phone: no account, no uploads, no tracking. (Your phone's own backup may include it, and backup files go only where you save them.) Your photo is turned into a sprite on the device, " +

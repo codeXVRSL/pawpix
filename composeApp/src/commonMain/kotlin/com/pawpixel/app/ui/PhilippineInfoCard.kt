@@ -51,9 +51,9 @@ fun PhilippineInfoCard(app: AppScope) {
                 Modifier.fillMaxWidth().clickable(onClickLabel = if (open) tr("Hide") else tr("Show"), role = Role.Button) { open = !open },
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                IconTile("🩺", size = 36.dp)
+                IconTile(com.pawpixel.sprite.PixelIcons.STETHO, size = 36.dp)
                 Text(tr("Rabies rules and where to get shots"), style = MaterialTheme.typography.titleSmall, modifier = Modifier.weight(1f).padding(horizontal = 10.dp))
-                Text(if (open) "▲" else "▼", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                PixelIcon(if (open) com.pawpixel.sprite.PixelIcons.CHEVRON_LEFT else com.pawpixel.sprite.PixelIcons.CHEVRON_RIGHT, tint = MaterialTheme.colorScheme.onSurfaceVariant, size = 14.dp)
             }
             if (open) {
                 Text(

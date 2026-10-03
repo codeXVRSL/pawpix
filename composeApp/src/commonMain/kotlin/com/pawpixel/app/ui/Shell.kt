@@ -30,12 +30,14 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.pawpixel.sprite.PixelIcon
+import com.pawpixel.sprite.PixelIcons
 
 // The app's shell: the floating dock at the bottom of the home screen, the chunky care tiles under
 // the pet, and the glassy buttons that sit over the pet's sky.
 
-/** One door of the [FloatingDock]: an emoji, a short word, where it goes. */
-class DockItem(val emoji: String, val label: String, val selected: Boolean = false, val onClick: () -> Unit)
+/** One door of the [FloatingDock]: an icon, a short word, where it goes. */
+class DockItem(val icon: PixelIcon, val label: String, val selected: Boolean = false, val onClick: () -> Unit)
 
 /**
  * A floating pill of three or four doors (pets, the map, the household, settings), the way 2026's
@@ -61,10 +63,10 @@ fun FloatingDock(items: List<DockItem>, modifier: Modifier = Modifier) {
                         .widthIn(min = 64.dp).height(52.dp).padding(horizontal = 10.dp),
                     horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center,
                 ) {
-                    Text(item.emoji, fontSize = 18.sp, modifier = Modifier.clearAndSetSemantics {})
+                    PixelIcon(item.icon, tint = if (item.selected) cs.onPrimaryContainer else cs.onSurfaceVariant, size = 20.dp)
                     Text(
                         item.label, style = MaterialTheme.typography.labelSmall, maxLines = 1, overflow = TextOverflow.Ellipsis,
-                        color = if (item.selected) cs.onPrimaryContainer else cs.onSurfaceVariant,
+                        color = if (item.selected) cs.onPrimaryContainer else cs.onSurfaceVariant, modifier = Modifier.padding(top = 2.dp),
                     )
                 }
             }
@@ -77,7 +79,7 @@ fun FloatingDock(items: List<DockItem>, modifier: Modifier = Modifier) {
  * with a tick once done today, soft otherwise. 88dp wide so a thumb never misses.
  */
 @Composable
-fun CareTile(emoji: String, label: String, tone: Tone, done: Boolean, description: String, modifier: Modifier = Modifier, onClick: () -> Unit) {
+fun CareTile(icon: PixelIcon, label: String, tone: Tone, done: Boolean, description: String, modifier: Modifier = Modifier, onClick: () -> Unit) {
     val cs = MaterialTheme.colorScheme
     val p = Paw.palette
     val (bg, fg) = when (tone) {
@@ -97,9 +99,9 @@ fun CareTile(emoji: String, label: String, tone: Tone, done: Boolean, descriptio
             horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center,
         ) {
             Box(contentAlignment = Alignment.TopEnd) {
-                Text(emoji, fontSize = 24.sp, modifier = Modifier.clearAndSetSemantics {})
+                PixelIcon(icon, tint = fg, size = 26.dp, modifier = Modifier.padding(2.dp))
                 if (done) Box(Modifier.size(14.dp).clip(Pill).background(p.good), contentAlignment = Alignment.Center) {
-                    Text("✓", color = Color.White, fontSize = 9.sp, modifier = Modifier.clearAndSetSemantics {})
+                    PixelIcon(PixelIcons.CHECK, tint = Color.White, size = 10.dp)
                 }
             }
             Text(
@@ -110,9 +112,9 @@ fun CareTile(emoji: String, label: String, tone: Tone, done: Boolean, descriptio
     }
 }
 
-/** A round glass button over the pet's sky (back, edit): readable on any sky, day or night. */
+/** A round glass button over the pet's room (back, edit): readable on any wall, day or night. */
 @Composable
-fun GlassButton(glyph: String, label: String, modifier: Modifier = Modifier, night: Boolean = false, onClick: () -> Unit) {
+fun GlassButton(icon: PixelIcon, label: String, modifier: Modifier = Modifier, night: Boolean = false, onClick: () -> Unit) {
     val interaction = remember { MutableInteractionSource() }
     Box(
         modifier.pressScale(interaction, down = 0.9f).size(40.dp).clip(Pill)
@@ -121,11 +123,7 @@ fun GlassButton(glyph: String, label: String, modifier: Modifier = Modifier, nig
             .semantics { contentDescription = label },
         contentAlignment = Alignment.Center,
     ) {
-        Text(
-            glyph, fontSize = if (glyph.length == 1 && glyph[0].code < 0x2000) 24.sp else 14.sp,
-            style = MaterialTheme.typography.labelLarge, color = if (night) Color(0xFFF7EEE4) else Color(0xFF2B2135),
-            modifier = Modifier.clearAndSetSemantics {},
-        )
+        PixelIcon(icon, tint = if (night) Color(0xFFF7EEE4) else Color(0xFF2B2135), size = 18.dp)
     }
 }
 
@@ -141,5 +139,22 @@ fun GlassPill(text: String, label: String, modifier: Modifier = Modifier, night:
         contentAlignment = Alignment.Center,
     ) {
         Text(text, style = MaterialTheme.typography.labelMedium, color = if (night) Color(0xFFF7EEE4) else Color(0xFF2B2135), modifier = Modifier.clearAndSetSemantics {})
+    }
+}
+
+/**
+ * A door on the pet's page (Health, Weight, Wardrobe, Share): an icon tile, a title and one line of
+ * what's inside, in a card that opens its own screen. Four of them make a 2x2 grid.
+ */
+@Composable
+fun DoorTile(icon: PixelIcon, title: String, detail: String, modifier: Modifier = Modifier, tone: Tone = Tone.Tonal, onClick: () -> Unit) {
+    SoftCard(modifier, tone = Tone.Surface, padding = 14.dp, onClick = onClick, onClickLabel = title) {
+        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            IconTile(icon, tone = tone, size = 36.dp)
+            Column(verticalArrangement = Arrangement.spacedBy(1.dp)) {
+                Text(title, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(detail, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 2, overflow = TextOverflow.Ellipsis)
+            }
+        }
     }
 }

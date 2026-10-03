@@ -3,6 +3,7 @@ package com.pawpixel.app.ui
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
@@ -20,7 +21,6 @@ import androidx.compose.runtime.withFrameMillis
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.FilterQuality
 import androidx.compose.ui.graphics.graphicsLayer
@@ -44,6 +44,11 @@ import com.pawpixel.sprite.PetPose
 import com.pawpixel.sprite.Chibi
 import com.pawpixel.sprite.PetArt
 import com.pawpixel.sprite.StageLayout
+import com.pawpixel.sprite.Room
+import com.pawpixel.core.Sky
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
 import kotlin.math.floor
 import kotlin.math.roundToInt
 
@@ -64,10 +69,12 @@ fun LivePet(
     reaction: Reaction? = null,
     /** What a screen reader says: the pet's name and mood (see [com.pawpixel.core.MoodEngine.describe]). */
     description: String? = null,
-    /** Sky and floor colours; the theme's plain floor when null. */
-    scene: StageScene? = null,
-    /** Keep the stage's own proportions (false when the caller gives it a height: a hero stage, all sky above). */
+    /** The time of day: the room's window shows that sky and the lamp comes on at night. */
+    phase: Sky.Phase = Sky.Phase.DAY,
+    /** Keep the stage's own proportions (false when the caller gives it a height: a hero stage, more wall above). */
     keepAspect: Boolean = true,
+    /** Extra floor below the pet's feet (a hero room has a deep floor with a rug). */
+    floorDepth: Dp = 0.dp,
     onPetted: () -> Unit = {},
 ) {
     if (art == null) return
@@ -118,12 +125,9 @@ fun LivePet(
     }
     LaunchedEffect(reaction, brain) { reaction?.let { brain.react(it.event, clock[1]) } }
 
-    // In dark mode a sand floor glared under the pet: a dusky one instead.
-    val palette = Paw.palette
-    val floorColor = scene?.floor ?: palette.floor
-    val floorLine = scene?.floorLine ?: palette.floorLine
-    val sky = scene?.let { remember(it) { Brush.verticalGradient(0f to it.skyTop, 1f to it.skyBottom) } }
-    val stars = remember(scene?.stars) { if (scene?.stars == true) starField(seed) else emptyList() }
+    // The room behind the pet, drawn once per size and time of day (it is tiny: stage pixels).
+    val roomCache = remember { HashMap<String, ImageBitmap>() }
+    val floorDepthPx = with(LocalDensity.current) { floorDepth.toPx() }
     val petLabel = tr("Give pets")
     Canvas(
         modifier
@@ -140,7 +144,7 @@ fun LivePet(
                     val pose = shown ?: return@detectTapGestures
                     val px = pixelScale(size.width.toFloat(), layout.stageWidth)
                     val left = (size.width - px * layout.stageWidth) / 2
-                    val top = size.height - px * layout.stageHeight
+                    val top = size.height - px * (layout.stageHeight + kotlin.math.ceil(floorDepthPx / px).toInt())
                     val sx = (tap.x - left) / px
                     val sy = (tap.y - top) / px
                     val w = layout.set.width
@@ -156,47 +160,21 @@ fun LivePet(
         val pose = shown ?: return@Canvas // read here, so a new pose redraws the stage without recomposing
         val px = pixelScale(size.width, layout.stageWidth)
         val left = ((size.width - px * layout.stageWidth) / 2).roundToInt().toFloat()
-        // Bottom-aligned: any spare height becomes sky, not floor.
-        val top = (size.height - px * layout.stageHeight).roundToInt().toFloat()
+        // Bottom-aligned above the extra floor: any spare height becomes wall, not floor.
+        val depthRows = kotlin.math.ceil(floorDepthPx / px).toInt()
+        val top = (size.height - px * (layout.stageHeight + depthRows)).roundToInt().toFloat()
         fun sx(v: Double) = left + (v * px).toFloat()
         fun sy(v: Double) = top + (v * px).toFloat()
 
-        // Sky (only inside a stage), with a few pixel stars at night
-        if (sky != null) drawRect(sky, Offset.Zero, Size(size.width, sy(layout.floorY - 2.0)))
-        if (stars.isNotEmpty()) {
-            val skyH = sy(layout.floorY - 2.0)
-            for ((fx, fy, big) in stars) {
-                val s = if (big) 2 * px else px
-                drawRect(Color(0xCCFFF6D5), Offset((fx * size.width / px).toInt() * px, (fy * skyH / px).toInt() * px), Size(s, s))
-            }
-        }
-        if (sky != null) {
-            // A sun by day (warmer at dawn and dusk), a moon at night, and two drifting pixel clouds: the same sky as the widget.
-            val skyH = sy(layout.floorY - 2.0)
-            val unit = 2 * px
-            // Clear of the glass buttons a hero stage carries in its top corners.
-            val cx = size.width - 13 * unit
-            val cy = 11 * unit
-            if (stars.isNotEmpty()) {
-                drawCircle(Color(0xFFFFF1C9), 3.2f * unit, Offset(cx, cy))
-                drawCircle(scene!!.skyTop.copy(alpha = 1f), 2.7f * unit, Offset(cx + 1.6f * unit, cy - 0.9f * unit))
-            } else {
-                val sun = if (scene!!.skyTop.red > 0.95f) Color(0xFFFFD98A) else Color(0xFFFFF4C2)
-                drawCircle(sun.copy(alpha = 0.45f), 4.4f * unit, Offset(cx, cy))
-                drawCircle(sun, 3f * unit, Offset(cx, cy))
-            }
-            val drift = ((clock[1] / 400L) % (size.width / unit).toLong().coerceAtLeast(1L)) * unit
-            for ((ox, oy, alpha) in listOf(Triple(2f * unit, 8f * unit, 0.85f), Triple(size.width * 0.5f, 15f * unit, 0.65f))) {
-                val x0 = (ox + drift) % (size.width + 10 * unit) - 8 * unit
-                if (oy + 3 * unit > skyH) continue
-                CLOUD.forEachIndexed { row, cells ->
-                    cells.forEachIndexed { col, c -> if (c == '#') drawRect(Color.White.copy(alpha = alpha), Offset(x0 + col * unit, oy + row * unit), Size(unit, unit)) }
-                }
-            }
-        }
-        // Floor
-        drawRect(floorLine, Offset(0f, sy(layout.floorY - 2.0)), Size(size.width, px))
-        drawRect(floorColor, Offset(0f, sy(layout.floorY - 1.0)), Size(size.width, size.height - sy(layout.floorY - 1.0)))
+        // The room: as many rows as the stage is tall, the floor where the pet's feet are.
+        val rows = kotlin.math.ceil(size.height / px).toInt().coerceAtLeast(layout.stageHeight + depthRows)
+        val roomW = kotlin.math.ceil(size.width / px).toInt().coerceAtLeast(layout.stageWidth)
+        val floorRow = rows - (layout.stageHeight + depthRows) + layout.floorY
+        val key = "$roomW:$rows:$floorRow:${phase.key}"
+        val room = roomCache.getOrPut(key) { Room.render(roomW, rows, floorRow, phase, seed).toImageBitmap() }
+        val roomLeft = ((size.width - px * roomW) / 2).roundToInt()
+        val roomTop = (size.height - px * rows).roundToInt()
+        drawImage(room, IntOffset.Zero, IntSize(roomW, rows), IntOffset(roomLeft, roomTop), IntSize((roomW * px).roundToInt(), (rows * px).roundToInt()), filterQuality = FilterQuality.None)
 
 
         // Shadow, smaller while airborne
@@ -238,8 +216,6 @@ private class Built(val set: AnimationSet, val layout: StageLayout, val icons: M
 /** The frames of one mood, and which drawings they came from. */
 private class MoodFrames(val set: AnimationSet, val frames: Map<Frame, ImageBitmap>)
 
-private val CLOUD = listOf("..####..", ".######.", "########")
-
 /** Width / height of the stage for most looks (between 1.53 and 1.60). */
 private const val PLACEHOLDER_ASPECT = 1.55f
 
@@ -253,26 +229,30 @@ private inline fun DrawScope.withFlip(flip: Boolean, pivotX: Float, block: DrawS
     if (flip) scale(-1f, 1f, pivot = Offset(pivotX, 0f)) { block() } else block()
 }
 
-/** The colours around the pet: sky top and bottom, the floor, and whether stars show. */
-@Immutable
-data class StageScene(val skyTop: Color, val skyBottom: Color, val floor: Color, val floorLine: Color, val stars: Boolean = false)
-
-/** A handful of pixel stars at fixed places (fractions of the sky), the same for one pet. */
-private fun starField(seed: Int): List<Triple<Float, Float, Boolean>> {
-    val r = kotlin.random.Random(seed)
-    return List(14) { Triple(r.nextFloat(), r.nextFloat() * 0.75f, r.nextInt(4) == 0) }
-}
+/** The time of day for the pet's room: the owner's night makes it night. */
+@Composable
+fun phaseFor(app: AppScope, state: com.pawpixel.core.AppState): Sky.Phase =
+    Sky.phase(app.repo.clock.minuteOfDay(app.now), state.settings.nightStart, state.settings.nightEnd)
 
 /**
- * The sky over the pet follows the real time of day: peach at dawn, soft blue by day, apricot to
- * lavender at dusk, and deep indigo with stars during the owner's set night. In dark mode the
- * daytime skies are dimmed, so the page stays restful.
+ * The pet's room as a backdrop for a card (the home card, an empty stage), drawn at [pixel] per
+ * room pixel. [content] is placed over it; its bottom padding is the floor's depth, so a sprite
+ * aligned to the bottom stands on the floor.
  */
 @Composable
-fun sceneFor(minuteOfDay: Int, nightStart: Int, nightEnd: Int): StageScene {
-    val p = Paw.palette
-    val phase = com.pawpixel.core.Sky.phase(minuteOfDay, nightStart, nightEnd)
-    fun dim(c: Color) = if (p.dark) Color(c.red * 0.42f, c.green * 0.40f, c.blue * 0.5f) else c
-    return if (phase.stars) StageScene(Color(phase.top), Color(phase.bottom), Color(phase.floor), Color(phase.floorLine), stars = true)
-    else StageScene(dim(Color(phase.top)), dim(Color(phase.bottom)), p.floor, p.floorLine)
+fun RoomBackdrop(phase: Sky.Phase, modifier: Modifier = Modifier, pixel: Dp = 3.dp, floorDepth: Dp = 18.dp, content: @Composable BoxScope.(floor: Dp) -> Unit) {
+    val cache = remember { HashMap<String, ImageBitmap>() }
+    val pxDp = with(LocalDensity.current) { pixel.toPx() }
+    val depthPx = with(LocalDensity.current) { floorDepth.toPx() }
+    Box(modifier) {
+        Canvas(Modifier.matchParentSize()) {
+            val cols = kotlin.math.ceil(size.width / pxDp).toInt().coerceAtLeast(40)
+            val rows = kotlin.math.ceil(size.height / pxDp).toInt().coerceAtLeast(30)
+            val floorRow = rows - kotlin.math.ceil(depthPx / pxDp).toInt() + 2
+            val key = "$cols:$rows:$floorRow:${phase.key}"
+            val img = cache.getOrPut(key) { Room.render(cols, rows, floorRow, phase).toImageBitmap() }
+            drawImage(img, IntOffset.Zero, IntSize(cols, rows), IntOffset(0, (size.height - rows * pxDp).roundToInt()), IntSize((cols * pxDp).roundToInt(), (rows * pxDp).roundToInt()), filterQuality = FilterQuality.None)
+        }
+        content(floorDepth)
+    }
 }

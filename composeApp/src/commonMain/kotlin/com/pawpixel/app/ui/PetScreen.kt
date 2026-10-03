@@ -2,6 +2,10 @@ package com.pawpixel.app.ui
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.draw.clip
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
@@ -51,42 +55,41 @@ import com.pawpixel.core.TaskStatus
 import com.pawpixel.i18n.tr
 import com.pawpixel.i18n.trName
 import com.pawpixel.sprite.PetEvent
+import com.pawpixel.sprite.PixelIcons
+import com.pawpixel.sprite.Room
+import com.pawpixel.core.LocalClock
+import com.pawpixel.core.WeightTrend
+import androidx.compose.ui.graphics.Color
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun PetScreen(app: AppScope, state: AppState, pet: Pet) {
     val reading = MoodEngine.read(state, pet.id, app.now, app.repo.clock)
     val art = remember(pet.lookKey) { app.repo.art(pet) }
+    // Everyday care here; health care (a vaccine, a vet visit) lives behind the Health door.
     val statuses = statusesFor(app, state, pet.id).filter { !it.task.kind.health }
-    var confirmDelete by remember { mutableStateOf(false) }
     var renaming by remember { mutableStateOf(false) }
     var reaction by remember { mutableStateOf<Reaction?>(null) }
     var burst by remember { mutableStateOf<Long?>(null) }
-    var makingGif by remember { mutableStateOf(false) }
-    var shareError by remember { mutableStateOf<String?>(null) }
     val haptics = LocalHapticFeedback.current
     fun react(event: PetEvent) {
         reaction = Reaction(event, (reaction?.nonce ?: 0) + 1)
         if (event is PetEvent.Cared) { burst = app.now + reaction!!.nonce; haptics.performHapticFeedback(HapticFeedbackType.LongPress) }
     }
     val clock = app.repo.clock
-    val scene = sceneFor(clock.minuteOfDay(app.now), state.settings.nightStart, state.settings.nightEnd)
+    val phase = phaseFor(app, state)
+    val night = phase.dark
 
-    BoxWithConstraints(Modifier.fillMaxSize().background(heroGlow())) {
-    // The pet's world fills the top of the screen, edge to edge and under the status bar, like the
-    // 2026 pet apps do: the sky of the hour, the pet living on its floor. The page rises over it.
-    val heroHeight = (maxHeight * 0.4f).coerceIn(260.dp, 400.dp)
-    val night = scene.stars
-    Column(
-        Modifier.fillMaxSize().navigationBarsPadding().verticalScroll(rememberScrollState()),
-    ) {
-        Box(Modifier.fillMaxWidth().height(heroHeight).background(scene.floor)) {
-            // The floor runs on under the page's rounded top, so the pet's feet are never hidden.
+    BoxWithConstraints(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
+    // The pet's room fills the top of the screen, edge to edge and under the status bar; the page
+    // rises over its floor with a rounded top.
+    val heroHeight = (maxHeight * 0.4f).coerceIn(260.dp, 380.dp)
+    Column(Modifier.fillMaxSize().navigationBarsPadding().verticalScroll(rememberScrollState())) {
+        Box(Modifier.fillMaxWidth().height(heroHeight).background(Color(Room.floorColor(phase)))) {
             LivePet(
-                art, pet.eyes, reading.mood, seed = pet.id.hashCode(), modifier = Modifier.fillMaxWidth().height(heroHeight).padding(bottom = 30.dp), reaction = reaction,
-                description = MoodEngine.describe(pet.name, reading.mood), scene = scene, keepAspect = false,
+                art, pet.eyes, reading.mood, seed = pet.id.hashCode(), modifier = Modifier.fillMaxWidth().height(heroHeight), reaction = reaction,
+                description = MoodEngine.describe(pet.name, reading.mood), phase = phase, keepAspect = false, floorDepth = 34.dp,
                 onPetted = { haptics.performHapticFeedback(HapticFeedbackType.LongPress) },
             )
             HeartBurst(burst, Modifier.matchParentSize())
@@ -94,12 +97,12 @@ fun PetScreen(app: AppScope, state: AppState, pet: Pet) {
                 Modifier.fillMaxWidth().statusBarsPadding().padding(horizontal = 12.dp, vertical = 8.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                GlassButton("‹", tr("Back"), night = night, onClick = app.back)
+                GlassButton(PixelIcons.CHEVRON_LEFT, tr("Back"), night = night, onClick = app.back)
                 Spacer(Modifier.weight(1f))
                 GlassPill(tr("Edit"), tr("Edit {0}'s name, type and birthday", pet.name), night = night) { renaming = true }
             }
-            // The page's rounded top rises over the floor. Drawn inside the hero, in the layout's own
-            // flow: a sheet placed over its neighbour with a layout trick lost taps far down the page.
+            // The page's rounded top, drawn inside the hero in the layout's own flow (a sheet pulled
+            // over its neighbour with a layout trick lost taps far down the page).
             Box(
                 Modifier.align(Alignment.BottomCenter).fillMaxWidth().height(24.dp)
                     .background(MaterialTheme.colorScheme.background, RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)),
@@ -109,9 +112,9 @@ fun PetScreen(app: AppScope, state: AppState, pet: Pet) {
             Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.background).padding(horizontal = 16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-        // Name, age, mood and hearts, right under the pet: one display size, then captions.
+        // Name, mood and age, hearts.
         Column(
-            Modifier.fillMaxWidth().padding(top = 2.dp, bottom = 4.dp),
+            Modifier.fillMaxWidth().padding(top = 2.dp, bottom = 2.dp),
             horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(6.dp),
         ) {
             Text(pet.name, style = MaterialTheme.typography.petName, modifier = Modifier.semantics { heading() }, textAlign = TextAlign.Center)
@@ -119,23 +122,17 @@ fun PetScreen(app: AppScope, state: AppState, pet: Pet) {
                 StatusPill(reading.caption, moodColor(reading.mood))
                 pet.birthDay?.let { born -> Hint(HealthPlan.ageLabel(born, clock.dayIndex(app.now))) }
             }
-            Hearts(
-                reading.score, Modifier.padding(top = 4.dp),
-                description = tr("Happiness {0} of 5", (reading.score + 10) / 20),
-            )
+            Hearts(reading.score, Modifier.padding(top = 4.dp), description = tr("Happiness {0} of 5", (reading.score + 10) / 20))
         }
 
-        // Quick care: one chunky tile per everyday task, the way a virtual pet is fed and played with.
+        // Quick care: one tile per everyday task, the way a virtual pet is fed and played with.
         if (statuses.isNotEmpty()) {
-            Row(
-                Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
-            ) {
+            Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 for (s in statuses) {
                     val name = trName(s.task.title)
                     val done = s.allDoneThisCycle
                     CareTile(
-                        s.task.kind.emoji, name,
+                        PixelIcons.forKind(s.task.kind), name,
                         tone = when { s.isOverdue -> Tone.Accent; done -> Tone.Good; else -> Tone.Surface }, done = done,
                         description = if (done) tr("{0}: all done today", name) else tr("Mark {0} done for {1}", name, pet.name),
                     ) {
@@ -146,116 +143,60 @@ fun PetScreen(app: AppScope, state: AppState, pet: Pet) {
         }
 
         MilestoneBanner(app, pet)
+        RemindersCard(app, state, pet)
+
+        // Today's care, one compact row each.
+        SectionTitle(tr("Care")) {
+            LinkButton(tr("+ Add care task"), color = MaterialTheme.colorScheme.primary) { app.navigate(Screen.EditTask(pet.id, null)) }
+        }
+        if (statuses.isEmpty()) Hint(tr("No care tasks yet. Add feeding, walks or medicine so {0}'s mood can follow real care.", pet.name))
+        statuses.forEach { s -> TaskRow(app, state, pet, s, onDone = { react(PetEvent.Cared(s.task.kind)) }) }
 
         // Gentle progress: days cared for this week, never a streak that breaks.
         val week = CareStats.week(state, pet.id, app.now, clock)
         val summary = CareStats.summary(state, pet.id, app.now, clock)
         SoftCard(Modifier.fillMaxWidth(), tone = Tone.Tonal) {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.semantics(mergeDescendants = true) { contentDescription = summary }) {
+            Column(verticalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.semantics(mergeDescendants = true) { contentDescription = summary }) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(tr("This week"), style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
                     WeekDots(week, weekdayOf(clock.dayIndex(app.now)))
                 }
-                Text(summary, style = MaterialTheme.typography.bodyMedium)
+                Text(summary, style = MaterialTheme.typography.bodySmall)
                 nextMilestoneLine(pet)?.let { Hint(it) }
             }
         }
-
-        // Household: who else cares for this pet, or an invitation to share it.
         val household = app.repo.family.household
         if (pet.shared && household != null) {
             val others = household.members.filter { it.userId != app.repo.family.myUserId }.joinToString { it.name }
-            LinkButton(if (others.isEmpty()) tr("Shared with {0}", household.name) else tr("Cared for with {0}", others)) { app.navigate(Screen.Family()) }
-        } else {
-            GhostPill(tr("👪 Share with your household")) { app.navigate(Screen.Family(sharePetId = pet.id)) }
+            LinkButton(if (others.isEmpty()) tr("Shared with {0}", household.name) else tr("Cared for with {0}", others), icon = PixelIcons.PEOPLE) { app.navigate(Screen.Family()) }
         }
 
-        SectionTitle(tr("Care"))
-        if (statuses.isEmpty()) Text(tr("No care tasks yet. Add feeding, walks or medicine so {0}'s mood can follow real care.", pet.name))
-        statuses.forEach { s -> TaskRow(app, state, pet, s, onDone = { react(PetEvent.Cared(s.task.kind)) }) }
-        GhostPill(tr("+ Add care task")) { app.navigate(Screen.EditTask(pet.id, null)) }
-        // Reminders are offered here, under the care they're for.
-        RemindersCard(app, state, pet)
-
-        Spacer(Modifier.height(4.dp))
-        HealthSection(app, state, pet)
-
-        Spacer(Modifier.height(4.dp))
-        WeightSection(app, state, pet)
-
-        Spacer(Modifier.height(4.dp))
-        OutfitSection(app, pet)
-
-        Spacer(Modifier.height(4.dp))
-        SectionTitle(tr("Look"))
-        SoftCard(Modifier.fillMaxWidth(), tone = Tone.Accent, onClick = { app.navigate(Screen.Studio(pet.id)) }, onClickLabel = tr("Open the Pet Studio")) {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                IconTile("✨", tone = Tone.Surface)
-                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                    Text(tr("Pet Studio"), style = MaterialTheme.typography.titleMedium)
-                    Text(tr("Eyes, ears, coat, colours and more: 70+ ways to make {0} yours.", pet.name), style = MaterialTheme.typography.bodySmall)
-                }
-                Text("›", style = MaterialTheme.typography.headlineSmall)
+        // The rest of the pet's life, behind four doors.
+        val healthItems = CareStats.healthDue(state, pet.id, app.now, clock)
+        val healthDetail = when {
+            healthItems.isEmpty() -> tr("Vaccines, deworming, vet visits")
+            healthItems.any { it.due } -> tr("{0} due now", healthItems.count { it.due })
+            else -> healthItems.minByOrNull { it.dueMs ?: Long.MAX_VALUE }?.let { CareStats.dueLabel(it, app.now, clock) } ?: tr("All on schedule")
+        }
+        val weights = state.weightsFor(pet.id)
+        val weightDetail = weights.lastOrNull()?.let { tr("{0} on {1}", WeightTrend.kg(it.grams), LocalClock.shortDate(it.day)) } ?: tr("Keep track of weigh-ins")
+        val outfit = com.pawpixel.sprite.Accessory.of(pet.accessory)
+        val wardrobeDetail = if (outfit != null) tr("Wearing: {0}", tr(outfit.label)) else tr("Outfits and the Pet Studio")
+        Column(Modifier.padding(top = 4.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                DoorTile(PixelIcons.HEART, tr("Health"), healthDetail, Modifier.weight(1f), tone = if (healthItems.any { it.due }) Tone.Accent else Tone.Calm) { app.navigate(Screen.PetSection(pet.id, "health")) }
+                DoorTile(PixelIcons.SCALE, tr("Weight"), weightDetail, Modifier.weight(1f), tone = Tone.Good) { app.navigate(Screen.PetSection(pet.id, "weight")) }
+            }
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                DoorTile(PixelIcons.SHIRT, tr("Wardrobe"), wardrobeDetail, Modifier.weight(1f), tone = Tone.Accent) { app.navigate(Screen.PetSection(pet.id, "wardrobe")) }
+                DoorTile(PixelIcons.SHARE, tr("Share"), tr("GIF, before/after, household"), Modifier.weight(1f), tone = Tone.Tonal) { app.navigate(Screen.PetSection(pet.id, "share")) }
             }
         }
-        SectionTitle(tr("Share & sprite"))
-        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            PrimaryPill(
-                if (makingGif) tr("Making GIF…") else tr("Share animation"),
-                enabled = !makingGif && art != null,
-                onClick = {
-                    val s = art ?: return@PrimaryPill
-                    makingGif = true
-                    shareError = null
-                    app.launch {
-                        try {
-                            val gif = withContext(Dispatchers.Default) {
-                                runCatching { app.repo.animationGif(pet, s) }
-                                    .onFailure { app.repo.platform.log("GIF failed: ${it.stackTraceToString()}") }
-                                    .getOrNull()
-                            }
-                            if (gif != null) {
-                                app.repo.platform.log("GIF ready: ${gif.size} bytes")
-                                app.repo.shareGif(pet, gif)
-                            } else {
-                                shareError = tr("Couldn't make the animation. Please try again.")
-                            }
-                        } finally {
-                            makingGif = false
-                        }
-                    }
-                },
-            )
-            // A pet from a family member's phone has no photo here, so no before/after card.
-            val hasPhoto = remember(pet.id, pet.spriteVersion) { app.repo.photoCrop(pet.id) != null }
-            if (hasPhoto) TonalPill(tr("Before/after")) { app.launch { app.repo.shareReveal(pet) } }
-            GhostPill(tr("Edit look: photo, face, ears")) { app.navigate(Screen.RemakeSprite(pet.id)) }
-        }
-        shareError?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
-        LinkButton(tr("Delete {0}", pet.name), color = MaterialTheme.colorScheme.error) { confirmDelete = true }
         Spacer(Modifier.height(20.dp))
         }
     }
     }
 
-    if (confirmDelete) {
-        AlertDialog(
-            onDismissRequest = { confirmDelete = false },
-            title = { Text(tr("Delete {0}?", pet.name)) },
-            text = {
-                Text(
-                    tr("This removes the sprite, tasks and history from this phone. It can't be undone.") +
-                        if (pet.shared) " " + tr("Your household keeps their copy of {0}, no longer shared.", pet.name) else "",
-                )
-            },
-            confirmButton = {
-                TextButton(onClick = { confirmDelete = false; app.launch { app.repo.deletePet(pet.id) } }) {
-                    Text(tr("Delete"), color = MaterialTheme.colorScheme.error)
-                }
-            },
-            dismissButton = { TextButton(onClick = { confirmDelete = false }) { Text(tr("Cancel")) } },
-        )
-    }
     if (renaming) RenameDialog(app, pet) { renaming = false }
 }
 
@@ -317,7 +258,7 @@ private fun TaskRow(app: AppScope, state: AppState, pet: Pet, s: TaskStatus, onD
     SoftCard(Modifier.fillMaxWidth(), tone = if (done) Tone.Tonal else Tone.Surface, padding = 12.dp) {
         Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                IconTile(t.kind.emoji, tone = if (s.isOverdue) Tone.Accent else if (done) Tone.Good else Tone.Tonal)
+                IconTile(PixelIcons.forKind(t.kind), tone = if (s.isOverdue) Tone.Accent else if (done) Tone.Good else Tone.Tonal)
                 Spacer(Modifier.width(12.dp))
                 Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(1.dp)) {
                     Text(name, style = MaterialTheme.typography.titleMedium)
@@ -327,12 +268,26 @@ private fun TaskRow(app: AppScope, state: AppState, pet: Pet, s: TaskStatus, onD
                     )
                     Hint(times)
                 }
+                // Undo takes back your own Done, never someone else's.
+                val mineThisCycle = s.logged > 0 && state.completions
+                    .any { it.taskId == t.id && it.localDay >= s.cycleStartDay && app.repo.family.isMine(it.by) }
+                val undoLabel = tr("Undo {0} for {1}", name, pet.name)
+                val editLabel = tr("Edit {0}", name)
                 if (!done) {
                     val doneLabel = tr("Mark {0} done for {1}", name, pet.name)
                     PrimaryPill(
                         tr("Done"), modifier = Modifier.padding(start = 8.dp).semantics { contentDescription = doneLabel },
                     ) { onDone(); app.launch { app.repo.complete(t.id) } }
+                } else if (mineThisCycle) {
+                    LinkButton(tr("Undo"), modifier = Modifier.semantics { contentDescription = undoLabel }) { app.launch { app.repo.undo(t.id) } }
                 }
+                // A small pencil opens the task (times, repeat, reminders); the row stays one line.
+                Box(
+                    Modifier.padding(start = 4.dp).size(36.dp).clip(Pill)
+                        .clickable(role = Role.Button, onClickLabel = editLabel) { app.navigate(Screen.EditTask(pet.id, t.id)) }
+                        .semantics { contentDescription = editLabel },
+                    contentAlignment = Alignment.Center,
+                ) { PixelIcon(PixelIcons.PENCIL, tint = MaterialTheme.colorScheme.onSurfaceVariant, size = 14.dp) }
             }
             // Household: "Fed by Jamaica · 7:02 AM" when someone else did it today.
             val today = clock.dayIndex(app.now)
@@ -344,15 +299,6 @@ private fun TaskRow(app: AppScope, state: AppState, pet: Pet, s: TaskStatus, onD
             if (t.adaptive && AdaptiveTiming.effectiveSlots(t, state.completions, app.now, clock) != t.slots.sorted()) {
                 Text(tr("Adjusted to your routine"), style = MaterialTheme.typography.bodySmall, color = Paw.palette.good)
             }
-            Row(Modifier.fillMaxWidth().padding(top = 2.dp), horizontalArrangement = Arrangement.End) {
-                // Undo takes back your own Done, never someone else's.
-                val mineThisCycle = s.logged > 0 && state.completions
-                    .any { it.taskId == t.id && it.localDay >= s.cycleStartDay && app.repo.family.isMine(it.by) }
-                val undoLabel = tr("Undo {0} for {1}", name, pet.name)
-                val editLabel = tr("Edit {0}", name)
-                if (mineThisCycle) LinkButton(tr("Undo"), modifier = Modifier.semantics { contentDescription = undoLabel }) { app.launch { app.repo.undo(t.id) } }
-                LinkButton(tr("Edit"), modifier = Modifier.semantics { contentDescription = editLabel }, color = MaterialTheme.colorScheme.onSurfaceVariant) { app.navigate(Screen.EditTask(pet.id, t.id)) }
-            }
         }
     }
 }
@@ -363,6 +309,7 @@ private fun RenameDialog(app: AppScope, pet: Pet, onClose: () -> Unit) {
     var species by remember { mutableStateOf(pet.species) }
     var birthDay by remember { mutableStateOf(pet.birthDay) }
     var askBirthday by remember { mutableStateOf(false) }
+    var confirmDelete by remember { mutableStateOf(false) }
     val today = app.repo.clock.dayIndex(app.now)
     AlertDialog(
         onDismissRequest = onClose,
@@ -374,11 +321,30 @@ private fun RenameDialog(app: AppScope, pet: Pet, onClose: () -> Unit) {
                     Species.entries.forEach { sp -> ChoiceChip(species == sp, { species = sp }, tr(sp.label)) }
                 }
                 BirthdayRow(birthDay, today) { askBirthday = true }
+                LinkButton(tr("Delete {0}", pet.name), color = MaterialTheme.colorScheme.error) { confirmDelete = true }
             }
         },
         confirmButton = { TextButton(onClick = { app.launch { app.repo.renamePet(pet, name, species, birthDay) }; onClose() }) { Text(tr("Save")) } },
         dismissButton = { TextButton(onClick = onClose) { Text(tr("Cancel")) } },
     )
+    if (confirmDelete) {
+        AlertDialog(
+            onDismissRequest = { confirmDelete = false },
+            title = { Text(tr("Delete {0}?", pet.name)) },
+            text = {
+                Text(
+                    tr("This removes the sprite, tasks and history from this phone. It can't be undone.") +
+                        if (pet.shared) " " + tr("Your household keeps their copy of {0}, no longer shared.", pet.name) else "",
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = { confirmDelete = false; onClose(); app.launch { app.repo.deletePet(pet.id) } }) {
+                    Text(tr("Delete"), color = MaterialTheme.colorScheme.error)
+                }
+            },
+            dismissButton = { TextButton(onClick = { confirmDelete = false }) { Text(tr("Cancel")) } },
+        )
+    }
     if (askBirthday) {
         BirthdayDialog(
             name.ifBlank { pet.name }, birthDay, today, skipLabel = tr("Cancel"),

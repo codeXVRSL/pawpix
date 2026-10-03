@@ -67,6 +67,7 @@ import com.pawpixel.sprite.NoseShape
 import com.pawpixel.sprite.Pattern
 import com.pawpixel.sprite.PetArt
 import com.pawpixel.sprite.PetStyle
+import com.pawpixel.sprite.PixelIcons
 import com.pawpixel.sprite.TailStyle
 import com.pawpixel.sprite.Whiskers
 
@@ -121,7 +122,7 @@ fun StudioScreen(app: AppScope, state: AppState, pet: Pet) {
     var confirmLeave by remember { mutableStateOf(false) }
     val haptics = LocalHapticFeedback.current
     val dirty = style != saved
-    val scene = sceneFor(app.repo.clock.minuteOfDay(app.now), state.settings.nightStart, state.settings.nightEnd)
+    val phase = phaseFor(app, state)
     val art = remember(base, style) { base?.let { PetArt(it.look, it.species, it.ears, it.accessory, style) } }
 
     val save: () -> Unit = {
@@ -137,9 +138,9 @@ fun StudioScreen(app: AppScope, state: AppState, pet: Pet) {
     Column(Modifier.fillMaxSize().background(heroGlow()).statusBarsPadding().navigationBarsPadding()) {
         Column(Modifier.padding(horizontal = 16.dp)) {
             Row(Modifier.fillMaxWidth().padding(vertical = 6.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                RoundIconButton("‹", tr("Back"), onClick = leave)
+                RoundIconButton(PixelIcons.CHEVRON_LEFT, tr("Back"), onClick = leave)
                 ScreenTitle(tr("Pet Studio"), Modifier.weight(1f))
-                RoundIconButton("🎲", tr("Shuffle: a random look")) {
+                RoundIconButton(PixelIcons.DICE, tr("Shuffle: a random look")) {
                     shuffles++
                     style = PetStyle.random(pet.id.hashCode() + shuffles).copy(furBase = style.furBase, furLight = style.furLight, furDark = style.furDark)
                     haptics.performHapticFeedback(HapticFeedbackType.LongPress)
@@ -152,7 +153,7 @@ fun StudioScreen(app: AppScope, state: AppState, pet: Pet) {
                 Box(Modifier.fillMaxWidth()) {
                     LivePet(
                         art, pet.eyes, Mood.HAPPY, seed = pet.id.hashCode(), modifier = Modifier.fillMaxWidth(),
-                        description = MoodEngine.describe(pet.name, Mood.HAPPY), scene = scene,
+                        description = MoodEngine.describe(pet.name, Mood.HAPPY), phase = phase,
                         onPetted = { haptics.performHapticFeedback(HapticFeedbackType.LongPress) },
                     )
                     if (dirty) {
@@ -168,8 +169,8 @@ fun StudioScreen(app: AppScope, state: AppState, pet: Pet) {
             Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal = 16.dp),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            CATEGORIES.forEachIndexed { i, c -> ChoiceChip(tab == i, { tab = i }, "${c.emoji} ${tr(c.title)}") }
-            ChoiceChip(tab == COLOURS_TAB, { tab = COLOURS_TAB }, "🌈 " + tr("Colours"))
+            CATEGORIES.forEachIndexed { i, c -> ChoiceChip(tab == i, { tab = i }, tr(c.title)) }
+            ChoiceChip(tab == COLOURS_TAB, { tab = COLOURS_TAB }, tr("Colours"), icon = PixelIcons.SPARKLE)
         }
         Spacer(Modifier.height(10.dp))
 

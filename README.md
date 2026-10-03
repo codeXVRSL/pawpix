@@ -53,9 +53,14 @@ confetti, spring motion) drives every screen on both platforms:
 - Two typefaces of its own (both Open Font License, in `docs/fonts`): Fredoka, round and chunky,
   for names and titles; Nunito, soft and readable, for everything else. Generous 16dp gutters,
   48dp+ touch targets; every control keeps a spoken label for screen readers.
+- The pet lives in a room (`core/.../sprite/Room.kt`), drawn in its own pixels: papered walls, a
+  window onto the sky of the hour, a shelf with a plant and a framed paw, a clock, a lamp that comes
+  on at night, a rug, a cushion and a bowl. The same room backs the home card, the maker and the Studio.
+- One icon style, the pet's own (`core/.../sprite/PixelIcons.kt`): 12x12 pixel icons tinted by the
+  UI, never emoji (they render differently on every phone and read as placeholders).
 - The shell of a 2026 app: screens slide in and back out, the home screen keeps its main places in
-  a floating dock, and a pet's page opens on its world edge to edge (sky, sun or moon, drifting
-  pixel clouds, the pet on its floor) with chunky one-tap care tiles under the name.
+  a floating dock, and a pet's page is short: the room, name and mood, one-tap care tiles, today's
+  care, the week, and four doors (Health, Weight, Wardrobe, Share) to their own pages.
 - The **Pet Studio**: 70+ ways to draw the pet (head, eyes, eye colour, shine, brows, nose, mouth,
   ears, body, tail, coat pattern, chest, blush, whiskers, collar, and fur, marking and collar
   colours). Choices travel in the look code, so the household and the map draw the same pet.

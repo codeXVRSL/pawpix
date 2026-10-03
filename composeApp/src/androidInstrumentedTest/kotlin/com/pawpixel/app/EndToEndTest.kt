@@ -175,6 +175,7 @@ class EndToEndTest {
                 ?: throw AssertionError("no Done button next to ${row.text}")
 
         step("health: a kitten's birthday gives her the first-year plan") {
+            retrying { scrollTo(By.text("Health")).click() } // the Health door on her page
             retrying { scrollTo(By.text("+ Add health reminders")).click() }
             find(By.textContains("born?"))
             // "About how old" is the default, at 8 weeks: two taps make Chelsea a 10-week-old kitten.
@@ -187,8 +188,7 @@ class EndToEndTest {
             waitFor("health tasks added") { repo.state.value.tasksFor(petId).count { it.kind.health } == 5 }
             val today = repo.clock.dayIndex(repo.now())
             check(repo.state.value.pet(petId)?.birthDay == today - 70) { "birthday not saved: ${repo.state.value.pet(petId)?.birthDay}" }
-            scrollTo(By.text("10 weeks old")) // her age, under her name
-            scrollTo(By.text("💉 FVRCP vaccine"))
+            scrollTo(By.text("FVRCP vaccine"))
             find(By.textStartsWith("Dose 1 of 3"))
             find(By.textStartsWith("Typical schedule"))
             Thread.sleep(500)
@@ -197,7 +197,7 @@ class EndToEndTest {
 
         step("health: record a dose with a photo of the vaccination card") {
             val fvrcp = repo.state.value.tasksFor(petId).first { it.title == "FVRCP vaccine" }
-            retrying { doneNextTo(scrollTo(By.text("💉 FVRCP vaccine"))).click() }
+            retrying { doneNextTo(scrollTo(By.text("FVRCP vaccine"))).click() }
             find(By.text("When was it done?"))
             // The stubbed photo picker returns the test photo.
             retrying { find(By.text("📷 Add photo")).click() }
@@ -208,7 +208,7 @@ class EndToEndTest {
             val record = repo.state.value.completions.last { it.taskId == fvrcp.id }
             waitFor("photo saved with it", 20_000) { repo.recordPhoto(petId, record.id) != null }
             check(repo.recordPhoto(petId, record.id)!!.let { it[0] == 0xFF.toByte() && it[1] == 0xD8.toByte() }) { "record photo isn't a JPEG" }
-            scrollTo(By.text("💉 FVRCP vaccine"))
+            scrollTo(By.text("FVRCP vaccine"))
             scrollTo(By.textStartsWith("Dose 2 of 3")) // the row moved down the list (next due later)
             val thumb = By.desc("Photo of Chelsea's card for FVRCP vaccine")
             find(thumb, 20_000)
@@ -228,7 +228,7 @@ class EndToEndTest {
 
         step("health: an anti-rabies shot given a month ago is next due in 11 months") {
             val vaccine = repo.state.value.tasksFor(petId).first { it.title == "Anti-rabies shot" }
-            retrying { doneNextTo(scrollTo(By.text("💉 Anti-rabies shot"))).click() }
+            retrying { doneNextTo(scrollTo(By.text("Anti-rabies shot"))).click() }
             find(By.text("When was it done?"))
             retrying { find(By.text("A month ago")).click() }
             retrying { find(By.text("Save")).click() }
@@ -246,10 +246,13 @@ class EndToEndTest {
             shot("health-local-help")
             scrollTo(By.textStartsWith("March is Rabies Awareness Month"))
             shot("health-local-help-2")
+            device.pressBack() // back to her page
+            scrollTo(By.text("10 weeks old")) // her age, under her name
         }
 
         step("weight: two weigh-ins draw the chart; the list opens") {
             val today = repo.clock.dayIndex(repo.now())
+            retrying { scrollTo(By.text("Weight")).click() } // the Weight door
             retrying { scrollTo(By.text("+ Add weight")).click() }
             retrying { find(By.clazz("android.widget.EditText")).text = "4.0" }
             retrying { find(By.text("Yesterday")).click() }
@@ -268,6 +271,8 @@ class EndToEndTest {
             scrollTo(By.text("Hide weigh-ins"))
             shot("weight-list")
             retrying { find(By.text("Hide weigh-ins")).click() }
+            device.pressBack()
+            scrollTo(By.text("4.2 kg")) // the Weight door shows the latest weigh-in
         }
 
         step("milestone: 7 days of care is celebrated and shareable") {
@@ -284,21 +289,28 @@ class EndToEndTest {
         }
 
         step("outfits: a week of care earns a bandana, and it shows on the pet") {
+            retrying { scrollTo(By.text("Wardrobe")).click() } // the Wardrobe door
             retrying { scrollTo(By.text("Bandana")).click() }
             waitFor("wearing it") { repo.state.value.pet(petId)?.accessory == "BANDANA" }
-            scrollTo(By.textStartsWith("🔒 Crown"))
+            scrollTo(By.textStartsWith("Crown"))
             shot("outfits")
+            device.pressBack()
+            scrollTo(By.text("Wearing: Bandana")) // the door says so
+            retrying { scrollTo(By.text("Wardrobe")).click() }
             retrying { scrollTo(By.text("None")).click() }
             waitFor("took it off") { repo.state.value.pet(petId)?.accessory == null }
+            device.pressBack()
         }
 
         step("share animation and before/after card open the share sheet") {
             val before = choosers()
+            retrying { scrollTo(By.text("Share")).click() } // the Share door
             retrying { scrollTo(By.text("Share animation")).click() }
             waitFor("GIF share sheet", 60_000) { choosers() == before + 1 }
             retrying { scrollTo(By.text("Before/after")).click() }
             waitFor("card share sheet") { choosers() == before + 2 }
             shot("08-share-section")
+            device.pressBack()
         }
 
         step("home screen lists the pet") {
@@ -406,7 +418,8 @@ class EndToEndTest {
         step("household: share Chelsea, a partner joins, her Done and her Undo show on this phone") {
             if (!repo.map.settings.isConfigured) { note("server not set up in this build; skipped"); return@step }
             retrying { find(By.text("Chelsea")).click() }
-            retrying { scrollTo(By.text("👪 Share with your household")).click() }
+            retrying { scrollTo(By.text("Share")).click() } // the Share door
+            retrying { scrollTo(By.text("Share with your household")).click() }
             if (device.hasObject(By.text(repo.map.signInLabel))) retrying { find(By.text(repo.map.signInLabel)).click() }
             val nameField = find(By.clazz("android.widget.EditText"), 20_000)
             retrying { nameField.click() }

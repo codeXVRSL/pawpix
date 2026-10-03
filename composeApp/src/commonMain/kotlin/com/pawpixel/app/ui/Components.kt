@@ -72,6 +72,9 @@ import com.pawpixel.app.toImageBitmap
 import com.pawpixel.core.LocalClock
 import com.pawpixel.i18n.tr
 import com.pawpixel.sprite.PixelImage
+import com.pawpixel.sprite.PixelIcon
+import com.pawpixel.sprite.PixelIcons
+import androidx.compose.material3.LocalContentColor
 import kotlin.math.roundToInt
 import kotlin.random.Random
 
@@ -182,13 +185,47 @@ fun Hint(text: String, modifier: Modifier = Modifier, align: TextAlign? = null) 
 // Bars and buttons
 // ---------------------------------------------------------------------------------------------
 
-/** A round, tonal "‹" in a screen's top bar; screen readers hear just "Back". */
+/** A round, tonal back chevron in a screen's top bar; screen readers hear just "Back". */
 @Composable
 fun BackButton(app: AppScope) {
-    RoundIconButton("‹", tr("Back"), onClick = app.back)
+    RoundIconButton(PixelIcons.CHEVRON_LEFT, tr("Back"), onClick = app.back)
 }
 
-/** A 44dp round tonal button with a single glyph (an emoji or a symbol) and a spoken [label]. */
+/**
+ * One of the app's pixel icons, tinted. Drawn as rectangles on the pixel grid, so it is crisp at
+ * any size; the light cells are the tint at half strength.
+ */
+@Composable
+fun PixelIcon(icon: PixelIcon, modifier: Modifier = Modifier, tint: Color = LocalContentColor.current, size: Dp = 20.dp) {
+    val light = tint.copy(alpha = tint.alpha * 0.55f)
+    Canvas(modifier.size(size).clearAndSetSemantics {}) {
+        val cell = this.size.width / icon.width
+        for (y in 0 until icon.height) for (x in 0 until icon.width) {
+            when (icon.cell(x, y)) {
+                1 -> drawRect(tint, Offset(x * cell, y * cell), Size(cell + 0.5f, cell + 0.5f))
+                2 -> drawRect(light, Offset(x * cell, y * cell), Size(cell + 0.5f, cell + 0.5f))
+            }
+        }
+    }
+}
+
+/** A 40dp round tonal button with a pixel icon and a spoken [label]. */
+@Composable
+fun RoundIconButton(icon: PixelIcon, label: String, modifier: Modifier = Modifier, onClick: () -> Unit) {
+    val interaction = remember { MutableInteractionSource() }
+    Box(
+        modifier
+            .pressScale(interaction, down = 0.9f)
+            .size(40.dp)
+            .clip(Pill)
+            .background(MaterialTheme.colorScheme.surfaceContainerHigh)
+            .clickable(interaction, indication = null, role = Role.Button, onClickLabel = label, onClick = onClick)
+            .semantics { contentDescription = label },
+        contentAlignment = Alignment.Center,
+    ) { PixelIcon(icon, tint = MaterialTheme.colorScheme.onSurface, size = 18.dp) }
+}
+
+/** The same button with a text glyph ("+", "−"): for steppers, where a sign reads better than an icon. */
 @Composable
 fun RoundIconButton(glyph: String, label: String, modifier: Modifier = Modifier, onClick: () -> Unit) {
     val interaction = remember { MutableInteractionSource() }
@@ -222,50 +259,61 @@ fun TopBar(app: AppScope?, title: String?, modifier: Modifier = Modifier, action
 /** The main action: a 44dp coral pill (52 when big) that springs when pressed. */
 @Composable
 fun PrimaryPill(
-    text: String, modifier: Modifier = Modifier, enabled: Boolean = true, big: Boolean = false,
+    text: String, modifier: Modifier = Modifier, enabled: Boolean = true, big: Boolean = false, icon: PixelIcon? = null,
     onClick: () -> Unit,
 ) {
     val interaction = remember { MutableInteractionSource() }
     Button(
         onClick = onClick, enabled = enabled, interactionSource = interaction, shape = Pill,
-        contentPadding = PaddingValues(horizontal = if (big) 28.dp else 20.dp, vertical = 0.dp),
+        contentPadding = PaddingValues(start = if (icon != null) 16.dp else if (big) 28.dp else 20.dp, end = if (big) 28.dp else 20.dp),
         modifier = modifier.pressScale(interaction).heightIn(min = if (big) 52.dp else 44.dp),
-    ) { Text(text, style = if (big) MaterialTheme.typography.titleMedium else MaterialTheme.typography.labelLarge, maxLines = 1) }
+    ) {
+        if (icon != null) { PixelIcon(icon, size = 16.dp); Spacer(Modifier.width(8.dp)) }
+        Text(text, style = if (big) MaterialTheme.typography.titleMedium else MaterialTheme.typography.labelLarge, maxLines = 1)
+    }
 }
 
 /** A secondary action on a soft tinted pill. */
 @Composable
-fun TonalPill(text: String, modifier: Modifier = Modifier, enabled: Boolean = true, onClick: () -> Unit) {
+fun TonalPill(text: String, modifier: Modifier = Modifier, enabled: Boolean = true, icon: PixelIcon? = null, onClick: () -> Unit) {
     val interaction = remember { MutableInteractionSource() }
     FilledTonalButton(
         onClick = onClick, enabled = enabled, interactionSource = interaction, shape = Pill,
         colors = ButtonDefaults.filledTonalButtonColors(
             containerColor = MaterialTheme.colorScheme.surfaceContainerHigh, contentColor = MaterialTheme.colorScheme.onSurface,
         ),
-        contentPadding = PaddingValues(horizontal = 18.dp, vertical = 0.dp),
+        contentPadding = PaddingValues(start = if (icon != null) 14.dp else 18.dp, end = 18.dp),
         modifier = modifier.pressScale(interaction).heightIn(min = 40.dp),
-    ) { Text(text, style = MaterialTheme.typography.labelLarge, maxLines = 1) }
+    ) {
+        if (icon != null) { PixelIcon(icon, size = 16.dp); Spacer(Modifier.width(8.dp)) }
+        Text(text, style = MaterialTheme.typography.labelLarge, maxLines = 1)
+    }
 }
 
 /** A quiet action ("+ Add care task"): a soft pill in the page's own tint, no outline. */
 @Composable
-fun GhostPill(text: String, modifier: Modifier = Modifier, enabled: Boolean = true, onClick: () -> Unit) {
+fun GhostPill(text: String, modifier: Modifier = Modifier, enabled: Boolean = true, icon: PixelIcon? = null, onClick: () -> Unit) {
     val interaction = remember { MutableInteractionSource() }
     FilledTonalButton(
         onClick = onClick, enabled = enabled, interactionSource = interaction, shape = Pill,
         colors = ButtonDefaults.filledTonalButtonColors(
             containerColor = MaterialTheme.colorScheme.surfaceContainer, contentColor = MaterialTheme.colorScheme.onSurface,
         ),
-        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 0.dp),
+        contentPadding = PaddingValues(start = if (icon != null) 12.dp else 16.dp, end = 16.dp),
         modifier = modifier.pressScale(interaction).heightIn(min = 40.dp),
-    ) { Text(text, style = MaterialTheme.typography.labelMedium, maxLines = 1) }
+    ) {
+        if (icon != null) { PixelIcon(icon, size = 14.dp); Spacer(Modifier.width(6.dp)) }
+        Text(text, style = MaterialTheme.typography.labelMedium, maxLines = 1)
+    }
 }
 
 /** A plain text action ("Undo", "Edit"), coloured like a link. */
 @Composable
-fun LinkButton(text: String, modifier: Modifier = Modifier, enabled: Boolean = true, color: Color = MaterialTheme.colorScheme.primary, onClick: () -> Unit) {
+fun LinkButton(text: String, modifier: Modifier = Modifier, enabled: Boolean = true, color: Color = MaterialTheme.colorScheme.primary, icon: PixelIcon? = null, onClick: () -> Unit) {
     TextButton(onClick = onClick, enabled = enabled, modifier = modifier.heightIn(min = 36.dp), shape = Pill, contentPadding = PaddingValues(horizontal = 10.dp)) {
-        Text(text, style = MaterialTheme.typography.labelMedium, color = if (enabled) color else MaterialTheme.colorScheme.onSurfaceVariant)
+        val c = if (enabled) color else MaterialTheme.colorScheme.onSurfaceVariant
+        if (icon != null) { PixelIcon(icon, tint = c, size = 14.dp); Spacer(Modifier.width(6.dp)) }
+        Text(text, style = MaterialTheme.typography.labelMedium, color = c)
     }
 }
 
@@ -275,6 +323,7 @@ fun ChoiceChip(
     selected: Boolean, onClick: () -> Unit, label: String, modifier: Modifier = Modifier, enabled: Boolean = true,
     /** [Role.Button] for a chip that acts rather than chooses (a "+15" stepper). */
     role: Role = Role.RadioButton,
+    icon: PixelIcon? = null,
 ) {
     val interaction = remember { MutableInteractionSource() }
     val bg = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceContainerHigh
@@ -287,10 +336,13 @@ fun ChoiceChip(
             .background(if (enabled) bg else bg.copy(alpha = 0.5f))
             .clickable(interaction, indication = null, enabled = enabled, role = role, onClick = onClick)
             .semantics { if (role == Role.RadioButton) this.selected = selected }
-            .padding(horizontal = 14.dp, vertical = 6.dp),
+            .padding(start = if (icon != null) 10.dp else 14.dp, end = 14.dp, top = 6.dp, bottom = 6.dp),
         contentAlignment = Alignment.Center,
     ) {
-        Text(label, style = MaterialTheme.typography.labelMedium, color = if (enabled) fg else fg.copy(alpha = 0.6f), maxLines = 1)
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            if (icon != null) PixelIcon(icon, tint = if (enabled) fg else fg.copy(alpha = 0.6f), size = 14.dp)
+            Text(label, style = MaterialTheme.typography.labelMedium, color = if (enabled) fg else fg.copy(alpha = 0.6f), maxLines = 1)
+        }
     }
 }
 
@@ -343,16 +395,17 @@ fun PixelCard(modifier: Modifier = Modifier, color: Color? = null, content: @Com
     SoftCard(modifier, tone = if (color == null) Tone.Tonal else Tone.Surface, content = content)
 }
 
-/** A 40dp rounded tile holding an emoji: the icon of a care task or a setting. */
+/** A 40dp rounded tile holding a pixel icon: the icon of a care task or a setting. */
 @Composable
-fun IconTile(emoji: String, modifier: Modifier = Modifier, tone: Tone = Tone.Tonal, size: Dp = 40.dp) {
+fun IconTile(icon: PixelIcon, modifier: Modifier = Modifier, tone: Tone = Tone.Tonal, size: Dp = 40.dp) {
     val cs = MaterialTheme.colorScheme
-    val bg = when (tone) {
-        Tone.Surface -> cs.surfaceContainerLow; Tone.Tonal -> cs.surfaceContainerHigh
-        Tone.Accent -> cs.primaryContainer; Tone.Good -> cs.secondaryContainer; Tone.Calm -> cs.tertiaryContainer
+    val (bg, fg) = when (tone) {
+        Tone.Surface -> cs.surfaceContainerLow to cs.onSurface; Tone.Tonal -> cs.surfaceContainerHigh to cs.onSurface
+        Tone.Accent -> cs.primaryContainer to cs.onPrimaryContainer; Tone.Good -> cs.secondaryContainer to cs.onSecondaryContainer
+        Tone.Calm -> cs.tertiaryContainer to cs.onTertiaryContainer
     }
     Box(modifier.size(size).clip(RoundedCornerShape(size / 3)).background(bg), contentAlignment = Alignment.Center) {
-        Text(emoji, fontSize = (size.value * 0.5f).sp, modifier = Modifier.clearAndSetSemantics {})
+        PixelIcon(icon, tint = fg, size = size / 2)
     }
 }
 

@@ -41,6 +41,8 @@ sealed interface Screen {
     data class RemakeSprite(val petId: String) : Screen
     /** The Pet Studio: how the pixel pet is drawn (eyes, ears, coat, colours...). */
     data class Studio(val petId: String) : Screen
+    /** One of the pet's own pages: "health", "weight", "wardrobe" or "share". */
+    data class PetSection(val petId: String, val section: String) : Screen
     /** [health] picks which kinds a new task offers: daily care, or health care (vaccines, deworming...). */
     data class EditTask(val petId: String, val taskId: String?, val health: Boolean = false) : Screen
     data object Settings : Screen
@@ -59,6 +61,7 @@ internal fun Screen.code(): String = when (this) {
     is Screen.PetDetail -> "pet:$petId"
     is Screen.RemakeSprite -> "remake:$petId"
     is Screen.Studio -> "studio:$petId"
+    is Screen.PetSection -> "section:$petId:$section"
     is Screen.EditTask -> "task:$petId:${taskId ?: "-"}:${if (health) 1 else 0}"
     Screen.Settings -> "settings"
     Screen.PetMap -> "map"
@@ -74,6 +77,7 @@ internal fun screenOf(code: String): Screen? {
         "pet" -> id(1)?.let { Screen.PetDetail(it) }
         "remake" -> id(1)?.let { Screen.RemakeSprite(it) }
         "studio" -> id(1)?.let { Screen.Studio(it) }
+        "section" -> id(1)?.let { pet -> id(2)?.let { Screen.PetSection(pet, it) } }
         "task" -> id(1)?.let { Screen.EditTask(it, id(2), p.getOrNull(3) == "1") }
         "settings" -> Screen.Settings
         "map" -> Screen.PetMap
@@ -210,6 +214,10 @@ fun App(repo: PawRepository, registerBack: ((() -> Boolean) -> (() -> Unit))? = 
                 is Screen.PetDetail -> {
                     val pet = state.pet(screen.petId)
                     if (pet == null) LaunchedEffect(screen) { back() } else PetScreen(app, state, pet)
+                }
+                is Screen.PetSection -> {
+                    val pet = state.pet(screen.petId)
+                    if (pet == null) LaunchedEffect(screen) { back() } else PetSectionScreen(app, state, pet, screen.section)
                 }
                 is Screen.EditTask -> {
                     val pet = state.pet(screen.petId)

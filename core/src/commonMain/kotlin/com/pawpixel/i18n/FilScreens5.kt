@@ -49,5 +49,15 @@ object FilScreens5 {
         "Show the name" to "Ipakita ang pangalan",
         // The shell: the dock and the quick-care tiles
         "Pets" to "Mga alaga", "Family" to "Pamilya", "{0}: all done today" to "{0}: tapos na lahat ngayon",
+        // The pet's doors and sub-pages
+        "Wardrobe" to "Wardrobe", "Share" to "I-share", "Vaccines, deworming, vet visits" to "Mga bakuna, purga, pagpunta sa beterinaryo",
+        "{0} due now" to "{0} ang kailangan na ngayon", "All on schedule" to "Nasa iskedyul lahat", "{0} on {1}" to "{0} noong {1}",
+        "Keep track of weigh-ins" to "Itala ang mga timbang", "Wearing: {0}" to "Suot: {0}", "Outfits and the Pet Studio" to "Mga outfit at ang Pet Studio",
+        "GIF, before/after, household" to "GIF, before/after, sambahayan",
+        "Show {0} off: a looping animation, or a before-and-after card with the photo." to "Ipagmalaki si {0}: isang umuulit na animation, o isang before-and-after card kasama ang litrato.",
+        "Your household" to "Ang sambahayan mo",
+        "Care for {0} together with a partner or family: every Done shows on everyone's phone." to "Alagaan si {0} kasama ang partner o pamilya: lahat ng Done ay lumalabas sa telepono ng lahat.",
+        "Share with your household" to "I-share sa sambahayan mo",
+        "Add photo" to "Magdagdag ng litrato", "{0} · in {1} days" to "{0} · sa loob ng {1} araw", "Next: {0} · {1}" to "Susunod: {0} · {1}",
     )
 }

@@ -124,6 +124,7 @@ final class OwnerJourneyTests: XCTestCase {
         }
 
         step("health: a kitten's birthday gives her the first-year plan") {
+            try scrollTo("Health").tap() // the Health door on the pet's page
             try scrollTo("+ Add health reminders").tap()
             // "About how old" is the default, at 8 weeks: two taps make the pet a 10-week-old kitten.
             let older = element(containing: "Older")
@@ -138,9 +139,11 @@ final class OwnerJourneyTests: XCTestCase {
             guard element(containing: "Dose 1 of 3").waitForExistence(timeout: 10) else { throw Failure("the first-year series isn't shown") }
             sleep(1)
             shot("health-series")
+            try scrollTo("Back").tap()
         }
 
         step("weight: two weigh-ins draw the chart") {
+            try scrollTo("Weight").tap() // the Weight door
             // Without the keyboard: +1 kg four times (4.0 kg) yesterday, then +0.1 kg twice from it (4.2 kg) today.
             try scrollTo("+ Add weight").tap()
             let addKilo = element(containing: "Add 1 kg")
@@ -159,9 +162,11 @@ final class OwnerJourneyTests: XCTestCase {
             guard element("4.2 kg").waitForExistence(timeout: 10) else { throw Failure("latest weight not shown") }
             sleep(1)
             shot("weight")
+            try scrollTo("Back").tap()
         }
 
         step("before/after card opens the share sheet") {
+            try scrollTo("Share").tap() // the Share door
             let button = try scrollTo("Before/after")
             sleep(1) // let the list settle after scrolling, or the tap can miss
             button.tap()
@@ -185,6 +190,7 @@ final class OwnerJourneyTests: XCTestCase {
             shot("share-sheet")
             guard appeared else { throw Failure("share sheet didn't appear") }
             dismissShareSheet()
+            try scrollTo("Back").tap() // the pet's page
         }
 
         step("home lists the pet, settings open") {
@@ -215,12 +221,14 @@ final class OwnerJourneyTests: XCTestCase {
             let card = element(containing: petName)
             guard card.waitForExistence(timeout: 15) else { throw Failure("pet not listed") }
             card.tap()
+            try scrollTo("Share").tap() // the Share door
             try scrollTo(query: element(containing: "Share with your household"), "Share with your household").tap()
             let ready = element("Coming soon").waitForExistence(timeout: 10)
             shot("household")
             guard ready else { throw Failure("household screen didn't say it's not available yet") }
             try find("Back").tap()
-            try scrollTo("Back").tap() // the pet's page is scrolled down to the share button
+            try scrollTo("Back").tap() // the Share page
+            try scrollTo("Back").tap() // the pet's page
             try find("Settings")
         }
 

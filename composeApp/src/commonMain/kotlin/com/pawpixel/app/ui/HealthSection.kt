@@ -45,6 +45,7 @@ import com.pawpixel.core.LocalClock
 import com.pawpixel.core.Pet
 import com.pawpixel.core.Species
 import com.pawpixel.i18n.tr
+import com.pawpixel.sprite.PixelIcons
 import com.pawpixel.i18n.trName
 
 /**
@@ -58,7 +59,6 @@ fun HealthSection(app: AppScope, state: AppState, pet: Pet) {
     val health = CareStats.healthDue(state, pet.id, app.now, app.repo.clock)
     var askBirthday by remember { mutableStateOf(false) }
 
-    SectionTitle(tr("Health"))
     if (health.isEmpty()) {
         Hint(
             tr("Keep track of {0}'s anti-rabies shot, other vaccines, deworming, tick & flea care and vet check-ups.", pet.name) + " " +
@@ -110,8 +110,9 @@ private fun HealthRow(app: AppScope, state: AppState, pet: Pet, h: HealthItem) {
     SoftCard(Modifier.fillMaxWidth(), tone = Tone.Surface, padding = 14.dp) {
         Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
+                IconTile(PixelIcons.forKind(t.kind), tone = if (h.due) Tone.Accent else Tone.Tonal, modifier = Modifier.padding(end = 12.dp))
                 Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                    Text("${t.kind.emoji} $name", style = MaterialTheme.typography.titleMedium)
+                    Text(name, style = MaterialTheme.typography.titleMedium)
                     Text(
                         CareStats.dueLabel(h, app.now, clock), style = MaterialTheme.typography.bodyMedium,
                         fontWeight = if (h.due) FontWeight.Bold else null,
@@ -185,7 +186,7 @@ private fun RecordDialog(app: AppScope, pet: Pet, t: CareTask, h: HealthItem, on
                 Text(tr("Photo of the vaccination card or receipt (optional)"), style = MaterialTheme.typography.bodyMedium)
                 val chosen = photo
                 if (chosen == null) {
-                    GhostPill(tr("📷 Add photo"), onClick = pick)
+                    GhostPill(tr("Add photo"), icon = PixelIcons.CAMERA, onClick = pick)
                 } else {
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         PhotoThumb(app, HealthPhoto("new", picks.toLong()) { chosen }, tr("The photo you picked"), onClick = null)
@@ -291,7 +292,7 @@ private fun HistoryRow(
             ).joinToString(" · ")
             if (detail.isNotEmpty()) Text(detail, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             Row {
-                if (!hasPhoto) LinkButton(tr("📷 Add photo"), onClick = onAddPhoto)
+                if (!hasPhoto) LinkButton(tr("Add photo"), icon = PixelIcons.CAMERA, onClick = onAddPhoto)
                 if (canDelete) LinkButton(tr("Delete"), color = MaterialTheme.colorScheme.error, onClick = onDelete)
             }
         }

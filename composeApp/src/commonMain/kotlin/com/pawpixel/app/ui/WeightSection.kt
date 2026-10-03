@@ -51,6 +51,7 @@ import com.pawpixel.core.Pet
 import com.pawpixel.core.Weight
 import com.pawpixel.core.WeightTrend
 import com.pawpixel.i18n.tr
+import com.pawpixel.sprite.PixelIcons
 
 /** Weigh-ins, the latest one and a small trend chart: vets ask about slow gains and losses. */
 @Composable
@@ -61,7 +62,6 @@ fun WeightSection(app: AppScope, state: AppState, pet: Pet) {
     var editing by remember { mutableStateOf<Weight?>(null) }
     var showAll by remember { mutableStateOf(false) }
 
-    SectionTitle(tr("Weight"))
     if (weights.isEmpty()) {
         Hint(tr("Weigh {0} now and then (a bathroom scale works: weigh yourself holding them, then subtract).", pet.name))
     } else {
@@ -79,7 +79,7 @@ fun WeightSection(app: AppScope, state: AppState, pet: Pet) {
         }
     }
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        GhostPill(tr("+ Add weight")) { adding = true }
+        GhostPill(tr("+ Add weight"), icon = PixelIcons.SCALE) { adding = true }
         if (weights.isNotEmpty()) LinkButton(if (showAll) tr("Hide weigh-ins") else tr("All weigh-ins ({0})", weights.size)) { showAll = !showAll }
     }
     if (showAll) {

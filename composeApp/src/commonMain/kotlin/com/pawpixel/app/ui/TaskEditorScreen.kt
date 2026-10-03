@@ -43,6 +43,7 @@ import com.pawpixel.core.StateOps
 import com.pawpixel.core.TaskDefaults
 import com.pawpixel.core.TaskKind
 import com.pawpixel.i18n.tr
+import com.pawpixel.sprite.PixelIcons
 import com.pawpixel.i18n.trName
 
 @OptIn(ExperimentalLayoutApi::class)
@@ -111,7 +112,7 @@ fun TaskEditorScreen(app: AppScope, state: AppState, pet: Pet, taskId: String?, 
                 // All kinds visible at once (wrapping), so Medicine or Litter aren't hidden off-screen.
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     TaskKind.entries.filter { it.health == health }.forEach { k ->
-                        ChoiceChip(task.kind == k, { setKind(k) }, "${k.emoji} ${tr(k.label)}")
+                        ChoiceChip(task.kind == k, { setKind(k) }, tr(k.label), icon = PixelIcons.forKind(k))
                     }
                 }
                 OutlinedTextField(
@@ -132,7 +133,7 @@ fun TaskEditorScreen(app: AppScope, state: AppState, pet: Pet, taskId: String?, 
                             Text(time, style = MaterialTheme.typography.titleLarge, maxLines = 1, softWrap = false, modifier = Modifier.weight(1f))
                             if (task.slots.size > 1) {
                                 val removeLabel = tr("Remove {0}", time)
-                                RoundIconButton("✕", removeLabel) { task = task.copy(slots = task.slots.filterIndexed { j, _ -> j != i }) }
+                                RoundIconButton(PixelIcons.CLOSE, removeLabel) { task = task.copy(slots = task.slots.filterIndexed { j, _ -> j != i }) }
                             }
                         }
                         FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {

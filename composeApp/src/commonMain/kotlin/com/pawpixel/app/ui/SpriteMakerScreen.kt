@@ -6,7 +6,6 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.Arrangement
@@ -64,6 +63,7 @@ import com.pawpixel.core.Species
 import com.pawpixel.core.SpriteSettings
 import com.pawpixel.core.StateOps
 import com.pawpixel.i18n.tr
+import com.pawpixel.sprite.PixelIcons
 import com.pawpixel.sprite.Chibi
 import com.pawpixel.sprite.Ears
 import com.pawpixel.sprite.FaceBox
@@ -179,7 +179,7 @@ fun SpriteMakerScreen(app: AppScope, state: AppState, existingPetId: String?) {
         }
     }
 
-    val scene = sceneFor(app.repo.clock.minuteOfDay(app.now), state.settings.nightStart, state.settings.nightEnd)
+    val phase = phaseFor(app, state)
     Column(
         Modifier.fillMaxSize().background(heroGlow()).statusBarsPadding().navigationBarsPadding()
             .imePadding() // keeps the focused field and buttons above the keyboard
@@ -197,14 +197,10 @@ fun SpriteMakerScreen(app: AppScope, state: AppState, existingPetId: String?) {
         if (r == null || art == null) {
             SoftCard(Modifier.fillMaxWidth(), tone = Tone.Surface, padding = 20.dp) {
                 Column(verticalArrangement = Arrangement.spacedBy(14.dp), horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
-                    // The photo goes here: a soft window with the sky of the hour, waiting for a pet.
-                    Box(
-                        Modifier.fillMaxWidth().height(160.dp).clip(MaterialTheme.shapes.medium)
-                            .background(Brush.verticalGradient(0f to scene.skyTop, 0.78f to scene.skyBottom, 0.78f to scene.floor, 1f to scene.floor)),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        if (loading) CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
-                        else Text("📷", style = MaterialTheme.typography.displayMedium, modifier = Modifier.padding(bottom = 12.dp))
+                    // The photo goes here: an empty room, waiting for a pet.
+                    RoomBackdrop(phase, Modifier.fillMaxWidth().height(160.dp).clip(MaterialTheme.shapes.medium)) { floor ->
+                        if (loading) CircularProgressIndicator(Modifier.align(Alignment.Center), color = MaterialTheme.colorScheme.primary)
+                        else PixelIcon(PixelIcons.CAMERA, tint = Color(0x662B2135), size = 40.dp, modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = floor + 8.dp))
                     }
                     Text(tr("Pick a photo of your pet"), style = MaterialTheme.typography.titleLarge, textAlign = TextAlign.Center)
                     Text(
@@ -228,7 +224,7 @@ fun SpriteMakerScreen(app: AppScope, state: AppState, existingPetId: String?) {
                     Box(Modifier.fillMaxWidth()) {
                         LivePet(
                             art, emptyList(), Mood.HAPPY, seed = 7, modifier = Modifier.fillMaxWidth(), reaction = reaction,
-                            description = MoodEngine.describe(shownName, Mood.HAPPY), scene = scene,
+                            description = MoodEngine.describe(shownName, Mood.HAPPY), phase = phase,
                         )
                         if (loading) CircularProgressIndicator(Modifier.align(Alignment.TopEnd).padding(12.dp).size(22.dp), strokeWidth = 3.dp)
                         Confetti(revealed, Modifier.matchParentSize())

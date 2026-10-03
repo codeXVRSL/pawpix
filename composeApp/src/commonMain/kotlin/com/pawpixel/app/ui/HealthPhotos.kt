@@ -58,7 +58,7 @@ fun PhotoThumb(app: AppScope, photo: HealthPhoto, description: String, size: Dp 
     // Described while it's still loading too (a bare "📷" would be read out as "camera").
     Box(box.semantics(mergeDescendants = true) { contentDescription = description }, contentAlignment = Alignment.Center) {
         image?.let { Image(it, contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize()) }
-            ?: Text("📷", modifier = Modifier.padding(4.dp).clearAndSetSemantics {})
+            ?: PixelIcon(com.pawpixel.sprite.PixelIcons.CAMERA, modifier = Modifier.padding(6.dp), size = 20.dp)
     }
 }
 
