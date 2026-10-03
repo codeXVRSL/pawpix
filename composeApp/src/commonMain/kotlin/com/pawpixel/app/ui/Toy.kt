@@ -5,6 +5,8 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.PaddingValues
@@ -15,6 +17,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
@@ -199,6 +202,15 @@ fun Meter(fraction: Float, toy: Toy, modifier: Modifier = Modifier, segments: In
             drawRoundRect(if (lit) toy.lip else edge, Offset(x, 0f), Size(w, size.height), r)
             drawRoundRect(if (lit) toy.face else empty, Offset(x, 0f), Size(w, size.height - 2.dp.toPx()), r)
         }
+    }
+}
+
+/** A care kind's icon in its candy colour: the sticker at the head of a care or health row. */
+@Composable
+fun CandyTile(icon: PixelIcon, toy: Toy, modifier: Modifier = Modifier, size: Dp = 40.dp) {
+    val shape = RoundedCornerShape(size * 0.3f)
+    Box(modifier.size(size).background(toy.face, shape).border(2.dp, toy.lip, shape), contentAlignment = Alignment.Center) {
+        PixelIcon(icon, tint = toy.ink, size = size / 2)
     }
 }
 

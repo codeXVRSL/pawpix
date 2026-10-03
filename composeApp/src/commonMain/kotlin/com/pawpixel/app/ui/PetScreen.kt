@@ -63,6 +63,7 @@ import androidx.compose.ui.graphics.Color
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun PetScreen(app: AppScope, state: AppState, pet: Pet) {
     val reading = MoodEngine.read(state, pet.id, app.now, app.repo.clock)
@@ -118,9 +119,11 @@ fun PetScreen(app: AppScope, state: AppState, pet: Pet) {
             horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(6.dp),
         ) {
             Text(pet.name, style = MaterialTheme.typography.petName, modifier = Modifier.semantics { heading() }, textAlign = TextAlign.Center)
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                StatusPill(reading.caption, moodColor(reading.mood))
-                pet.birthDay?.let { born -> Hint(HealthPlan.ageLabel(born, clock.dayIndex(app.now))) }
+            FlowRow(
+                horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally), verticalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
+                StatusPill(reading.caption, moodColor(reading.mood), modifier = Modifier.align(Alignment.CenterVertically))
+                pet.birthDay?.let { born -> Hint(HealthPlan.ageLabel(born, clock.dayIndex(app.now)), modifier = Modifier.align(Alignment.CenterVertically)) }
             }
             Hearts(reading.score, Modifier.padding(top = 4.dp), description = tr("Happiness {0} of 5", (reading.score + 10) / 20))
         }
@@ -248,10 +251,7 @@ private fun TaskRow(app: AppScope, state: AppState, pet: Pet, s: TaskStatus, onD
     SoftCard(Modifier.fillMaxWidth(), tone = Tone.Surface, padding = 12.dp) {
         Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Box(
-                    Modifier.size(40.dp).clip(RoundedCornerShape(12.dp)).background(toy.face).border(2.dp, toy.lip, RoundedCornerShape(12.dp)),
-                    contentAlignment = Alignment.Center,
-                ) { PixelIcon(PixelIcons.forKind(t.kind), tint = toy.ink, size = 20.dp) }
+                CandyTile(PixelIcons.forKind(t.kind), toy)
                 Spacer(Modifier.width(12.dp))
                 Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
                     Text(name, style = MaterialTheme.typography.titleMedium)

@@ -110,7 +110,8 @@ private fun HealthRow(app: AppScope, state: AppState, pet: Pet, h: HealthItem) {
     SoftCard(Modifier.fillMaxWidth(), tone = Tone.Surface, padding = 14.dp) {
         Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                IconTile(PixelIcons.forKind(t.kind), tone = if (h.due) Tone.Accent else Tone.Tonal, modifier = Modifier.padding(end = 12.dp))
+                val toy = Candy.forKind(t.kind)
+                CandyTile(PixelIcons.forKind(t.kind), toy, modifier = Modifier.padding(end = 12.dp))
                 Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                     Text(name, style = MaterialTheme.typography.titleMedium)
                     Text(
@@ -129,7 +130,10 @@ private fun HealthRow(app: AppScope, state: AppState, pet: Pet, h: HealthItem) {
                     )
                 }
                 val recordLabel = tr("Record {0} for {1}", name, pet.name)
-                PrimaryPill(tr("Done"), modifier = Modifier.padding(start = 8.dp).semantics { contentDescription = recordLabel }) { recording = true }
+                ToyButton(
+                    tr("Done"), style = if (h.due) ToyStyle.Primary else ToyStyle.Colored(toy),
+                    modifier = Modifier.padding(start = 8.dp).semantics { contentDescription = recordLabel },
+                ) { recording = true }
             }
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 if (latest != null && latestHasPhoto) {
