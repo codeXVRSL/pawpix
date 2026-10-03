@@ -168,6 +168,8 @@ object FilScreens2 {
         "Use a new photo" to "Gumamit ng bagong litrato",
         "Use a different photo" to "Gumamit ng ibang litrato",
         "Save pet" to "I-save ang alaga",
+        "Save task" to "I-save ang gawain",
+        "Save health item" to "I-save ang item sa kalusugan",
         "Save {0}" to "I-save si {0}",
     )
 }

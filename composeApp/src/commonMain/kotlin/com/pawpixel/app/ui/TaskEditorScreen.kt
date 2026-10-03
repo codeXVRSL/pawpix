@@ -191,7 +191,8 @@ fun TaskEditorScreen(app: AppScope, state: AppState, pet: Pet, taskId: String?, 
             }
         }
 
-        PrimaryPill(tr("Save"), enabled = !saving, big = true, modifier = Modifier.fillMaxWidth(), onClick = save)
+        // Named like the pet maker's big key, so the two Save keys on this page read (and test) apart.
+        PrimaryPill(if (health) tr("Save health item") else tr("Save task"), enabled = !saving, big = true, modifier = Modifier.fillMaxWidth(), onClick = save)
         if (original != null) {
             LinkButton(tr("Delete task"), color = MaterialTheme.colorScheme.error) { confirmDelete = true }
         }
