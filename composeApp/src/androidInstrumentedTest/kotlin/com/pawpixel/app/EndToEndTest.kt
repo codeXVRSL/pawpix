@@ -830,9 +830,9 @@ class EndToEndTest {
     /** The app's own Back key (the system's navigation bar has one with the same name). */
     private fun appBack(): BySelector = By.pkg(ctx.packageName).desc("Back")
 
-    /** Drops a panel over the room with its Back key. */
+    /** Drops a panel over the room: its Back key when on screen, else the phone's back (the panel may be scrolled past its key). */
     private fun closePanel() {
-        retrying { find(appBack()).click() }
+        if (fresh(appBack()) != null) retrying { find(appBack()).click() } else device.pressBack()
         Thread.sleep(600)
     }
 

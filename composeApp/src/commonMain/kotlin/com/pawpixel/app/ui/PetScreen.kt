@@ -125,7 +125,7 @@ fun PetScreen(app: AppScope, state: AppState, pet: Pet) {
             if (celebrating) SpeechBubble(reading.caption, Modifier.padding(top = 10.dp).align(Alignment.CenterHorizontally))
         }
         // What the pet is thinking: a bubble just over its head.
-        if (!celebrating) SpeechBubble(reading.caption, Modifier.align(Alignment.TopCenter).padding(top = screenHeight * 0.32f))
+        if (!celebrating) SpeechBubble(reading.caption, Modifier.align(Alignment.TopCenter).padding(top = screenHeight * 0.27f))
 
         // Bottom HUD: Undo (for a few seconds after a tap), the need meters, the five keys.
         Column(
