@@ -168,6 +168,7 @@ class EndToEndTest {
             shot("07-task-editor")
             retrying { scrollTo(By.text("Save")).click() }
             waitFor("medicine task saved") { repo.state.value.tasksFor(petId).any { it.kind.name == "MEDS" } }
+            device.wait(Until.gone(By.text("Times")), 5_000) // the editor has left
             scrollTo(By.textContains("Medicine")) // in the Care panel's list
             closePanel() // the panel drops: back to the room
             find(By.desc("Settings"))
@@ -830,8 +831,13 @@ class EndToEndTest {
     /** The app's own Back key (the system's navigation bar has one with the same name). */
     private fun appBack(): BySelector = By.pkg(ctx.packageName).desc("Back")
 
-    /** Drops a panel over the room: its Back key when on screen, else the phone's back (the panel may be scrolled past its key). */
+    /**
+     * Drops a panel over the room: its Back key when on screen, else the phone's back (the panel may
+     * be scrolled past its key). Waits for the screen before it to finish leaving first: a tap on
+     * that screen's fading Back key goes nowhere.
+     */
     private fun closePanel() {
+        Thread.sleep(700)
         if (fresh(appBack()) != null) retrying { find(appBack()).click() } else device.pressBack()
         Thread.sleep(600)
     }
