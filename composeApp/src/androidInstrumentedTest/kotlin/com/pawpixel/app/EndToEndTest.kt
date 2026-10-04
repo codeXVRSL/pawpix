@@ -459,7 +459,8 @@ class EndToEndTest {
             waitFor("her Done arrives", 30_000) { repo.state.value.completions.any { it.id == "partnerlitter1" && it.by == partnerApi.userId } }
             scrollTo(By.text("Jamaica"))
             shot("h-household-members")
-            // Back to Chelsea's page: "Litter cleaned by Jamaica · <time>".
+            // Back to Chelsea's room: "Litter cleaned by Jamaica · <time>" in the Care panel.
+            closePanel() // the household screen
             closePanel() // the Share panel drops: the room
             retrying { find(By.text("Care")).click() } // the Care panel
             scrollTo(By.text("+ Add care task"))
