@@ -1,0 +1,24 @@
+PASS  first open goes straight to making a pet  (1459 ms)
+PASS  photo becomes a pixel pet  (9048 ms)
+PASS  cat body and ears  (9571 ms)
+      typed on attempt 1
+      scroll down #0 for Save mochi: exists=true frame=(16.0, 874.6666870117188, 408.0, 50.0) hittable=true
+PASS  name and save  (48363 ms)
+PASS  Done on a care task  (3854 ms)
+PASS  add a medicine task  (13983 ms)
+PASS  health: a kitten's birthday gives her the first-year plan  (15262 ms)
+PASS  weight: two weigh-ins draw the chart  (29288 ms)
+PASS  before/after card opens the share sheet  (19985 ms)
+PASS  share animation opens the share sheet  (31132 ms)
+      scroll down #0 for Save backup file: exists=true frame=(32.0, 1017.3333129882812, 149.6666717529297, 41.99993896484375) hittable=false
+      scroll down #1 for Save backup file: exists=true frame=(32.0, 610.0, 149.6666717529297, 48.0) hittable=true
+      scroll down #0 for Back: exists=true frame=(16.0, -1107.0, 36.0, 36.0) hittable=false
+      scroll down #1 for Back: exists=true frame=(16.0, -1106.6666259765625, 36.0, 36.0) hittable=false
+      scroll down #2 for Back: exists=true frame=(16.0, -1107.6666259765625, 36.0, 36.0) hittable=false
+      scroll up #0 for Back: exists=true frame=(16.0, -642.6666870117188, 36.0, 36.0) hittable=false
+      scroll up #1 for Back: exists=true frame=(16.0, -244.0, 36.0, 36.0) hittable=false
+      scroll up #2 for Back: exists=true frame=(10.0, 62.66666793823242, 48.0, 48.000003814697266) hittable=true
+PASS  home is the pet's room; settings open  (42022 ms)
+PASS  pet map opens (this CI build has no map server: it says so)  (8175 ms)
+PASS  share with your household (no server in this CI build: says it's not available yet)  (9594 ms)
+PASS  relaunch keeps the pet  (8030 ms)
