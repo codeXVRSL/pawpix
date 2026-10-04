@@ -47,7 +47,9 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
@@ -58,6 +60,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.pawpixel.core.AppState
 import com.pawpixel.core.HealthPlan
+import com.pawpixel.core.Milestones
 import com.pawpixel.core.MoodEngine
 import com.pawpixel.core.Pet
 import com.pawpixel.core.TaskStatus
@@ -96,12 +99,16 @@ fun PetScreen(app: AppScope, state: AppState, pet: Pet) {
     val clock = app.repo.clock
     val phase = phaseFor(app, state)
     val big = largeText()
+    val celebrating = Milestones.toCelebrate(pet) != null
+    // The bottom HUD's real height (two rows of meters at big fonts): the pet's floor sits above it.
+    var hudHeight by remember { mutableStateOf(HUD_DEPTH) }
+    val density = LocalDensity.current
 
     BoxWithConstraints(Modifier.fillMaxSize().background(Color(com.pawpixel.sprite.Room.floorColor(phase)))) {
         val screenHeight = maxHeight
         LivePet(
             art, pet.eyes, reading.mood, seed = pet.id.hashCode(), modifier = Modifier.fillMaxSize(), reaction = reaction,
-            description = MoodEngine.describe(pet.name, reading.mood), phase = phase, keepAspect = false, floorDepth = HUD_DEPTH + 84.dp, zoom = 1.25f,
+            description = MoodEngine.describe(pet.name, reading.mood), phase = phase, keepAspect = false, floorDepth = hudHeight + 64.dp, zoom = 1.25f,
             onPetted = { haptics.performHapticFeedback(HapticFeedbackType.LongPress) },
         )
         HeartBurst(burst, Modifier.matchParentSize())
@@ -113,14 +120,19 @@ fun PetScreen(app: AppScope, state: AppState, pet: Pet) {
                 Spacer(Modifier.weight(1f))
                 GlassButton(PixelIcons.GEAR, tr("Settings")) { app.navigate(Screen.Settings) }
             }
-            // A milestone pops up here, over the room, with confetti.
+            // A milestone pops up here, over the room, with confetti; the bubble moves under it then.
             Box(Modifier.padding(top = 10.dp)) { MilestoneBanner(app, pet) }
+            if (celebrating) SpeechBubble(reading.caption, Modifier.padding(top = 10.dp).align(Alignment.CenterHorizontally))
         }
         // What the pet is thinking: a bubble just over its head.
-        SpeechBubble(reading.caption, Modifier.align(Alignment.TopCenter).padding(top = screenHeight * 0.32f))
+        if (!celebrating) SpeechBubble(reading.caption, Modifier.align(Alignment.TopCenter).padding(top = screenHeight * 0.32f))
 
         // Bottom HUD: Undo (for a few seconds after a tap), the need meters, the five keys.
-        Column(Modifier.align(Alignment.BottomCenter).fillMaxWidth().navigationBarsPadding(), horizontalAlignment = Alignment.CenterHorizontally) {
+        Column(
+            Modifier.align(Alignment.BottomCenter).fillMaxWidth().navigationBarsPadding()
+                .onSizeChanged { hudHeight = with(density) { it.height.toDp() } },
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
             UndoStrip(app, pet, lastDone) { lastDone = null }
             if (statuses.isEmpty()) {
                 EmptyNeeds(app, pet)

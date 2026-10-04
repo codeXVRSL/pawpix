@@ -250,8 +250,7 @@ class EndToEndTest {
             shot("health-local-help")
             scrollTo(By.textStartsWith("March is Rabies Awareness Month"))
             shot("health-local-help-2")
-            device.pressBack() // back to the Health panel
-            closePanel() // and to the room
+            closePanel() // the local help is part of the Health panel: the panel drops, the room shows
             find(By.text("10 weeks old")) // her age, on her name plate
         }
 
@@ -418,6 +417,7 @@ class EndToEndTest {
             retrying { find(By.text("Leave")).click() }
             find(By.text("I'm 18 or older"), 20_000)
             check(!runBlocking { repo.map.client.hasJoined() }) { "still on the map after leaving" }
+            closePanel() // the map
             closePanel() // the More panel drops: the room
             find(By.text("Chelsea"))
         }
@@ -560,7 +560,9 @@ class EndToEndTest {
                 check(f.isAutoStart) { "the flipper doesn't start by itself" }
                 check(f.childCount >= 6) { "only ${f.childCount} frames" }
                 val bitmaps = (0 until f.childCount).map { ((f.getChildAt(it) as android.widget.ImageView).drawable as android.graphics.drawable.BitmapDrawable).bitmap }
-                check(bitmaps.toSet().size >= 3) { "the frames are all the same picture" }
+                // Asleep (the run can fall in the pet's night), the pet lies still: the frames are alike by design.
+                val asleep = com.pawpixel.core.MoodEngine.read(repo.state.value, petId, repo.now(), repo.clock).mood == com.pawpixel.core.Mood.SLEEPY
+                check(asleep || bitmaps.toSet().size >= 3) { "the frames are all the same picture" }
                 note("widget animation: ${f.childCount} steps, ${bitmaps.toSet().size} distinct frames, every ${f.flipInterval} ms")
             }
         }
