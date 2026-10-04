@@ -493,6 +493,21 @@ object PixelIcons {
         "xoooooooooox",
         ".xxxxxxxxxx.",
     )
+    /** Three dots: "more". */
+    val DOTS = g(
+        "............",
+        "............",
+        "............",
+        "............",
+        ".xx..xx..xx.",
+        "xooxxooxxoox",
+        "xooxxooxxoox",
+        ".xx..xx..xx.",
+        "............",
+        "............",
+        "............",
+        "............",
+    )
     val PARTY = g(
         "..........x.",
         "........o.x.",

@@ -49,6 +49,10 @@ object FilScreens5 {
         "Show the name" to "Ipakita ang pangalan",
         // The shell: the dock and the quick-care tiles
         "Pets" to "Mga alaga", "Family" to "Pamilya", "{0}: all done today" to "{0}: tapos na lahat ngayon",
+        // The room's HUD and the panels over it.
+        "Switch pet" to "Magpalit ng alaga", "Add another pet" to "Magdagdag ng isa pang alaga", "Your pets" to "Ang mga alaga mo", "{0} done" to "Tapos na ang {0}",
+        "Name, type and birthday" to "Pangalan, uri at kaarawan", "From a photo" to "Mula sa litrato",
+        "Pet owners and walks near you" to "Mga may-ari ng alaga at paglalakad malapit sa iyo",
         // The pet's doors and sub-pages
         "Wardrobe" to "Wardrobe", "Share" to "I-share", "Vaccines, deworming, vet visits" to "Mga bakuna, purga, pagpunta sa beterinaryo",
         "{0} due now" to "{0} ang kailangan na ngayon", "All on schedule" to "Nasa iskedyul lahat", "{0} on {1}" to "{0} noong {1}",

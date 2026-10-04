@@ -47,16 +47,19 @@ class DockItem(val icon: PixelIcon, val label: String, val selected: Boolean = f
  * apps keep their main places one thumb away. It sits in the page's flow, never over the content.
  */
 @Composable
-fun FloatingDock(items: List<DockItem>, modifier: Modifier = Modifier) {
+fun FloatingDock(items: List<DockItem>, modifier: Modifier = Modifier, compact: Boolean = false, onRoom: Boolean = false) {
     val cs = MaterialTheme.colorScheme
     val p = Paw.palette
     // At the biggest fonts the words no longer fit four across: the dock shows icons only, each
     // still spoken by name.
     val iconsOnly = largeText()
-    val face = if (p.dark) cs.surfaceContainerHigh else Color.White
-    val lip = if (p.dark) Color(0xFF3B3150) else Color(0xFFE6D5C3)
+    // Over the room the dock is a white sticker whatever the phone's theme, like the rest of the HUD.
+    val dark = p.dark && !onRoom
+    val face = if (dark) cs.surfaceContainerHigh else Color.White
+    val lip = if (dark) Color(0xFF3B3150) else Color(0xFFE6D5C3)
+    val ink = if (dark) cs.onSurfaceVariant else Color(0xFF6E6287)
     ToyPanel(modifier, face = face, lip = lip, outline = lip, shape = Pill, padding = 5.dp) {
-        Row(horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.CenterVertically) {
+        Row(horizontalArrangement = Arrangement.spacedBy(if (compact) 2.dp else 4.dp), verticalAlignment = Alignment.CenterVertically) {
             for (item in items) {
                 val toy = Candy.Coral
                 Pressable(
@@ -65,13 +68,13 @@ fun FloatingDock(items: List<DockItem>, modifier: Modifier = Modifier) {
                     shape = Pill, lipHeight = 3.dp, role = Role.Tab, onClickLabel = item.label, onClick = item.onClick,
                 ) {
                     Column(
-                        Modifier.widthIn(min = if (iconsOnly) 52.dp else 64.dp).height(50.dp).padding(horizontal = 10.dp),
+                        Modifier.widthIn(min = if (iconsOnly) 48.dp else if (compact) 56.dp else 64.dp).height(50.dp).padding(horizontal = if (compact) 6.dp else 10.dp),
                         horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center,
                     ) {
-                        PixelIcon(item.icon, tint = if (item.selected) toy.ink else cs.onSurfaceVariant, size = if (iconsOnly) 24.dp else 20.dp)
+                        PixelIcon(item.icon, tint = if (item.selected) toy.ink else ink, size = if (iconsOnly) 24.dp else 20.dp)
                         if (!iconsOnly) Text(
                             item.label, style = MaterialTheme.typography.labelSmall, maxLines = 1, overflow = TextOverflow.Ellipsis,
-                            color = if (item.selected) toy.ink else cs.onSurfaceVariant, modifier = Modifier.padding(top = 2.dp),
+                            color = if (item.selected) toy.ink else ink, modifier = Modifier.padding(top = 2.dp),
                         )
                     }
                 }

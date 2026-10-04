@@ -62,9 +62,12 @@ confetti, spring motion) drives every screen on both platforms:
   on at night, a rug, a cushion and a bowl. The same room backs the home card, the maker and the Studio.
 - One icon style, the pet's own (`core/.../sprite/PixelIcons.kt`): 12x12 pixel icons tinted by the
   UI, never emoji (they render differently on every phone and read as placeholders).
-- The shell of a 2026 app: screens slide in and back out, the home screen keeps its main places in
-  a floating dock, and a pet's page is short: the room, name and mood, one-tap care tiles, today's
-  care, the week, and four doors (Health, Weight, Wardrobe, Share) to their own pages.
+- It plays like a pet game, not a form: the pet's room fills the whole screen (home *is* the room),
+  and everything else is a HUD laid over it, the way Pou and My Talking Tom do it. A name plate with
+  hearts and age, a speech bubble for the mood, one tappable need meter per care task (tap it to log
+  the care, the pet reacts, Undo sits there for a few seconds) and five keys (Care, Health,
+  Wardrobe, Share, More) that raise panels over the room. The Studio and the maker keep their own
+  pages; everything else is a panel.
 - The **Pet Studio**: 70+ ways to draw the pet (head, eyes, eye colour, shine, brows, nose, mouth,
   ears, body, tail, coat pattern, chest, blush, whiskers, collar, and fur, marking and collar
   colours). Choices travel in the look code, so the household and the map draw the same pet.

@@ -53,81 +53,41 @@ import com.pawpixel.sprite.PixelIcons
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
-@OptIn(ExperimentalLayoutApi::class)
+/**
+ * Home is the pet's room (the shown pet's, or the first): the game starts in the world, not on a
+ * list. With no pet yet, an empty room and the one key that matters.
+ */
 @Composable
 fun HomeScreen(app: AppScope, state: AppState) {
-    var showProDialog by remember { mutableStateOf(false) }
-    val clock = app.repo.clock
-    val minute = clock.minuteOfDay(app.now)
-    Box(Modifier.fillMaxSize().background(heroGlow())) {
-        Column(Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding()) {
-            // Wordmark and the day's greeting. (The main places live in the dock below.)
-            Column(Modifier.fillMaxWidth().padding(horizontal = 20.dp).padding(top = 12.dp, bottom = 10.dp)) {
-                Text("PawPixel", style = MaterialTheme.typography.headlineMedium, maxLines = 1, modifier = Modifier.semantics { heading() })
-                Hint("${greeting(minute)} · ${LocalClock.shortDate(clock.dayIndex(app.now))}")
-            }
-
-            if (state.pets.isEmpty()) {
-                Box(Modifier.weight(1f).padding(horizontal = 16.dp)) { EmptyHome(app) }
-            } else {
-                LazyColumn(
-                    verticalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.weight(1f),
-                    contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 16.dp),
-                ) {
-                    items(state.pets, key = { it.id }) { pet -> PetCard(app, state, pet, minute) }
-                    item {
-                        // Wraps at big fonts, so the household link never breaks into letters.
-                        FlowRow(Modifier.padding(top = 2.dp), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                            GhostPill(tr("+ Add another pet")) {
-                                if (StateOps.canAddPet(state)) app.navigate(Screen.CreatePet) else showProDialog = true
-                            }
-                            if (app.repo.family.household == null) JoinHouseholdLink(app)
-                        }
-                    }
-                    item { WidgetTip(app, state) }
-                }
-            }
-
-            // The dock: the main places, one thumb away. (Its words are what the end-to-end tests tap.)
-            val doors = buildList {
-                add(DockItem(PixelIcons.PAW, tr("Pets"), selected = true) {})
-                if (state.pets.isNotEmpty()) add(DockItem(PixelIcons.PIN, tr("Pet map")) { app.navigate(Screen.PetMap) })
-                add(DockItem(PixelIcons.PEOPLE, tr("Family")) { app.navigate(Screen.Family()) })
-                add(DockItem(PixelIcons.GEAR, tr("Settings")) { app.navigate(Screen.Settings) })
-            }
-            Box(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp), contentAlignment = Alignment.Center) { FloatingDock(doors) }
-        }
-    }
-    if (showProDialog) {
-        AlertDialog(
-            onDismissRequest = { showProDialog = false },
-            title = { Text(tr("More pets with Pro")) },
-            text = { Text(tr("Your first pet is free forever. Extra pets are part of PawPixel Pro, which is coming soon.")) },
-            confirmButton = { TextButton(onClick = { showProDialog = false }) { Text(tr("OK")) } },
-        )
-    }
+    val pet = state.pet(app.shownPetId ?: "") ?: state.pets.firstOrNull()
+    if (pet != null) PetScreen(app, state, pet) else EmptyHome(app, state)
 }
 
-/** No pets yet: what PawPixel does, and the one button that matters. */
+/** No pets yet: an empty room, what PawPixel does, and the one key that matters. */
 @Composable
-private fun EmptyHome(app: AppScope) {
-    Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(14.dp)) {
-        SoftCard(Modifier.fillMaxWidth(), tone = Tone.Surface, padding = 22.dp) {
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp), horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
-                // A little room with nobody in it yet.
-                val phase = com.pawpixel.core.Sky.phase(app.repo.clock.minuteOfDay(app.now), 22 * 60, 6 * 60)
-                RoomBackdrop(phase, Modifier.fillMaxWidth().height(140.dp).clip(MaterialTheme.shapes.medium)) { floor ->
-                    PixelIcon(PixelIcons.PAW, tint = Color(0x662B2135), size = 40.dp, modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = floor + 6.dp))
+private fun EmptyHome(app: AppScope, state: AppState) {
+    val phase = phaseFor(app, state)
+    Box(Modifier.fillMaxSize()) {
+        RoomBackdrop(phase, Modifier.fillMaxSize(), pixel = 4.dp, floorDepth = 150.dp) { floor ->
+            PixelIcon(PixelIcons.PAW, tint = Color(0x662B2135), size = 48.dp, modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = floor + 8.dp))
+        }
+        Row(Modifier.fillMaxWidth().statusBarsPadding().padding(12.dp)) {
+            Spacer(Modifier.weight(1f))
+            GlassButton(PixelIcons.GEAR, tr("Settings")) { app.navigate(Screen.Settings) }
+        }
+        Column(Modifier.align(Alignment.BottomCenter).fillMaxWidth().navigationBarsPadding().padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            ToyPanel(Modifier.fillMaxWidth(), face = Color.White, lip = Color(0xFFE6D5C3), padding = 20.dp) {
+                Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(12.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(tr("Turn your pet into pixel art"), style = MaterialTheme.typography.headlineSmall, textAlign = TextAlign.Center, color = Color(0xFF2B2135), modifier = Modifier.semantics { heading() })
+                    Text(
+                        tr("Your pixel pet lives on your home screen and gets hungry, restless or sleepy based on the real care you give. Done a task? Tap it and watch them cheer up."),
+                        textAlign = TextAlign.Center, style = MaterialTheme.typography.bodyMedium, color = Color(0xFF2B2135),
+                    )
+                    PrimaryPill(tr("Choose a photo"), big = true) { app.navigate(Screen.CreatePet) }
+                    JoinHouseholdLink(app)
                 }
-                Text(tr("Turn your pet into pixel art"), style = MaterialTheme.typography.headlineSmall, textAlign = TextAlign.Center)
-                Text(
-                    tr("Your pixel pet lives on your home screen and gets hungry, restless or sleepy based on the real care you give. Done a task? Tap it and watch them cheer up."),
-                    textAlign = TextAlign.Center, style = MaterialTheme.typography.bodyMedium,
-                )
-                PrimaryPill(tr("Choose a photo"), big = true) { app.navigate(Screen.CreatePet) }
             }
         }
-        JoinHouseholdLink(app)
     }
 }
 
@@ -148,59 +108,6 @@ fun moodColor(mood: Mood): Color = when (mood) {
     Mood.HAPPY, Mood.CONTENT -> Paw.palette.good
     Mood.SLEEPY -> Paw.palette.calm
     else -> MaterialTheme.colorScheme.primary
-}
-
-@OptIn(ExperimentalLayoutApi::class)
-@Composable
-private fun PetCard(app: AppScope, state: AppState, pet: Pet, minute: Int) {
-    val reading = MoodEngine.read(state, pet.id, app.now, app.repo.clock)
-    val pose = remember(pet.lookKey, reading.mood) { app.repo.pose(pet, reading.mood) }
-    // Quick Done is for daily care; health care (a vaccine, a vet visit) is recorded on the pet's page.
-    val statuses = statusesFor(app, state, pet.id).filter { !it.task.kind.health }
-    val urgent = statuses.filter { it.isOverdue }.takeIf { !state.isAway(app.now) }
-        ?.maxByOrNull { MoodEngine.penalty(it, app.now, state.settings.awayUntilMs) }
-    val next = statuses.filter { !it.isOverdue }.mapNotNull { s -> s.nextDueMs?.let { s to it } }.minByOrNull { it.second }
-    val phase = phaseFor(app, state)
-    var burst by remember { mutableStateOf<Long?>(null) }
-
-    SoftCard(
-        Modifier.fillMaxWidth(), tone = Tone.Surface, padding = 0.dp,
-        onClick = { app.navigate(Screen.PetDetail(pet.id)) }, onClickLabel = tr("Open {0}'s page", pet.name),
-    ) {
-        Column {
-            // A window onto the pet's room: the window shows the hour's sky, the pet stands on the rug.
-            RoomBackdrop(phase, Modifier.fillMaxWidth().height(172.dp), floorDepth = 22.dp) { floor ->
-                SpriteView(pose, Modifier.align(Alignment.BottomCenter).size(116.dp).padding(bottom = floor - 10.dp), description = MoodEngine.describe(pet.name, reading.mood))
-                HeartBurst(burst, Modifier.fillMaxSize())
-            }
-            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(pet.name, style = MaterialTheme.typography.headlineSmall, modifier = Modifier.weight(1f))
-                    if (urgent == null) StatusPill(reading.caption, moodColor(reading.mood), tone = Tone.Tonal)
-                    if (urgent != null) {
-                        val label = tr("Mark {0} done for {1}", trName(urgent.task.title), pet.name)
-                        PrimaryPill(
-                            tr(urgent.task.kind.verb), icon = PixelIcons.forKind(urgent.task.kind),
-                            modifier = Modifier.semantics { contentDescription = label },
-                        ) { burst = app.now; app.launch { app.repo.complete(urgent.task.id) } }
-                    }
-                }
-                if (urgent != null) {
-                    Hint(tr("Waiting since {0}", formatTime(urgent.overdueSinceMs!!, app.repo.clock)))
-                } else if (next != null) {
-                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                        PixelIcon(PixelIcons.forKind(next.first.task.kind), tint = MaterialTheme.colorScheme.onSurfaceVariant, size = 14.dp)
-                        Text(
-                            tr("Next: {0} · {1}", trName(next.first.task.title), relativeDay(next.second, app.now, app.repo.clock)),
-                            style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
-                } else {
-                    Hint(tr("No care tasks yet. Add feeding, walks or medicine so {0}'s mood can follow real care.", pet.name))
-                }
-            }
-        }
-    }
 }
 
 /**

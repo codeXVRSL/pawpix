@@ -68,10 +68,14 @@ object Room {
         }
 
         // Window onto the sky, left of centre, with curtains.
-        // A short wall (a small card) gets a shorter window, hung lower, and no clock.
-        val wx = (width * 0.12).toInt(); val ww = (width * 0.3).toInt().coerceAtLeast(24)
-        val wh = minOf((ww * 0.78).toInt(), wainscotTop - 10).coerceAtLeast(10)
-        val wy = (wainscotTop - wh - 16).coerceAtLeast(4)
+        // A short wall (a small card) gets a shorter window, hung lower, and no clock. A tall wall
+        // (the room filling a phone screen) gets a bigger window hung at eye height, with the wall
+        // above it left for the clock and a second picture.
+        val tall = wainscotTop > width * 0.9
+        val wx = (width * 0.12).toInt(); val ww = (width * (if (tall) 0.36 else 0.3)).toInt().coerceAtLeast(24)
+        val wh = minOf((ww * (if (tall) 1.0 else 0.78)).toInt(), wainscotTop - 10).coerceAtLeast(10)
+        val spare = wainscotTop - wh
+        val wy = (if (tall) spare - 14 else spare - 16).coerceIn(4, (spare - 6).coerceAtLeast(4))
         window(img, wx, wy, ww, wh, phase, p, seed)
 
         // A shelf on the right with a plant, a book stack and a framed paw.
@@ -84,6 +88,13 @@ object Room {
         plant(img, sx + 2, sy - 1, p, small = true)
         books(img, sx + 9, sy - 1, p)
         frame(img, sx + sw - 8, sy - 10, p)
+        // On a tall wall: bunting across the top, a hanging plant by the window and a second
+        // picture over the shelf.
+        if (tall && wy >= 22) {
+            bunting(img, 4, p)
+            frame(img, sx + 4, wy - 14, p)
+            hanging(img, wx + ww + 10, 8, p)
+        }
 
         // A floor lamp at the far right, glowing at night.
         val lx = width - 7
@@ -127,6 +138,34 @@ object Room {
         }
         // Curtain rod.
         for (xx in x - 7..x + w + 6) set(img, xx, y - 3, p.shelf)
+    }
+
+    /** A string of little flags across the top of the wall, sagging a little in the middle. */
+    private fun bunting(img: PixelImage, top: Int, p: Palette) {
+        val w = img.width
+        val colours = intArrayOf(p.curtain, p.leaf, p.shade, p.cushion)
+        var i = 0
+        var x = 2
+        while (x + 6 < w) {
+            // The string dips towards the middle.
+            val t = (x + 3 - w / 2.0) / (w / 2.0)
+            val y = top + (3 * (1 - t * t)).toInt()
+            for (xx in x until x + 8) set(img, xx, y, p.shelf)
+            val c = colours[i % colours.size]
+            for (dy in 0..4) for (dx in dy..6 - dy) set(img, x + 1 + dx, y + 1 + dy, c)
+            i++
+            x += 8
+        }
+    }
+
+    /** A plant hanging from the ceiling on a string, trailing leaves. */
+    private fun hanging(img: PixelImage, x: Int, top: Int, p: Palette) {
+        for (yy in top until top + 10) set(img, x, yy, p.shelf)
+        for (dx in -3..3) set(img, x + dx, top + 10, p.pot)
+        for (dx in -2..2) { set(img, x + dx, top + 11, p.pot); set(img, x + dx, top + 12, p.pot) }
+        for (dx in -1..1) set(img, x + dx, top + 13, p.pot)
+        val rows = listOf("..x.o.x..", ".o.x.x.o.", "x...o...x", "o.......o", "x.......x")
+        rows.forEachIndexed { i, row -> row.forEachIndexed { j, c -> if (c != '.') set(img, x - 4 + j, top + 12 + i, if (c == 'o') p.leaf else p.leafDark) } }
     }
 
     private fun plant(img: PixelImage, x: Int, baseY: Int, p: Palette, small: Boolean) {

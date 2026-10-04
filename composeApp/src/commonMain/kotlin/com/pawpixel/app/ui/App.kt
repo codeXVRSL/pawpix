@@ -5,7 +5,9 @@ import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.AlertDialog
@@ -41,7 +43,10 @@ sealed interface Screen {
     data class RemakeSprite(val petId: String) : Screen
     /** The Pet Studio: how the pixel pet is drawn (eyes, ears, coat, colours...). */
     data class Studio(val petId: String) : Screen
-    /** One of the pet's own pages: "health", "weight", "wardrobe" or "share". */
+    /**
+     * A panel over the pet's room: "care", "health", "weight", "wardrobe", "share", "more" (the
+     * pet's menu) or "pets" (switch pets). Panels slide up over the room and down again.
+     */
     data class PetSection(val petId: String, val section: String) : Screen
     /** [health] picks which kinds a new task offers: daily care, or health care (vaccines, deworming...). */
     data class EditTask(val petId: String, val taskId: String?, val health: Boolean = false) : Screen
@@ -98,6 +103,9 @@ class AppScope(
     val now: Long,
     val navigate: (Screen) -> Unit,
     val back: () -> Unit,
+    /** The pet whose room the home screen shows (the first pet when unset). */
+    val shownPetId: String? = null,
+    val showPet: (String) -> Unit = {},
     /** Something went wrong in [launch]: tell the owner rather than closing the app. */
     private val onError: (Throwable) -> Unit = {},
 ) {
@@ -125,6 +133,8 @@ fun App(repo: PawRepository, registerBack: ((() -> Boolean) -> (() -> Unit))? = 
         val state by repo.state.collectAsState()
         val scope = rememberCoroutineScope()
         var stack by rememberSaveable(stateSaver = StackSaver) { mutableStateOf(listOf<Screen>(Screen.Home)) }
+        // Home is a pet's room: this pet's (a widget tap, the pet switcher, a pet just made).
+        var shownPetId by rememberSaveable { mutableStateOf<String?>(null) }
         var now by remember { mutableLongStateOf(repo.now()) }
         var failed by remember { mutableStateOf(false) }
         val startNotice by repo.startNotice.collectAsState()
@@ -158,7 +168,7 @@ fun App(repo: PawRepository, registerBack: ((() -> Boolean) -> (() -> Unit))? = 
             val url = link ?: return@LaunchedEffect
             repo.consumeLink()
             val pet = repo.state.value.pet(url.substringAfter("pawpixel://pet/", ""))
-            if (pet != null) stack = listOf(Screen.Home, Screen.PetDetail(pet.id))
+            if (pet != null) { shownPetId = pet.id; stack = listOf(Screen.Home) }
             else if (repo.state.value.pets.isEmpty()) stack = listOf(Screen.Home, Screen.CreatePet)
         }
 
@@ -173,10 +183,15 @@ fun App(repo: PawRepository, registerBack: ((() -> Boolean) -> (() -> Unit))? = 
         val current = stack.last()
         val app = AppScope(
             repo = repo, scope = scope, now = now,
-            // A double tap opens a screen once.
-            navigate = { if (stack.last() != it) stack = stack + it },
+            // A double tap opens a screen once. A pet's page is the home screen showing that pet.
+            navigate = {
+                if (it is Screen.PetDetail) { shownPetId = it.petId; stack = listOf(Screen.Home) }
+                else if (stack.last() != it) stack = stack + it
+            },
             // Only from the screen on top: a double tap on Back or Save doesn't also close the screen below.
             back = { if (stack.last() == current) back() },
+            shownPetId = shownPetId,
+            showPet = { shownPetId = it },
             onError = { failed = true },
         )
 
@@ -191,7 +206,14 @@ fun App(repo: PawRepository, registerBack: ((() -> Boolean) -> (() -> Unit))? = 
                 contentKey = { it.size to it.last() },
                 transitionSpec = {
                     val forward = targetState.size >= initialState.size
-                    if (forward) {
+                    // A panel over the room rises from the bottom and drops back down; the room
+                    // stays put under it.
+                    val panel = (if (forward) targetState else initialState).last() is Screen.PetSection
+                    if (panel && forward) {
+                        (slideInVertically(defaultSpatial()) { it } + fadeIn(tween(160))) togetherWith fadeOut(tween(360))
+                    } else if (panel) {
+                        fadeIn(tween(200)) togetherWith (slideOutVertically(tween(260)) { it } + fadeOut(tween(260)))
+                    } else if (forward) {
                         (slideInHorizontally(defaultSpatial()) { it / 3 } + fadeIn(tween(220))) togetherWith
                             (slideOutHorizontally(tween(260)) { -it / 6 } + fadeOut(tween(200)))
                     } else {

@@ -4,6 +4,7 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
@@ -43,6 +44,7 @@ import com.pawpixel.sprite.PetEvent
 import com.pawpixel.sprite.PetPose
 import com.pawpixel.sprite.Chibi
 import com.pawpixel.sprite.PetArt
+import com.pawpixel.sprite.PetBrain
 import com.pawpixel.sprite.StageLayout
 import com.pawpixel.sprite.Room
 import com.pawpixel.core.Sky
@@ -75,6 +77,8 @@ fun LivePet(
     keepAspect: Boolean = true,
     /** Extra floor below the pet's feet (a hero room has a deep floor with a rug). */
     floorDepth: Dp = 0.dp,
+    /** Draw the pet this much bigger than the stage's own scale (the room that fills a phone); it then wanders the width that is on screen. */
+    zoom: Float = 1f,
     onPetted: () -> Unit = {},
 ) {
     if (art == null) return
@@ -102,13 +106,18 @@ fun LivePet(
     }
     val layout = current.layout
     val icons = current.icons
-    val brain = remember(layout, seed) { layout.brain(seed) }
     val petted by rememberUpdatedState(onPetted)
     val currentMood by rememberUpdatedState(mood)
 
     // One clock for the lifetime of this pet view, independent of brain rebuilds. A plain holder:
     // reading it (taps, reactions) must not redraw anything.
     val clock = remember { longArrayOf(-1L, 0L) } // start, now
+    BoxWithConstraints(modifier.let { if (keepAspect) it.aspectRatio(layout.stageWidth.toFloat() / layout.stageHeight) else it }) {
+    val widthPx = with(LocalDensity.current) { maxWidth.toPx() }
+    // The scale of a pet pixel, and how many of them fit across: the pet wanders all of that.
+    val px = pixelScale(widthPx * zoom, layout.stageWidth)
+    val stageCols = floor(widthPx / px).toInt().coerceAtLeast(layout.stageWidth / 2)
+    val brain = remember(layout, seed, stageCols) { PetBrain(seed, stageCols.toDouble(), layout.set.width, layout.body) }
     /**
      * The pose on screen. The pet thinks every frame, but the stage is redrawn only when what it
      * shows changes by a pet pixel (a few times a second), not 60 times a second: a budget phone
@@ -130,8 +139,7 @@ fun LivePet(
     val floorDepthPx = with(LocalDensity.current) { floorDepth.toPx() }
     val petLabel = tr("Give pets")
     Canvas(
-        modifier
-            .let { if (keepAspect) it.aspectRatio(layout.stageWidth.toFloat() / layout.stageHeight) else it }
+        Modifier.matchParentSize()
             // Its own layer: the pet redraws a few times a second, and only this stage repaints, never the whole page.
             .graphicsLayer()
             // A picture only shows the mood: say it, and let screen-reader users give pets too.
@@ -142,8 +150,7 @@ fun LivePet(
             .pointerInput(brain) {
                 detectTapGestures { tap ->
                     val pose = shown ?: return@detectTapGestures
-                    val px = pixelScale(size.width.toFloat(), layout.stageWidth)
-                    val left = (size.width - px * layout.stageWidth) / 2
+                    val left = (size.width - px * stageCols) / 2
                     val top = size.height - px * (layout.stageHeight + kotlin.math.ceil(floorDepthPx / px).toInt())
                     val sx = (tap.x - left) / px
                     val sy = (tap.y - top) / px
@@ -158,8 +165,7 @@ fun LivePet(
             },
     ) {
         val pose = shown ?: return@Canvas // read here, so a new pose redraws the stage without recomposing
-        val px = pixelScale(size.width, layout.stageWidth)
-        val left = ((size.width - px * layout.stageWidth) / 2).roundToInt().toFloat()
+        val left = ((size.width - px * stageCols) / 2).roundToInt().toFloat()
         // Bottom-aligned above the extra floor: any spare height becomes wall, not floor.
         val depthRows = kotlin.math.ceil(floorDepthPx / px).toInt()
         val top = (size.height - px * (layout.stageHeight + depthRows)).roundToInt().toFloat()
@@ -168,7 +174,7 @@ fun LivePet(
 
         // The room: as many rows as the stage is tall, the floor where the pet's feet are.
         val rows = kotlin.math.ceil(size.height / px).toInt().coerceAtLeast(layout.stageHeight + depthRows)
-        val roomW = kotlin.math.ceil(size.width / px).toInt().coerceAtLeast(layout.stageWidth)
+        val roomW = kotlin.math.ceil(size.width / px).toInt().coerceAtLeast(stageCols)
         val floorRow = rows - (layout.stageHeight + depthRows) + layout.floorY
         val key = "$roomW:$rows:$floorRow:${phase.key}"
         val room = roomCache.getOrPut(key) { Room.render(roomW, rows, floorRow, phase, seed).toImageBitmap() }
@@ -207,6 +213,7 @@ fun LivePet(
                 filterQuality = FilterQuality.None,
             )
         }
+    }
     }
 }
 

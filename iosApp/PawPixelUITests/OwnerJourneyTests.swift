@@ -114,17 +114,19 @@ final class OwnerJourneyTests: XCTestCase {
         }
 
         step("add a medicine task") {
+            try find("Care").tap() // the Care panel rises over the room
             try scrollTo("+ Add care task").tap()
             try find("Times")
             try scrollTo(query: element(containing: "Medicine"), "Medicine chip").tap()
             shot("task-editor")
             try scrollTo("Save").tap()
-            try find("Care")
+            try find("+ Add care task")
             try scrollTo(query: element(containing: "Medicine"), "medicine task in the list")
+            try scrollTo("Back").tap() // the panel drops: the room again
         }
 
         step("health: a kitten's birthday gives her the first-year plan") {
-            try scrollTo(query: element(containing: "Health"), "Health door").tap()
+            try find("Health").tap() // the Health key under the room
             try scrollTo("+ Add health reminders").tap()
             // "About how old" is the default, at 8 weeks: two taps make the pet a 10-week-old kitten.
             let older = element(containing: "Older")
@@ -143,6 +145,7 @@ final class OwnerJourneyTests: XCTestCase {
         }
 
         step("weight: two weigh-ins draw the chart") {
+            try find("Health").tap()
             try scrollTo(query: element(containing: "Weight"), "Weight door").tap()
             // Without the keyboard: +1 kg four times (4.0 kg) yesterday, then +0.1 kg twice from it (4.2 kg) today.
             try scrollTo("+ Add weight").tap()
@@ -162,11 +165,12 @@ final class OwnerJourneyTests: XCTestCase {
             guard element("4.2 kg").waitForExistence(timeout: 10) else { throw Failure("latest weight not shown") }
             sleep(1)
             shot("weight")
-            try scrollTo("Back").tap()
+            try scrollTo("Back").tap() // the Health panel
+            try scrollTo("Back").tap() // the room
         }
 
         step("before/after card opens the share sheet") {
-            try scrollTo(query: element(containing: "GIF, before/after"), "Share door").tap()
+            try find("Share").tap() // the Share key under the room
             let button = try scrollTo("Before/after")
             sleep(1) // let the list settle after scrolling, or the tap can miss
             button.tap()
@@ -193,13 +197,11 @@ final class OwnerJourneyTests: XCTestCase {
             try scrollTo("Back").tap() // the pet's page
         }
 
-        step("home lists the pet, settings open") {
-            try scrollTo("Back").tap()
-            try find("PawPixel")
-            guard element(containing: petName).waitForExistence(timeout: 15) else { throw Failure("pet not listed") }
+        step("home is the pet's room; settings open") {
+            guard element(containing: petName).waitForExistence(timeout: 15) else { throw Failure("name plate not shown") }
             sleep(1)
             shot("home")
-            try find("Settings").tap()
+            try find("Settings").tap() // the gear over the room
             try find("Bedtime")
             shot("settings")
             try scrollTo("Away 3 days").tap()
@@ -209,26 +211,24 @@ final class OwnerJourneyTests: XCTestCase {
         }
 
         step("pet map opens (this CI build has no map server: it says so)") {
-            try find("Pet map").tap()
+            try find("More").tap() // the pet's menu
+            try scrollTo("Pet map").tap()
             let ready = element("The pet map is coming soon").waitForExistence(timeout: 10)
                 || element("I'm 18 or older").waitForExistence(timeout: 2)
             shot("pet-map")
             guard ready else { throw Failure("pet map screen didn't open") }
             try find("Back").tap()
+            try scrollTo("Back").tap() // the More panel drops
         }
 
         step("share with your household (no server in this CI build: says it's not available yet)") {
-            let card = element(containing: petName)
-            guard card.waitForExistence(timeout: 15) else { throw Failure("pet not listed") }
-            card.tap()
-            try scrollTo(query: element(containing: "GIF, before/after"), "Share door").tap()
+            try find("Share").tap()
             try scrollTo(query: element(containing: "Share with your household"), "Share with your household").tap()
             let ready = element("Coming soon").waitForExistence(timeout: 10)
             shot("household")
             guard ready else { throw Failure("household screen didn't say it's not available yet") }
             try find("Back").tap()
-            try scrollTo("Back").tap() // the Share page
-            try scrollTo("Back").tap() // the pet's page
+            try scrollTo("Back").tap() // the Share panel drops
             try find("Settings")
         }
 
