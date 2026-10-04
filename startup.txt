@@ -1,0 +1,1 @@
+cold start ms (sorted): 1492 1601 1830 1832 2168 | median 1830
