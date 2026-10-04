@@ -173,6 +173,7 @@ fun App(repo: PawRepository, registerBack: ((() -> Boolean) -> (() -> Unit))? = 
         }
 
         val back: () -> Boolean = {
+            repo.platform.log("back: stack=" + stack.joinToString { it.code() })
             if (stack.size > 1) { stack = stack.dropLast(1); true } else false
         }
         DisposableEffect(registerBack) {

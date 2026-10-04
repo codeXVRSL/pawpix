@@ -169,7 +169,7 @@ class EndToEndTest {
             retrying { scrollTo(By.text("Save")).click() }
             waitFor("medicine task saved") { repo.state.value.tasksFor(petId).any { it.kind.name == "MEDS" } }
             scrollTo(By.textContains("Medicine")) // in the Care panel's list
-            device.pressBack() // the panel drops: back to the room
+            closePanel() // the panel drops: back to the room
             find(By.desc("Settings"))
         }
 
@@ -251,7 +251,7 @@ class EndToEndTest {
             scrollTo(By.textStartsWith("March is Rabies Awareness Month"))
             shot("health-local-help-2")
             device.pressBack() // back to the Health panel
-            device.pressBack() // and to the room
+            closePanel() // and to the room
             find(By.text("10 weeks old")) // her age, on her name plate
         }
 
@@ -279,7 +279,7 @@ class EndToEndTest {
             retrying { find(By.text("Hide weigh-ins")).click() }
             device.pressBack()
             scrollTo(By.textStartsWith("4.2 kg")) // the Weight door shows the latest weigh-in
-            device.pressBack() // the room
+            closePanel() // the room
         }
 
         step("milestone: 7 days of care is celebrated and shareable") {
@@ -301,12 +301,12 @@ class EndToEndTest {
             waitFor("wearing it") { repo.state.value.pet(petId)?.accessory == "BANDANA" }
             scrollTo(By.textStartsWith("Crown"))
             shot("outfits")
-            device.pressBack()
+            closePanel()
             find(By.text("Wardrobe"))
             retrying { find(By.text("Wardrobe")).click() }
             retrying { scrollTo(By.text("None")).click() }
             waitFor("took it off") { repo.state.value.pet(petId)?.accessory == null }
-            device.pressBack()
+            closePanel()
         }
 
         step("share animation and before/after card open the share sheet") {
@@ -317,7 +317,7 @@ class EndToEndTest {
             retrying { scrollTo(By.text("Before/after")).click() }
             waitFor("card share sheet") { choosers() == before + 2 }
             shot("08-share-section")
-            device.pressBack()
+            closePanel()
         }
 
         step("home is the pet's room") {
@@ -418,8 +418,7 @@ class EndToEndTest {
             retrying { find(By.text("Leave")).click() }
             find(By.text("I'm 18 or older"), 20_000)
             check(!runBlocking { repo.map.client.hasJoined() }) { "still on the map after leaving" }
-            device.pressBack() // the More panel
-            device.pressBack() // the room
+            closePanel() // the More panel drops: the room
             find(By.text("Chelsea"))
         }
 
@@ -460,8 +459,7 @@ class EndToEndTest {
             scrollTo(By.text("Jamaica"))
             shot("h-household-members")
             // Back to Chelsea's page: "Litter cleaned by Jamaica · <time>".
-            device.pressBack() // the Share panel
-            device.pressBack() // the room
+            closePanel() // the Share panel drops: the room
             retrying { find(By.text("Care")).click() } // the Care panel
             scrollTo(By.text("+ Add care task"))
             val row = scrollTo(By.textStartsWith("Litter cleaned by Jamaica"))
@@ -473,7 +471,7 @@ class EndToEndTest {
             check(runBlocking { repo.family.sync() }) { "sync failed: ${repo.family.status.value.error}" }
             waitFor("her Undo arrives", 20_000) { repo.state.value.completions.none { it.id == "partnerlitter1" } }
             check(device.wait(Until.gone(By.textStartsWith("Litter cleaned by Jamaica")), 10_000)) { "'Litter cleaned by Jamaica' still shown after her Undo" }
-            device.pressBack()
+            closePanel()
             find(By.text("Care"))
         }
 
@@ -745,7 +743,7 @@ class EndToEndTest {
                 shot("large-task-editor-2")
                 device.pressBack()
                 scrollTo(By.text("+ Add care task"))
-                device.pressBack()
+                closePanel()
                 retrying { find(By.desc("Settings")).click() }
                 Thread.sleep(800)
                 shot("large-settings")
@@ -774,7 +772,7 @@ class EndToEndTest {
                 retrying { find(By.text("Care")).click() }
                 Thread.sleep(900)
                 shot("dark-care")
-                device.pressBack()
+                closePanel()
                 retrying { find(By.desc("Settings")).click() }
                 Thread.sleep(800)
                 shot("dark-settings")
@@ -827,17 +825,27 @@ class EndToEndTest {
 
     private fun note(msg: String) { log.appendLine("      note: $msg") }
 
+    /** The app's own Back key (the system's navigation bar has one with the same name). */
+    private fun appBack(): BySelector = By.pkg(ctx.packageName).desc("Back")
+
+    /** Drops a panel over the room with its Back key. */
+    private fun closePanel() {
+        retrying { find(appBack()).click() }
+        Thread.sleep(600)
+    }
+
     /** Back to the home screen from wherever an earlier (failed) step left the app. */
     private fun goHome() {
-        repeat(6) {
+        repeat(8) {
             // Pressed back once too often (the screen was still settling): open the app again.
             if (device.currentPackageName != ctx.packageName) {
                 scenario = ActivityScenario.launch(MainActivity::class.java)
                 Thread.sleep(1_500)
             }
             // Home is the pet's room: a Settings gear and no Back key (every other screen has one).
-            if (device.wait(Until.hasObject(By.desc("Settings")), 1_500) == true && !device.hasObject(By.desc("Back"))) return
-            device.pressBack(); Thread.sleep(600)
+            if (device.wait(Until.hasObject(By.desc("Settings")), 1_500) == true && !device.hasObject(appBack())) return
+            if (device.hasObject(appBack())) device.findObject(appBack())?.click() else device.pressBack()
+            Thread.sleep(600)
         }
     }
 

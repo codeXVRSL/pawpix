@@ -106,8 +106,11 @@ final class OwnerJourneyTests: XCTestCase {
 
         step("Done on a care task") {
             // Screen readers hear what the button does: "Mark Feed done for mochi".
-            let done = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@ AND label ENDSWITH %@", "Mark ", "done for \(petName)")).firstMatch
-            try scrollTo(query: done, "Done").tap()
+            // The need meter under the room: a tap logs the care. (The simulator sometimes calls it
+            // not hittable although it is on screen: then tap its centre.)
+            let done = app.descendants(matching: .any).matching(NSPredicate(format: "label BEGINSWITH %@ AND label ENDSWITH %@", "Mark ", "done for \(petName)")).firstMatch
+            guard done.waitForExistence(timeout: 15) else { throw Failure("no need meter to tap") }
+            if done.isHittable { done.tap() } else { done.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap() }
             guard element(containing: "Undo").waitForExistence(timeout: 10) else { throw Failure("no Undo after Done") }
             sleep(1)
             shot("after-done")
@@ -212,7 +215,7 @@ final class OwnerJourneyTests: XCTestCase {
 
         step("pet map opens (this CI build has no map server: it says so)") {
             try find("More").tap() // the pet's menu
-            try scrollTo("Pet map").tap()
+            try scrollTo(query: element(containing: "Pet map"), "Pet map").tap()
             let ready = element("The pet map is coming soon").waitForExistence(timeout: 10)
                 || element("I'm 18 or older").waitForExistence(timeout: 2)
             shot("pet-map")

@@ -13,11 +13,12 @@ import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -31,7 +32,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -78,6 +78,7 @@ import kotlinx.coroutines.delay
 /** How tall the HUD at the bottom of the room is: the pet's floor sits well above it, on the rug. */
 private val HUD_DEPTH = 130.dp
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun PetScreen(app: AppScope, state: AppState, pet: Pet) {
     val reading = MoodEngine.read(state, pet.id, app.now, app.repo.clock)
@@ -124,9 +125,10 @@ fun PetScreen(app: AppScope, state: AppState, pet: Pet) {
             if (statuses.isEmpty()) {
                 EmptyNeeds(app, pet)
             } else {
-                Row(
-                    Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal = 12.dp, vertical = 6.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
+                FlowRow(
+                    Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 6.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally), verticalArrangement = Arrangement.spacedBy(6.dp),
+                    maxItemsInEachRow = 5,
                 ) {
                     statuses.forEach { s ->
                         NeedTile(app, state, pet, s, big) {
