@@ -1,0 +1,58 @@
+<!doctype html><html><head><meta charset="utf-8"><style>
+@font-face { font-family: Pixelify; src: url(/home/user/pawpix/composeApp/src/commonMain/composeResources/font/pixelify_bold.ttf); font-weight: 700; }
+@font-face { font-family: Pixelify; src: url(/home/user/pawpix/composeApp/src/commonMain/composeResources/font/pixelify_medium.ttf); font-weight: 500; }
+@font-face { font-family: Nunito; src: url(/home/user/pawpix/composeApp/src/commonMain/composeResources/font/nunito_extrabold.ttf); font-weight: 800; }
+@font-face { font-family: Nunito; src: url(/home/user/pawpix/composeApp/src/commonMain/composeResources/font/nunito_bold.ttf); font-weight: 700; }
+@font-face { font-family: Nunito; src: url(/home/user/pawpix/composeApp/src/commonMain/composeResources/font/nunito_semibold.ttf); font-weight: 600; }
+@font-face { font-family: Nunito; src: url(/home/user/pawpix/composeApp/src/commonMain/composeResources/font/nunito_regular.ttf); font-weight: 400; }
+:root {
+  --cream: #FFF4E6; --paper: #FFFBF4; --ink: #2B2135; --ink2: #6E6287; --sand: #E6D5C3; --sand2: #F1E3D1;
+  --coral: #E0334C; --coral-lip: #B0243A; --butter: #FFCF5C; --sky: #7FCBEC; --leaf: #9BD98A; --salmon: #FF8E7E;
+  --lavender: #BDAFF3; --pink: #FFA9C9; --mint: #93E3C7; --peach: #FFC7A3; --night: #1E1B2E; --good: #2E8B57;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; background: var(--cream); color: var(--ink); font-family: Nunito, sans-serif; overflow: hidden; }
+.page { position: relative; overflow: hidden; }
+.px { image-rendering: pixelated; image-rendering: crisp-edges; display: block; }
+h1, h2, .pixel { font-family: Pixelify, monospace; font-weight: 700; margin: 0; line-height: 1.02; letter-spacing: -0.01em; }
+.sub { font-family: Nunito; font-weight: 800; }
+.body { font-family: Nunito; font-weight: 600; color: var(--ink2); }
+.sticker { background: white; border: 3px solid var(--sand); border-radius: 36px; box-shadow: 0 8px 0 var(--sand); }
+.key { display: inline-flex; align-items: center; gap: 14px; background: var(--coral); color: white; border-radius: 999px; box-shadow: 0 8px 0 var(--coral-lip); font-family: Nunito; font-weight: 800; }
+.key.white { background: white; color: var(--ink); box-shadow: 0 8px 0 var(--sand); border: 3px solid var(--sand); }
+.brand { position: absolute; display: flex; align-items: center; gap: 14px; }
+.brand .mark { width: 56px; height: 56px; border-radius: 16px; background: var(--coral); display: grid; place-items: center; box-shadow: 0 5px 0 var(--coral-lip); }
+.brand .mark img { width: 32px; }
+.brand .word { font-family: Pixelify; font-weight: 700; font-size: 44px; color: var(--ink); }
+.bubble { position: absolute; background: white; border: 3px solid var(--sand); border-radius: 28px; padding: 16px 28px; font-weight: 800; font-size: 34px; }
+.bubble:after { content: ""; position: absolute; left: 50%; bottom: -22px; margin-left: -16px; border: 16px solid transparent; border-top-color: var(--sand); border-bottom: 0; }
+.bubble:before { content: ""; position: absolute; left: 50%; bottom: -16px; margin-left: -12px; border: 12px solid transparent; border-top-color: white; border-bottom: 0; z-index: 1; }
+.dots { background-image: radial-gradient(var(--sand2) 2.5px, transparent 2.6px); background-size: 28px 28px; }
+.candy { width: 120px; height: 120px; border-radius: 34px; display: grid; place-items: center; border: 4px solid rgba(0,0,0,.18); }
+.candy img { width: 60px; }
+.meter { display: flex; gap: 6px; }
+.meter i { display: block; width: 34px; height: 20px; border-radius: 6px; background: var(--sand2); border-bottom: 4px solid #CDB9A2; }
+.meter i.on.butter { background: var(--butter); border-color: #D9A52E; }
+.meter i.on.sky { background: var(--sky); border-color: #3F97BD; }
+.meter i.on.mint { background: var(--mint); border-color: #53B898; }
+.meter i.on.salmon { background: var(--salmon); border-color: #D9574A; }
+.foot { position: absolute; left: 0; right: 0; display: flex; justify-content: center; align-items: center; gap: 18px; color: var(--ink2); font-weight: 700; font-size: 28px; }
+
+html, body { width: 1080px; height: 1920px; } .page { width: 1080px; height: 1920px; } </style></head>
+<body><div class="page">
+<img class="px" src="/home/user/pawpix/marketing/assets/room-story-day.png" style="position:absolute;left:0;top:0;width:1080px">
+<div style="position:absolute;inset:0;background:linear-gradient(180deg, rgba(255,244,230,.95) 0%, rgba(255,244,230,.9) 38%, rgba(255,244,230,0) 62%)"></div>
+<div class="brand" style="left:60px;top:70px"><div class="mark"><img class="px" src="/home/user/pawpix/marketing/assets/icon-paw-white.png"></div><div class="word" style="">PawPixel</div></div>
+<h1 style="position:absolute;left:60px;top:200px;font-size:118px;width:960px">Your real pet,<br>in pixels.</h1>
+<div class="body" style="position:absolute;left:60px;top:500px;font-size:38px;width:900px;line-height:1.35">One photo. A pixel pet that looks like yours, lives on your home screen, and gets hungry when you skip dinner.</div>
+<div style="position:absolute;left:60px;top:700px;display:flex;flex-direction:column;gap:18px;font-size:34px;font-weight:800">
+  <div style="display:flex;gap:16px;align-items:center"><img class="px" src="/home/user/pawpix/marketing/assets/icon-camera.png" style="width:40px">Snap a photo, meet the twin</div>
+  <div style="display:flex;gap:16px;align-items:center"><img class="px" src="/home/user/pawpix/marketing/assets/icon-bowl.png" style="width:40px">Care meters for feeding, water, walks, meds</div>
+  <div style="display:flex;gap:16px;align-items:center"><img class="px" src="/home/user/pawpix/marketing/assets/icon-lock.png" style="width:40px">No ads, no account, nothing uploaded</div>
+</div>
+<img class="px" src="/home/user/pawpix/marketing/assets/pet-cat-tabby-idle.png" style="position:absolute;left:240px;top:1130px;width:612px;"><img class="px" src="/home/user/pawpix/marketing/assets/effect-heart.png" style="position:absolute;left:700px;top:1040px;height:auto;transform:scale(0.8333333333333334);transform-origin:top left">
+<div class="sticker" style="position:absolute;left:60px;top:1640px;width:960px;padding:26px 34px;display:flex;align-items:center;gap:28px;border-radius:34px">
+  <div style="width:150px;height:150px;border:4px dashed var(--sand);border-radius:20px;display:grid;place-items:center;color:var(--ink2);font-weight:800;font-size:22px;text-align:center">QR<br>code</div>
+  <div><div class="sub" style="font-size:40px">Free on Google Play</div><div class="body" style="font-size:28px">iOS coming soon · Made in Naga City</div></div>
+</div>
+</div></body></html>
