@@ -80,6 +80,8 @@ fun LivePet(
     /** Draw the pet this much bigger than the stage's own scale (the room that fills a phone); it then wanders the width that is on screen. */
     zoom: Float = 1f,
     onPetted: () -> Unit = {},
+    /** The calendar's decorations (Halloween, Christmas, Valentine's). */
+    season: com.pawpixel.sprite.Season = com.pawpixel.sprite.Season.NONE,
 ) {
     if (art == null) return
     // Drawing every frame of the pet takes a budget phone a noticeable moment: do it off the main
@@ -176,8 +178,8 @@ fun LivePet(
         val rows = kotlin.math.ceil(size.height / px).toInt().coerceAtLeast(layout.stageHeight + depthRows)
         val roomW = kotlin.math.ceil(size.width / px).toInt().coerceAtLeast(stageCols)
         val floorRow = rows - (layout.stageHeight + depthRows) + layout.floorY
-        val key = "$roomW:$rows:$floorRow:${phase.key}"
-        val room = roomCache.getOrPut(key) { Room.render(roomW, rows, floorRow, phase, seed).toImageBitmap() }
+        val key = "$roomW:$rows:$floorRow:${phase.key}:${season.name}"
+        val room = roomCache.getOrPut(key) { Room.render(roomW, rows, floorRow, phase, seed, season).toImageBitmap() }
         val roomLeft = ((size.width - px * roomW) / 2).roundToInt()
         val roomTop = (size.height - px * rows).roundToInt()
         drawImage(room, IntOffset.Zero, IntSize(roomW, rows), IntOffset(roomLeft, roomTop), IntSize((roomW * px).roundToInt(), (rows * px).roundToInt()), filterQuality = FilterQuality.None)
@@ -247,7 +249,7 @@ fun phaseFor(app: AppScope, state: com.pawpixel.core.AppState): Sky.Phase =
  * aligned to the bottom stands on the floor.
  */
 @Composable
-fun RoomBackdrop(phase: Sky.Phase, modifier: Modifier = Modifier, pixel: Dp = 3.dp, floorDepth: Dp = 18.dp, content: @Composable BoxScope.(floor: Dp) -> Unit) {
+fun RoomBackdrop(phase: Sky.Phase, modifier: Modifier = Modifier, pixel: Dp = 3.dp, floorDepth: Dp = 18.dp, season: com.pawpixel.sprite.Season = com.pawpixel.sprite.Season.NONE, content: @Composable BoxScope.(floor: Dp) -> Unit) {
     val cache = remember { HashMap<String, ImageBitmap>() }
     val pxDp = with(LocalDensity.current) { pixel.toPx() }
     val depthPx = with(LocalDensity.current) { floorDepth.toPx() }
@@ -256,8 +258,8 @@ fun RoomBackdrop(phase: Sky.Phase, modifier: Modifier = Modifier, pixel: Dp = 3.
             val cols = kotlin.math.ceil(size.width / pxDp).toInt().coerceAtLeast(40)
             val rows = kotlin.math.ceil(size.height / pxDp).toInt().coerceAtLeast(30)
             val floorRow = rows - kotlin.math.ceil(depthPx / pxDp).toInt() + 2
-            val key = "$cols:$rows:$floorRow:${phase.key}"
-            val img = cache.getOrPut(key) { Room.render(cols, rows, floorRow, phase).toImageBitmap() }
+            val key = "$cols:$rows:$floorRow:${phase.key}:${season.name}"
+            val img = cache.getOrPut(key) { Room.render(cols, rows, floorRow, phase, season = season).toImageBitmap() }
             drawImage(img, IntOffset.Zero, IntSize(cols, rows), IntOffset(0, (size.height - rows * pxDp).roundToInt()), IntSize((cols * pxDp).roundToInt(), (rows * pxDp).roundToInt()), filterQuality = FilterQuality.None)
         }
         content(floorDepth)

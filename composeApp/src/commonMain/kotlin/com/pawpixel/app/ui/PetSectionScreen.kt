@@ -90,7 +90,7 @@ fun Panel(app: AppScope, state: AppState, pet: Pet?, title: String, content: @Co
     val closeLabel = tr("Back")
     Box(Modifier.fillMaxSize()) {
         // A strip of the room stays above the panel, the pet waiting in it.
-        RoomBackdrop(phase, Modifier.fillMaxWidth().fillMaxHeight(0.2f), pixel = 4.dp, floorDepth = 26.dp) { floor ->
+        RoomBackdrop(phase, Modifier.fillMaxWidth().fillMaxHeight(0.2f), pixel = 4.dp, floorDepth = 26.dp, season = seasonFor(app)) { floor ->
             if (pose != null) SpriteView(pose, Modifier.align(Alignment.BottomCenter).size(84.dp).padding(bottom = floor - 10.dp), animate = false)
         }
         Box(

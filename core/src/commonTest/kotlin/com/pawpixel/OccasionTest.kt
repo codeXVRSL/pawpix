@@ -46,3 +46,17 @@ class OccasionTest {
         assertTrue(ReminderPlanner.plan(state, early, clock).any { it.title.contains("Kape turns 2") })
     }
 }
+
+class SeasonTest {
+    @Test fun theCalendarDecoratesTheRoom() {
+        assertEquals(com.pawpixel.sprite.Season.HALLOWEEN, com.pawpixel.sprite.Season.forDate(10, 28))
+        assertEquals(com.pawpixel.sprite.Season.CHRISTMAS, com.pawpixel.sprite.Season.forDate(12, 24))
+        assertEquals(com.pawpixel.sprite.Season.CHRISTMAS, com.pawpixel.sprite.Season.forDate(1, 3))
+        assertEquals(com.pawpixel.sprite.Season.VALENTINES, com.pawpixel.sprite.Season.forDate(2, 14))
+        assertEquals(com.pawpixel.sprite.Season.NONE, com.pawpixel.sprite.Season.forDate(6, 10))
+        // The room draws with every season, day and night, at the phone's tall size and the widget's short one.
+        for (s in com.pawpixel.sprite.Season.entries) for (phase in listOf(com.pawpixel.core.Sky.Phase.DAY, com.pawpixel.core.Sky.Phase.NIGHT)) {
+            com.pawpixel.sprite.Room.render(96, 140, 120, phase, season = s); com.pawpixel.sprite.Room.render(96, 60, 48, phase, season = s)
+        }
+    }
+}

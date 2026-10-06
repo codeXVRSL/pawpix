@@ -118,6 +118,7 @@ fun PetScreen(app: AppScope, state: AppState, pet: Pet) {
             art, pet.eyes, reading.mood, seed = pet.id.hashCode(), modifier = Modifier.fillMaxSize(), reaction = reaction,
             description = MoodEngine.describe(pet.name, reading.mood), phase = phase, keepAspect = false, floorDepth = hudHeight + 64.dp, zoom = 1.25f,
             onPetted = { haptics.performHapticFeedback(HapticFeedbackType.LongPress) },
+            season = seasonFor(app),
         )
         HeartBurst(burst, Modifier.matchParentSize())
 
@@ -345,6 +346,12 @@ private fun MemoryStrip(app: AppScope, state: AppState, pet: Pet) {
             PrimaryPill(tr("Album"), icon = PixelIcons.CAMERA) { app.navigate(Screen.PetSection(pet.id, "album")) }
         }
     }
+}
+
+/** Today's decorations, from the phone's calendar. */
+fun seasonFor(app: AppScope): com.pawpixel.sprite.Season {
+    val (_, m, d) = LocalClock.civil(app.repo.clock.dayIndex(app.now))
+    return com.pawpixel.sprite.Season.forDate(m, d)
 }
 
 /** The day's bunting: a birthday or gotcha day card with confetti, up by the name plate. */

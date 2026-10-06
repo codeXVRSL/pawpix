@@ -48,7 +48,7 @@ object Room {
     /** The floor colour the page continues under the stage (so the floor runs on under a rounded sheet). */
     fun floorColor(phase: Sky.Phase): Int = (if (phase.dark) NIGHT else DAY).floor
 
-    fun render(width: Int, height: Int, floorY: Int, phase: Sky.Phase, seed: Int = 7): PixelImage {
+    fun render(width: Int, height: Int, floorY: Int, phase: Sky.Phase, seed: Int = 7, season: Season = Season.NONE): PixelImage {
         val p = if (phase.dark) NIGHT else DAY
         val img = PixelImage(width, height)
         val floorLine = floorY - 2 // the top edge of the floor (the pet stands two pixels into it)
@@ -91,7 +91,12 @@ object Room {
         // On a tall wall: bunting across the top, a hanging plant by the window and a second
         // picture over the shelf.
         if (tall && wy >= 22) {
-            bunting(img, 4, p)
+            when (season) {
+                Season.CHRISTMAS -> lights(img, 4, p)
+                Season.VALENTINES -> hearts(img, 4, p)
+                Season.HALLOWEEN -> bunting(img, 4, p, intArrayOf(0xFFF28C28.toInt(), 0xFF2B2135.toInt(), 0xFF9C6BD6.toInt()))
+                Season.NONE -> bunting(img, 4, p)
+            }
             frame(img, sx + 4, wy - 14, p)
             hanging(img, wx + ww + 10, 8, p)
         }
@@ -104,7 +109,71 @@ object Room {
         rug(img, width / 2, floorLine + 3, (width * 0.34).toInt(), height - floorLine - 3, p)
         cushion(img, 2, floorLine - 1, p)
         bowl(img, width - 26, floorLine + 1, p)
+        // The season's piece on the floor: a jack-o'-lantern or a little tree by the lamp.
+        when (season) {
+            Season.HALLOWEEN -> pumpkin(img, width - 16, floorLine + 1, phase)
+            Season.CHRISTMAS -> tree(img, width - 19, floorLine + 1, p, phase)
+            else -> {}
+        }
         return img
+    }
+
+    /** A string of lights along the top: a dark wire with bulbs in turn red, green and gold. */
+    private fun lights(img: PixelImage, top: Int, p: Palette) {
+        val w = img.width
+        val bulbs = intArrayOf(0xFFE8374E.toInt(), 0xFF5EA64C.toInt(), 0xFFFFCF5C.toInt(), 0xFF4A90D9.toInt())
+        var i = 0; var x = 2
+        while (x < w - 2) {
+            val t = (x - w / 2.0) / (w / 2.0)
+            val y = top + (3 * (1 - t * t)).toInt()
+            for (xx in x until minOf(x + 6, w)) set(img, xx, y, p.shelf)
+            set(img, x + 3, y + 1, p.shelf)
+            val c = bulbs[i % bulbs.size]
+            set(img, x + 3, y + 2, c); set(img, x + 2, y + 3, c); set(img, x + 3, y + 3, c); set(img, x + 4, y + 3, c); set(img, x + 3, y + 4, c)
+            i++; x += 6
+        }
+    }
+
+    /** A garland of little hearts. */
+    private fun hearts(img: PixelImage, top: Int, p: Palette) {
+        val w = img.width
+        val colours = intArrayOf(0xFFE8374E.toInt(), 0xFFFFA9C9.toInt())
+        var i = 0; var x = 2
+        while (x + 6 < w) {
+            val t = (x + 3 - w / 2.0) / (w / 2.0)
+            val y = top + (3 * (1 - t * t)).toInt()
+            for (xx in x until x + 8) set(img, xx, y, p.shelf)
+            val c = colours[i % colours.size]
+            val rows = listOf(".xx.xx.", "xxxxxxx", "xxxxxxx", ".xxxxx.", "..xxx..", "...x...")
+            rows.forEachIndexed { r, row -> row.forEachIndexed { cc, ch -> if (ch == 'x') set(img, x + cc, y + 1 + r, c) } }
+            i++; x += 8
+        }
+    }
+
+    /** A jack-o'-lantern on the floor, lit at night. */
+    private fun pumpkin(img: PixelImage, x: Int, baseY: Int, phase: Sky.Phase) {
+        val orange = if (phase.dark) 0xFFB8651E.toInt() else 0xFFF28C28.toInt()
+        val dark = if (phase.dark) 0xFF8A4A14.toInt() else 0xFFC96F1E.toInt()
+        val face = if (phase.dark) 0xFFFFE27A.toInt() else 0xFF2B2135.toInt()
+        val rows = listOf("...gg....", "..xxxxx..", ".xxxxxxx.", "xxxxxxxxx", "xxxxxxxxx", "xxxxxxxxx", ".xxxxxxx.", "..xxxxx..")
+        rows.forEachIndexed { r, row -> row.forEachIndexed { c, ch -> when (ch) { 'x' -> set(img, x + c, baseY - 7 + r, if (c == 2 || c == 6) dark else orange); 'g' -> set(img, x + c, baseY - 7 + r, 0xFF5EA64C.toInt()) } } }
+        set(img, x + 2, baseY - 4, face); set(img, x + 6, baseY - 4, face)
+        for (c in 2..6) set(img, x + c, baseY - 2, face); set(img, x + 3, baseY - 1, face); set(img, x + 5, baseY - 1, face)
+    }
+
+    /** A small tree with baubles and a star, by the lamp. */
+    private fun tree(img: PixelImage, x: Int, baseY: Int, p: Palette, phase: Sky.Phase) {
+        val green = if (phase.dark) 0xFF3F7A3C.toInt() else 0xFF4F8F4C.toInt()
+        val light = if (phase.dark) 0xFF5E9B55.toInt() else 0xFF78B56F.toInt()
+        val baubles = intArrayOf(0xFFE8374E.toInt(), 0xFFFFCF5C.toInt(), 0xFF4A90D9.toInt(), 0xFFFFA9C9.toInt())
+        var row = 0
+        for (dy in 0 until 14) {
+            val half = (dy * 5) / 13 + 1
+            for (dx in -half..half) set(img, x + dx, baseY - 15 + dy, if ((dx + dy) % 3 == 0) light else green)
+            if (dy % 3 == 2) { set(img, x + (if (row % 2 == 0) -half + 1 else half - 1), baseY - 15 + dy, baubles[row % baubles.size]); row++ }
+        }
+        for (dy in 0..1) for (dx in -1..1) set(img, x + dx, baseY - dy, p.shelf)
+        set(img, x, baseY - 16, 0xFFFFCF5C.toInt()); set(img, x - 1, baseY - 15, 0xFFFFCF5C.toInt()); set(img, x + 1, baseY - 15, 0xFFFFCF5C.toInt())
     }
 
     private fun window(img: PixelImage, x: Int, y: Int, w: Int, h: Int, phase: Sky.Phase, p: Palette, seed: Int) {
@@ -141,9 +210,8 @@ object Room {
     }
 
     /** A string of little flags across the top of the wall, sagging a little in the middle. */
-    private fun bunting(img: PixelImage, top: Int, p: Palette) {
+    private fun bunting(img: PixelImage, top: Int, p: Palette, colours: IntArray = intArrayOf(p.curtain, p.leaf, p.shade, p.cushion)) {
         val w = img.width
-        val colours = intArrayOf(p.curtain, p.leaf, p.shade, p.cushion)
         var i = 0
         var x = 2
         while (x + 6 < w) {
