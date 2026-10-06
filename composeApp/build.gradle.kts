@@ -15,7 +15,7 @@ val mapFile = rootProject.file("pawpixel.properties")
 val mapProps = Properties().apply { if (mapFile.exists()) mapFile.inputStream().use { load(it) } }
 val mapKeys = listOf(
     "PAWPIXEL_SUPABASE_URL", "PAWPIXEL_SUPABASE_ANON_KEY", "PAWPIXEL_TILE_URL", "PAWPIXEL_TILE_ATTRIBUTION",
-    "PAWPIXEL_GOOGLE_WEB_CLIENT_ID", "PAWPIXEL_TEST_EMAIL", "PAWPIXEL_TEST_PASSWORD",
+    "PAWPIXEL_GOOGLE_WEB_CLIENT_ID", "PAWPIXEL_TEST_EMAIL", "PAWPIXEL_TEST_PASSWORD", "PAWPIXEL_TILE_KEY",
 )
 val mapValues = mapKeys.associateWith { k ->
     (System.getenv(k) ?: mapProps.getProperty(k).orEmpty()).replace("\\", "\\\\").replace("\"", "\\\"").replace("$", "\\$")
@@ -34,6 +34,7 @@ val mapConfigSource = """
     |    googleWebClientId = "${mapValues["PAWPIXEL_GOOGLE_WEB_CLIENT_ID"]}",
     |    testEmail = "${mapValues["PAWPIXEL_TEST_EMAIL"]}",
     |    testPassword = "${mapValues["PAWPIXEL_TEST_PASSWORD"]}",
+    |    tileKey = "${mapValues["PAWPIXEL_TILE_KEY"]}",
     |)
     |""".trimMargin()
 val generateMapConfig by tasks.registering {

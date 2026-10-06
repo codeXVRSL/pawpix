@@ -194,3 +194,32 @@ class IsoTimeTest {
         assertEquals(null, t.parseMs("next sunday"))
     }
 }
+
+class MapStyleTest {
+    private fun rgb(r: Int, g: Int, b: Int) = (0xFF shl 24) or (r shl 16) or (g shl 8) or b
+
+    @Test fun mapPixelsAreSortedIntoTheCartoonPalette() {
+        assertEquals(com.pawpixel.map.MapStyle.WATER, com.pawpixel.map.MapStyle.paint(rgb(0xAA, 0xD3, 0xDF)), "light blue water")
+        assertEquals(com.pawpixel.map.MapStyle.PARK, com.pawpixel.map.MapStyle.paint(rgb(0xD8, 0xE8, 0xC8)), "pale park green")
+        assertEquals(com.pawpixel.map.MapStyle.LAND, com.pawpixel.map.MapStyle.paint(rgb(0xFB, 0xF8, 0xF3)), "cream land")
+        assertEquals(com.pawpixel.map.MapStyle.ROAD, com.pawpixel.map.MapStyle.paint(rgb(0xFF, 0xFF, 0xFF)), "white road")
+        assertEquals(com.pawpixel.map.MapStyle.BUILDING, com.pawpixel.map.MapStyle.paint(rgb(0xE8, 0xE6, 0xE1)), "grey building")
+        assertEquals(com.pawpixel.map.MapStyle.MAIN_ROAD, com.pawpixel.map.MapStyle.paint(rgb(0xFF, 0xF0, 0xB0)), "yellow main road")
+        assertEquals(com.pawpixel.map.MapStyle.HIGHWAY, com.pawpixel.map.MapStyle.paint(rgb(0xFF, 0xC0, 0xA0)), "orange highway")
+        assertEquals(com.pawpixel.map.MapStyle.INK, com.pawpixel.map.MapStyle.paint(rgb(0x40, 0x40, 0x40)), "dark text")
+        assertEquals(0, com.pawpixel.map.MapStyle.paint(0x10FFFFFF), "transparent stays transparent")
+        val tile = com.pawpixel.sprite.PixelImage(2, 1, intArrayOf(rgb(0xAA, 0xD3, 0xDF), rgb(0xFF, 0xFF, 0xFF)))
+        val out = com.pawpixel.map.MapStyle.cartoon(tile)
+        assertEquals(listOf(com.pawpixel.map.MapStyle.WATER, com.pawpixel.map.MapStyle.ROAD), out.pixels.toList())
+        assertEquals(rgb(0xAA, 0xD3, 0xDF), tile.pixels[0], "the original tile is untouched")
+    }
+
+    @Test fun freeTilesAreTheDefaultAndABuildsOwnWin() {
+        val free = MapSettings("", "", "", "", "")
+        assertTrue(free.hasTiles && free.streetTileUrl.contains("{z}") && free.labelTileUrl != null && free.streetAttribution.contains("OpenStreetMap"))
+        val own = MapSettings("", "", "https://tiles.example/{z}/{x}/{y}.png", "© Example", "")
+        assertEquals("https://tiles.example/{z}/{x}/{y}.png", own.streetTileUrl)
+        assertEquals(null, own.labelTileUrl)
+        assertEquals("© Example", own.streetAttribution)
+    }
+}

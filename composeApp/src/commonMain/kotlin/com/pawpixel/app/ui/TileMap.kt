@@ -54,6 +54,10 @@ import com.pawpixel.core.LocationGrid
 import com.pawpixel.i18n.tr
 import com.pawpixel.map.MapArea
 import com.pawpixel.map.MapSettings
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.Dispatchers
+import com.pawpixel.app.toImageBitmap
+import com.pawpixel.map.MapStyle
 import com.pawpixel.map.WebMercator
 import kotlinx.coroutines.launch
 import kotlin.math.PI
@@ -109,6 +113,8 @@ fun TileMap(
     var cy by remember { mutableDoubleStateOf(WebMercator.y(centerLat, 15)) }
     var size by remember { mutableStateOf(IntSize.Zero) }
     val tiles = remember { mutableStateMapOf<String, ImageBitmap>() }
+    // Street names, drawn crisp over the cartoon streets (a separate, transparent layer of tiles).
+    val labels = remember { mutableStateMapOf<String, ImageBitmap>() }
     val order = remember { ArrayDeque<String>() }
     val pending = remember { HashSet<String>() }
     val failed = remember { HashSet<String>() }
@@ -134,8 +140,8 @@ fun TileMap(
     )
 
     // Load the tiles on screen (plus one ring around), newest first; keep ~150 in memory.
-    LaunchedEffect(zoom, cx.toInt() / 128, cy.toInt() / 128, size, settings.tileUrl) {
-        if (!settings.hasTiles || size == IntSize.Zero) return@LaunchedEffect
+    LaunchedEffect(zoom, cx.toInt() / 128, cy.toInt() / 128, size, settings.streetTileUrl) {
+        if (size == IntSize.Zero) return@LaunchedEffect
         val n = 1 shl zoom
         val halfW = size.width / 2.0 / scale; val halfH = size.height / 2.0 / scale
         val tx0 = floor((cx - halfW) / 256).toInt() - 1; val tx1 = floor((cx + halfW) / 256).toInt() + 1
@@ -146,12 +152,18 @@ fun TileMap(
             if (key in tiles || key in pending || key in failed) continue
             pending += key
             scope.launch {
-                val img = platform.fetchBytes(WebMercator.tileUrl(settings.tileUrl, zoom, x, ty))?.let(::decodeImage)
+                // The streets, repainted as PawPixel's cartoon (off the main thread), and their names.
+                val img = platform.fetchBytes(WebMercator.tileUrl(settings.streetTileUrl, zoom, x, ty))?.let { bytes ->
+                    withContext(Dispatchers.Default) { platform.decodePhoto(bytes, 512)?.let { MapStyle.cartoon(it).toImageBitmap() } }
+                }
                 pending -= key
                 if (img == null) { failed += key; return@launch }
                 tiles[key] = img
                 order.addLast(key)
-                while (order.size > 150) tiles.remove(order.removeFirst())
+                while (order.size > 150) { val old = order.removeFirst(); tiles.remove(old); labels.remove(old) }
+                settings.labelTileUrl?.let { url ->
+                    platform.fetchBytes(WebMercator.tileUrl(url, zoom, x, ty))?.let(::decodeImage)?.let { labels[key] = it }
+                }
             }
         }
     }
@@ -189,8 +201,10 @@ fun TileMap(
                     )
                 },
         ) {
-            drawRect(Sand)
-            if (settings.hasTiles) drawTiles(tiles, zoom, cx, cy, scale) else drawPixelGrid(cx, cy, scale)
+            drawRect(Color(MapStyle.LAND))
+            if (tiles.isEmpty()) drawPixelGrid(cx, cy, scale)
+            drawTiles(tiles, zoom, cx, cy, scale, crisp = true)
+            drawTiles(labels, zoom, cx, cy, scale, crisp = false)
             myArea?.let { drawMyArea(it, ::toScreen, density) }
             // Walks sit a little to the right of the area pin, so both stay tappable in a shared area.
             for (w in walks) drawFlag(toScreen(w.lat, w.lng) + Offset(26 * density, 0f), density)
@@ -234,7 +248,7 @@ fun TileMap(
             MapButton("−", tr("Zoom out")) { setZoom(zoom - 1) }
             MapButton("◎", tr("Back to your area")) { recenter() }
         }
-        val credit = if (settings.hasTiles) settings.tileAttribution else tr("Street map not set up in this build")
+        val credit = settings.streetAttribution
         if (credit.isNotBlank()) {
             Text(
                 credit, style = MaterialTheme.typography.labelSmall, color = Ink,
@@ -256,7 +270,8 @@ private fun MapButton(label: String, description: String, onClick: () -> Unit) {
     }
 }
 
-private fun DrawScope.drawTiles(tiles: Map<String, ImageBitmap>, zoom: Int, cx: Double, cy: Double, scale: Int) {
+/** [crisp]: whole pixels with no smoothing (the cartoon streets); otherwise smooth (the names). */
+private fun DrawScope.drawTiles(tiles: Map<String, ImageBitmap>, zoom: Int, cx: Double, cy: Double, scale: Int, crisp: Boolean) {
     val n = 1 shl zoom
     val halfW = size.width / 2.0 / scale; val halfH = size.height / 2.0 / scale
     val tx0 = floor((cx - halfW) / 256).toInt(); val tx1 = floor((cx + halfW) / 256).toInt()
@@ -267,7 +282,7 @@ private fun DrawScope.drawTiles(tiles: Map<String, ImageBitmap>, zoom: Int, cx: 
         val left = ((tx * 256.0 - cx) * scale + size.width / 2).roundToInt()
         val top = ((ty * 256.0 - cy) * scale + size.height / 2).roundToInt()
         drawImage(img, IntOffset.Zero, IntSize(img.width, img.height), IntOffset(left, top), IntSize(tilePx, tilePx),
-            filterQuality = FilterQuality.None)
+            filterQuality = if (crisp) FilterQuality.None else FilterQuality.High)
     }
 }
 

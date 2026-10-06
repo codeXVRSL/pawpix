@@ -11,6 +11,7 @@
 #
 # What you still do by hand afterwards (Google won't let a script do it): Google sign-in, section 2
 # of docs/MAP_SETUP.md. Until then, debug APKs sign in with the test account this script creates.
+# Optional: PAWPIXEL_TILE_KEY=... (the free CARTO street-tile key, section 4) is stored as a secret too.
 set -euo pipefail
 
 NAME="pawpixel"; REGION="ap-southeast-1"; REPO=""
@@ -85,6 +86,7 @@ PAWPIXEL_SUPABASE_ANON_KEY=$ANON
 PAWPIXEL_GOOGLE_WEB_CLIENT_ID=
 PAWPIXEL_TILE_URL=
 PAWPIXEL_TILE_ATTRIBUTION=
+PAWPIXEL_TILE_KEY=${PAWPIXEL_TILE_KEY:-}
 PAWPIXEL_TEST_EMAIL=$TEST_EMAIL
 PAWPIXEL_TEST_PASSWORD=$TEST_PASSWORD
 EOF
@@ -96,6 +98,7 @@ if command -v gh >/dev/null && gh auth status >/dev/null 2>&1; then
   gh secret set PAWPIXEL_SUPABASE_ANON_KEY $R --body "$ANON"
   gh secret set PAWPIXEL_TEST_EMAIL $R --body "$TEST_EMAIL"
   gh secret set PAWPIXEL_TEST_PASSWORD $R --body "$TEST_PASSWORD"
+  [ -n "${PAWPIXEL_TILE_KEY:-}" ] && gh secret set PAWPIXEL_TILE_KEY $R --body "$PAWPIXEL_TILE_KEY"
   echo "   set. The next CI run's debug APK has the map on (signed in with the test account)."
 else
   echo "== GitHub secrets: gh isn't signed in. Add these in the repo's Settings → Secrets → Actions:"

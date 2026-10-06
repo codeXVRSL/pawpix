@@ -96,6 +96,7 @@ jobs:
           PAWPIXEL_GOOGLE_WEB_CLIENT_ID: ${{ secrets.PAWPIXEL_GOOGLE_WEB_CLIENT_ID }}
           PAWPIXEL_TILE_URL: ${{ secrets.PAWPIXEL_TILE_URL }}
           PAWPIXEL_TILE_ATTRIBUTION: ${{ secrets.PAWPIXEL_TILE_ATTRIBUTION }}
+          PAWPIXEL_TILE_KEY: ${{ secrets.PAWPIXEL_TILE_KEY }}
           # Test-account sign-in for the debug APK only (never set these for the release job).
           PAWPIXEL_TEST_EMAIL: ${{ secrets.PAWPIXEL_TEST_EMAIL }}
           PAWPIXEL_TEST_PASSWORD: ${{ secrets.PAWPIXEL_TEST_PASSWORD }}

@@ -13,8 +13,8 @@ secrets. The next CI run's **debug APK** then has the map switched on: it signs 
 account (no Google needed), so you can join, see the pixel pets around you, RSVP and host walks
 right away. Walks owners propose wait in the dashboard for your approval (section 6).
 
-Google sign-in (section 2) and map tiles (section 4) are the two things left by hand; store builds
-need Google sign-in, and without tiles the map draws a plain grid behind the pins.
+Google sign-in (section 2) is the one thing left by hand for store builds. The street map works
+out of the box (section 4: free CARTO tiles, repainted as a cartoon; a free key keeps them loading).
 
 Until a server exists, debug APKs offer **"Try the demo map"** on the map screen: pretend owners,
 pets and walks around Naga, kept on the phone, so the whole flow can be tried without any setup.
@@ -57,16 +57,24 @@ and a map-tile key. Then you put six values into the build.
 2. In Supabase → Authentication → Providers → **Apple**: enable it and add `com.pawpixel.app` as a
    client ID (native sign-in needs no Services ID or secret).
 
-## 4. Map tiles
-The map draws standard 256 px raster tiles, crisp and pixelated. Any provider with a `{z}/{x}/{y}`
-URL works. The default suggestion is **MapTiler**:
-- Create a key at [maptiler.com](https://www.maptiler.com/cloud/). Restrict it to your app.
-- `PAWPIXEL_TILE_URL` = `https://api.maptiler.com/maps/streets-v2/256/{z}/{x}/{y}.png?key=YOUR_KEY`
-- `PAWPIXEL_TILE_ATTRIBUTION` = `© MapTiler © OpenStreetMap contributors`
+## 4. Map tiles (free)
+The map is a real street map of the world (OpenStreetMap data) that the app repaints as its own
+cartoon: water, parks, roads and buildings come out in PawPixel's candy colours as chunky pixels,
+with the street names drawn crisp on top (`core/.../map/MapStyle.kt`). No setting is needed to get
+it: by default the app loads **CARTO's Voyager** raster tiles (`basemaps.cartocdn.com`), which are
+free with the attribution the map already shows ("© OpenStreetMap contributors © CARTO").
 
-Pricing note: MapTiler's **Free** plan is for testing and non-commercial use (5,000 map sessions a
-month). Once PawPixel earns money (Pro), switch to their **Flex** plan (about $30 a month), or another
-provider. Only the two settings above change.
+CARTO asks for a **free key** (no account needed): request one at
+[carto.com/basemaps](https://carto.com/basemaps/) and put it in `PAWPIXEL_TILE_KEY` (a GitHub secret,
+or `pawpixel.properties`). Free limits are generous for a pilot: 5 million tile loads a month for
+non-commercial use, 1 million for commercial use; one owner looking at the map loads a few dozen
+tiles. Keep the attribution visible (the app does). Without a key the tiles may stop loading, and
+the map falls back to a plain grid with the pins still working.
+
+Any other provider with a `{z}/{x}/{y}` URL works too (MapTiler, Stadia, your own tile server):
+set `PAWPIXEL_TILE_URL` and `PAWPIXEL_TILE_ATTRIBUTION`, and the cartoon repaint applies to it as
+well. Don't point the app at `tile.openstreetmap.org`: OpenStreetMap's own servers aren't meant
+for apps.
 
 ## 5. Put the values into the build
 Either as **GitHub repository secrets** (for CI release builds) with these names, or in a local,

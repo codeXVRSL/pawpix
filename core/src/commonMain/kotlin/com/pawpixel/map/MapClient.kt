@@ -17,9 +17,30 @@ data class MapSettings(
     /** Test builds only: sign in with this email/password instead of Google/Apple. */
     val testEmail: String = "",
     val testPassword: String = "",
+    /** A key for the default (CARTO) street tiles: free, no account (docs/MAP_SETUP.md section 4). */
+    val tileKey: String = "",
 ) {
     val isConfigured: Boolean get() = supabaseUrl.isNotBlank() && anonKey.isNotBlank()
-    val hasTiles: Boolean get() = tileUrl.contains("{z}")
+
+    /** The street tiles to draw: the build's own, or the free default (see [FREE_TILES]). */
+    val streetTileUrl: String get() = if (tileUrl.contains("{z}")) tileUrl else keyed(FREE_TILES)
+    /** Street names, as a separate layer drawn crisp over the cartoon; only with the default tiles. */
+    val labelTileUrl: String? get() = if (tileUrl.contains("{z}")) null else keyed(FREE_LABELS)
+    private fun keyed(url: String) = if (tileKey.isBlank()) url else "$url?key=$tileKey"
+    val streetAttribution: String get() = if (tileUrl.contains("{z}")) tileAttribution else FREE_ATTRIBUTION
+    val hasTiles: Boolean get() = true
+
+    companion object {
+        /**
+         * Free street tiles with no key: CARTO's Voyager basemap (OpenStreetMap data), the plain
+         * map without names, which the app repaints as a cartoon (see [MapStyle]); the names come
+         * from the matching labels layer. Attribution is required and shown on the map. Fair-use
+         * terms: fine for a pilot; a big app should move to a keyed provider (docs/MAP_SETUP.md).
+         */
+        const val FREE_TILES = "https://basemaps.cartocdn.com/rastertiles/voyager_nolabels/{z}/{x}/{y}.png"
+        const val FREE_LABELS = "https://basemaps.cartocdn.com/rastertiles/voyager_only_labels/{z}/{x}/{y}@2x.png"
+        const val FREE_ATTRIBUTION = "© OpenStreetMap contributors © CARTO"
+    }
 }
 
 data class HttpRequest(val method: String, val url: String, val headers: Map<String, String>, val body: String? = null)
