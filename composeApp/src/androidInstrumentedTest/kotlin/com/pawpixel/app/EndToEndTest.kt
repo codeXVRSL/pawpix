@@ -320,7 +320,8 @@ class EndToEndTest {
             // The Pet ID card: made on the server (the real one, or the demo), its QR drawn, then removed.
             val model = if (repo.map.settings.isConfigured) repo.map else repo.demoMap
             retrying { scrollTo(By.text("Make an ID card")).click() }
-            retrying { device.findObjects(By.clazz("android.widget.EditText"))[0].text = "Friendly but shy, on a special diet" }
+            find(By.text("Make the card"), 15_000) // the note and microchip fields open
+            retrying { scrollTo(By.clazz("android.widget.EditText")).text = "Friendly but shy, on a special diet" }
             retrying { scrollTo(By.text("Make the card")).click() }
             find(By.text("Scan to reach my owner"), 40_000)
             find(By.descStartsWith("QR code for Chelsea"))
