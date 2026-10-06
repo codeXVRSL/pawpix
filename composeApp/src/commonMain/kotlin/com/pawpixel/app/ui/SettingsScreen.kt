@@ -100,7 +100,7 @@ fun SettingsScreen(app: AppScope, state: AppState) {
         Group(PixelIcons.GLOBE, tr("Language")) {
             FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 // The language names themselves stay as they are, so anyone can find their own.
-                listOf("" to tr("Phone's language"), "en" to "English", "fil" to "Filipino").forEach { (code, label) ->
+                (listOf("" to tr("Phone's language")) + com.pawpixel.i18n.Lang.entries.map { it.code to it.label }).forEach { (code, label) ->
                     ChoiceChip(s.language == code, { app.launch { app.repo.setSettings(s.copy(language = code)) } }, label)
                 }
             }

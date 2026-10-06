@@ -3,13 +3,23 @@ package com.pawpixel.i18n
 /** Languages PawPixel speaks. Filipino first (the pilot is in Naga City); Bikol can follow the same way. */
 enum class Lang(val code: String, val label: String) {
     EN("en", "English"),
-    FIL("fil", "Filipino");
+    FIL("fil", "Filipino"),
+    /** Everyday strings only so far (see EsCore / PtCore); the rest shows English until translated. */
+    ES("es", "Español"),
+    PT("pt", "Português");
 
     companion object {
         /** [setting] is the owner's choice ("" = follow the phone); [system] is the phone's language code. */
-        fun resolve(setting: String, system: String): Lang =
-            entries.firstOrNull { it.code == setting }
-                ?: if (system.lowercase().let { it.startsWith("fil") || it.startsWith("tl") }) FIL else EN
+        fun resolve(setting: String, system: String): Lang {
+            entries.firstOrNull { it.code == setting }?.let { return it }
+            val sys = system.lowercase()
+            return when {
+                sys.startsWith("fil") || sys.startsWith("tl") -> FIL
+                sys.startsWith("es") -> ES
+                sys.startsWith("pt") -> PT
+                else -> EN
+            }
+        }
     }
 }
 
@@ -30,9 +40,14 @@ object I18n {
     fun lookup(en: String, l: Lang = lang): String = when (l) {
         Lang.EN -> en
         Lang.FIL -> filipino[en] ?: en
+        Lang.ES -> EsCore.map[en] ?: en
+        Lang.PT -> PtCore.map[en] ?: en
     }
 
     fun has(en: String): Boolean = filipino.containsKey(en)
+
+    /** The keys of the partial Spanish and Portuguese tables (tests check they're real strings). */
+    val spanishKeys: Set<String> get() = EsCore.map.keys + PtCore.map.keys
 
     /** Fills {0}, {1}... in one pass, so a pet named "{1}" stays "{1}". */
     fun format(template: String, args: Array<out Any?>): String {

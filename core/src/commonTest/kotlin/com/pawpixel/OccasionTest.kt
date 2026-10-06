@@ -60,3 +60,16 @@ class SeasonTest {
         }
     }
 }
+
+class MoreLanguagesTest {
+    @Test fun spanishAndPortugueseFollowThePhoneAndFallBackToEnglish() {
+        assertEquals(com.pawpixel.i18n.Lang.ES, com.pawpixel.i18n.Lang.resolve("", "es-MX"))
+        assertEquals(com.pawpixel.i18n.Lang.PT, com.pawpixel.i18n.Lang.resolve("", "pt-BR"))
+        assertEquals(com.pawpixel.i18n.Lang.FIL, com.pawpixel.i18n.Lang.resolve("fil", "es"))
+        assertEquals("{0} tiene hambre", com.pawpixel.i18n.I18n.lookup("{0} is hungry", com.pawpixel.i18n.Lang.ES))
+        assertEquals("{0} está com fome", com.pawpixel.i18n.I18n.lookup("{0} is hungry", com.pawpixel.i18n.Lang.PT))
+        assertEquals("Mix your own", com.pawpixel.i18n.I18n.lookup("Mix your own", com.pawpixel.i18n.Lang.ES), "untranslated strings stay English")
+        // Every Spanish and Portuguese key is a real English string the app uses (it has Filipino).
+        for (k in com.pawpixel.i18n.I18n.spanishKeys) assertTrue(com.pawpixel.i18n.I18n.has(k), "no such English string: $k")
+    }
+}
