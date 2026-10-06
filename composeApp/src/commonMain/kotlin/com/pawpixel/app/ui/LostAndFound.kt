@@ -137,10 +137,13 @@ private fun LostForm(app: AppScope, state: AppState, pet: Pet, map: PetMapModel?
     }
 
     GroupLabel(tr("What to look for"))
+    val focus = androidx.compose.ui.platform.LocalFocusManager.current
     OutlinedTextField(
-        draft.description, { draft = draft.copy(description = it.take(300)) },
+        draft.description, { draft = draft.copy(description = it.take(300).replace("\n", " ")) },
         label = { Text(tr("Colour, size, collar, how they answer to their name")) },
-        modifier = Modifier.fillMaxWidth(), shape = MaterialTheme.shapes.small, minLines = 2, maxLines = 4,
+        modifier = Modifier.fillMaxWidth(), shape = MaterialTheme.shapes.small, singleLine = true,
+        keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(imeAction = androidx.compose.ui.text.input.ImeAction.Done),
+        keyboardActions = androidx.compose.foundation.text.KeyboardActions(onDone = { focus.clearFocus() }),
     )
 
     GroupLabel(tr("When were they last seen?"))

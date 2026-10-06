@@ -284,6 +284,8 @@ final class OwnerJourneyTests: XCTestCase {
             try find(containing: "Is", timeout: 15)
             let field = app.textViews.firstMatch.exists ? app.textViews.firstMatch : app.textFields.firstMatch
             if field.waitForExistence(timeout: 5) { field.tap(); field.typeText("Grey tabby, pink collar") }
+            dismissKeyboard() // the field is single-line: Return closes the keyboard, which would hide the buttons below
+            sleep(1)
             try scrollTo("Earlier today").tap()
             shot("lost-form")
             try scrollTo("Alert owners nearby").tap()
