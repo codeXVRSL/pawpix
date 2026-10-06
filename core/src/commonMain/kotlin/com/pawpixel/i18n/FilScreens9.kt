@@ -32,6 +32,17 @@ internal object FilScreens9 {
         "Last seen {0} · {1} away" to "Huling nakita {0} · {1} ang layo",
         "We'll look at it. If someone is in danger, contact the police." to "Titingnan namin. Kung may nasa panganib, tumawag sa pulis.",
 
+        // Health items outside the Philippines
+        "Rabies vaccine" to "Bakuna kontra rabies",
+        "DAPP vaccine" to "DAPP na bakuna",
+        "DHPP vaccine" to "DHPP na bakuna",
+        "DHP vaccine" to "DHP na bakuna",
+        "C5 vaccine" to "C5 na bakuna",
+        "F3 vaccine" to "F3 na bakuna",
+        "FeLV vaccine" to "FeLV na bakuna",
+        "Leptospirosis vaccine" to "Bakuna kontra leptospirosis",
+        "Flea & tick prevention" to "Pangontra sa pulgas at garapata",
+
         // Health notes outside the Philippines
         "The first-year plan follows the WSAVA vaccination guidelines. If {0} missed a dose, ask your vet how to catch up; tap Edit to change anything." to
             "Sumusunod ang unang-taong plano sa WSAVA vaccination guidelines. Kung may nalaktawang dose si {0}, itanong sa vet kung paano hahabol; i-tap ang Edit para baguhin ang kahit ano.",

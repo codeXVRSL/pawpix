@@ -239,7 +239,7 @@ class PawRepository(val platform: Platform) {
      */
     suspend fun addHealthCare(pet: Pet, birthDay: Long?) = update { s ->
         val withBirthday = (s.pet(pet.id) ?: pet).let { it.copy(birthDay = birthDay ?: it.birthDay) }
-        HealthPlan.addTo(StateOps.updatePet(s, withBirthday), withBirthday, now(), clock)
+        HealthPlan.addTo(StateOps.updatePet(s, withBirthday), withBirthday, now(), clock, country = platform.systemCountry())
     }
 
     suspend fun deleteTask(task: CareTask) {

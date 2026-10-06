@@ -4,6 +4,7 @@ import com.pawpixel.core.*
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
@@ -216,5 +217,54 @@ class HealthPlanTest {
         assertTrue(ReminderPlanner.plan(s.copy(pets = s.pets.map { it.copy(species = Species.OTHER) }), feb, clock).isEmpty())
         assertTrue(ReminderPlanner.plan(s.copy(settings = s.settings.copy(remindersEnabled = false)), feb, clock).isEmpty())
         assertEquals(r.id, ReminderPlanner.plan(s, feb + DAY_MS, clock).single().id, "the same notification, not a second one")
+    }
+}
+
+class RegionalHealthPlanTest {
+    private val clock = LocalClock.MANILA
+    private val today = LocalClock.dayOf(2026, 9, 29)
+    private val now = clock.at(today, 12 * 60)
+    private var n = 0
+    private fun ids() = { "r${n++}" }
+
+    @Test fun eachRegionHasItsOwnUsualItems() {
+        assertEquals(HealthPlan.Region.PH, HealthPlan.regionOf("")); assertEquals(HealthPlan.Region.PH, HealthPlan.regionOf("ph"))
+        assertEquals(HealthPlan.Region.NORTH_AMERICA, HealthPlan.regionOf("US")); assertEquals(HealthPlan.Region.UK, HealthPlan.regionOf("GB"))
+        assertEquals(HealthPlan.Region.AUSTRALIA, HealthPlan.regionOf("NZ")); assertEquals(HealthPlan.Region.WORLD, HealthPlan.regionOf("DE"))
+        val titles = { species: Species, c: String -> HealthPlan.items(species, c).map { it.title } }
+        assertEquals(listOf("Anti-rabies shot", "5-in-1 vaccine", "Deworming", "Tick & flea prevention", "Heartworm prevention", "Vet check-up"), titles(Species.DOG, "PH"))
+        assertTrue("Leptospirosis vaccine" in titles(Species.DOG, "US")); assertTrue("FeLV vaccine" in titles(Species.CAT, "CA"))
+        assertTrue(titles(Species.DOG, "GB").none { it.contains("abies") }, "no rabies vaccine in the UK")
+        assertTrue(titles(Species.CAT, "AU").none { it.contains("abies") }, "Australia is rabies-free")
+        assertEquals(listOf("C5 vaccine"), titles(Species.DOG, "AU").filter { it.endsWith("vaccine") })
+        assertEquals(listOf("Rabies vaccine", "DHPP vaccine"), titles(Species.DOG, "FR").filter { it.endsWith("vaccine") })
+        assertEquals(listOf("Vet check-up"), titles(Species.OTHER, "US"))
+        // Every item's name is translated for a Filipino speaker abroad.
+        for (r in HealthPlan.Region.entries) for (sp in Species.entries) for (i in HealthPlan.itemsIn(sp, r)) assertTrue(com.pawpixel.i18n.I18n.has(i.title), "no Filipino for ${i.title}")
+    }
+
+    @Test fun aUsPuppyFollowsTheAahaSeriesAndAUkPuppyTheTwoDoseCourse() {
+        val pup = Pet("p1", "Max", Species.DOG, 0, birthDay = today - 10 * 7)
+        val us = HealthPlan.addTo(AppState(pets = listOf(pup)), pup, now, clock, ids(), country = "US")
+        val lepto = us.tasks.single { it.title == "Leptospirosis vaccine" }
+        val leptoDue = HealthPlan.due(HealthPlan.scheduleFor(pup, lepto)!!, pup.birthDay!!, emptyList(), lepto.everyDays, today)
+        assertEquals(pup.birthDay!! + 12 * 7, leptoDue.day); assertEquals(1, leptoDue.dose); assertEquals(2, leptoDue.doses)
+        val rabies = us.tasks.single { it.title == "Rabies vaccine" }
+        assertEquals(pup.birthDay!! + 12 * 7, HealthPlan.due(HealthPlan.scheduleFor(pup, rabies)!!, pup.birthDay!!, emptyList(), 365, today).day)
+        val uk = HealthPlan.addTo(AppState(pets = listOf(pup)), pup, now, clock, ids(), country = "GB")
+        val dhp = uk.tasks.single { it.title == "DHP vaccine" }
+        val dhpDue = HealthPlan.due(HealthPlan.scheduleFor(pup, dhp)!!, pup.birthDay!!, emptyList(), 365, today)
+        assertEquals(2, dhpDue.doses) // 8 and 12 weeks; the first is overdue at 10 weeks, so due today
+        assertEquals(today, dhpDue.day)
+    }
+
+    @Test fun aPlanMadeAbroadKeepsItsScheduleOnAPhilippinePhone() {
+        val kitten = Pet("c1", "Tala", Species.CAT, 0, birthDay = today - 9 * 7)
+        val us = HealthPlan.addTo(AppState(pets = listOf(kitten)), kitten, now, clock, ids(), country = "US")
+        val felv = us.tasks.single { it.title == "FeLV vaccine" }
+        assertNotNull(HealthPlan.scheduleFor(kitten, felv)) // matched across regions, not just the phone's
+        // Adding the Philippine items on the household's other phone adds only what's missing by name.
+        val both = HealthPlan.addTo(us, kitten, now, clock, ids(), country = "PH")
+        assertEquals(us.tasks.size + 2, both.tasks.size) // anti-rabies shot and tick & flea (named differently); FVRCP, deworming, check-up already there
     }
 }

@@ -189,8 +189,9 @@ class EndToEndTest {
             find(By.textStartsWith("About 10 weeks old"))
             shot("health-birthday")
             retrying { find(By.text("Save")).click() }
-            // A kitten: anti-rabies, FVRCP, deworming, tick & flea, check-up.
-            waitFor("health tasks added") { repo.state.value.tasksFor(petId).count { it.kind.health } == 5 }
+            // A kitten: the usual items for the emulator's country (anti-rabies, FVRCP, deworming, tick & flea, check-up in the Philippines; FeLV too in the US).
+            val usual = com.pawpixel.core.HealthPlan.items(com.pawpixel.core.Species.CAT, repo.platform.systemCountry()).size
+            waitFor("health tasks added") { repo.state.value.tasksFor(petId).count { it.kind.health } == usual }
             val today = repo.clock.dayIndex(repo.now())
             check(repo.state.value.pet(petId)?.birthDay == today - 70) { "birthday not saved: ${repo.state.value.pet(petId)?.birthDay}" }
             scrollTo(By.text("FVRCP vaccine"))
@@ -232,8 +233,9 @@ class EndToEndTest {
         }
 
         step("health: an anti-rabies shot given a month ago is next due in 11 months") {
-            val vaccine = repo.state.value.tasksFor(petId).first { it.title == "Anti-rabies shot" }
-            retrying { doneNextTo(scrollTo(By.text("Anti-rabies shot"))).click() }
+            // "Anti-rabies shot" on a Philippine phone, "Rabies vaccine" on the US-region emulator.
+            val vaccine = repo.state.value.tasksFor(petId).first { it.title.contains("rabies", ignoreCase = true) }
+            retrying { doneNextTo(scrollTo(By.text(vaccine.title))).click() }
             find(By.text("When was it done?"))
             retrying { find(By.text("A month ago")).click() }
             retrying { find(By.text("Save")).click() }
@@ -613,11 +615,21 @@ class EndToEndTest {
 
             // Host a walk: the form, the meeting spot tapped on the map, and the proposal waiting for approval.
             find(By.textContains("walks coming up"), 15_000)
+            // Proposals left by an earlier run that stopped midway would hit the "3 waiting" limit: clear them first.
+            runBlocking { repo.map.client.myWalks().filter { it.title == "Saturday walk" }.forEach { repo.map.client.cancelWalk(it.id) } }
             retrying { scrollTo(By.text("Host a walk")).click() }
             find(By.text("Send for approval"), 15_000)
-            // The fields, top to bottom: title, meeting place, area. The spot comes from a tap on the map.
-            retrying { device.findObjects(By.clazz("android.widget.EditText"))[0].text = "Saturday walk" }
-            retrying { device.findObjects(By.clazz("android.widget.EditText"))[1].text = "Plaza Rizal fountain" }
+            // The fields, top to bottom: title, meeting place, area. The spot comes from a tap on the map. One field at a
+            // time, checked after a beat: typed back to back, the second field's change can carry the first one's old value.
+            fun typeField(index: Int, text: String) = retrying {
+                device.findObjects(By.clazz("android.widget.EditText"))[index].text = text
+                Thread.sleep(400)
+                val fields = device.findObjects(By.clazz("android.widget.EditText"))
+                check(fields[index].text == text) { "field $index reads '${fields[index].text}', not '$text'" }
+            }
+            typeField(0, "Saturday walk")
+            typeField(1, "Plaza Rizal fountain")
+            check(device.findObjects(By.clazz("android.widget.EditText"))[0].text == "Saturday walk") { "the title was lost while typing the place" }
             retrying { dialogScrollTo(By.text("Tap the spot on the map")).click() }
             find(By.textStartsWith("Tap the meeting place"), 15_000)
             shot("pet-map-place-spot")

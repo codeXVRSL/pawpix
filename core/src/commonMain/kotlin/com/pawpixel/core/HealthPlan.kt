@@ -69,7 +69,90 @@ object HealthPlan {
 
     data class Item(val kind: TaskKind, val title: String, val everyDays: Int, val schedule: HealthSchedule? = null)
 
-    fun items(species: Species): List<Item> = when (species) {
+    /**
+     * Where the pet lives, from the phone's country: the usual items and their names differ.
+     * - [PH] (and anywhere not listed): the Philippine plan above.
+     * - [NORTH_AMERICA] (US, CA): AAHA 2022 and AAFP 2020 guidelines. DAPP/FVRCP series to 16 weeks, rabies
+     *   from 12 weeks (state law; many states then allow 3-year boosters), leptospirosis for dogs (two doses
+     *   from 12 weeks), FeLV for kittens (two doses from 8 weeks), heartworm prevention monthly.
+     *   https://www.aaha.org/resources/2022-aaha-canine-vaccination-guidelines/ , https://catvets.com/guidelines/practice-guidelines/feline-vaccination-guidelines
+     * - [UK] (GB, IE): BSAVA practice. Puppies DHP and leptospirosis at 8 and 12 weeks, kittens FVRCP (and
+     *   FeLV) at 9 and 12 weeks, yearly boosters; no rabies vaccine unless the pet travels.
+     *   https://www.bsava.com/position-statement/vaccination/
+     * - [AUSTRALIA] (AU, NZ): rabies-free. Puppies C5 and kittens F3 at 6–8, 10–12 and 14–16 weeks, then yearly;
+     *   heartworm prevention monthly for dogs. https://www.ava.com.au/policy-advocacy/policies/companion-animals-health/vaccination-of-dogs-and-cats/
+     * - [WORLD]: the WSAVA core schedule with the international names (DHPP, FVRCP, rabies from 12 weeks).
+     */
+    enum class Region { PH, NORTH_AMERICA, UK, AUSTRALIA, WORLD }
+
+    fun regionOf(country: String): Region = when (country.trim().uppercase()) {
+        "", "PH" -> Region.PH
+        "US", "CA" -> Region.NORTH_AMERICA
+        "GB", "IE" -> Region.UK
+        "AU", "NZ" -> Region.AUSTRALIA
+        else -> Region.WORLD
+    }
+
+    val RABIES_12W = HealthSchedule(firstAgeDays = 12 * W)
+    val LEPTO = HealthSchedule(firstAgeDays = 12 * W, step = 3 * W, completeAt = 15 * W)
+    val FELV = HealthSchedule(firstAgeDays = 8 * W, step = 4 * W, completeAt = 12 * W)
+    val UK_DOG = HealthSchedule(firstAgeDays = 8 * W, step = 4 * W, completeAt = 12 * W)
+    val UK_CAT = HealthSchedule(firstAgeDays = 9 * W, step = 3 * W, completeAt = 12 * W)
+
+    /** The usual items for a pet of [species] on a phone in [country] ("" = the Philippines). */
+    fun items(species: Species, country: String = ""): List<Item> = itemsIn(species, regionOf(country))
+
+    fun itemsIn(species: Species, region: Region): List<Item> {
+        if (species == Species.OTHER) return listOf(Item(TaskKind.VET, "Vet check-up", 365))
+        val deworm = Item(TaskKind.DEWORM, "Deworming", 90, if (species == Species.DOG) DEWORM_DOG else DEWORM_CAT)
+        val fleaTick = Item(TaskKind.FLEA_TICK, "Flea & tick prevention", 30, FROM_8_WEEKS)
+        val heartworm = Item(TaskKind.FLEA_TICK, "Heartworm prevention", 30, FROM_8_WEEKS)
+        val checkup = Item(TaskKind.VET, "Vet check-up", 365, if (species == Species.DOG) FIRST_CHECKUP_DOG else FROM_8_WEEKS)
+        return when (region) {
+            Region.PH -> philippineItems(species)
+            Region.NORTH_AMERICA -> if (species == Species.DOG) listOf(
+                Item(TaskKind.VACCINE, "Rabies vaccine", 365, RABIES_12W),
+                Item(TaskKind.VACCINE, "DAPP vaccine", 365, DHPP),
+                Item(TaskKind.VACCINE, "Leptospirosis vaccine", 365, LEPTO),
+                deworm, fleaTick, heartworm, checkup,
+            ) else listOf(
+                Item(TaskKind.VACCINE, "Rabies vaccine", 365, RABIES_12W),
+                Item(TaskKind.VACCINE, "FVRCP vaccine", 365, FVRCP),
+                Item(TaskKind.VACCINE, "FeLV vaccine", 365, FELV),
+                deworm, fleaTick, checkup,
+            )
+            Region.UK -> if (species == Species.DOG) listOf(
+                Item(TaskKind.VACCINE, "DHP vaccine", 365, UK_DOG),
+                Item(TaskKind.VACCINE, "Leptospirosis vaccine", 365, UK_DOG),
+                deworm, fleaTick, checkup,
+            ) else listOf(
+                Item(TaskKind.VACCINE, "FVRCP vaccine", 365, UK_CAT),
+                Item(TaskKind.VACCINE, "FeLV vaccine", 365, UK_CAT),
+                deworm, fleaTick, checkup,
+            )
+            Region.AUSTRALIA -> if (species == Species.DOG) listOf(
+                Item(TaskKind.VACCINE, "C5 vaccine", 365, DHPP),
+                deworm, fleaTick, heartworm, checkup,
+            ) else listOf(
+                Item(TaskKind.VACCINE, "F3 vaccine", 365, FVRCP),
+                deworm, fleaTick, checkup,
+            )
+            Region.WORLD -> if (species == Species.DOG) listOf(
+                Item(TaskKind.VACCINE, "Rabies vaccine", 365, RABIES_12W),
+                Item(TaskKind.VACCINE, "DHPP vaccine", 365, DHPP),
+                deworm, fleaTick, checkup,
+            ) else listOf(
+                Item(TaskKind.VACCINE, "Rabies vaccine", 365, RABIES_12W),
+                Item(TaskKind.VACCINE, "FVRCP vaccine", 365, FVRCP),
+                deworm, fleaTick, checkup,
+            )
+        }
+    }
+
+    /** Every region's items for [species]: a plan made on one phone keeps its schedule on a household phone elsewhere. */
+    fun allItems(species: Species): List<Item> = Region.entries.flatMap { itemsIn(species, it) }.distinctBy { it.kind to it.title.lowercase() }
+
+    private fun philippineItems(species: Species): List<Item> = when (species) {
         Species.DOG -> listOf(
             Item(TaskKind.VACCINE, "Anti-rabies shot", 365, RABIES),
             Item(TaskKind.VACCINE, "5-in-1 vaccine", 365, DHPP),
@@ -94,7 +177,7 @@ object HealthPlan {
     fun scheduleFor(pet: Pet?, task: CareTask): HealthSchedule? {
         if (pet?.birthDay == null || !task.kind.health) return null
         val title = task.title.trim()
-        return items(pet.species).firstOrNull { it.kind == task.kind && it.title.equals(title, ignoreCase = true) }?.schedule
+        return allItems(pet.species).firstOrNull { it.kind == task.kind && it.title.equals(title, ignoreCase = true) }?.schedule
     }
 
     /** When a scheduled item is next due. */
@@ -151,10 +234,10 @@ object HealthPlan {
      * puppy or kitten on its first dose's day; PawPixel doesn't know when anything was last done,
      * so the owner records it with "When was it done?".
      */
-    fun addTo(state: AppState, pet: Pet, nowMs: Long, clock: LocalClock, newId: () -> String = { Ids.newId() }): AppState {
+    fun addTo(state: AppState, pet: Pet, nowMs: Long, clock: LocalClock, newId: () -> String = { Ids.newId() }, country: String = ""): AppState {
         val today = clock.dayIndex(nowMs)
         val have = state.tasksFor(pet.id).map { it.title.trim().lowercase() }.toSet()
-        return items(pet.species).filter { it.title.lowercase() !in have }.fold(state) { acc, item ->
+        return items(pet.species, country).filter { it.title.lowercase() !in have }.fold(state) { acc, item ->
             val base = StateOps.defaultTask(pet, item.kind, today, newId(), nowMs)
             StateOps.upsertTask(acc, base.copy(title = item.title, everyDays = item.everyDays))
         }
