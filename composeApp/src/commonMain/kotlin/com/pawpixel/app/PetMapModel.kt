@@ -1,5 +1,8 @@
 package com.pawpixel.app
 
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import com.pawpixel.core.Json
 import com.pawpixel.core.LocationGrid
 import com.pawpixel.core.Pet
@@ -36,6 +39,8 @@ class PetMapModel(
     private val SHARED get() = "$dir/shared.json"
     private val LOST get() = "$dir/lost.json"
     private val CARDS get() = "$dir/cards.json"
+    private val PALS get() = "$dir/pals.json"
+    private val TREATS get() = "$dir/treats-seen.json"
 
     val client = MapClient(settings, http, object : SessionStore {
         override fun load() = files.readText(SESSION)
@@ -58,15 +63,15 @@ class PetMapModel(
         private set
 
     /** Open lost-pet alerts raised from this phone: local pet id -> alert id. */
-    var lostAlerts: Map<String, String> = files.readText(LOST)?.let { runCatching {
+    var lostAlerts: Map<String, String> by mutableStateOf(files.readText(LOST)?.let { runCatching {
         Json.parse(it).list.mapNotNull { e -> val pet = e["pet"].str ?: return@mapNotNull null; val id = e["id"].str ?: return@mapNotNull null; pet to id }.toMap()
-    }.getOrNull() } ?: emptyMap()
+    }.getOrNull() } ?: emptyMap())
         private set
 
     /** Pet ID cards made from this phone: local pet id -> card id. */
-    var cards: Map<String, String> = files.readText(CARDS)?.let { runCatching {
+    var cards: Map<String, String> by mutableStateOf(files.readText(CARDS)?.let { runCatching {
         Json.parse(it).list.mapNotNull { e -> val pet = e["pet"].str ?: return@mapNotNull null; val id = e["id"].str ?: return@mapNotNull null; pet to id }.toMap()
-    }.getOrNull() } ?: emptyMap()
+    }.getOrNull() } ?: emptyMap())
         private set
 
     fun cardFor(petId: String): String? = cards[petId]
@@ -74,6 +79,57 @@ class PetMapModel(
     fun recordCard(petId: String, cardId: String?) {
         cards = if (cardId == null) cards - petId else cards + (petId to cardId)
         files.writeText(CARDS, Json.arr(cards.map { (pet, id) -> Json.obj("pet" to pet, "id" to id) }).stringify())
+    }
+
+    // ---------- Pals ----------
+
+    /** Your pals' pixel pets as last fetched, so the room has a visitor even offline. */
+    var pals: List<com.pawpixel.map.Pal> by mutableStateOf(files.readText(PALS)?.let { runCatching { decodePals(Json.parse(it)) }.getOrNull() } ?: emptyList())
+        private set
+
+    private var treatsSeen: Set<String> = files.readText(TREATS)?.let { runCatching { Json.parse(it).list.mapNotNull { it.str }.toSet() }.getOrNull() } ?: emptySet()
+
+    /** Signs in, shows your pets to your pals, and fetches theirs. */
+    suspend fun refreshPals(pets: List<Pet>, art: (Pet) -> PetArt?): List<com.pawpixel.map.Pal> {
+        if (!signIn()) return pals
+        client.pals.setPets(pets.filter { !it.remembered }.mapNotNull { pet ->
+            val a = art(pet) ?: return@mapNotNull null
+            SharedPet(pet.id, NameFilter.forMap(pet.name, pet.species), pet.species.name, a.ears.name, a.look.encode())
+        })
+        val list = client.pals.list()
+        pals = list
+        files.writeText(PALS, encodePals(list).stringify())
+        return list
+    }
+
+    /** The pal's pet dropping by today: one of them, changing daily. Null without pals who share a pet. */
+    fun visitor(day: Long): com.pawpixel.map.PalPet? {
+        val all = pals.flatMap { it.pets }
+        if (all.isEmpty()) return null
+        return all[((day % all.size) + all.size).toInt() % all.size]
+    }
+
+    /** Treats that haven't been shown yet (and marks them shown). */
+    suspend fun newTreats(): List<com.pawpixel.map.Treat> {
+        if (pals.isEmpty() || !client.isSignedIn) return emptyList()
+        val fresh = client.pals.inbox().filter { it.id !in treatsSeen }
+        if (fresh.isNotEmpty()) {
+            treatsSeen = (treatsSeen + fresh.map { it.id }).toList().takeLast(200).toSet()
+            files.writeText(TREATS, Json.arr(treatsSeen.toList()).stringify())
+        }
+        return fresh
+    }
+
+    fun forgetPals() { pals = emptyList(); files.delete(PALS) }
+
+    private fun encodePals(list: List<com.pawpixel.map.Pal>) = Json.arr(list.map { p ->
+        Json.obj("id" to p.id, "since" to p.sinceMs, "pets" to Json.arr(p.pets.map { Json.obj("id" to it.petId, "name" to it.name, "species" to it.species, "ears" to it.ears, "look" to it.look?.encode()) }))
+    })
+    private fun decodePals(j: Json) = j.list.mapNotNull { p ->
+        val id = p["id"].str ?: return@mapNotNull null
+        com.pawpixel.map.Pal(id, p["pets"].list.mapNotNull { q ->
+            com.pawpixel.map.PalPet(id, q["id"].str ?: return@mapNotNull null, q["name"].str ?: "Pet", q["species"].str ?: "OTHER", q["ears"].str, q["look"].str?.let(com.pawpixel.sprite.PetLook::decode))
+        }, p["since"].long ?: 0L)
     }
 
     /** The open alert for a pet, if one was raised from this phone. */
@@ -139,6 +195,7 @@ class PetMapModel(
         sharedPetIds = null
         lostAlerts = emptyMap()
         cards = emptyMap()
+        pals = emptyList()
     }
 
     private fun forgetChoices() {

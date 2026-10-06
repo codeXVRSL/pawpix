@@ -408,7 +408,8 @@ class EndToEndTest {
             // Earlier runs that died mid-way may have left alerts open on the shared test account: at most 3 are allowed.
             runBlocking { model.client.lost.mine().filter { it.foundAtMs == null && it.id != id }.forEach { model.client.lost.cancel(it.id) } }
             shot("lost-alert")
-            closePanel() // the alert page drops: the room shows it's reported lost
+            closePanel() // the alert page drops to the More panel
+            closePanel() // and More drops: the room shows it's reported lost
             find(By.text("Reported lost"), 15_000)
 
             // On the map: red flag, the Lost pets tab, and (demo) the neighbourhood's own lost dog with a sighting to report.
@@ -459,6 +460,43 @@ class EndToEndTest {
             find(By.text("Chelsea"), 15_000)
             check(model.alertFor(petId) == null) { "the phone should forget the closed alert" }
             if (real) runBlocking { model.client.lost.cancel(id!!) } // leave the test account clean
+        }
+
+        step("pals: your code, add a pal by code, their pixel pets, a treat, the visitor in the room") {
+            val real = repo.map.settings.isConfigured
+            val model = if (real) repo.map else repo.demoMap
+            retrying { find(By.text("More")).click() }
+            retrying { scrollTo(By.text("Pals")).click() }
+            find(By.text("Your pal code"), 15_000)
+            find(By.descStartsWith("Pal code "), 40_000)
+            shot("pals-code")
+            if (!real) {
+                retrying { device.findObjects(By.clazz("android.widget.EditText"))[0].text = "jam1la" }
+                retrying { find(By.text("Add")).click() }
+                find(By.textStartsWith("You're pals"), 20_000)
+                find(By.text("Biscuit"), 15_000) // the pal's dog (the demo's owner-1 has Biscuit and Tala)
+                retrying { scrollTo(By.text("Treat")).click() }
+                retrying { find(By.text("A ball")).click() }
+                retrying { find(By.text("Send")).click() }
+                find(By.textStartsWith("Sent to"), 15_000)
+                check(model.pals.size == 1 && model.pals[0].pets.map { it.name }.containsAll(listOf("Biscuit", "Tala"))) { "pals not cached: ${model.pals}" }
+                shot("pals")
+                // Back in the room: the pal's pet is visiting, and 15 s later the demo pal's treat shows as the bubble.
+                waitFor("the demo pal sends a ball", 40_000) { runBlocking { model.client.pals.inbox() }.isNotEmpty() }
+                retrying { find(By.desc("Back")).click() }
+                closePanel() // the More panel
+                find(By.textContains("is visiting"), 15_000)
+                find(By.textContains("sent Chelsea a ball"), 15_000)
+                Thread.sleep(600)
+                shot("pals-room")
+                retrying { find(By.text("More")).click() }
+                retrying { scrollTo(By.text("Pals")).click() }
+                retrying { scrollTo(By.text("Unpal")).click() }
+                waitFor("unpalled") { model.pals.isEmpty() }
+            }
+            retrying { find(By.desc("Back")).click() }
+            closePanel()
+            find(By.text("Chelsea"))
         }
 
         step("home is the pet's room") {

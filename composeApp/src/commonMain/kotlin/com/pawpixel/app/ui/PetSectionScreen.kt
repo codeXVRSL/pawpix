@@ -158,6 +158,8 @@ private fun MorePanel(app: AppScope, state: AppState, pet: Pet) {
         if (StateOps.canAddPet(state)) app.navigate(Screen.CreatePet) else showProDialog = true
     }
     MenuRow(PixelIcons.PIN, tr("Pet map"), tr("Pet owners and walks near you"), Candy.Leaf) { app.navigate(Screen.PetMap) }
+    val palCount = lostModel(app)?.pals?.size ?: 0
+    MenuRow(PixelIcons.BALL, tr("Pals"), if (palCount == 0) tr("Friends' pixel pets visit {0}'s room", pet.name) else tr("{0} pals", palCount), Candy.Sky) { app.navigate(Screen.Pals) }
     val household = app.repo.family.household
     MenuRow(
         PixelIcons.PEOPLE, tr("Family"),

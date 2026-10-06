@@ -361,3 +361,41 @@ class PetCardClientTest {
         assertTrue(log.last().url.endsWith("/rpc/remove_pet_card"))
     }
 }
+
+class PalClientTest {
+    private val log = ArrayList<HttpRequest>()
+    private var reply: (HttpRequest) -> HttpResponse = { HttpResponse(200, "[]") }
+    private val http = Http { r -> log += r; reply(r) }
+    private val saved = arrayOfNulls<String>(1)
+    private val store = object : SessionStore { override fun load() = saved[0]; override fun save(json: String?) { saved[0] = json } }
+
+    private fun signedIn(): MapClient {
+        reply = { HttpResponse(200, """{"access_token":"tok1","refresh_token":"ref1","expires_in":3600,"user":{"id":"u1"}}""") }
+        val c = MapClient(MapSettings("https://x.supabase.co", "anon", "", "", ""), http, store) { 1_700_000_000_000L }
+        runSync { c.signInWithIdToken("google", "idtok", "raw-nonce") }
+        log.clear()
+        return c
+    }
+
+    @Test fun palsGroupByOwnerAndCodesAreUppercased() {
+        val c = signedIn()
+        reply = { HttpResponse(200, "\"pal-9\"") }
+        assertEquals("pal-9", runSync { c.pals.add(" jam1la ") })
+        assertEquals("JAM1LA", Json.parse(log.last().body!!)["p_code"].str)
+        reply = { HttpResponse(200, """[
+            {"pal_id":"pal-9","pet_id":"a","name":"Biscuit","species":"DOG","ears":"FLOPPY","look":"1;d9a441;${"0".repeat(64)}","since":"2026-10-01T00:00:00+00:00"},
+            {"pal_id":"pal-9","pet_id":"b","name":"Tala","species":"CAT","ears":"POINTY","look":"","since":"2026-10-01T00:00:00+00:00"},
+            {"pal_id":"pal-3","pet_id":null,"name":null,"species":null,"ears":null,"look":null,"since":"2026-10-02T00:00:00+00:00"}]""") }
+        val pals = runSync { c.pals.list() }
+        assertEquals(listOf("pal-9", "pal-3"), pals.map { it.id })
+        assertEquals(listOf("Biscuit", "Tala"), pals[0].pets.map { it.name })
+        assertTrue(pals[0].pets[0].look != null && pals[1].pets.isEmpty())
+        reply = { HttpResponse(200, "") }
+        runSync { c.pals.sendTreat("pal-9", "a", "Chelsea", "ball") }
+        val t = Json.parse(log.last().body!!)
+        assertEquals("ball", t["p_kind"].str); assertEquals("a", t["p_to_pet"].str); assertEquals("Chelsea", t["p_from_pet"].str)
+        reply = { HttpResponse(200, """[{"id":"t1","to_pet":"p1","from_pet":"Biscuit","kind":"pat","created_at":"2026-10-06T05:00:00+00:00"}]""") }
+        val inbox = runSync { c.pals.inbox() }
+        assertEquals("Biscuit", inbox.single().fromPet); assertEquals("pat", inbox.single().kind)
+    }
+}

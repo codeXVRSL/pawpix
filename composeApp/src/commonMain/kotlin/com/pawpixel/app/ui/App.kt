@@ -52,6 +52,8 @@ sealed interface Screen {
     data class EditTask(val petId: String, val taskId: String?, val health: Boolean = false) : Screen
     data object Settings : Screen
     data object PetMap : Screen
+    /** Pals: a small circle whose pixel pets visit each other. */
+    data object Pals : Screen
     /** Sharing with your household. [sharePetId]: share this pet once in a household. [join]: you came to enter a code. */
     data class Family(val sharePetId: String? = null, val join: Boolean = false) : Screen
 }
@@ -70,6 +72,7 @@ internal fun Screen.code(): String = when (this) {
     is Screen.EditTask -> "task:$petId:${taskId ?: "-"}:${if (health) 1 else 0}"
     Screen.Settings -> "settings"
     Screen.PetMap -> "map"
+    Screen.Pals -> "pals"
     is Screen.Family -> "family:${sharePetId ?: "-"}:${if (join) 1 else 0}"
 }
 
@@ -86,6 +89,7 @@ internal fun screenOf(code: String): Screen? {
         "task" -> id(1)?.let { Screen.EditTask(it, id(2), p.getOrNull(3) == "1") }
         "settings" -> Screen.Settings
         "map" -> Screen.PetMap
+        "pals" -> Screen.Pals
         "family" -> Screen.Family(id(1), p.getOrNull(2) == "1")
         else -> null
     }
@@ -248,6 +252,7 @@ fun App(repo: PawRepository, registerBack: ((() -> Boolean) -> (() -> Unit))? = 
                 }
                 Screen.Settings -> SettingsScreen(app, state)
                 Screen.PetMap -> PetMapScreen(app, state)
+                Screen.Pals -> PalsScreen(app, state)
                 is Screen.Family -> FamilyScreen(app, state, screen.sharePetId, screen.join)
             }
             }

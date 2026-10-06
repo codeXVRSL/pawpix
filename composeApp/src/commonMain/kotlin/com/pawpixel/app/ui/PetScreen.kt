@@ -36,6 +36,9 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import com.pawpixel.sprite.PetArt
+import com.pawpixel.sprite.Ears
+import com.pawpixel.core.Species
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -116,6 +119,30 @@ fun PetScreen(app: AppScope, state: AppState, pet: Pet) {
         )
         HeartBurst(burst, Modifier.matchParentSize())
 
+        // A pal's pet dropping by (one a day, by the door), and a treat a pal sent, as the bubble.
+        val palModel = lostModel(app)
+        val today = clock.dayIndex(app.now)
+        val visitor = remember(palModel?.pals, today, pet.remembered) { if (pet.remembered) null else palModel?.visitor(today) }
+        var treatBubble by remember { mutableStateOf<String?>(null) }
+        LaunchedEffect(pet.id) {
+            val fresh = runCatching { palModel?.newTreats() }.getOrNull().orEmpty().filter { it.toPetId == pet.id }
+            fresh.firstOrNull()?.let { treatBubble = treatText(it.fromPet, pet.name, it.kind); burst = app.now }
+        }
+        LaunchedEffect(treatBubble) { if (treatBubble != null) { kotlinx.coroutines.delay(9_000); treatBubble = null } }
+        visitor?.let { v ->
+            val species = Species.entries.firstOrNull { it.name == v.species } ?: Species.OTHER
+            val img = remember(v.petId) { v.look?.let { PetArt(it, species, Ears.of(v.ears)).still } }
+            Column(
+                Modifier.align(Alignment.BottomStart).padding(start = 18.dp, bottom = hudHeight + 70.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                SpriteView(img, Modifier.size(64.dp), animate = false, description = tr("{0}, a pal's pet, is visiting", v.name))
+                Box(Modifier.background(Color.White, RoundedCornerShape(8.dp)).border(1.dp, Color(0xFFE6D5C3), RoundedCornerShape(8.dp)).padding(horizontal = 6.dp, vertical = 2.dp)) {
+                    Text(tr("{0} is visiting", v.name), style = MaterialTheme.typography.labelSmall, color = Color(0xFF2B2135))
+                }
+            }
+        }
+
         // Top HUD: the name plate (and the pet switcher when there's more than one pet), the gear.
         Column(Modifier.fillMaxWidth().statusBarsPadding().padding(horizontal = 12.dp, vertical = 10.dp)) {
             Row(verticalAlignment = Alignment.Top) {
@@ -128,7 +155,7 @@ fun PetScreen(app: AppScope, state: AppState, pet: Pet) {
             if (celebrating) SpeechBubble(reading.caption, Modifier.padding(top = 10.dp).align(Alignment.CenterHorizontally))
         }
         // What the pet is thinking: a bubble just over its head.
-        if (!celebrating) SpeechBubble(reading.caption, Modifier.align(Alignment.TopCenter).padding(top = screenHeight * 0.27f))
+        if (!celebrating) SpeechBubble(treatBubble ?: reading.caption, Modifier.align(Alignment.TopCenter).padding(top = screenHeight * 0.27f))
 
         // Bottom HUD: Undo (for a few seconds after a tap), the need meters, the five keys.
         Column(

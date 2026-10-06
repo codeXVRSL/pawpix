@@ -27,6 +27,10 @@ class DemoMapServer(private val nowMs: () -> Long) : Http {
     private val fakeOwners = ArrayList<FakeOwner>()
     private val lost = ArrayList<Lost>()
     private val cards = LinkedHashMap<String, Card>()   // local pet id -> card
+    private val pals = LinkedHashMap<String, Long>()     // pal id -> since
+    private var palPets: List<Json> = emptyList()
+    private val treats = ArrayList<Json>()
+    private var treatedAtMs = 0L
     private val cardMessages = ArrayList<CardMsg>()
     private val sightings = ArrayList<Seen>()
 
@@ -167,6 +171,34 @@ class DemoMapServer(private val nowMs: () -> Long) : Http {
                 Json.obj("id" to l.id, "name" to l.name, "species" to l.species, "created_at" to iso(l.createdAtMs), "found_at" to l.foundAtMs?.let(::iso),
                     "last_seen_at" to iso(l.lastSeenAtMs), "sightings" to sightings.count { it.lostId == l.id })
             }).stringify())
+            // Pals (0012): your code is DEMO22; the codes JAM1LA and BANTAY belong to pretend owners.
+            path.endsWith("/rpc/my_pal_code") -> ok("\"DEMO22\"")
+            path.endsWith("/rpc/add_pal") -> {
+                val code = (body["p_code"].str ?: "").trim().uppercase()
+                val id = when (code) { "JAM1LA" -> "owner-0"; "BANTAY" -> "owner-3"; "DEMO22" -> return HttpResponse(400, """{"message":"that is your own code"}"""); else -> return HttpResponse(400, """{"message":"no pal with that code"}""") }
+                pals.getOrPut(id) { nowMs() }
+                ok("\"$id\"")
+            }
+            path.endsWith("/rpc/remove_pal") -> { pals.remove(body["p_user"].str); ok() }
+            path.endsWith("/rpc/set_pal_pets") -> { palPets = body["p_pets"].list; ok() }
+            path.endsWith("/rpc/pals_list") -> {
+                seedAround(myCell ?: LocationGrid.snap(NAGA_LAT, NAGA_LNG))
+                ok(Json.arr(pals.flatMap { (id, since) ->
+                    val owner = fakeOwners.firstOrNull { it.id == id }
+                    (owner?.pets ?: emptyList()).map { p -> Json.obj("pal_id" to id, "pet_id" to p.id, "name" to p.name, "species" to p.species, "ears" to p.ears, "look" to p.look, "since" to iso(since)) }
+                        .ifEmpty { listOf(Json.obj("pal_id" to id, "pet_id" to null, "name" to null, "species" to null, "ears" to null, "look" to null, "since" to iso(since))) }
+                }).stringify())
+            }
+            path.endsWith("/rpc/send_treat") -> ok()
+            path.endsWith("/rpc/treats_inbox") -> {
+                // A pal's pet sends the first of your pets a ball a little after you become pals.
+                val first = palPets.firstOrNull()?.get("local_id")?.str
+                if (pals.isNotEmpty() && first != null && treats.isEmpty() && nowMs() - pals.values.min() > SIGHTING_AFTER_MS) {
+                    treats += Json.obj("id" to Ids.newId(), "to_pet" to first, "from_pet" to "Biscuit", "kind" to "ball", "created_at" to iso(nowMs()))
+                    treatedAtMs = nowMs()
+                }
+                ok(Json.arr(treats).stringify())
+            }
             // Pet ID cards (0011)
             path.endsWith("/rpc/upsert_pet_card") -> {
                 val local = body["p_local_id"].str ?: ""
