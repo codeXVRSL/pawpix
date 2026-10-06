@@ -101,8 +101,8 @@ private val CATEGORIES: List<Category<*>> = listOf(
     Category("🎀", "Collar", Collar.entries, { it.label }, { it.collar }, { s, v -> s.copy(collar = v) }),
 )
 
-/** Colour groups: fur base, light fur, markings, collar. */
-private enum class ColourSlot(val title: String) { BASE("Fur"), LIGHT("Light fur"), DARK("Markings"), COLLAR("Collar colour") }
+/** Colour groups: fur base, light fur, markings, collar, eyes, nose. */
+private enum class ColourSlot(val title: String) { BASE("Fur"), LIGHT("Light fur"), DARK("Markings"), COLLAR("Collar colour"), EYES("Eye colour"), NOSE("Nose colour") }
 
 private const val COLOURS_TAB = -1
 
@@ -249,24 +249,91 @@ private fun ColourPanel(style: PetStyle, slot: ColourSlot, onSlot: (ColourSlot) 
     FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         ColourSlot.entries.forEach { s -> ChoiceChip(slot == s, { onSlot(s) }, tr(s.title)) }
     }
-    val current = when (slot) { ColourSlot.BASE -> style.furBase; ColourSlot.LIGHT -> style.furLight; ColourSlot.DARK -> style.furDark; ColourSlot.COLLAR -> style.collarColor }
+    val current = when (slot) {
+        ColourSlot.BASE -> style.furBase; ColourSlot.LIGHT -> style.furLight; ColourSlot.DARK -> style.furDark
+        ColourSlot.COLLAR -> style.collarColor; ColourSlot.EYES -> style.eyeCustom; ColourSlot.NOSE -> style.noseCustom
+    }
     fun set(c: Int?): PetStyle = when (slot) {
         ColourSlot.BASE -> style.copy(furBase = c); ColourSlot.LIGHT -> style.copy(furLight = c)
         ColourSlot.DARK -> style.copy(furDark = c); ColourSlot.COLLAR -> style.copy(collarColor = c)
+        ColourSlot.EYES -> style.copy(eyeCustom = c); ColourSlot.NOSE -> style.copy(noseCustom = c)
     }
-    val swatches = if (slot == ColourSlot.COLLAR) PetStyle.COLLAR_SWATCHES else PetStyle.FUR_SWATCHES
+    val swatches = when (slot) {
+        ColourSlot.COLLAR -> PetStyle.COLLAR_SWATCHES
+        ColourSlot.EYES -> EyeColor.entries.filter { it != EyeColor.AUTO }.map { it.argb } + listOf(0xFF8C7BE0.toInt(), 0xFFE8374E.toInt())
+        ColourSlot.NOSE -> NoseColor.entries.filter { it != NoseColor.AUTO }.map { it.argb } + listOf(0xFF2B2135.toInt(), 0xFFF59AB8.toInt())
+        else -> PetStyle.FUR_SWATCHES
+    }
     Hint(
         when (slot) {
             ColourSlot.BASE -> tr("The main fur colour. \"Natural\" keeps what the photo gave.")
             ColourSlot.LIGHT -> tr("Chest and paws, when the coat has a lighter tone.")
             ColourSlot.DARK -> tr("Masks, spots and stripes use this.")
             ColourSlot.COLLAR -> tr("Shows when a collar is on.")
+            ColourSlot.EYES -> tr("Any eye colour. \"Natural\" uses the Eye colour choice.")
+            ColourSlot.NOSE -> tr("Any nose colour. \"Natural\" uses the Nose colour choice.")
         },
     )
     FlowRow(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
         Swatch(null, current == null, tr("Natural")) { onChange(set(null)) }
         swatches.forEach { c -> Swatch(c, current == c, null) { onChange(set(c)) } }
     }
+    // Or exactly the colour you have in mind: hue, how strong, how light.
+    GroupLabel(tr("Mix your own"))
+    ColourMixer(current ?: swatches.first()) { onChange(set(it)) }
+}
+
+/** Three sliders that reach every colour; the swatch beside them shows the mix. */
+@Composable
+private fun ColourMixer(argb: Int, onChange: (Int) -> Unit) {
+    val (h0, s0, l0) = remember(argb) { toHsl(argb) }
+    var h by remember(argb) { mutableStateOf(h0) }
+    var sat by remember(argb) { mutableStateOf(s0) }
+    var l by remember(argb) { mutableStateOf(l0) }
+    fun push() = onChange(fromHsl(h, sat, l))
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+        Box(Modifier.size(52.dp).clip(Pill).background(Color(fromHsl(h, sat, l))).border(1.dp, Paw.palette.hairline, Pill))
+        Column(Modifier.weight(1f)) {
+            for ((label, value, set) in listOf(
+                Triple(tr("Hue"), h / 360f, { v: Float -> h = v * 360f }),
+                Triple(tr("Strength"), sat, { v: Float -> sat = v }),
+                Triple(tr("Light"), l, { v: Float -> l = v }),
+            )) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(label, style = MaterialTheme.typography.labelSmall, modifier = Modifier.width(64.dp))
+                    androidx.compose.material3.Slider(
+                        value, onValueChange = { set(it); push() }, modifier = Modifier.weight(1f).height(28.dp).semantics { contentDescription = label },
+                    )
+                }
+            }
+        }
+    }
+}
+
+private fun toHsl(argb: Int): Triple<Float, Float, Float> {
+    val r = (argb shr 16 and 0xFF) / 255f; val g = (argb shr 8 and 0xFF) / 255f; val b = (argb and 0xFF) / 255f
+    val max = maxOf(r, g, b); val min = minOf(r, g, b); val d = max - min
+    val l = (max + min) / 2f
+    val s = if (d == 0f) 0f else d / (1f - kotlin.math.abs(2f * l - 1f))
+    val h = when {
+        d == 0f -> 0f
+        max == r -> 60f * (((g - b) / d) % 6f).let { if (it < 0) it + 6f else it }
+        max == g -> 60f * ((b - r) / d + 2f)
+        else -> 60f * ((r - g) / d + 4f)
+    }
+    return Triple(h, s.coerceIn(0f, 1f), l)
+}
+
+private fun fromHsl(h: Float, s: Float, l: Float): Int {
+    val c = (1f - kotlin.math.abs(2f * l - 1f)) * s
+    val x = c * (1f - kotlin.math.abs((h / 60f) % 2f - 1f))
+    val m = l - c / 2f
+    val (r1, g1, b1) = when {
+        h < 60f -> Triple(c, x, 0f); h < 120f -> Triple(x, c, 0f); h < 180f -> Triple(0f, c, x)
+        h < 240f -> Triple(0f, x, c); h < 300f -> Triple(x, 0f, c); else -> Triple(c, 0f, x)
+    }
+    fun ch(v: Float) = ((v + m) * 255f).toInt().coerceIn(0, 255)
+    return (0xFF shl 24) or (ch(r1) shl 16) or (ch(g1) shl 8) or ch(b1)
 }
 
 @Composable

@@ -100,7 +100,10 @@ fun SpriteMakerScreen(app: AppScope, state: AppState, existingPetId: String?) {
     var result by remember { mutableStateOf(existing?.let { app.repo.storedResult(it) }) }
     var ears by remember { mutableStateOf(Ears.of(existing?.ears)) }
     var name by remember { mutableStateOf(existing?.name ?: "") }
-    var species by remember { mutableStateOf(existing?.species ?: Species.DOG) }
+    // Cat or dog: read from the photo on the phone, or chosen by the owner; never assumed.
+    var species by remember { mutableStateOf(existing?.species?.takeIf { it != Species.OTHER }) }
+    var detected by remember { mutableStateOf<Species?>(null) }
+    var detecting by remember { mutableStateOf(false) }
     /** New pets: an optional birthday, for puppy and kitten care. */
     var birthDay by remember { mutableStateOf<Long?>(null) }
     var askBirthday by remember { mutableStateOf(false) }
@@ -121,6 +124,11 @@ fun SpriteMakerScreen(app: AppScope, state: AppState, existingPetId: String?) {
                 val mask = runCatching { withTimeoutOrNull(12_000) { app.repo.platform.segmentPet(decoded) } }.getOrNull()
                 face = null        // let PawPixel find the face first
                 source = Source(decoded, mask)
+                // What is it? The phone's own classifier says cat or dog; the owner can still change it.
+                detecting = true
+                detected = runCatching { withTimeoutOrNull(8_000) { app.repo.platform.classifyPet(decoded) } }.getOrNull()
+                detecting = false
+                if (detected != null) species = detected
             }
             loading = false
         }
@@ -143,7 +151,8 @@ fun SpriteMakerScreen(app: AppScope, state: AppState, existingPetId: String?) {
     }
 
     val r = result
-    val art = remember(r, species, ears) { r?.let { PetArt(it.head, species, ears) } }
+    val shownSpecies = species ?: detected ?: Species.CAT
+    val art = remember(r, shownSpecies, ears) { r?.let { PetArt(it.head, shownSpecies, ears) } }
     // The reveal: the first time a new pet appears, its stage springs in under a little confetti.
     var revealed by remember { mutableStateOf<Int?>(null) }
     val entrance = remember { Animatable(if (existing != null) 1f else 0.88f) }
@@ -155,7 +164,7 @@ fun SpriteMakerScreen(app: AppScope, state: AppState, existingPetId: String?) {
     }
     val upToDate = source == null || madeFor == Triple(source, settings, face)
 
-    val canSave = r != null && art != null && upToDate && !saving && !loading && (existing != null || name.isNotBlank())
+    val canSave = r != null && art != null && upToDate && !saving && !loading && species != null && (existing != null || name.isNotBlank())
     val save: () -> Unit = save@{
         val made = r ?: return@save
         saving = true
@@ -163,11 +172,11 @@ fun SpriteMakerScreen(app: AppScope, state: AppState, existingPetId: String?) {
             try {
                 if (existing != null) {
                     val latest = app.repo.state.value.pet(existing.id) ?: existing
-                    app.repo.updateSprite(latest.copy(species = species), settings, made, ears)
+                    app.repo.updateSprite(latest.copy(species = species ?: latest.species), settings, made, ears)
                     app.back()
                 } else if (StateOps.canAddPet(app.repo.state.value)) {
                     // Notifications are offered on the pet's page, next to the care they're for.
-                    val pet = app.repo.addPet(name, species, settings, made, ears, birthDay)
+                    val pet = app.repo.addPet(name, species ?: Species.CAT, settings, made, ears, birthDay)
                     app.back()
                     app.navigate(Screen.PetDetail(pet.id))
                 } else {
@@ -258,10 +267,25 @@ fun SpriteMakerScreen(app: AppScope, state: AppState, existingPetId: String?) {
                 BirthdayRow(birthDay, app.repo.clock.dayIndex(app.now)) { askBirthday = true }
             }
 
-            GroupLabel(tr("Body"))
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                listOf(Species.DOG to "Dog body", Species.CAT to "Cat body").forEach { (sp, label) ->
-                    ChoiceChip(species == sp || (sp == Species.DOG && species == Species.OTHER), { species = sp }, tr(label))
+            // Cat or dog, first: a cat drawn as a dog is the one mistake that spoils everything.
+            SoftCard(Modifier.fillMaxWidth(), tone = if (species == null) Tone.Accent else Tone.Surface) {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(
+                        when {
+                            detecting -> tr("Looking at the photo…")
+                            species == null -> tr("Is this a cat or a dog? Tap one.")
+                            detected == species && detected == Species.CAT -> tr("Looks like a cat. Not right? Tap Dog.")
+                            detected == species && detected == Species.DOG -> tr("Looks like a dog. Not right? Tap Cat.")
+                            species == Species.CAT -> tr("Drawn as a cat.")
+                            else -> tr("Drawn as a dog.")
+                        },
+                        style = MaterialTheme.typography.titleSmall,
+                    )
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        listOf(Species.CAT to "Cat body", Species.DOG to "Dog body").forEach { (sp, label) ->
+                            ChoiceChip(species == sp, { species = sp; if (ears == null) ears = null }, tr(label))
+                        }
+                    }
                 }
             }
             GroupLabel(tr("Ears"))

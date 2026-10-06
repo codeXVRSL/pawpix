@@ -3,6 +3,7 @@ package com.pawpixel.app
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.ImageBitmap
 import com.pawpixel.core.Reminder
+import com.pawpixel.core.Species
 import com.pawpixel.map.Http
 import com.pawpixel.sprite.Mask
 import com.pawpixel.sprite.PixelImage
@@ -41,6 +42,8 @@ interface Platform {
     suspend fun encodeJpeg(image: PixelImage, quality: Int = 82): ByteArray? = null
     /** Native pet cut-out (ML Kit / Vision). Null means "not available", and the core fallback is used. */
     suspend fun segmentPet(photo: PixelImage): Mask?
+    /** Cat or dog, read from the photo on the device (ML Kit / Vision). Null when it can't tell: the owner is asked. */
+    suspend fun classifyPet(photo: PixelImage): Species? = null
 
     /** Replaces all scheduled reminders with [reminders]. */
     fun scheduleReminders(reminders: List<Reminder>)

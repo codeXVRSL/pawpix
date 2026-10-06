@@ -21,6 +21,7 @@ import com.google.mlkit.vision.segmentation.subject.SubjectSegmenterOptions
 import com.pawpixel.app.widget.PetWidget
 import com.pawpixel.core.HOUR_MS
 import com.pawpixel.core.Reminder
+import com.pawpixel.core.Species
 import com.pawpixel.core.ReminderDelivery
 import com.pawpixel.i18n.tr
 import com.pawpixel.map.Http
@@ -112,6 +113,31 @@ class AndroidPlatform(private val context: Context) : Platform {
             // (The bitmap isn't recycled: after a timeout ML Kit may still be reading it.)
             segmenter.close()
         }
+    }
+
+    /**
+     * ML Kit's bundled image labeler names what's in the photo ("Cat", "Dog", ...). The better of
+     * the two wins when it's confident enough; otherwise the owner is asked.
+     */
+    override suspend fun classifyPet(photo: PixelImage): Species? {
+        val bitmap = Bitmap.createBitmap(photo.pixels, photo.width, photo.height, Bitmap.Config.ARGB_8888)
+        val labeler = com.google.mlkit.vision.label.ImageLabeling.getClient(com.google.mlkit.vision.label.defaults.ImageLabelerOptions.DEFAULT_OPTIONS)
+        return try {
+            suspendCancellableCoroutine { cont ->
+                labeler.process(InputImage.fromBitmap(bitmap, 0))
+                    .addOnSuccessListener { labels ->
+                        val cat = labels.firstOrNull { it.text.equals("Cat", true) }?.confidence ?: 0f
+                        val dog = labels.firstOrNull { it.text.equals("Dog", true) }?.confidence ?: 0f
+                        log("Pet labels: cat $cat, dog $dog, all ${labels.take(5).joinToString { it.text + " " + "%.2f".format(it.confidence) }}")
+                        cont.resume(when {
+                            cat >= 0.4f && cat >= dog -> Species.CAT
+                            dog >= 0.4f && dog > cat -> Species.DOG
+                            else -> null
+                        })
+                    }
+                    .addOnFailureListener { cont.resume(null) }
+            }
+        } finally { labeler.close() }
     }
 
     // ---- Reminders ----

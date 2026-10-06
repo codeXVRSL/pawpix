@@ -35,8 +35,8 @@ enum class Ears(val label: String) {
 }
 
 /**
- * What the pet looks like, read from its face in the photo: up to three fur tones and where on
- * the face each tone goes (a coarse [GRID] x [GRID] patch map, e.g. a white muzzle or dark ears).
+ * What the pet looks like, read from its face in the photo: up to four fur tones and where on
+ * the face each tone goes (a [GRID] x [GRID] patch map: a white muzzle, dark ears, a stripe, a patch).
  */
 class PetLook(val tones: List<Int>, private val patches: IntArray, val style: PetStyle = PetStyle.DEFAULT) {
     /** Index into [tones] of the most common fur colour. Always 0. */
@@ -52,7 +52,7 @@ class PetLook(val tones: List<Int>, private val patches: IntArray, val style: Pe
      */
     fun encode(): String {
         val base = tones.joinToString(",") { (it and 0xFFFFFF).toString(16).padStart(6, '0') } + ";" + patches.joinToString("") { it.toString() }
-        return if (style.isDefault) "1;$base" else "2;$base;${style.encode()}"
+        return if (style.isDefault) "3;$base" else "4;$base;${style.encode()}"
     }
 
     /** The same colours and markings with another Studio style. */
@@ -66,26 +66,36 @@ class PetLook(val tones: List<Int>, private val patches: IntArray, val style: Pe
     }
 
     companion object {
-        const val GRID = 8
+        const val GRID = 10
+        /** Looks from older builds (formats 1 and 2) have an 8 x 8 map and at most 3 tones. */
+        private const val OLD_GRID = 8
+        const val MAX_TONES = 4
 
-        /** Reads [encode]'s format; null if it isn't a valid look (e.g. from an older or bad client). */
+        /** Reads [encode]'s format (and the older 8 x 8 one); null if it isn't a valid look (a bad client). */
         fun decode(code: String): PetLook? {
             val parts = code.split(';')
+            val old = parts[0] == "1" || parts[0] == "2"
             val style = when {
-                parts.size == 3 && parts[0] == "1" -> PetStyle.DEFAULT
-                parts.size == 4 && parts[0] == "2" -> PetStyle.decode(parts[3]) ?: return null
+                parts.size == 3 && (parts[0] == "1" || parts[0] == "3") -> PetStyle.DEFAULT
+                parts.size == 4 && (parts[0] == "2" || parts[0] == "4") -> PetStyle.decode(parts[3]) ?: return null
                 else -> return null
             }
             val tones = parts[1].split(',').map { h ->
                 if (h.length != 6 || !h.all { it in '0'..'9' || it in 'a'..'f' || it in 'A'..'F' }) return null
                 h.toInt(16) or (0xFF shl 24)
             }
-            if (tones.isEmpty() || tones.size > 3) return null
-            if (parts[2].length != GRID * GRID) return null
-            val patches = IntArray(GRID * GRID) { i ->
+            if (tones.isEmpty() || tones.size > (if (old) 3 else MAX_TONES)) return null
+            val grid = if (old) OLD_GRID else GRID
+            if (parts[2].length != grid * grid) return null
+            val read = IntArray(grid * grid) { i ->
                 val d = parts[2][i] - '0'
                 if (d !in tones.indices) return null
                 d
+            }
+            // An old 8 x 8 map is stretched onto today's grid (nearest cell).
+            val patches = if (!old) read else IntArray(GRID * GRID) { i ->
+                val gx = (i % GRID) * OLD_GRID / GRID; val gy = (i / GRID) * OLD_GRID / GRID
+                read[gy * OLD_GRID + gx]
             }
             return PetLook(tones, patches, style)
         }
@@ -105,15 +115,15 @@ class PetLook(val tones: List<Int>, private val patches: IntArray, val style: Pe
             val known = cells.filterNotNull()
             if (known.isEmpty()) return PetLook(listOf(DEFAULT), IntArray(GRID * GRID))
 
-            // 2. Up to three tones (k-means), merging ones that are only lighting differences.
-            var centres = kMeans(known, 3)
+            // 2. Up to four tones (k-means), merging ones that are only lighting differences.
+            var centres = kMeans(known, MAX_TONES)
             while (true) {
                 var pair: Pair<Int, Int>? = null; var best = Double.MAX_VALUE
                 for (i in centres.indices) for (j in i + 1 until centres.size) {
                     val d = sqrt(centres[i].first.dist2(centres[j].first))
                     if (d < best) { best = d; pair = i to j }
                 }
-                val small = centres.indices.firstOrNull { centres[it].second < known.size * 0.1 }
+                val small = centres.indices.firstOrNull { centres[it].second < known.size * 0.06 }
                 val (i, j) = when {
                     pair != null && best < 0.13 -> pair
                     small != null && centres.size > 1 -> small to centres.indices.filter { it != small }
@@ -219,6 +229,8 @@ object Chibi {
         val bob: Int = 0,
         val lying: Boolean = false,
         val eyesClosed: Boolean = false,
+        /** One ear flicks up a pixel: -1 the left ear, 1 the right one. */
+        val earTwitch: Int = 0,
     )
 
     data class Ramp(val hi: Int, val mid: Int, val shade: Int, val deep: Int)
@@ -413,8 +425,9 @@ object Chibi {
             for (side in listOf(-1, 1)) {
                 val r = if (side < 0) earToneL else earToneR
                 // Triangle: apex, and two base points on the head's top edge.
-                val ax = hcx + side * (if (cat) 8.4 else 7.9) * (if (big) 1.15 else 1.0)
-                val ay = hcy - (if (big) 14.6 else if (folded) 9.4 else 11.8)
+                val twitch = if (pose.earTwitch == side) 1.0 else 0.0
+                val ax = hcx + side * ((if (cat) 8.4 else 7.9) * (if (big) 1.15 else 1.0) + twitch * 0.6)
+                val ay = hcy - (if (big) 14.6 else if (folded) 9.4 else 11.8) - twitch
                 val b1x = hcx + side * (if (big) 11.4 else 10.4); val b1y = hcy - 4.2
                 val b2x = hcx + side * (if (big) 2.6 else 3.4); val b2y = hcy - 7.6
                 for (y in (ay - 1).toInt()..(b1y + 1).toInt()) for (x in (hcx - 14).toInt()..(hcx + 14).toInt()) {
@@ -461,10 +474,12 @@ object Chibi {
             for (side in listOf(-1, 1)) {
                 val r = if (side < 0) earToneL else earToneR
                 val n = 12
+                // A twitch: the ear swings out and up a little, the way a floppy ear flicks.
+                val twitch = if (pose.earTwitch == side) 1.0 else 0.0
                 for (k in 0..n) {
                     val t = k.toDouble() / n
-                    val px = hcx + side * (7.4 + 3.2 * t - 0.8 * t * t)
-                    val py = hcy - 6.9 + 9.2 * t
+                    val px = hcx + side * (7.4 + 3.2 * t - 0.8 * t * t + twitch * t)
+                    val py = hcy - 6.9 + 9.2 * t - twitch * (1.0 + t)
                     val rad = 1.4 + 1.3 * sqrt(t)
                     for (y in (py - rad - 1).toInt()..(py + rad + 1).toInt()) for (x in (px - rad - 1).toInt()..(px + rad + 1).toInt()) {
                         val dx = x + 0.5 - px; val dy = y + 0.5 - py
@@ -495,9 +510,10 @@ object Chibi {
         for ((side, x0) in ex.withIndex()) {
             val inner = if (side == 0) 1 else 0 // the column nearer the nose
             if (pose.eyesClosed || (style.eyes == EyeShape.WINK && side == 0)) { closedEye(x0); continue }
-            val iris = when (style.eyeColor) {
-                EyeColor.AUTO -> autoIris
-                EyeColor.ODD -> if (side == 0) EyeColor.GREEN.argb else EyeColor.BLUE.argb
+            val iris = when {
+                style.eyeCustom != null -> style.eyeCustom
+                style.eyeColor == EyeColor.AUTO -> autoIris
+                style.eyeColor == EyeColor.ODD -> if (side == 0) EyeColor.GREEN.argb else EyeColor.BLUE.argb
                 else -> style.eyeColor.argb
             }
             // The eye's pixels, as (dx, dy) from its top-left.
@@ -541,8 +557,9 @@ object Chibi {
         }
         // Nose and mouth.
         val nx0 = (hcx - 0.5).toInt(); val ny0 = (mcy - 1.2).toInt()
-        val noseC = when (style.noseColor) {
-            NoseColor.AUTO -> if (cat) Argb.mix(PINK, 0xFFB0506A.toInt(), 0.35) else NOSE_DOG
+        val noseC = when {
+            style.noseCustom != null -> style.noseCustom
+            style.noseColor == NoseColor.AUTO -> if (cat) Argb.mix(PINK, 0xFFB0506A.toInt(), 0.35) else NOSE_DOG
             else -> style.noseColor.argb
         }
         val noseCells: List<Pair<Int, Int>> = when (style.nose) {
@@ -553,7 +570,7 @@ object Chibi {
         }
         for ((dx, dy) in noseCells) put(nx0 + dx, ny0 + dy, noseC, HEAD)
         if (!cat && style.nose == NoseShape.AUTO && style.noseColor == NoseColor.AUTO) put(nx0 - 1, ny0, 0xFF6A5560.toInt(), HEAD) // tiny shine on the nose
-        else if (style.nose != NoseShape.AUTO || style.noseColor != NoseColor.AUTO) put(nx0 - 1, ny0 + (if (style.nose == NoseShape.HEART) -1 else 0), Argb.mix(noseC, WHITE, 0.3), HEAD)
+        else if (style.nose != NoseShape.AUTO || style.noseColor != NoseColor.AUTO || style.noseCustom != null) put(nx0 - 1, ny0 + (if (style.nose == NoseShape.HEART) -1 else 0), Argb.mix(noseC, WHITE, 0.3), HEAD)
         val mouthC = headRamp(nx0, ny0 + 2).deep
         val my = ny0 + (if (style.nose == NoseShape.BUTTON || style.nose == NoseShape.WIDE) 3 else 2)
         when (style.mouth) {
@@ -688,10 +705,17 @@ object Chibi {
         frames[Frame.BLINK] = padded(c(Pose(eyesClosed = true)))
         frames[Frame.SQUASH] = Animator.scaleFromFeet(baseP, box, 1.08, 0.9)
         frames[Frame.STRETCH] = Animator.scaleFromFeet(baseP, box, 0.94, 1.07)
-        frames[Frame.WALK_1] = padded(c(Pose(legs = intArrayOf(1, 0, 0, 1), tail = 1)))
-        frames[Frame.WALK_2] = padded(c(Pose(bob = -1, tail = 0)))
-        frames[Frame.WALK_3] = padded(c(Pose(legs = intArrayOf(0, 1, 1, 0), tail = -1)))
-        frames[Frame.WALK_4] = padded(c(Pose(bob = -1, tail = 0)))
+        // Walk: contact (legs apart, body down), passing (legs together, body up), the other contact,
+        // passing. The head leans the way the pet is going, so it never has to be mirrored.
+        for ((set, lean) in listOf(Frame.WALK to 0, Frame.WALK_L to -1, Frame.WALK_R to 1)) {
+            frames[set[0]] = padded(c(Pose(legs = intArrayOf(1, 0, 0, 1), tail = 1, headDx = lean)))
+            frames[set[1]] = padded(c(Pose(bob = -1, tail = 0, headDx = lean)))
+            frames[set[2]] = padded(c(Pose(legs = intArrayOf(0, 1, 1, 0), tail = -1, headDx = lean)))
+            frames[set[3]] = padded(c(Pose(bob = -1, tail = 0, headDx = lean)))
+        }
+        frames[Frame.TAIL_SWING] = padded(c(Pose(tail = -1)))
+        frames[Frame.EAR_TWITCH_L] = padded(c(Pose(earTwitch = -1)))
+        frames[Frame.EAR_TWITCH_R] = padded(c(Pose(earTwitch = 1)))
         frames[Frame.LOOK_LEFT] = padded(c(Pose(headDx = -1, tail = -1)))
         frames[Frame.LOOK_RIGHT] = padded(c(Pose(headDx = 1, tail = 1)))
         frames[Frame.EAT_DOWN] = padded(c(Pose(headDy = 2, tail = 1)))

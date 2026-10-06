@@ -24,6 +24,7 @@ data class PetPose(
     val x: Double,
     /** Vertical offset in pet pixels; negative = in the air. */
     val lift: Int,
+    /** Always false now: the pet is drawn as it is, never mirrored (its markings stay on the right side). */
     val flip: Boolean,
     val behavior: Behavior,
     val effects: List<Effect>,
@@ -83,6 +84,9 @@ class PetBrain(
     private var nextBlink = 0L
     private var blinkEnd = 0L
     private var secondBlink = 0L
+    private var nextTwitch = 0L
+    private var twitchEnd = 0L
+    private var twitchSide = 1
 
     private val maxX get() = max(0.0, stageWidth - canvasWidth)
     private val bodyHeight get() = feetY - headTop
@@ -103,7 +107,7 @@ class PetBrain(
 
     fun pose(nowMs: Long, mood: Mood): PetPose {
         if (lastMs < 0) {
-            lastMs = nowMs; nextBlink = nowMs + 1500
+            lastMs = nowMs; nextBlink = nowMs + 1500; nextTwitch = nowMs + 4000
             if (!reaction) pickNext(nowMs, mood) // a reaction sent before the first frame still plays
         }
         val dt = (nowMs - lastMs).coerceIn(0, 250) / 1000.0
@@ -142,7 +146,16 @@ class PetBrain(
                     lift = -(bodyHeight * 0.12 * sin(PI * p)).roundToInt()
                     if (t % 840 < 420) effects += Effect(EffectKind.EXCLAIM, headX() + 6.0, headTop - 8.0)
                 }
-                Frame.WALK[((t / stepMs) % 4).toInt()]
+                // Uneven timing, as animators do: the feet stay on the ground longer than they pass.
+                val cycle = stepMs * 4
+                val p = t % cycle
+                val i = when {
+                    p < stepMs * 1.25 -> 0
+                    p < stepMs * 2 -> 1
+                    p < stepMs * 3.25 -> 2
+                    else -> 3
+                }
+                (if (facingLeft) Frame.WALK_L else Frame.WALK_R)[i]
             }
             Behavior.HOP -> hopFrame(t, 0.18).also { (f, l) -> lift = l; if (mood == Mood.HAPPY && t % 520 in 100 until 450) effects += floating(EffectKind.HEART, t % 520, 350) }.first
             Behavior.BEG -> {
@@ -185,17 +198,23 @@ class PetBrain(
 
         // Blinking, at irregular intervals, sometimes twice.
         var shown = frame
-        val canBlink = frame == Frame.BASE || frame == Frame.BREATHE
+        val idle = frame == Frame.BASE || frame == Frame.BREATHE || frame == Frame.TAIL_SWING
         if (nowMs >= nextBlink) {
             blinkEnd = nowMs + 130
             secondBlink = if (rnd.nextDouble() < 0.2) nowMs + 300 else 0L
             nextBlink = nowMs + 2200 + rnd.nextLong(0, 4000)
         }
         if (secondBlink in 1..nowMs) { blinkEnd = nowMs + 110; secondBlink = 0 }
-        if (canBlink && nowMs < blinkEnd) shown = Frame.BLINK
+        // An ear flick now and then, while standing still.
+        if (nowMs >= nextTwitch) {
+            twitchEnd = nowMs + 220
+            twitchSide = if (rnd.nextBoolean()) 1 else -1
+            nextTwitch = nowMs + 4000 + rnd.nextLong(0, 7000)
+        }
+        if (idle && nowMs < blinkEnd) shown = Frame.BLINK
+        else if (idle && nowMs < twitchEnd) shown = if (twitchSide < 0) Frame.EAR_TWITCH_L else Frame.EAR_TWITCH_R
 
-        val flip = facingLeft && behavior != Behavior.BEG
-        return PetPose(shown, x, lift, flip, behavior, effects)
+        return PetPose(shown, x, lift, flip = false, behavior, effects)
     }
 
     // ---------- Choosing what to do next ----------
@@ -249,9 +268,20 @@ class PetBrain(
 
     // ---------- Frame helpers ----------
 
+    /**
+     * Idle: a breath in (held), out, and the tail swinging the other way, on uneven beats so it
+     * never reads as a metronome. A sad pet breathes slowly and doesn't wag.
+     */
     private fun breathing(t: Long, mood: Mood): Frame {
         val period = when (mood) { Mood.SAD, Mood.NEEDS_MEDS -> 2600L; Mood.RESTLESS -> 1100L; Mood.HAPPY -> 1400L; else -> 1800L }
-        return if (t % period < period / 2) Frame.BASE else Frame.BREATHE
+        val p = (t % period).toDouble() / period
+        return when {
+            p < 0.38 -> Frame.BASE
+            p < 0.68 -> Frame.BREATHE
+            p < 0.80 -> Frame.BASE
+            mood == Mood.SAD || mood == Mood.NEEDS_MEDS -> Frame.BASE
+            else -> Frame.TAIL_SWING
+        }
     }
 
     /** Squash, jump (stretched, rising and falling), land, settle. Returns frame and lift. */

@@ -8,6 +8,7 @@ import androidx.compose.ui.window.ComposeUIViewController
 import com.pawpixel.app.ui.App
 import com.pawpixel.core.Json
 import com.pawpixel.core.Reminder
+import com.pawpixel.core.Species
 import com.pawpixel.map.Http
 import com.pawpixel.map.HttpResponse
 import com.pawpixel.sprite.Mask
@@ -63,6 +64,8 @@ interface IosHost {
     fun encodeJpeg(rawImage: NSData, quality: Double): NSData?
     /** Takes [RawImage] bytes, returns a Float32 little-endian mask (width*height), or null if Vision can't. */
     fun segmentPet(rawImage: NSData, completion: DataCallback)
+    /** Takes [RawImage] bytes; the token is "CAT" or "DOG", or null when Vision can't tell. */
+    fun classifyPet(rawImage: NSData, completion: TokenCallback)
     /** JSON array of {id, taskId, at (epoch seconds), title, body}. Replaces all pending reminders. */
     fun scheduleReminders(json: String)
     fun requestNotificationPermission()
@@ -145,6 +148,14 @@ class IosPlatform(private val host: IosHost) : Platform {
 
     override suspend fun encodeJpeg(image: PixelImage, quality: Int): ByteArray? = withContext(Dispatchers.Default) {
         host.encodeJpeg(RawImage.encode(image).toNSData(), quality / 100.0)?.toByteArray()
+    }
+
+    override suspend fun classifyPet(photo: PixelImage): Species? = suspendCancellableCoroutine { cont ->
+        host.classifyPet(RawImage.encode(photo).toNSData(), object : TokenCallback {
+            override fun onResult(token: String?, error: String?) {
+                if (cont.isActive) cont.resume(when (token) { "CAT" -> Species.CAT; "DOG" -> Species.DOG; else -> null })
+            }
+        })
     }
 
     override suspend fun segmentPet(photo: PixelImage): Mask? = suspendCancellableCoroutine { cont ->

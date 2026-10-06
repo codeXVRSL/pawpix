@@ -81,6 +81,7 @@ kotlin {
             implementation(libs.androidx.glance.material3)
             implementation(libs.kotlinx.coroutines.android)
             implementation(libs.mlkit.subject.segmentation)
+            implementation(libs.mlkit.image.labeling)
             // Google sign-in for the pet map (Credential Manager)
             implementation(libs.androidx.credentials)
             implementation(libs.androidx.credentials.play.services)

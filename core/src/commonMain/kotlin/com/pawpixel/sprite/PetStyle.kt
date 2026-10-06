@@ -33,6 +33,9 @@ data class PetStyle(
     /** The darker tone patterns use (mask, spots, stripes); null = a shade of the base. */
     val furDark: Int? = null,
     val collarColor: Int? = null,
+    /** Any colour at all for the eyes and the nose (over the named choices). */
+    val eyeCustom: Int? = null,
+    val noseCustom: Int? = null,
 ) {
     val isDefault: Boolean get() = this == DEFAULT
 
@@ -43,7 +46,9 @@ data class PetStyle(
             mouth.ordinal, ears.ordinal, body.ordinal, tail.ordinal, pattern.ordinal, chest.ordinal, blush.ordinal,
             whiskers.ordinal, collar.ordinal,
         ).joinToString("") { it.toString(36) }
-        val colours = listOf(furBase, furLight, furDark, collarColor).joinToString(",") { hex(it) }
+        val all = listOf(furBase, furLight, furDark, collarColor, eyeCustom, noseCustom)
+        // The two newest colours are written only when set, so older phones still read the code.
+        val colours = (if (eyeCustom == null && noseCustom == null) all.take(4) else all).joinToString(",") { hex(it) }
         return "$traits.$colours"
     }
 
@@ -82,7 +87,7 @@ data class PetStyle(
             val t = parts[0]
             if (t.length != 16) return null
             val colours = parts[1].split(',')
-            if (colours.size != 4) return null
+            if (colours.size != 4 && colours.size != 6) return null
             for (c in colours) if (c != "n" && colour(c) == null) return null
             return PetStyle(
                 head = pick<HeadShape>(t, 0) ?: return null, eyes = pick<EyeShape>(t, 1) ?: return null,
@@ -94,6 +99,7 @@ data class PetStyle(
                 chest = pick<Chest>(t, 12) ?: return null, blush = pick<Blush>(t, 13) ?: return null,
                 whiskers = pick<Whiskers>(t, 14) ?: return null, collar = pick<Collar>(t, 15) ?: return null,
                 furBase = colour(colours[0]), furLight = colour(colours[1]), furDark = colour(colours[2]), collarColor = colour(colours[3]),
+                eyeCustom = colours.getOrNull(4)?.let(::colour), noseCustom = colours.getOrNull(5)?.let(::colour),
             )
         }
 

@@ -38,11 +38,13 @@ object Poses {
         val hop = Key(Chibi.Pose(bob = -1, tail = -1), 1)
         val sleep = Key(Chibi.Pose(lying = true, eyesClosed = true), 0)
         val sleepBreathe = Key(Chibi.Pose(lying = true, breathe = 1, eyesClosed = true), 1)
+        val wag = Key(Chibi.Pose(tail = -1), 0)
+        val twitch = Key(Chibi.Pose(earTwitch = 1), 0)
         return when (mood) {
             Mood.SLEEPY -> listOf(sleep, sleep, sleep, sleepBreathe, sleepBreathe, sleepBreathe)
             Mood.SAD -> listOf(base, base, base, breathe, breathe, breathe, base, base, blink, base, breathe, breathe)
-            Mood.HAPPY -> listOf(base, base, breathe, breathe, hop, base, breathe, breathe, base, blink, breathe, breathe)
-            else -> listOf(base, base, breathe, breathe, base, blink, base, breathe, look, look, breathe, base)
+            Mood.HAPPY -> listOf(base, breathe, breathe, wag, hop, base, breathe, twitch, base, blink, breathe, wag)
+            else -> listOf(base, base, breathe, breathe, wag, blink, base, breathe, look, look, twitch, base)
         }
     }
 

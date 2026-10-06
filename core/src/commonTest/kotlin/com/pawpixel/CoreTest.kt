@@ -354,15 +354,45 @@ class AnimationTest {
     @Test fun lookCodeRoundTripsAndRejectsJunk() {
         val look = PetArt(sprite(), Species.CAT).look
         val code = look.encode()
-        assertTrue(code.length <= 100 && Regex("^[A-Za-z0-9;,.]*$").matches(code), code)
+        assertTrue(code.length <= 200 && Regex("^[A-Za-z0-9;,.]*$").matches(code), code)
         val back = PetLook.decode(code)!!
         assertEquals(code, back.encode())
         assertTrue(PetArt(back, Species.CAT).still.pixels.contentEquals(PetArt(look, Species.CAT).still.pixels), "same pixel pet")
         // A household member's phone draws from the code alone (never the face file): the same pet, awake and asleep.
         assertTrue(PetArt(back, Species.CAT).still.pixels.contentEquals(PetArt(sprite(), Species.CAT).still.pixels), "same as from the face")
         assertTrue(Chibi.sleeping(PetArt(back, Species.CAT)).pixels.contentEquals(Chibi.sleeping(PetArt(sprite(), Species.CAT)).pixels))
-        for (bad in listOf("", "2;ffffff;" + "0".repeat(64), "1;;" + "0".repeat(64), "1;ffffff;" + "1".repeat(64), "1;zzzzzz;" + "0".repeat(64), "1;ffffff;00"))
+        for (bad in listOf("", "2;ffffff;" + "0".repeat(64), "1;;" + "0".repeat(64), "1;ffffff;" + "1".repeat(64), "1;zzzzzz;" + "0".repeat(64), "1;ffffff;00", "3;ffffff;" + "0".repeat(64)))
             assertEquals(null, PetLook.decode(bad), bad)
+        // Looks from older builds (8 x 8, formats 1 and 2) still draw: the map and households keep working.
+        val old = PetLook.decode("1;e08a3a,f4f1ea;" + "0".repeat(40) + "1".repeat(24))!!
+        assertEquals(2, old.tones.size)
+        assertTrue(old.encode().startsWith("3;"))
+        assertEquals(PetLook.GRID * PetLook.GRID, old.encode().split(';')[2].length)
+        assertTrue(PetArt(old, Species.CAT).still.width > 0)
+    }
+
+    @Test fun thePetIsNeverMirroredAndItsWalkLeansTheWayItGoes() {
+        val art = PetArt(sprite(), Species.CAT)
+        val set = Chibi.build(art)
+        val brain = com.pawpixel.sprite.PetBrain(7, 200.0, set.width, intArrayOf(5, 5, set.width - 5, set.height - 5))
+        var t = 0L
+        val frames = HashSet<Frame>()
+        repeat(4000) { val p = brain.pose(t, Mood.HAPPY); assertTrue(!p.flip, "never mirrored"); frames += p.frame; t += 50 }
+        assertTrue(frames.any { it in Frame.WALK_L } || frames.any { it in Frame.WALK_R }, "walks with a leaning head: $frames")
+        assertTrue(Frame.TAIL_SWING in frames, "the tail swings while idle")
+        assertTrue(Frame.EAR_TWITCH_L in frames || Frame.EAR_TWITCH_R in frames, "an ear flicks now and then")
+        // Every frame the brain can ask for is drawn, with the same canvas.
+        for (f in Frame.entries) assertEquals(set.width to set.height, set[f].width to set[f].height, f.name)
+        assertTrue(!set[Frame.EAR_TWITCH_L].pixels.contentEquals(set[Frame.BASE].pixels), "the twitch frame differs")
+        assertTrue(!set[Frame.WALK_L_1].pixels.contentEquals(set[Frame.WALK_R_1].pixels), "left and right walks differ")
+    }
+
+    @Test fun freeEyeAndNoseColoursTravelInTheStyleCode() {
+        val s = com.pawpixel.sprite.PetStyle(eyeCustom = 0xFF4C8FE0.toInt(), noseCustom = 0xFF2B2135.toInt())
+        val back = com.pawpixel.sprite.PetStyle.decode(s.encode())!!
+        assertEquals(s, back)
+        assertEquals(4, com.pawpixel.sprite.PetStyle().encode().split('.')[1].split(',').size, "plain styles keep the older four-colour form")
+        assertTrue(com.pawpixel.sprite.PetStyle.decode(com.pawpixel.sprite.PetStyle().encode()) == com.pawpixel.sprite.PetStyle())
     }
 
     @Test fun earsDefaultBySpeciesAndCanChange() {

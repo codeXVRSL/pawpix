@@ -12,13 +12,20 @@ enum class Frame {
     BASE, BREATHE, BLINK,
     SQUASH, STRETCH,
     WALK_1, WALK_2, WALK_3, WALK_4,
+    /** The walk with the head leaning left (going left) or right: the pet is never mirrored. */
+    WALK_L_1, WALK_L_2, WALK_L_3, WALK_L_4,
+    WALK_R_1, WALK_R_2, WALK_R_3, WALK_R_4,
     LOOK_LEFT, LOOK_RIGHT,
+    /** Idle life: the tail swings the other way; an ear flicks. */
+    TAIL_SWING, EAR_TWITCH_L, EAR_TWITCH_R,
     EAT_DOWN,
     SHAKE_1, SHAKE_2, SHAKE_3, SHAKE_4,
     SLEEP, SLEEP_BREATHE;
 
     companion object {
         val WALK = listOf(WALK_1, WALK_2, WALK_3, WALK_4)
+        val WALK_L = listOf(WALK_L_1, WALK_L_2, WALK_L_3, WALK_L_4)
+        val WALK_R = listOf(WALK_R_1, WALK_R_2, WALK_R_3, WALK_R_4)
         val SHAKE = listOf(SHAKE_1, SHAKE_2, SHAKE_3, SHAKE_4)
     }
 }
@@ -90,6 +97,12 @@ object Animator {
         val headTo = box[1] + (bodyH * 0.45).toInt()
         frames[Frame.LOOK_LEFT] = shiftRows(base, 0, headTo, -unit)
         frames[Frame.LOOK_RIGHT] = shiftRows(base, 0, headTo, unit)
+        // A photo sprite has no drawn tail or ears to move: these frames repeat ones it has.
+        Frame.WALK_L.forEachIndexed { i, f -> frames[f] = shiftRows(frames.getValue(Frame.WALK[i]), 0, headTo, -unit) }
+        Frame.WALK_R.forEachIndexed { i, f -> frames[f] = shiftRows(frames.getValue(Frame.WALK[i]), 0, headTo, unit) }
+        frames[Frame.TAIL_SWING] = base
+        frames[Frame.EAR_TWITCH_L] = base
+        frames[Frame.EAR_TWITCH_R] = base
 
         // Eat: head dips toward the bowl.
         frames[Frame.EAT_DOWN] = dipTop(base, box[1] + (bodyH * 0.5).toInt(), unit + (if (n >= 40) 1 else 0))

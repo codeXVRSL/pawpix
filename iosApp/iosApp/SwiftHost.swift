@@ -98,6 +98,26 @@ final class SwiftHost: NSObject, IosHost {
         }
     }
 
+    /// Vision's built-in classifier: "cat" or "dog" when one of them is clearly in the picture.
+    func classifyPet(rawImage: Data, completion: TokenCallback) {
+        DispatchQueue.global(qos: .userInitiated).async {
+            var answer: String? = nil
+            if let decoded = RawImageBytes.decode(rawImage) {
+                let request = VNClassifyImageRequest()
+                let handler = VNImageRequestHandler(cgImage: decoded.0, options: [:])
+                if (try? handler.perform([request])) != nil, let results = request.results {
+                    func score(_ names: [String]) -> Float {
+                        results.filter { r in names.contains(where: { r.identifier.lowercased() == $0 }) }.map { $0.confidence }.max() ?? 0
+                    }
+                    let cat = score(["cat", "kitten", "tabby", "domestic_cat"])
+                    let dog = score(["dog", "puppy", "domestic_dog"])
+                    if cat >= 0.4 && cat >= dog { answer = "CAT" } else if dog >= 0.4 && dog > cat { answer = "DOG" }
+                }
+            }
+            DispatchQueue.main.async { completion.onResult(token: answer, error: nil) }
+        }
+    }
+
     private static func foregroundMask(_ raw: Data) -> Data? {
         guard let decoded = RawImageBytes.decode(raw) else { return nil }
         let (cg, width, height) = decoded
