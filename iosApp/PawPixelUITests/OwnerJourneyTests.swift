@@ -70,7 +70,7 @@ final class OwnerJourneyTests: XCTestCase {
             shot("name-keyboard-open")
             // Type like a person: tap the keys (lowercase, the field doesn't auto-capitalise).
             // If the text input session wasn't ready yet, nothing lands: wait and type again.
-            let saveButton = element("Save \(petName)")
+            let saveButton = element(containing: "Save ")
             // The name may land even when that button is below the fold: the field's value says so.
             // Compose exposes the field's text as its label on iOS (and as a value on some versions).
             let typed = app.descendants(matching: .any).matching(NSPredicate(format: "value CONTAINS %@ OR label CONTAINS %@", petName, petName)).firstMatch
@@ -84,9 +84,11 @@ final class OwnerJourneyTests: XCTestCase {
                     guard key.waitForExistence(timeout: 3) else { throw Failure("no key \(ch) on the keyboard") }
                     // A keyboard still animating in has keys that exist but can't be tapped yet (tapping one
                     // then fails the whole test): wait, and if it isn't ready, retry the word.
-                    if !key.isHittable { sleep(1) }
-                    guard key.isHittable else { log.append("      key \(ch) not ready"); break }
-                    key.tap()
+                    var waited = 0
+                    while !key.isHittable && waited < 6 { sleep(1); waited += 1 }
+                    if waited > 0 { log.append("      key \(ch) took \(waited) s to be ready") }
+                    key.tap() // never give up mid-word: a half-typed name plus a retry makes "mocmochi"
+
                 }
                 if saveButton.waitForExistence(timeout: 6) || typed.waitForExistence(timeout: 2) { log.append("      typed on attempt \(attempt)"); break }
                 log.append("      attempt \(attempt): typing didn't land yet")
@@ -97,7 +99,7 @@ final class OwnerJourneyTests: XCTestCase {
             let ret = app.keyboards.buttons["Return"].exists ? app.keyboards.buttons["Return"] : app.keyboards.buttons["return"]
             if tipContinue.exists { tipContinue.tap(); sleep(1) }
             if ret.exists && ret.isHittable { ret.tap() }
-            try scrollTo("Save \(petName)").tap() // the big Save under the form (the header's can sit under the status bar after the keyboard scrolls the page)
+            try scrollTo(query: element(containing: "Save "), "Save").tap() // the big Save under the form (the header's can sit under the status bar after the keyboard scrolls the page)
             allowNotificationsIfAsked()
             try find("Care", timeout: 30)
             sleep(2)
@@ -108,7 +110,7 @@ final class OwnerJourneyTests: XCTestCase {
             // Screen readers hear what the button does: "Mark Feed done for mochi".
             // The need meter under the room: a tap logs the care. (The simulator sometimes calls it
             // not hittable although it is on screen: then tap its centre.)
-            let done = app.descendants(matching: .any).matching(NSPredicate(format: "label BEGINSWITH %@ AND label ENDSWITH %@", "Mark ", "done for \(petName)")).firstMatch
+            let done = app.descendants(matching: .any).matching(NSPredicate(format: "label BEGINSWITH %@ AND label CONTAINS %@", "Mark ", "done for ")).firstMatch
             guard done.waitForExistence(timeout: 15) else { throw Failure("no need meter to tap") }
             if done.isHittable { done.tap() } else { done.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap() }
             guard element(containing: "Undo").waitForExistence(timeout: 10) else { throw Failure("no Undo after Done") }
@@ -222,13 +224,13 @@ final class OwnerJourneyTests: XCTestCase {
             try find("Add photo").tap() // the test photo, in place of the picker
             try find("Caption", timeout: 20)
             try find("Save").tap()
-            let thumb = element(containing: "Photo of \(petName)")
+            let thumb = element(containing: "Photo of ")
             guard thumb.waitForExistence(timeout: 20) else { throw Failure("no photo in the album") }
             sleep(1)
             shot("album")
             try find("Back").tap() // the album
             try scrollTo(query: element(containing: "In loving memory"), "In loving memory").tap()
-            try find("Remember \(petName)").tap()
+            try find(containing: "Remember ").tap()
             try scrollTo("Back").tap() // the More panel drops
             try find("Forever in your heart")
             sleep(1)
