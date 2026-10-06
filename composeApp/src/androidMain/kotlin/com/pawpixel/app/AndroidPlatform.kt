@@ -116,8 +116,9 @@ class AndroidPlatform(private val context: Context) : Platform {
     }
 
     /**
-     * ML Kit's bundled image labeler names what's in the photo ("Cat", "Dog", ...). The better of
-     * the two wins when it's confident enough; otherwise the owner is asked.
+     * ML Kit's image labeler (through Play services; its model downloads once) names what's in the
+     * photo ("Cat", "Dog", ...). The better of the two wins when it's confident enough; otherwise,
+     * or while the model isn't there yet, the owner is asked.
      */
     override suspend fun classifyPet(photo: PixelImage): Species? {
         val bitmap = Bitmap.createBitmap(photo.pixels, photo.width, photo.height, Bitmap.Config.ARGB_8888)
