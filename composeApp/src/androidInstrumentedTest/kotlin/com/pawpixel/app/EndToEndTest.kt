@@ -513,7 +513,7 @@ class EndToEndTest {
             check(walk.endMs - walk.startMs >= 2_000) { "walk too short: $walk" }
             find(By.text("Chelsea"), 15_000) // back in the room
             retrying { find(By.text("Care")).click() }
-            find(By.textStartsWith("1 walks"), 15_000)
+            find(By.textStartsWith("1 walk ·"), 15_000)
             closePanel()
         }
 

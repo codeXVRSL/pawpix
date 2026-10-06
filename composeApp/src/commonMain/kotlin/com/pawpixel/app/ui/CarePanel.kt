@@ -66,6 +66,8 @@ fun CarePanel(app: AppScope, state: AppState, pet: Pet) {
                     Text(
                         when {
                             walks.walks == 0 -> tr("None yet. Time one and {0} trots along.", pet.name)
+                            walks.walks == 1 && walks.km != null -> tr("1 walk · {0} min · about {1} km", walks.minutes, kmText(walks.km))
+                            walks.walks == 1 -> tr("1 walk · {0} min", walks.minutes)
                             walks.km != null -> tr("{0} walks · {1} min · about {2} km", walks.walks, walks.minutes, kmText(walks.km))
                             else -> tr("{0} walks · {1} min", walks.walks, walks.minutes)
                         },

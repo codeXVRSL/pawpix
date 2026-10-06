@@ -190,6 +190,8 @@ internal object FilScreens8 {
         "None yet. Time one and {0} trots along." to "Wala pa. Orasan ang isa at sasabay si {0}.",
         "{0} walks · {1} min · about {2} km" to "{0} pasyal · {1} min · mga {2} km",
         "{0} walks · {1} min" to "{0} pasyal · {1} min",
+        "1 walk · {0} min · about {1} km" to "1 pasyal · {0} min · mga {1} km",
+        "1 walk · {0} min" to "1 pasyal · {0} min",
         "Start a walk" to "Magsimula ng pasyal",
         // Noise nights
         "Noise night tomorrow" to "Maingay na gabi bukas",
