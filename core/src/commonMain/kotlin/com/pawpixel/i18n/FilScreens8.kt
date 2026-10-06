@@ -193,6 +193,16 @@ internal object FilScreens8 {
         "1 walk · {0} min · about {1} km" to "1 pasyal · {0} min · mga {1} km",
         "1 walk · {0} min" to "1 pasyal · {0} min",
         "Start a walk" to "Magsimula ng pasyal",
+        // Birthdays and gotcha days
+        "{0}'s first birthday" to "Unang kaarawan ni {0}",
+        "{0} turns {1}" to "{1} na si {0}",
+        "Happy birthday, {0}!" to "Maligayang kaarawan, {0}!",
+        "One year since {0} came home" to "Isang taon mula nang umuwi si {0}",
+        "{0} years since {1} came home" to "{0} taon mula nang umuwi si {1}",
+        "{0} years together!" to "{0} taon nang magkasama!",
+        "One year together!" to "Isang taon nang magkasama!",
+        "Open PawPixel: the room is decorated." to "Buksan ang PawPixel: nakadekorasyon ang kuwarto.",
+        "Extra treats today. The room is decorated for it." to "Dagdag na treat ngayon. Nakadekorasyon ang kuwarto para rito.",
         // Noise nights
         "Noise night tomorrow" to "Maingay na gabi bukas",
         "Noise night tonight" to "Maingay na gabi ngayon",

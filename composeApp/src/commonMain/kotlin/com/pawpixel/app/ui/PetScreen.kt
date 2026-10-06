@@ -38,6 +38,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import com.pawpixel.sprite.PetArt
 import com.pawpixel.sprite.Ears
+import com.pawpixel.core.Occasions
 import com.pawpixel.core.Species
 import com.pawpixel.core.WeatherAdvice
 import androidx.compose.runtime.LaunchedEffect
@@ -130,6 +131,8 @@ fun PetScreen(app: AppScope, state: AppState, pet: Pet) {
             fresh.firstOrNull()?.let { treatBubble = treatText(it.fromPet, pet.name, it.kind); burst = app.now }
         }
         LaunchedEffect(treatBubble) { if (treatBubble != null) { kotlinx.coroutines.delay(9_000); treatBubble = null } }
+        // A birthday or gotcha day: bunting and confetti up top, and the pet says so.
+        val occasion = remember(pet.id, pet.birthDay, clock.dayIndex(app.now)) { Occasions.today(pet, app.now, clock) }
         // The weather outside (for the owner's map area), as a chip and, when it matters, the pet's bubble for a moment.
         var weather by remember { mutableStateOf(app.repo.weather.fresh()) }
         var weatherBubble by remember { mutableStateOf<String?>(null) }
@@ -165,10 +168,11 @@ fun PetScreen(app: AppScope, state: AppState, pet: Pet) {
             }
             // A milestone pops up here, over the room, with confetti; the bubble moves under it then.
             if (!pet.remembered) Box(Modifier.padding(top = 10.dp)) { MilestoneBanner(app, pet) }
+            occasion?.let { Box(Modifier.padding(top = 10.dp)) { OccasionBanner(it, pet) } }
             if (celebrating) SpeechBubble(reading.caption, Modifier.padding(top = 10.dp).align(Alignment.CenterHorizontally))
         }
         // What the pet is thinking: a bubble just over its head.
-        if (!celebrating) SpeechBubble(treatBubble ?: weatherBubble ?: reading.caption, Modifier.align(Alignment.TopCenter).padding(top = screenHeight * 0.27f))
+        if (!celebrating) SpeechBubble(treatBubble ?: weatherBubble ?: occasion?.bubble ?: reading.caption, Modifier.align(Alignment.TopCenter).padding(top = screenHeight * 0.27f))
 
         // Bottom HUD: Undo (for a few seconds after a tap), the need meters, the five keys.
         Column(
@@ -340,6 +344,24 @@ private fun MemoryStrip(app: AppScope, state: AppState, pet: Pet) {
             }
             PrimaryPill(tr("Album"), icon = PixelIcons.CAMERA) { app.navigate(Screen.PetSection(pet.id, "album")) }
         }
+    }
+}
+
+/** The day's bunting: a birthday or gotcha day card with confetti, up by the name plate. */
+@Composable
+private fun OccasionBanner(occasion: com.pawpixel.core.Occasion, pet: Pet) {
+    val party = remember(pet.id, occasion) { "${pet.id}:$occasion" }
+    Box(Modifier.fillMaxWidth()) {
+        SoftCard(Modifier.fillMaxWidth(), tone = Tone.Accent) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                PixelIcon(PixelIcons.PARTY, size = 20.dp)
+                Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                    Text(occasion.title + "!", style = MaterialTheme.typography.titleMedium)
+                    Text(tr("Extra treats today. The room is decorated for it."), style = MaterialTheme.typography.bodySmall)
+                }
+            }
+        }
+        Confetti(party, Modifier.matchParentSize())
     }
 }
 

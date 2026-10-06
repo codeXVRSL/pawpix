@@ -102,7 +102,7 @@ object ReminderPlanner {
             }
         }
         val keptHealth = (bundle(health.filter { it.atMs >= quietUntil }, state).sortedBy { it.atMs }.take(MAX_HEALTH - 3) +
-            listOfNotNull(rabiesMonth(state, nowMs, clock)) + noiseNights(state, nowMs, clock, country)).sortedBy { it.atMs }
+            listOfNotNull(rabiesMonth(state, nowMs, clock)) + noiseNights(state, nowMs, clock, country) + occasions(state, nowMs, clock)).sortedBy { it.atMs }
         val daily = bundleDaily(out.filter { it.atMs >= quietUntil }, state, clock).sortedBy { it.atMs }.take(MAX_PENDING - keptHealth.size)
         return (daily + keptHealth).sortedBy { it.atMs }
     }
@@ -185,6 +185,20 @@ object ReminderPlanner {
         }
         return out.sortedBy { it.atMs }.take(2)
     }
+
+    /** Birthdays and gotcha days: one note at 9:00 on the day, for each pet with one coming up. */
+    fun occasions(state: AppState, nowMs: Long, clock: LocalClock): List<Reminder> = state.pets.mapNotNull { pet ->
+        val (day, occasion) = Occasions.upcoming(pet, nowMs, clock, NOISE_LEAD_MS) ?: return@mapNotNull null
+        val at = clock.at(day, OCCASION_MINUTE)
+        if (at <= nowMs) return@mapNotNull null
+        Reminder(
+            stableId("occasion-${pet.id}", at, false), taskId = "", petId = pet.id, atMs = at,
+            title = "🎉 " + occasion.title,
+            body = occasion.bubble + " " + tr("Open PawPixel: the room is decorated."),
+            exact = false, quickDone = false, taskIds = emptyList(), slots = emptyList(),
+        )
+    }
+    const val OCCASION_MINUTE = 9 * 60
 
     /** (key, month, day): New Year's Eve for everyone; the Fourth of July (US) and Bonfire Night (GB) by country. */
     fun noiseNightDates(country: String): List<Triple<String, Int, Int>> = buildList {
