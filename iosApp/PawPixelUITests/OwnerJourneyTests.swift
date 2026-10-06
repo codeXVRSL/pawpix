@@ -302,8 +302,9 @@ final class OwnerJourneyTests: XCTestCase {
             try find("Yes, safe home").tap()
             try find(containing: "Welcome home", timeout: 20)
             shot("lost-home")
-            try find(containing: "Back to").tap()
-            try find(containing: "Care", timeout: 15)
+            try find(containing: "Back to").tap() // the lost page closes onto the More panel it was opened from
+            try scrollTo("Back").tap() // the More panel drops
+            try find("Share", timeout: 15) // the bottom bar: the room
         }
 
         step("share with your household (no server in this CI build: says it's not available yet)") {

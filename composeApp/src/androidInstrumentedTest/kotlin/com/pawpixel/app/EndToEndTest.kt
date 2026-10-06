@@ -247,12 +247,17 @@ class EndToEndTest {
             scrollTo(By.text(label))
             Thread.sleep(500)
             shot("health-section")
-            // Rabies rules and local help.
-            retrying { scrollTo(By.text("Rabies rules and where to get shots")).click() }
-            scrollTo(By.textContains("City Veterinary Office"))
-            shot("health-local-help")
-            scrollTo(By.textStartsWith("March is Rabies Awareness Month"))
-            shot("health-local-help-2")
+            // Rabies rules and local help: a Philippine card, shown on a Philippine (or unknown-country) phone only.
+            if (repo.platform.systemCountry().let { it == "PH" || it.isBlank() }) {
+                retrying { scrollTo(By.text("Rabies rules and where to get shots")).click() }
+                scrollTo(By.textContains("City Veterinary Office"))
+                shot("health-local-help")
+                scrollTo(By.textStartsWith("March is Rabies Awareness Month"))
+                shot("health-local-help-2")
+            } else {
+                note("country ${repo.platform.systemCountry()}: the Philippine card stays home")
+                check(device.findObject(By.text("Rabies rules and where to get shots")) == null) { "the Philippine card showed outside the Philippines" }
+            }
             closePanel() // the local help is part of the Health panel: the panel drops, the room shows
             find(By.text("10 weeks old")) // her age, on her name plate
         }
