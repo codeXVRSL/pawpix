@@ -76,6 +76,13 @@ fun HostWalkDialog(
             Column(Modifier.heightIn(max = 520.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Text(tr("A walk at a public place: a plaza, a park, a pet-friendly café. We check it before it goes on the map."), style = MaterialTheme.typography.bodySmall)
                 OutlinedTextField(form.title, { onChange(form.copy(title = it.take(80))) }, label = { Text(tr("Title")) }, singleLine = true, modifier = Modifier.fillMaxWidth(), shape = MaterialTheme.shapes.small)
+                GroupLabel(tr("Meeting place"))
+                OutlinedTextField(form.venueName, { onChange(form.copy(venueName = it.take(80))) }, label = { Text(tr("Public place, e.g. Plaza Rizal fountain")) }, singleLine = true, modifier = Modifier.fillMaxWidth(), shape = MaterialTheme.shapes.small)
+                OutlinedTextField(form.areaLabel, { onChange(form.copy(areaLabel = it.take(60))) }, label = { Text(tr("Area, as shown before RSVP (e.g. Plaza Rizal area)")) }, singleLine = true, modifier = Modifier.fillMaxWidth(), shape = MaterialTheme.shapes.small)
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    GhostPill(if (form.spot == null) tr("Tap the spot on the map") else tr("Move the spot"), icon = PixelIcons.PIN, onClick = onPickSpot)
+                    if (form.spot != null) Text(tr("Spot set"), color = Paw.palette.good, fontWeight = FontWeight.Bold)
+                }
                 GroupLabel(tr("Day"))
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     days.forEach { d -> ChoiceChip(form.day == d, { onChange(form.copy(day = d)) }, formatDay(d)) }
@@ -83,13 +90,6 @@ fun HostWalkDialog(
                 GroupLabel(tr("Time"))
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     TIMES.forEach { m -> ChoiceChip(form.minute == m, { onChange(form.copy(minute = m)) }, formatMinute(m)) }
-                }
-                GroupLabel(tr("Meeting place"))
-                OutlinedTextField(form.venueName, { onChange(form.copy(venueName = it.take(80))) }, label = { Text(tr("Public place, e.g. Plaza Rizal fountain")) }, singleLine = true, modifier = Modifier.fillMaxWidth(), shape = MaterialTheme.shapes.small)
-                OutlinedTextField(form.areaLabel, { onChange(form.copy(areaLabel = it.take(60))) }, label = { Text(tr("Area, as shown before RSVP (e.g. Plaza Rizal area)")) }, singleLine = true, modifier = Modifier.fillMaxWidth(), shape = MaterialTheme.shapes.small)
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    GhostPill(if (form.spot == null) tr("Tap the spot on the map") else tr("Move the spot"), icon = PixelIcons.PIN, onClick = onPickSpot)
-                    if (form.spot != null) Text(tr("Spot set"), color = Paw.palette.good, fontWeight = FontWeight.Bold)
                 }
                 GroupLabel(tr("How many can come"))
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {

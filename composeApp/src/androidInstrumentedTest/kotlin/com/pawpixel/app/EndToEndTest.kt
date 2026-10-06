@@ -467,21 +467,17 @@ class EndToEndTest {
             find(By.textContains("walks coming up"), 15_000)
             retrying { scrollTo(By.text("Host a walk")).click() }
             find(By.text("Send for approval"), 15_000)
-            retrying { find(By.clazz("android.widget.EditText")).text = "Saturday walk" }
-            val tomorrow = com.pawpixel.app.ui.formatDay(repo.clock.dayIndex(repo.now()) + 1)
-            retrying { scrollTo(By.text(tomorrow)).click() }
-            retrying { scrollTo(By.text("Tap the spot on the map")).click() }
+            // The fields, top to bottom: title, meeting place, area. The spot comes from a tap on the map.
+            retrying { device.findObjects(By.clazz("android.widget.EditText"))[0].text = "Saturday walk" }
+            retrying { device.findObjects(By.clazz("android.widget.EditText"))[1].text = "Plaza Rizal fountain" }
+            retrying { dialogScrollTo(By.text("Tap the spot on the map")).click() }
             find(By.textStartsWith("Tap the meeting place"), 15_000)
             shot("pet-map-place-spot")
             Thread.sleep(800)
             device.click(device.displayWidth / 2, (tabsBottom + mapBottom) / 2 + (40 * ctx.resources.displayMetrics.density).toInt())
-            find(By.text("Spot set"), 15_000)
-            val placeLabel = scrollTo(By.text("Meeting place"))
-            retrying {
-                val field = device.findObjects(By.clazz("android.widget.EditText")).filter { it.visibleBounds.top > placeLabel.visibleBounds.bottom }
-                    .minByOrNull { it.visibleBounds.top } ?: error("no venue field under 'Meeting place'")
-                field.text = "Plaza Rizal fountain"
-            }
+            dialogScrollTo(By.text("Spot set"))
+            val tomorrow = com.pawpixel.app.ui.formatDay(repo.clock.dayIndex(repo.now()) + 1)
+            retrying { dialogScrollTo(By.text(tomorrow)).click() }
             shot("pet-map-host-walk")
             retrying { find(By.text("Send for approval")).click() }
             find(By.textStartsWith("Waiting for approval"), 20_000)
@@ -1027,6 +1023,27 @@ class EndToEndTest {
      * Scrolls the app's screen one page. False when it can't move, or when the active window isn't
      * the app's full screen yet (a dialog still closing).
      */
+    /**
+     * Scrolls a dialog's own list (which is smaller than the screen, so [accessibilityScroll] leaves
+     * it alone) until [selector] is on screen.
+     */
+    private fun dialogScrollTo(selector: BySelector): UiObject2 {
+        repeat(12) { i ->
+            fresh(selector)?.let { return settled(it) }
+            if (Build.VERSION.SDK_INT >= 34) runCatching { instr.uiAutomation.clearCache() }
+            val root = instr.uiAutomation.rootInActiveWindow
+            val queue = ArrayDeque(listOfNotNull(root))
+            var scrolled = false
+            while (queue.isNotEmpty() && !scrolled) {
+                val node = queue.removeFirst()
+                if (node.isScrollable) scrolled = node.performAction(if (i < 8) AccessibilityNodeInfo.ACTION_SCROLL_FORWARD else AccessibilityNodeInfo.ACTION_SCROLL_BACKWARD)
+                else for (c in 0 until node.childCount) node.getChild(c)?.let { queue.addLast(it) }
+            }
+            Thread.sleep(500)
+        }
+        return find(selector, 3_000)
+    }
+
     private fun accessibilityScroll(forward: Boolean): Boolean {
         if (Build.VERSION.SDK_INT >= 34) runCatching { instr.uiAutomation.clearCache() } // see [fresh]
         val root = instr.uiAutomation.rootInActiveWindow ?: return false

@@ -215,25 +215,26 @@ final class OwnerJourneyTests: XCTestCase {
 
         step("album: a photo with a caption, then the pet remembered and brought back") {
             try find("More").tap() // the pet's menu
-            try scrollTo("Album").tap()
+            // Menu rows read as one label ("Album, 3 photos, kept for good"): match on the title.
+            try scrollTo(query: element(containing: "Album"), "Album").tap()
             try find("No photos yet")
             shot("album-empty")
             try find("Add photo").tap() // the test photo, in place of the picker
             try find("Caption", timeout: 20)
             try find("Save").tap()
-            let thumb = element(containing: "Photo of Chelsea")
+            let thumb = element(containing: "Photo of \(petName)")
             guard thumb.waitForExistence(timeout: 20) else { throw Failure("no photo in the album") }
             sleep(1)
             shot("album")
             try find("Back").tap() // the album
-            try scrollTo("In loving memory").tap()
-            try find("Remember Chelsea").tap()
+            try scrollTo(query: element(containing: "In loving memory"), "In loving memory").tap()
+            try find("Remember \(petName)").tap()
             try scrollTo("Back").tap() // the More panel drops
             try find("Forever in your heart")
             sleep(1)
             shot("memory")
             try find("More").tap()
-            try scrollTo("Remembered").tap()
+            try scrollTo(query: element(containing: "Remembered"), "Remembered").tap()
             try find("Bring back").tap()
             try scrollTo("Back").tap()
             try find("Care")
