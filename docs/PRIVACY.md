@@ -31,6 +31,9 @@ If your pet goes missing and you raise an alert, and only then:
 - **How long:** an alert leaves the map when you mark the pet safe home or remove it, and in any case after 60 days. The share page shows a found pet as found for 30 days, then nothing. "Delete my map account" deletes your alerts and sightings too.
 - Raising an alert needs a sign-in (Google or Apple) but not a place on the map.
 
+## Pet ID card (optional)
+If you make an ID card for a pet, and only then: the pet's name, dog or cat, look code, your note and (if you add it) the microchip number are stored on our server and shown to anyone who opens the card's link, usually by scanning the QR code on the collar tag. Not your name, your account or your number. A finder can send you a message (and a contact line if they choose) which you read in the app. "Remove card" deletes the card and its messages; deleting your map account does too.
+
 ## Sharing with your household (optional)
 If you start or join a household (for example you and your partner both caring for your dog), and only then:
 - **Sign-in:** the same Google or Apple sign-in as the pet map.

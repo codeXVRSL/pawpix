@@ -111,6 +111,10 @@ store build.) For the release job, add the secrets to the "Build release bundle"
   `web/dist/lost.html`) and host it at `pawpixel.app/lost` (any static host: GitHub Pages, Netlify). Until it's
   hosted the link still carries the alert id; the text itself has the description and the map spot.
 
+- **Pet ID cards** (migration 0011) work the same way: `web/dist/card.html` (built by the same command, with the QR
+  library in `web/qrcode.js`) is what a collar tag's QR opens; host it at `pawpixel.app/card`. A finder's message
+  lands in `pet_card_messages` and in the owner's app; a card can be deleted from `pet_cards`.
+
 ## 7. Before launching (also in docs/MAP_SAFETY.md)
 - Update your privacy policy (docs/PRIVACY.md has the map section) and the store privacy labels
   (docs/STORE_LISTING.md).

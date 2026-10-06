@@ -317,6 +317,19 @@ class EndToEndTest {
             retrying { scrollTo(By.text("Before/after")).click() }
             waitFor("card share sheet") { choosers() == before + 2 }
             shot("08-share-section")
+            // The Pet ID card: made on the server (the real one, or the demo), its QR drawn, then removed.
+            val model = if (repo.map.settings.isConfigured) repo.map else repo.demoMap
+            retrying { scrollTo(By.text("Make an ID card")).click() }
+            retrying { device.findObjects(By.clazz("android.widget.EditText"))[0].text = "Friendly but shy, on a special diet" }
+            retrying { scrollTo(By.text("Make the card")).click() }
+            find(By.text("Scan to reach my owner"), 40_000)
+            find(By.descStartsWith("QR code for Chelsea"))
+            val cardId = model.cardFor(petId)
+            check(cardId != null && runBlocking { model.client.cards.mine() }.any { it.id == cardId && it.note == "Friendly but shy, on a special diet" }) { "card not on the server: $cardId" }
+            shot("08-pet-id-card")
+            retrying { scrollTo(By.text("Remove card")).click() }
+            waitFor("card removed") { model.cardFor(petId) == null }
+            find(By.text("Make an ID card"), 15_000)
             closePanel()
         }
 

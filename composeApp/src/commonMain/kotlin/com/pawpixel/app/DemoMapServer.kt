@@ -26,6 +26,8 @@ class DemoMapServer(private val nowMs: () -> Long) : Http {
     private var seededAround: String? = null
     private val fakeOwners = ArrayList<FakeOwner>()
     private val lost = ArrayList<Lost>()
+    private val cards = LinkedHashMap<String, Card>()   // local pet id -> card
+    private val cardMessages = ArrayList<CardMsg>()
     private val sightings = ArrayList<Seen>()
 
     private class FakeOwner(val id: String, val cell: LocationGrid.Cell, val pets: List<FakePet>)
@@ -35,6 +37,8 @@ class DemoMapServer(private val nowMs: () -> Long) : Http {
         val photos: List<String>, val lat: Double, val lng: Double, val lastSeenAtMs: Long, val createdAtMs: Long, val ownerId: String,
         var foundAtMs: Long? = null,
     )
+    private class Card(val id: String, val localId: String, var name: String, var note: String?, var microchip: String?, val madeAtMs: Long)
+    private class CardMsg(val id: String, val cardId: String, val text: String, val contact: String?, val atMs: Long)
     private class Seen(val id: String, val lostId: String, val lat: Double, val lng: Double, val note: String?, val photo: String?, val atMs: Long, val reporter: String)
     private class Walk(
         val id: String, val title: String, val startsAtMs: Long, val cell: LocationGrid.Cell, val areaLabel: String,
@@ -163,7 +167,32 @@ class DemoMapServer(private val nowMs: () -> Long) : Http {
                 Json.obj("id" to l.id, "name" to l.name, "species" to l.species, "created_at" to iso(l.createdAtMs), "found_at" to l.foundAtMs?.let(::iso),
                     "last_seen_at" to iso(l.lastSeenAtMs), "sightings" to sightings.count { it.lostId == l.id })
             }).stringify())
+            // Pet ID cards (0011)
+            path.endsWith("/rpc/upsert_pet_card") -> {
+                val local = body["p_local_id"].str ?: ""
+                val c = cards.getOrPut(local) { Card(Ids.newId(), local, body["p_name"].str ?: "Pet", null, null, nowMs()) }
+                c.name = body["p_name"].str ?: c.name; c.note = body["p_note"].str; c.microchip = body["p_microchip"].str
+                ok("\"${c.id}\"")
+            }
+            path.endsWith("/rpc/remove_pet_card") -> { cards.remove(body["p_local_id"].str)?.let { c -> cardMessages.removeAll { it.cardId == c.id } }; ok() }
+            path.endsWith("/rpc/pet_card_messages_for") -> {
+                pretendScan()
+                ok(Json.arr(cardMessages.filter { it.cardId == body["p_id"].str }.sortedByDescending { it.atMs }.map { m ->
+                    Json.obj("id" to m.id, "text" to m.text, "contact" to m.contact, "created_at" to iso(m.atMs))
+                }).stringify())
+            }
+            path.startsWith("/rest/v1/my_pet_cards") -> ok(Json.arr(cards.values.map { c ->
+                Json.obj("id" to c.id, "local_id" to c.localId, "name" to c.name, "note" to c.note, "microchip" to c.microchip, "updated_at" to iso(c.madeAtMs),
+                    "messages" to cardMessages.count { it.cardId == c.id })
+            }).stringify())
             else -> ok()
+        }
+    }
+
+    /** Someone in the demo neighbourhood scans a tag a little after the card is made. */
+    private fun pretendScan() {
+        for (c in cards.values) if (nowMs() - c.madeAtMs > SIGHTING_AFTER_MS && cardMessages.none { it.cardId == c.id }) {
+            cardMessages += CardMsg(Ids.newId(), c.id, "Hi! I found ${c.name} near the plaza, safe with me. Text me and I'll bring ${c.name} over.", "0917 555 0123", nowMs())
         }
     }
 

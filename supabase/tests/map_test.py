@@ -215,6 +215,27 @@ s, rows = call("GET", "/rest/v1/lost_pets?select=*", token=a["token"])
 s2, rows2 = call("GET", "/rest/v1/lost_sightings?select=*", token=d["token"])
 check("the tables themselves are closed", rows in ([], None) and rows2 in ([], None) or s >= 400 and s2 >= 400, (s, rows, s2, rows2))
 
+# Pet ID card (0011): the owner makes a card, anyone with the link reads it and can message the owner.
+s, cid = rpc(d, "upsert_pet_card", {"p_local_id": "pet-1", "p_name": "Kape", "p_species": "DOG", "p_ears": "FLOPPY", "p_look": LOOK, "p_note": "Friendly. On heart medication.", "p_microchip": "981020012345678"})
+check("an owner makes an ID card for a pet", s == 200 and isinstance(cid, str), (s, cid))
+s, again = rpc(d, "upsert_pet_card", {"p_local_id": "pet-1", "p_name": "Kape", "p_species": "DOG", "p_ears": "FLOPPY", "p_look": LOOK, "p_note": "Friendly!"})
+check("making it again updates the same card", s == 200 and again == cid, (s, again))
+s, pub = call("POST", "/rest/v1/rpc/pet_card_public", {"p_id": cid})
+check("the card page reads without signing in, owner left out",
+      s == 200 and len(pub) == 1 and pub[0]["name"] == "Kape" and pub[0]["note"] == "Friendly!" and "owner_id" not in pub[0], (s, pub))
+s, _ = call("POST", "/rest/v1/rpc/pet_card_message", {"p_id": cid, "p_text": "Found Kape at the plaza, he's with me", "p_contact": "0917 555 0123"})
+s2, msgs = rpc(d, "pet_card_messages_for", {"p_id": cid})
+check("a finder's message reaches the owner", s in (200, 204) and s2 == 200 and len(msgs) == 1 and msgs[0]["contact"] == "0917 555 0123", (s, s2, msgs))
+s, other = rpc(a, "pet_card_messages_for", {"p_id": cid})
+check("nobody else reads them", s == 200 and other == [], (s, other))
+s, r = call("POST", "/rest/v1/rpc/pet_card_message", {"p_id": cid, "p_text": "   "})
+check("an empty message is refused", s >= 400, (s, r))
+s, mine = call("GET", "/rest/v1/my_pet_cards?select=*", token=d["token"])
+check("the owner lists their cards with the message count", s == 200 and len(mine) == 1 and mine[0]["messages"] == 1 and mine[0]["id"] == cid, (s, mine))
+s, _ = rpc(d, "remove_pet_card", {"p_local_id": "pet-1"})
+s2, pub = call("POST", "/rest/v1/rpc/pet_card_public", {"p_id": cid})
+check("removing the card takes the page down", s in (200, 204) and pub == [], (s, pub))
+
 # Moderation and self-service
 call("PATCH", f"/rest/v1/map_profiles?user_id=eq.{b['id']}", {"banned": True}, key=SERVICE)
 s, cells = rpc(d, "nearby_cells", {"p_cell_lat": NAGA[1], "p_cell_lng": NAGA[2]})

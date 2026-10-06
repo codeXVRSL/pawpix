@@ -32,6 +32,9 @@ import os
 url, anon = os.environ.get("PAWPIXEL_SUPABASE_URL", ""), os.environ.get("PAWPIXEL_SUPABASE_ANON_KEY", "")
 if url and anon:
     (dist / "lost.html").write_text((here / "lost.template.html").read_text().replace("/*SUPABASE_URL*/", url.rstrip("/")).replace("/*ANON_KEY*/", anon))
+    # The Pet ID card page (what a collar tag's QR opens), with the QR drawn by qrcode-generator (MIT, web/qrcode.js).
+    (dist / "card.html").write_text((here / "card.template.html").read_text().replace("/*QRCODE_JS*/", (here / "qrcode.js").read_text().replace("</script", "<\\/script"))
+                                    .replace("/*SUPABASE_URL*/", url.rstrip("/")).replace("/*ANON_KEY*/", anon))
 else:
-    print("note: PAWPIXEL_SUPABASE_URL / PAWPIXEL_SUPABASE_ANON_KEY not set; lost.html (the lost-pet share page) not written")
+    print("note: PAWPIXEL_SUPABASE_URL / PAWPIXEL_SUPABASE_ANON_KEY not set; lost.html and card.html (the lost-pet share page and the ID card page) not written")
 print("Wrote", dist)

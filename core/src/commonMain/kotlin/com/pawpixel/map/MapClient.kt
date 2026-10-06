@@ -232,6 +232,9 @@ class MapClient(
     /** Lost and Found: alerts, sightings, safe home (same sign-in). */
     val lost = LostClient(api)
 
+    /** Pet ID cards: the page a collar tag's QR opens, and the finder's messages. */
+    val cards = PetCardClient(api)
+
     val isSignedIn: Boolean get() = api.isSignedIn
     val userId: String? get() = api.userId
 

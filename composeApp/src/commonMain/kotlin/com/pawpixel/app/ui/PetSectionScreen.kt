@@ -269,6 +269,8 @@ private fun ShareSection(app: AppScope, pet: Pet) {
     }
     shareError?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
 
+    PetCardSection(app, pet)
+
     SectionTitle(tr("Household"))
     val household = app.repo.family.household
     if (pet.shared && household != null) {

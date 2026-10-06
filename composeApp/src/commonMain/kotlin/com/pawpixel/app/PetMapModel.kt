@@ -35,6 +35,7 @@ class PetMapModel(
     private val AREA get() = "$dir/area.json"
     private val SHARED get() = "$dir/shared.json"
     private val LOST get() = "$dir/lost.json"
+    private val CARDS get() = "$dir/cards.json"
 
     val client = MapClient(settings, http, object : SessionStore {
         override fun load() = files.readText(SESSION)
@@ -61,6 +62,19 @@ class PetMapModel(
         Json.parse(it).list.mapNotNull { e -> val pet = e["pet"].str ?: return@mapNotNull null; val id = e["id"].str ?: return@mapNotNull null; pet to id }.toMap()
     }.getOrNull() } ?: emptyMap()
         private set
+
+    /** Pet ID cards made from this phone: local pet id -> card id. */
+    var cards: Map<String, String> = files.readText(CARDS)?.let { runCatching {
+        Json.parse(it).list.mapNotNull { e -> val pet = e["pet"].str ?: return@mapNotNull null; val id = e["id"].str ?: return@mapNotNull null; pet to id }.toMap()
+    }.getOrNull() } ?: emptyMap()
+        private set
+
+    fun cardFor(petId: String): String? = cards[petId]
+
+    fun recordCard(petId: String, cardId: String?) {
+        cards = if (cardId == null) cards - petId else cards + (petId to cardId)
+        files.writeText(CARDS, Json.arr(cards.map { (pet, id) -> Json.obj("pet" to pet, "id" to id) }).stringify())
+    }
 
     /** The open alert for a pet, if one was raised from this phone. */
     fun alertFor(petId: String): String? = lostAlerts[petId]
@@ -124,6 +138,7 @@ class PetMapModel(
         myArea = null
         sharedPetIds = null
         lostAlerts = emptyMap()
+        cards = emptyMap()
     }
 
     private fun forgetChoices() {

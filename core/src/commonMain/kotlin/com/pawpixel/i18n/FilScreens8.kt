@@ -96,6 +96,32 @@ internal object FilScreens8 {
         "Yes, safe home" to "Oo, nakauwi na",
         "{0} · {1} km from where they were last seen" to "{0} · {1} km mula sa huling nakita",
         "Sighting photo" to "Litrato ng ulat",
+        // The Pet ID card
+        "QR code" to "QR code",
+        "Pet ID card" to "ID card ng alaga",
+        "A tag whose QR code opens {0}'s page, where a finder can message you without seeing your number. Needs PawPixel's server, which this version isn't connected to yet." to
+            "Isang tag na ang QR code ay nagbubukas ng page ni {0}, kung saan puwede kang i-message ng nakakita nang hindi nakikita ang numero mo. Kailangan ng server ng PawPixel, na hindi pa konektado sa bersyong ito.",
+        "QR code for {0}'s ID card" to "QR code para sa ID card ni {0}",
+        "Scan to reach my owner" to "I-scan para makontak ang may-ari ko",
+        "Microchip {0}" to "Microchip {0}",
+        "Note for the finder (friendly? on medication? your vet?)" to "Paalala sa nakakita (mabait? may gamot? ang vet mo?)",
+        "Microchip number (optional)" to "Numero ng microchip (opsyonal)",
+        "Save card" to "I-save ang card",
+        "Edit note" to "I-edit ang paalala",
+        "Print the tag" to "I-print ang tag",
+        "Share link" to "I-share ang link",
+        "{0}'s PawPixel ID card: {1}" to "PawPixel ID card ni {0}: {1}",
+        "Remove card" to "Alisin ang card",
+        "Messages from finders" to "Mga mensahe mula sa nakakita",
+        "Messages from finders ({0})" to "Mga mensahe mula sa nakakita ({0})",
+        "None yet. Whoever scans the tag can write to you here; they see {0}'s page, never your number." to
+            "Wala pa. Puwedeng sumulat sa iyo dito ang sinumang mag-scan ng tag; nakikita nila ang page ni {0}, hindi kailanman ang numero mo.",
+        "Reach them: {0}" to "Kontakin sila: {0}",
+        "A tag for the collar: whoever scans its QR code sees {0}'s pixel twin, your note, and a box to message you through PawPixel. Your number stays private." to
+            "Tag para sa collar: makikita ng sinumang mag-scan ng QR code nito ang pixel na kambal ni {0}, ang paalala mo, at isang box para i-message ka sa PawPixel. Nananatiling pribado ang numero mo.",
+        "Making…" to "Ginagawa…",
+        "Make the card" to "Gawin ang card",
+        "Make an ID card" to "Gumawa ng ID card",
         // Noise nights
         "Noise night tomorrow" to "Maingay na gabi bukas",
         "Noise night tonight" to "Maingay na gabi ngayon",

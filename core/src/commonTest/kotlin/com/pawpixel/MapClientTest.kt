@@ -329,3 +329,35 @@ class LostClientTest {
         assertEquals("l2", Json.parse(log.last().body!!)["p_id"].str)
     }
 }
+
+class PetCardClientTest {
+    private val log = ArrayList<HttpRequest>()
+    private var reply: (HttpRequest) -> HttpResponse = { HttpResponse(200, "[]") }
+    private val http = Http { r -> log += r; reply(r) }
+    private val saved = arrayOfNulls<String>(1)
+    private val store = object : SessionStore { override fun load() = saved[0]; override fun save(json: String?) { saved[0] = json } }
+
+    private fun signedIn(): MapClient {
+        reply = { HttpResponse(200, """{"access_token":"tok1","refresh_token":"ref1","expires_in":3600,"user":{"id":"u1"}}""") }
+        val c = MapClient(MapSettings("https://x.supabase.co", "anon", "", "", ""), http, store) { 1_700_000_000_000L }
+        runSync { c.signInWithIdToken("google", "idtok", "raw-nonce") }
+        log.clear()
+        return c
+    }
+
+    @Test fun aCardIsMadeAndItsMessagesRead() {
+        val c = signedIn()
+        reply = { HttpResponse(200, "\"card-1\"") }
+        val id = runSync { c.cards.upsert(com.pawpixel.map.PetCardDraft("p1", "Kape", "DOG", "FLOPPY", "3;abc;000", "  Friendly  ", "")) }
+        assertEquals("card-1", id)
+        val body = Json.parse(log.single().body!!)
+        assertEquals("p1", body["p_local_id"].str); assertEquals("Friendly", body["p_note"].str); assertEquals(null, body["p_microchip"].str)
+        assertEquals("https://pawpixel.app/card#card-1", com.pawpixel.map.PetCardClient.url(id))
+        reply = { HttpResponse(200, """[{"id":"m1","text":"Found Kape at the plaza","contact":"0917 555 0123","created_at":"2026-10-06T05:00:00+00:00"}]""") }
+        val msgs = runSync { c.cards.messages(id) }
+        assertEquals("Found Kape at the plaza", msgs.single().text); assertEquals("0917 555 0123", msgs.single().contact)
+        reply = { HttpResponse(200, "") }
+        runSync { c.cards.remove("p1") }
+        assertTrue(log.last().url.endsWith("/rpc/remove_pet_card"))
+    }
+}
