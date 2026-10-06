@@ -152,22 +152,23 @@ final class OwnerJourneyTests: XCTestCase {
         step("weight: two weigh-ins draw the chart") {
             try find("Health").tap()
             try scrollTo(query: element(containing: "Weight"), "Weight door").tap()
-            // Without the keyboard: +1 kg four times (4.0 kg) yesterday, then +0.1 kg twice from it (4.2 kg) today.
+            // Without the keyboard: +1 four times (4.0) yesterday, then +0.1 twice from it (4.2) today. The unit is the
+            // simulator region's (kg, or lb on a US-region simulator), so the buttons and the result match by prefix.
             try scrollTo("+ Add weight").tap()
-            let addKilo = element(containing: "Add 1 kg")
+            let addKilo = element(containing: "Add 1 ")
             guard addKilo.waitForExistence(timeout: 10) else { throw Failure("weight dialog didn't open") }
             for _ in 0..<4 { addKilo.tap(); usleep(200_000) }
             try find("Yesterday").tap()
             shot("weight-dialog")
             try find("Save").tap()
             try scrollTo("+ Add weight").tap()
-            let addTenth = element(containing: "Add 0.1 kg")
+            let addTenth = element(containing: "Add 0.1 ")
             guard addTenth.waitForExistence(timeout: 10) else { throw Failure("weight dialog didn't open again") }
             addTenth.tap(); usleep(200_000); addTenth.tap()
             try find("Save").tap()
             try scrollTo(query: element(containing: "Weight chart"), "weight chart")
             try scrollTo("+ Add weight")
-            guard element("4.2 kg").waitForExistence(timeout: 10) else { throw Failure("latest weight not shown") }
+            guard element(containing: "4.2 ").waitForExistence(timeout: 10) else { throw Failure("latest weight not shown") }
             sleep(1)
             shot("weight")
             try scrollTo("Back").tap() // the Health panel

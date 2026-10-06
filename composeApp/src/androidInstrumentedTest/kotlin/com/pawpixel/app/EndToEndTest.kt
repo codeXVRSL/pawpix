@@ -260,17 +260,18 @@ class EndToEndTest {
             retrying { find(By.text("Health")).click() }
             retrying { scrollTo(By.text("Weight")).click() } // the Weight door at the top of Health
             retrying { scrollTo(By.text("+ Add weight")).click() }
-            retrying { find(By.clazz("android.widget.EditText")).text = "4.0" }
+            // Typed with the unit, so the test reads the same on a US-region emulator (which would show pounds).
+            retrying { find(By.clazz("android.widget.EditText")).text = "4.0 kg" }
             retrying { find(By.text("Yesterday")).click() }
             shot("weight-dialog")
             retrying { find(By.text("Save")).click() }
             waitFor("first weigh-in saved") { repo.state.value.weightsFor(petId).singleOrNull()?.let { it.grams == 4000 && it.day == today - 1 } == true }
             retrying { scrollTo(By.text("+ Add weight")).click() }
-            retrying { find(By.clazz("android.widget.EditText")).text = "4.2" }
+            retrying { find(By.clazz("android.widget.EditText")).text = "4.2 kg" }
             retrying { find(By.text("Save")).click() }
             waitFor("second weigh-in saved") { repo.state.value.weightsFor(petId).map { it.grams } == listOf(4000, 4200) }
             scrollTo(By.descStartsWith("Weight chart"))
-            scrollTo(By.text("4.2 kg")) // the latest weigh-in, big, at the top of the weight card
+            scrollTo(By.text(com.pawpixel.core.Units.weight(4200))) // the latest weigh-in, big, at the top of the weight card ("4.2 kg", or "9.3 lb" on a US-region emulator)
             Thread.sleep(500)
             shot("weight")
             retrying { scrollTo(By.text("All weigh-ins (2)")).click() }
@@ -278,7 +279,7 @@ class EndToEndTest {
             shot("weight-list")
             retrying { find(By.text("Hide weigh-ins")).click() }
             device.pressBack()
-            scrollTo(By.textStartsWith("4.2 kg")) // the Weight door shows the latest weigh-in
+            scrollTo(By.textStartsWith(com.pawpixel.core.Units.weight(4200))) // the Weight door shows the latest weigh-in
             closePanel() // the room
         }
 
