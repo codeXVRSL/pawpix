@@ -9,6 +9,8 @@
     <!-- Pet map (opt-in): approximate location only, snapped to a ~1 km square on the phone. -->
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- Walks: the phone's step counter, only while a walk is being timed with the app open. -->
+    <uses-permission android:name="android.permission.ACTIVITY_RECOGNITION" />
 
     <application
         android:name=".PawPixelApplication"

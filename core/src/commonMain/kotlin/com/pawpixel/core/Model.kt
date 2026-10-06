@@ -156,6 +156,13 @@ data class Weight(val petId: String, val day: Long, val grams: Int)
  */
 data class AlbumPhoto(val id: String, val petId: String, val atMs: Long, val caption: String = "")
 
+/** One walk taken with the app open: when, how long, and the phone's step count if it has one. */
+data class Walk(val id: String, val petId: String, val startMs: Long, val endMs: Long, val steps: Int? = null) {
+    val minutes: Int get() = ((endMs - startMs) / 60_000L).toInt()
+    /** Rough distance in km from steps (about 0.7 m a stride); null without a step counter. */
+    val km: Double? get() = steps?.let { it * 0.0007 }
+}
+
 data class Settings(
     val remindersEnabled: Boolean = true,
     /**
@@ -186,7 +193,10 @@ data class AppState(
     val settings: Settings = Settings(),
     val weights: List<Weight> = emptyList(),
     val album: List<AlbumPhoto> = emptyList(),
+    val walks: List<Walk> = emptyList(),
 ) {
+    /** A pet's walks, newest first. */
+    fun walksFor(petId: String): List<Walk> = walks.filter { it.petId == petId }.sortedByDescending { it.startMs }
     fun weightsFor(petId: String): List<Weight> = weights.filter { it.petId == petId }.sortedBy { it.day }
     /** A pet's album, newest first. */
     fun albumFor(petId: String): List<AlbumPhoto> = album.filter { it.petId == petId }.sortedByDescending { it.atMs }
@@ -204,6 +214,7 @@ data class AppState(
         /** Album photos per pet (~300 KB each): a full album still fits a backup file. */
         const val MAX_ALBUM_PHOTOS_PER_PET = 100
         const val MAX_CAPTION = 140
+        const val MAX_WALKS_PER_PET = 500
         const val MAX_CARE_DAYS = 3000
         /** Longest repeat: yearly. */
         const val MAX_EVERY_DAYS = 365

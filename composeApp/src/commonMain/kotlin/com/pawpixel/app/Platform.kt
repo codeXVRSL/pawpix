@@ -47,6 +47,16 @@ interface Platform {
     /** Cat or dog, read from the photo on the device (ML Kit / Vision). Null when it can't tell: the owner is asked. */
     suspend fun classifyPet(photo: PixelImage): Species? = null
 
+    // ---- Walks ----
+
+    /** Starts counting steps for a walk (asks for permission first). False when this phone can't count steps. */
+    suspend fun startSteps(): Boolean = false
+    /** Steps since [startSteps], or null without a counter. */
+    fun stepsSoFar(): Int? = null
+    fun stopSteps() {}
+    /** Keeps the screen on while a walk is being timed. */
+    fun keepScreenOn(on: Boolean) {}
+
     /** Replaces all scheduled reminders with [reminders]. */
     fun scheduleReminders(reminders: List<Reminder>)
     fun requestNotificationPermission()

@@ -20,6 +20,11 @@ class MainActivity : ComponentActivity() {
         lifecycleScope.launch { app.repo.publish() }
     }
 
+    private var activityAnswer: kotlinx.coroutines.CompletableDeferred<Boolean>? = null
+    private val activityPermission = registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+        activityAnswer?.complete(granted)
+    }
+
     private var locationAnswer: kotlinx.coroutines.CompletableDeferred<Boolean>? = null
     private val locationPermission = registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
         locationAnswer?.complete(granted)
@@ -32,6 +37,12 @@ class MainActivity : ComponentActivity() {
             if (Build.VERSION.SDK_INT >= 33) notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
         }
         app.platform.activity = java.lang.ref.WeakReference(this)
+        app.platform.activityPermission = {
+            val answer = kotlinx.coroutines.CompletableDeferred<Boolean>()
+            activityAnswer = answer
+            if (Build.VERSION.SDK_INT >= 29) activityPermission.launch(Manifest.permission.ACTIVITY_RECOGNITION) else answer.complete(true)
+            answer.await()
+        }
         app.platform.locationPermission = {
             val answer = kotlinx.coroutines.CompletableDeferred<Boolean>()
             locationAnswer = answer

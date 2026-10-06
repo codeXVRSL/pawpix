@@ -23,6 +23,9 @@ If you join the pet map, and only then:
 - **Leaving and deleting:** "Leave the map" removes your pets and area. "Delete my map account" (or Settings → Delete all my data) deletes your account and everything above from the server immediately.
 - The map is for people 18 and over.
 
+## Walks
+If you time a walk, the app reads your phone's step counter while the walk screen is open (it asks for permission once) and keeps the walk, its minutes and steps with the pet's care history on your phone and in your backups. No location is used for walks and nothing about them is sent anywhere.
+
 ## The weather (only with a map area)
 Once you have an area on the pet map, the app asks Open-Meteo (open-meteo.com) for the weather at the centre of that ~1 km square, at most once an hour, so your pet can mention hot pavement or rain. Open-Meteo gets the square's coordinates and nothing else; no account, no key.
 

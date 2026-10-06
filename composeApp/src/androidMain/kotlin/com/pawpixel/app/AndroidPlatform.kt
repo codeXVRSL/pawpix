@@ -251,6 +251,51 @@ class AndroidPlatform(private val context: Context) : Platform {
 
     /** Set by [MainActivity]: asks for approximate location permission; true if granted. */
     var locationPermission: (suspend () -> Boolean)? = null
+    /** Asks for ACTIVITY_RECOGNITION (Android 10+); set by the activity. */
+    var activityPermission: (suspend () -> Boolean)? = null
+
+    // ---- Walks: the step counter ----
+    private var stepListener: android.hardware.SensorEventListener? = null
+    private var stepsAtStart: Float? = null
+    private var stepsNow: Float? = null
+
+    private fun hasActivityPermission() = Build.VERSION.SDK_INT < 29 ||
+        context.checkSelfPermission(android.Manifest.permission.ACTIVITY_RECOGNITION) == android.content.pm.PackageManager.PERMISSION_GRANTED
+
+    override suspend fun startSteps(): Boolean {
+        val sm = context.getSystemService(android.hardware.SensorManager::class.java) ?: return false
+        val sensor = sm.getDefaultSensor(android.hardware.Sensor.TYPE_STEP_COUNTER) ?: return false
+        if (!hasActivityPermission() && activityPermission?.invoke() != true) return false
+        if (!hasActivityPermission()) return false
+        stopSteps()
+        stepsAtStart = null; stepsNow = null
+        val l = object : android.hardware.SensorEventListener {
+            override fun onSensorChanged(e: android.hardware.SensorEvent) {
+                val v = e.values.firstOrNull() ?: return
+                if (stepsAtStart == null) stepsAtStart = v
+                stepsNow = v
+            }
+            override fun onAccuracyChanged(sensor: android.hardware.Sensor?, accuracy: Int) {}
+        }
+        stepListener = l
+        return sm.registerListener(l, sensor, android.hardware.SensorManager.SENSOR_DELAY_UI)
+    }
+
+    override fun stepsSoFar(): Int? {
+        val a = stepsAtStart ?: return if (stepListener != null) 0 else null
+        return ((stepsNow ?: a) - a).toInt().coerceAtLeast(0)
+    }
+
+    override fun stopSteps() {
+        stepListener?.let { context.getSystemService(android.hardware.SensorManager::class.java)?.unregisterListener(it) }
+        stepListener = null
+    }
+
+    override fun keepScreenOn(on: Boolean) {
+        activity?.get()?.window?.let { w ->
+            if (on) w.addFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON) else w.clearFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        }
+    }
     /** The visible activity, for Google sign-in's account picker. */
     var activity: java.lang.ref.WeakReference<android.app.Activity>? = null
 

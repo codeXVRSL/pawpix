@@ -57,6 +57,13 @@ object StateOps {
         return state.copy(album = others.filterNot { it.petId == clean.petId } + mine + clean)
     }
 
+    /** Records a walk (the newest [AppState.MAX_WALKS_PER_PET] per pet are kept). */
+    fun addWalk(state: AppState, walk: Walk): AppState {
+        val others = state.walks.filterNot { it.id == walk.id }
+        val mine = others.filter { it.petId == walk.petId }.sortedByDescending { it.startMs }.take(AppState.MAX_WALKS_PER_PET - 1)
+        return state.copy(walks = others.filterNot { it.petId == walk.petId } + mine + walk)
+    }
+
     fun setAlbumCaption(state: AppState, photoId: String, caption: String): AppState =
         state.copy(album = state.album.map { if (it.id == photoId) it.copy(caption = cleanCaption(caption)) else it })
 

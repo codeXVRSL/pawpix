@@ -137,6 +137,25 @@ class IosPlatform(private val host: IosHost) : Platform {
 
     override fun systemLanguage(): String = (NSLocale.preferredLanguages.firstOrNull() as? String) ?: "en"
     override fun systemCountry(): String = NSLocale.currentLocale.countryCode ?: ""
+
+    // ---- Walks: the pedometer ----
+    private var pedometer: platform.CoreMotion.CMPedometer? = null
+    private var pedometerSteps: Int? = null
+
+    override suspend fun startSteps(): Boolean {
+        if (!platform.CoreMotion.CMPedometer.isStepCountingAvailable()) return false
+        stopSteps()
+        val p = platform.CoreMotion.CMPedometer()
+        pedometer = p; pedometerSteps = 0
+        p.startPedometerUpdatesFromDate(NSDate()) { data, _ -> data?.numberOfSteps?.let { pedometerSteps = it.intValue } }
+        return true
+    }
+
+    override fun stepsSoFar(): Int? = pedometerSteps
+
+    override fun stopSteps() { pedometer?.stopPedometerUpdates(); pedometer = null }
+
+    override fun keepScreenOn(on: Boolean) { platform.UIKit.UIApplication.sharedApplication.idleTimerDisabled = on }
     override fun nowMs(): Long = (NSDate().timeIntervalSince1970 * 1000).toLong()
 
     override fun utcOffsetMs(atMs: Long): Long =

@@ -48,6 +48,7 @@ object StateCodec {
         },
         "weights" to state.weights.map { w -> Json.obj("petId" to w.petId, "day" to w.day, "g" to w.grams) },
         "album" to state.album.map { a -> Json.obj("id" to a.id, "petId" to a.petId, "at" to a.atMs, "caption" to a.caption) },
+        "walks" to state.walks.map { w -> Json.obj("id" to w.id, "petId" to w.petId, "s" to w.startMs, "e" to w.endMs, "steps" to w.steps) },
         "completions" to state.completions.map { c ->
             Json.obj("taskId" to c.taskId, "at" to c.atMs, "minute" to c.localMinute, "day" to c.localDay, "id" to c.id, "by" to c.by)
         },
@@ -176,6 +177,12 @@ object StateCodec {
             val petId = a["petId"].str?.takeIf { it in petIds } ?: return@mapNotNull null
             AlbumPhoto(id, petId, a["at"].long ?: 0L, (a["caption"].str ?: "").take(AppState.MAX_CAPTION))
         }.distinctBy { it.id }
+        val walks = root["walks"].list.mapNotNull { w ->
+            val id = w["id"].str?.takeIf { ID.matches(it) } ?: return@mapNotNull null
+            val petId = w["petId"].str?.takeIf { it in petIds } ?: return@mapNotNull null
+            val start = w["s"].long ?: return@mapNotNull null
+            Walk(id, petId, start, (w["e"].long ?: start).coerceAtLeast(start), w["steps"].int?.takeIf { it in 0..1_000_000 })
+        }.distinctBy { it.id }
         // Older saves have no care calendar: start it from the records they do have.
         val withDays = pets.map { p ->
             if (p.careDays.isNotEmpty()) p else {
@@ -183,7 +190,7 @@ object StateCodec {
                 p.copy(careDays = completions.filter { it.taskId in ids }.map { it.localDay }.distinct().sorted())
             }
         }
-        return AppState(withDays, tasks, completions, settings, weights, album)
+        return AppState(withDays, tasks, completions, settings, weights, album, walks)
     }
 
     private val ID = Regex("[a-z0-9]{1,40}")

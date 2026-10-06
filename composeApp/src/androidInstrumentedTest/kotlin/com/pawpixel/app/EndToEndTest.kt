@@ -499,6 +499,24 @@ class EndToEndTest {
             find(By.text("Chelsea"))
         }
 
+        step("walk: timed from the Care panel, the pet trots, ending it logs the walk as care") {
+            retrying { find(By.text("Care")).click() }
+            retrying { scrollTo(By.text("Start a walk")).click() }
+            find(By.textStartsWith("Walk with Chelsea"), 15_000)
+            // The emulator may ask for the activity permission (Android 10+): either answer is fine for a timed walk.
+            device.findObject(By.textContains("Allow"))?.click() ?: device.findObject(By.textContains("While using the app"))?.click()
+            Thread.sleep(2_500)
+            shot("walk")
+            retrying { find(By.text("End walk")).click() }
+            waitFor("walk recorded") { repo.state.value.walksFor(petId).size == 1 }
+            val walk = repo.state.value.walksFor(petId).single()
+            check(walk.endMs - walk.startMs >= 2_000) { "walk too short: $walk" }
+            find(By.text("Chelsea"), 15_000) // back in the room
+            retrying { find(By.text("Care")).click() }
+            find(By.textStartsWith("1 walks"), 15_000)
+            closePanel()
+        }
+
         step("home is the pet's room") {
             find(By.text("Chelsea")) // her name plate
             find(By.desc("Settings"))

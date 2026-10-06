@@ -19,6 +19,16 @@ object CareStats {
             .map { it.localDay }.distinct().count()
     }
 
+    /** This week's walks with the app: how many, minutes, and km where the phone counted steps. */
+    data class WalkWeek(val walks: Int, val minutes: Int, val km: Double?)
+
+    fun walkWeek(state: AppState, petId: String, nowMs: Long, clock: LocalClock, days: Int = WEEK): WalkWeek {
+        val today = clock.dayIndex(nowMs)
+        val week = state.walksFor(petId).filter { today - clock.dayIndex(it.startMs) in 0 until days }
+        val km = week.mapNotNull { it.km }
+        return WalkWeek(week.size, week.sumOf { it.minutes }, if (km.isEmpty()) null else km.sum())
+    }
+
     /** One cell per day, oldest first: was anything logged that day? For a little 7-dot row. */
     fun week(state: AppState, petId: String, nowMs: Long, clock: LocalClock): List<Boolean> {
         val today = clock.dayIndex(nowMs)

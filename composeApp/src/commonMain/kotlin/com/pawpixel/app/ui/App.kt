@@ -54,6 +54,8 @@ sealed interface Screen {
     data object PetMap : Screen
     /** Pals: a small circle whose pixel pets visit each other. */
     data object Pals : Screen
+    /** A walk timed with the app open (steps counted on the phone). */
+    data class Walk(val petId: String) : Screen
     /** Sharing with your household. [sharePetId]: share this pet once in a household. [join]: you came to enter a code. */
     data class Family(val sharePetId: String? = null, val join: Boolean = false) : Screen
 }
@@ -73,6 +75,7 @@ internal fun Screen.code(): String = when (this) {
     Screen.Settings -> "settings"
     Screen.PetMap -> "map"
     Screen.Pals -> "pals"
+    is Screen.Walk -> "walk:$petId"
     is Screen.Family -> "family:${sharePetId ?: "-"}:${if (join) 1 else 0}"
 }
 
@@ -90,6 +93,7 @@ internal fun screenOf(code: String): Screen? {
         "settings" -> Screen.Settings
         "map" -> Screen.PetMap
         "pals" -> Screen.Pals
+        "walk" -> id(1)?.let { Screen.Walk(it) }
         "family" -> Screen.Family(id(1), p.getOrNull(2) == "1")
         else -> null
     }
@@ -253,6 +257,10 @@ fun App(repo: PawRepository, registerBack: ((() -> Boolean) -> (() -> Unit))? = 
                 Screen.Settings -> SettingsScreen(app, state)
                 Screen.PetMap -> PetMapScreen(app, state)
                 Screen.Pals -> PalsScreen(app, state)
+                is Screen.Walk -> {
+                    val pet = state.pet(screen.petId)
+                    if (pet == null) LaunchedEffect(screen) { back() } else WalkScreen(app, state, pet)
+                }
                 is Screen.Family -> FamilyScreen(app, state, screen.sharePetId, screen.join)
             }
             }

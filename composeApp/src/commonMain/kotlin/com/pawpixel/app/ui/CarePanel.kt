@@ -56,6 +56,27 @@ fun CarePanel(app: AppScope, state: AppState, pet: Pet) {
     if (statuses.isEmpty()) Hint(tr("No care tasks yet. Add feeding, walks or medicine so {0}'s mood can follow real care.", pet.name))
     statuses.forEach { s -> TaskRow(app, state, pet, s) }
 
+    // A walk timed with the app: the pet trots along, steps are counted, and it logs as care.
+    if (!pet.remembered) {
+        val walks = CareStats.walkWeek(state, pet.id, app.now, clock)
+        SoftCard(Modifier.fillMaxWidth(), tone = Tone.Calm) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                    Text(tr("Walks this week"), style = MaterialTheme.typography.titleMedium)
+                    Text(
+                        when {
+                            walks.walks == 0 -> tr("None yet. Time one and {0} trots along.", pet.name)
+                            walks.km != null -> tr("{0} walks · {1} min · about {2} km", walks.walks, walks.minutes, kmText(walks.km))
+                            else -> tr("{0} walks · {1} min", walks.walks, walks.minutes)
+                        },
+                        style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                PrimaryPill(tr("Start a walk"), icon = PixelIcons.PAW) { app.navigate(Screen.Walk(pet.id)) }
+            }
+        }
+    }
+
     // Gentle progress: days cared for this week, never a streak that breaks.
     val week = CareStats.week(state, pet.id, app.now, clock)
     val summary = CareStats.summary(state, pet.id, app.now, clock)

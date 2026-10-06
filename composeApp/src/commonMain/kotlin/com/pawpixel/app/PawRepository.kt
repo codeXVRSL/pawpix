@@ -299,6 +299,18 @@ class PawRepository(val platform: Platform) {
 
     fun albumPhoto(photo: AlbumPhoto): ByteArray? = files.readBytes(Backup.albumPhotoPath(photo.petId, photo.id))
 
+    /**
+     * Ends a walk timed with the app: records it, stops the step counter, and logs the pet's walk
+     * task as done (the first task of that kind), so the walk counts as care and the mood follows.
+     */
+    suspend fun endWalk(petId: String, startMs: Long, steps: Int?): com.pawpixel.core.Walk {
+        platform.stopSteps()
+        val walk = com.pawpixel.core.Walk(Ids.newId(), petId, startMs, maxOf(now(), startMs), steps)
+        val walkTask = _state.value.tasks.firstOrNull { it.petId == petId && it.kind == com.pawpixel.core.TaskKind.WALK }
+        update { s -> StateOps.addWalk(s, walk).let { if (walkTask != null) StateOps.completeTap(it, walkTask.id, now(), clock) else it } }
+        return walk
+    }
+
     suspend fun setAlbumCaption(photoId: String, caption: String) = update { StateOps.setAlbumCaption(it, photoId, caption) }
 
     suspend fun deleteAlbumPhoto(photo: AlbumPhoto) {
