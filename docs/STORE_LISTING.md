@@ -33,6 +33,17 @@ MADE FOR REAL ROUTINES
 SHARE THEM
 • Make a looping GIF of your pet being themselves.
 • Share a before/after card: the real photo next to the pixel version.
+• Pals: a circle of up to 20 friends whose pixel pets visit your pet's room and send treats. No feed, no followers.
+
+IF THEY EVER GO MISSING
+• One tap raises a Lost alert: owners within 15 km see the photos and can report a sighting; you close it with "Safe home".
+• A Pet ID card for the collar: scan the QR and reach the owner without a phone number on the tag.
+• Noise-night reminders before New Year's Eve, the night most pets run away.
+
+LITTLE THINGS, EVERY DAY
+• The weather outside in the room: hot pavement, rain and thunder, in your pet's own words.
+• Time a walk and your pixel pet trots along while your phone counts the steps.
+• Birthdays, gotcha days and seasons decorate the room.
 
 PRIVATE BY DESIGN
 • No account. No ads. No tracking.
@@ -58,6 +69,12 @@ Made in Naga City, Philippines.
   - **Personal info → Name** (the name a member shows their household): collected, shared with other users (household members), for app functionality.
   - **Personal info → Other info** (shared pets' names, birthday, pixel look) and **App activity → Other actions** (the care log: when a task was done or undone, and by whom; care and health schedules): collected, shared with other users (household members only), for app functionality.
   - Photos and location: still **not collected** (households never receive them).
+- **If Lost and Found, Pet ID cards and Pals are switched on** (same server and sign-in), also declare (all optional, tied to the account, deletable in the app):
+  - **Photos and videos → Photos**: collected, shared with other users, for app functionality. Only the album photos the owner chooses for a lost-pet alert (metadata stripped); nothing else ever uploads a photo.
+  - **Location → Approximate location**: a lost pet's last-seen spot (chosen by the owner) and a sighting's spot; shared with other users, for app functionality.
+  - **Personal info → Other info** (pet names, the ID card's note and microchip number) and **Messages → Other in-app messages** (finders' messages, sightings, treats between pals): collected, shared with other users, for app functionality.
+- **Walks:** the step counter is read on the device while a walk is timed (`ACTIVITY_RECOGNITION` on Android 10+, Motion on iOS); the count stays on the phone, **not collected**. Declare the permission's purpose in the Play Console as "fitness/activity tracking for the user's pet walks".
+- **Weather:** once the owner has a map area, the centre of that ~1 km square is sent to Open-Meteo (open-meteo.com) for the weather; no account or key, nothing identifying.
 Re-check the guide before submitting; it's Google's list and can change.
 
 ## Apple App Store
