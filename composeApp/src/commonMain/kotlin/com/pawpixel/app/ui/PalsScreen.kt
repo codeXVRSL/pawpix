@@ -167,7 +167,7 @@ private fun MomentsRow(app: AppScope, map: PetMapModel, moments: List<Moment>, p
         )
         LazyRow(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             item(key = "mine") {
-                Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.width(if (mine == null) 168.dp else 132.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.width(if (mine == null) 190.dp else 132.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     if (mine != null) {
                         MomentPhoto(mine, pals, tr("Your moment: {0}", mine.caption.ifBlank { mine.petName }))
                         Text(mine.caption.ifBlank { mine.petName }, style = MaterialTheme.typography.bodySmall, maxLines = 2, textAlign = TextAlign.Center)
@@ -265,7 +265,7 @@ private fun PalCard(app: AppScope, map: PetMapModel, pal: Pal, onTreat: (PalPet)
             if (pal.pets.isNotEmpty()) LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 items(pal.pets, key = { it.petId }) { pet ->
                     val species = Species.entries.firstOrNull { it.name == pet.species } ?: Species.OTHER
-                    Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.width(96.dp)) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.width(112.dp)) {
                         val img = remember(pet.petId) { pet.look?.let { PetArt(it, species, Ears.of(pet.ears)).still } }
                         SpriteView(img, Modifier.size(72.dp), animate = false, description = tr("Pixel {0}", pet.name))
                         Text(pet.name, fontWeight = FontWeight.Bold, maxLines = 1)

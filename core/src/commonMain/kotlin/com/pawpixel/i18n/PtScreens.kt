@@ -79,7 +79,7 @@ internal object PtScreens {
             "Uma foto do dia para seus amigos e mais ninguém. Some depois de dois dias; sem curtidas, sem comentários.",
         "From your pals in the last two days. Yours is gone after two days; no likes, no comments." to
             "Dos seus amigos nos últimos dois dias. A sua some depois de dois dias; sem curtidas, sem comentários.",
-        "Your moment: {0}" to "Seu momento: {0}", "Take it down" to "Tirar", "Share another" to "Compartilhar outro", "Share a moment" to "Compartilhar um momento",
+        "Your moment: {0}" to "Seu momento: {0}", "Take it down" to "Tirar", "Share another" to "Compartilhar outro", "Share a moment" to "Compartilhar",
         "{0}'s moment: {1}" to "Momento de {0}: {1}", "A pet" to "Um pet", "The photo to share" to "A foto para compartilhar",
         "Pick a photo" to "Escolher uma foto", "Another photo" to "Outra foto", "Or from {0}'s album" to "Ou do álbum de {0}",
         "Album photo" to "Foto do álbum", "Caption (optional)" to "Legenda (opcional)",
@@ -122,6 +122,9 @@ internal object PtScreens {
         "Long walk home" to "Longo caminho de volta", "Spooky streak" to "Maratona assombrada", "Thankful snaps" to "Cliques de gratidão", "Winter walkies" to "Passeios de inverno",
         "January" to "janeiro", "February" to "fevereiro", "March" to "março", "April" to "abril", "May" to "maio", "June" to "junho",
         "July" to "julho", "August" to "agosto", "September" to "setembro", "October" to "outubro", "November" to "novembro", "December" to "dezembro",
+
+        // Weekdays (the week dots)
+        "Mon" to "seg", "Tue" to "ter", "Wed" to "qua", "Thu" to "qui", "Fri" to "sex", "Sat" to "sáb", "Sun" to "dom",
 
         // Units
         "miles & lb" to "milhas e lb", "miles & kg" to "milhas e kg", "km & kg" to "km e kg",

@@ -79,7 +79,7 @@ internal object EsScreens {
             "Una foto del día para tus amigos y nadie más. Desaparece a los dos días; sin likes, sin comentarios.",
         "From your pals in the last two days. Yours is gone after two days; no likes, no comments." to
             "De tus amigos en los últimos dos días. La tuya desaparece a los dos días; sin likes, sin comentarios.",
-        "Your moment: {0}" to "Tu momento: {0}", "Take it down" to "Quitarlo", "Share another" to "Compartir otro", "Share a moment" to "Compartir un momento",
+        "Your moment: {0}" to "Tu momento: {0}", "Take it down" to "Quitarlo", "Share another" to "Compartir otro", "Share a moment" to "Compartir",
         "{0}'s moment: {1}" to "Momento de {0}: {1}", "A pet" to "Una mascota", "The photo to share" to "La foto para compartir",
         "Pick a photo" to "Elegir una foto", "Another photo" to "Otra foto", "Or from {0}'s album" to "O del álbum de {0}",
         "Album photo" to "Foto del álbum", "Caption (optional)" to "Texto (opcional)",
@@ -122,6 +122,9 @@ internal object EsScreens {
         "Long walk home" to "Largo camino a casa", "Spooky streak" to "Racha de miedo", "Thankful snaps" to "Fotos de gratitud", "Winter walkies" to "Paseos de invierno",
         "January" to "enero", "February" to "febrero", "March" to "marzo", "April" to "abril", "May" to "mayo", "June" to "junio",
         "July" to "julio", "August" to "agosto", "September" to "septiembre", "October" to "octubre", "November" to "noviembre", "December" to "diciembre",
+
+        // Weekdays (the week dots)
+        "Mon" to "lun", "Tue" to "mar", "Wed" to "mié", "Thu" to "jue", "Fri" to "vie", "Sat" to "sáb", "Sun" to "dom",
 
         // Units
         "miles & lb" to "millas y lb", "miles & kg" to "millas y kg", "km & kg" to "km y kg",
