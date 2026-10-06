@@ -209,6 +209,7 @@ class AndroidPlatform(private val context: Context) : Platform {
     }
 
     override fun systemLanguage(): String = java.util.Locale.getDefault().language
+    override fun systemCountry(): String = java.util.Locale.getDefault().country
 
     override fun widgetInstalled(): Boolean = runCatching {
         android.appwidget.AppWidgetManager.getInstance(context)

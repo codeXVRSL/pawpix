@@ -25,7 +25,7 @@ object I18n {
     @kotlin.concurrent.Volatile
     var lang: Lang = Lang.EN
 
-    val filipino: Map<String, String> by lazy { FilCore.map + FilScreens.map + FilScreens2.map + FilScreens3.map + FilScreens4.map + FilScreens5.map + FilScreens6.map + FilScreens7.map + FilHealth.map + FilWidgets.map + FilAccess.map }
+    val filipino: Map<String, String> by lazy { FilCore.map + FilScreens.map + FilScreens2.map + FilScreens3.map + FilScreens4.map + FilScreens5.map + FilScreens6.map + FilScreens7.map + FilScreens8.map + FilHealth.map + FilWidgets.map + FilAccess.map }
 
     fun lookup(en: String, l: Lang = lang): String = when (l) {
         Lang.EN -> en

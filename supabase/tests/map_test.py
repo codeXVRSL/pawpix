@@ -166,6 +166,55 @@ check("the host can cancel it", s in (200, 204) and rows == [], (s, rows))
 for row in call("GET", f"/rest/v1/gatherings?host_id=eq.{b['id']}&select=id", key=SERVICE)[1]:
     call("DELETE", f"/rest/v1/gatherings?id=eq.{row['id']}", key=SERVICE)
 
+# Lost and Found (0010): anyone signed in can raise an alert, everyone nearby sees it, sightings
+# reach the owner, the share page is public, and "found" closes it.
+PHOTO = "/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAP" + "A" * 40 + "=="
+lost = {"p_name": "Kape", "p_species": "DOG", "p_ears": "FLOPPY", "p_look": LOOK, "p_description": "Brown, red collar, answers to Kape",
+        "p_lat": NAGA[1] + 0.004, "p_lng": NAGA[2] - 0.002, "p_photos": [PHOTO]}
+s, lid = rpc(d, "report_lost", lost)
+check("a signed-in owner (even one not on the map) can raise a lost alert", s == 200 and isinstance(lid, str), (s, lid))
+s, rows = call("POST", "/rest/v1/rpc/report_lost", lost)
+check("a signed-out caller can't", s in (401, 403) or not isinstance(rows, str), (s, rows))
+s, near = rpc(a, "lost_nearby", {"p_lat": NAGA[1], "p_lng": NAGA[2]})
+check("owners nearby see the alert, nearest first, without photos or owner",
+      s == 200 and [x["id"] for x in near] == [lid] and near[0]["photo_count"] == 1 and near[0]["mine"] is False
+      and "photos" not in near[0] and "owner_id" not in near[0] and near[0]["distance_km"] < 1, (s, near))
+s, far = rpc(a, "lost_nearby", {"p_lat": 10.0, "p_lng": 120.0})
+check("far away it doesn't show", s == 200 and far == [], (s, far))
+s, det = rpc(a, "lost_details", {"p_id": lid})
+check("the details carry the photos", s == 200 and len(det) == 1 and det[0]["photos"] == [PHOTO] and det[0]["mine"] is False, (s, det))
+s, pub = call("POST", "/rest/v1/rpc/lost_pet_public", {"p_id": lid})
+check("the share link's page reads the alert without signing in, owner left out",
+      s == 200 and len(pub) == 1 and pub[0]["name"] == "Kape" and pub[0]["found"] is False and "owner_id" not in pub[0] and "id" not in pub[0], (s, pub))
+s, sid = rpc(a, "report_sighting", {"p_lost_id": lid, "p_lat": NAGA[1] + 0.005, "p_lng": NAGA[2], "p_note": "Saw him near the plaza, call 0917..."})
+check("a sighting can be reported", s == 200 and isinstance(sid, str), (s, sid))
+s, seen = rpc(d, "lost_sightings_for", {"p_lost_id": lid})
+check("the owner sees the sightings (where, when, the note), never who",
+      s == 200 and len(seen) == 1 and seen[0]["note"].startswith("Saw him") and "reporter_id" not in seen[0], (s, seen))
+s, other = rpc(a, "lost_sightings_for", {"p_lost_id": lid})
+check("nobody else can read them", s == 200 and other == [], (s, other))
+s, r = rpc(d, "report_lost", dict(lost, p_photos=[PHOTO] * 4))
+check("at most 3 photos", s >= 400, (s, r))
+s, r = rpc(d, "report_lost", dict(lost, p_name="G4g0"))
+s2, r2 = rpc(d, "lost_details", {"p_id": r})
+check("alert names pass the word filter", s == 200 and s2 == 200 and r2[0]["name"] == "A dog", (s, r, r2))
+rpc(d, "cancel_lost", {"p_id": r})
+s, _ = rpc(a, "mark_found", {"p_id": lid})
+s2, near = rpc(a, "lost_nearby", {"p_lat": NAGA[1], "p_lng": NAGA[2]})
+check("only the owner can close an alert", near and near[0]["id"] == lid, (s, near))
+s, _ = rpc(d, "mark_found", {"p_id": lid})
+s2, near = rpc(a, "lost_nearby", {"p_lat": NAGA[1], "p_lng": NAGA[2]})
+s3, pub = call("POST", "/rest/v1/rpc/lost_pet_public", {"p_id": lid})
+check("safe home: the alert leaves the map and the share page says found",
+      s in (200, 204) and near == [] and s3 == 200 and pub[0]["found"] is True, (s, near, pub))
+s, mine = call("GET", "/rest/v1/my_lost_pets?select=*", token=d["token"])
+check("the owner keeps their own alerts, with the sighting count", s == 200 and len(mine) == 1 and mine[0]["sightings"] == 1 and mine[0]["found_at"], (s, mine))
+s, r = rpc(a, "report_sighting", {"p_lost_id": lid, "p_lat": NAGA[1], "p_lng": NAGA[2]})
+check("a closed alert takes no more sightings", s >= 400, (s, r))
+s, rows = call("GET", "/rest/v1/lost_pets?select=*", token=a["token"])
+s2, rows2 = call("GET", "/rest/v1/lost_sightings?select=*", token=d["token"])
+check("the tables themselves are closed", rows in ([], None) and rows2 in ([], None) or s >= 400 and s2 >= 400, (s, rows, s2, rows2))
+
 # Moderation and self-service
 call("PATCH", f"/rest/v1/map_profiles?user_id=eq.{b['id']}", {"banned": True}, key=SERVICE)
 s, cells = rpc(d, "nearby_cells", {"p_cell_lat": NAGA[1], "p_cell_lng": NAGA[2]})

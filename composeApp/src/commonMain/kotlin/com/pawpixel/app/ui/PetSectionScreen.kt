@@ -60,7 +60,7 @@ import kotlinx.coroutines.withContext
 fun PetSectionScreen(app: AppScope, state: AppState, pet: Pet, section: String) {
     val title = when (section) {
         "care" -> tr("Care"); "health" -> tr("Health"); "weight" -> tr("Weight"); "wardrobe" -> tr("Wardrobe")
-        "share" -> tr("Share"); "pets" -> tr("Your pets"); "more" -> tr("More"); "album" -> tr("Album"); else -> tr("Share")
+        "share" -> tr("Share"); "pets" -> tr("Your pets"); "more" -> tr("More"); "album" -> tr("Album"); "lost" -> tr("Lost and Found"); else -> tr("Share")
     }
     Panel(app, state, pet, title) {
         when (section) {
@@ -71,6 +71,7 @@ fun PetSectionScreen(app: AppScope, state: AppState, pet: Pet, section: String) 
             "pets" -> PetsPanel(app, state, pet)
             "more" -> MorePanel(app, state, pet)
             "album" -> AlbumPanel(app, state, pet)
+            "lost" -> LostPanel(app, state, pet)
             else -> ShareSection(app, pet)
         }
     }
@@ -148,6 +149,10 @@ private fun MorePanel(app: AppScope, state: AppState, pet: Pet) {
         PixelIcons.CAMERA, tr("Album"),
         if (photos == 0) tr("Photos of {0}, kept for good", pet.name) else tr("{0} photos, kept for good", photos), Candy.Coral,
     ) { app.navigate(Screen.PetSection(pet.id, "album")) }
+    if (!pet.remembered) MenuRow(
+        PixelIcons.BELL, if (lostAlertFor(app, pet.id) != null) tr("Lost alert is on") else tr("Lost?"),
+        if (lostAlertFor(app, pet.id) != null) tr("Sightings, share, safe home") else tr("Alert pet owners nearby"), Candy.Coral,
+    ) { app.navigate(Screen.PetSection(pet.id, "lost")) }
     MenuRow(PixelIcons.PENCIL, tr("Edit {0}", pet.name), tr("Name, type and birthday"), Candy.Peach) { renaming = true }
     MenuRow(PixelIcons.PLUS, tr("Add another pet"), tr("From a photo"), Candy.Butter) {
         if (StateOps.canAddPet(state)) app.navigate(Screen.CreatePet) else showProDialog = true

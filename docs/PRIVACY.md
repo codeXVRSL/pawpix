@@ -23,6 +23,14 @@ If you join the pet map, and only then:
 - **Leaving and deleting:** "Leave the map" removes your pets and area. "Delete my map account" (or Settings → Delete all my data) deletes your account and everything above from the server immediately.
 - The map is for people 18 and over.
 
+## Lost and Found (optional)
+If your pet goes missing and you raise an alert, and only then:
+- **What is sent:** the pet's name, dog or cat, its look code, the note you write, the album photos you choose (up to 3, shrunk, with photo metadata such as GPS removed), and the spot where the pet was last seen (which you pick on the map). This is the only time PawPixel uploads a photo.
+- **Who sees it:** signed-in PawPixel owners within about 15 km of the spot, and anyone who opens the alert's share link. Never your name, your account or your home.
+- **Sightings:** someone who saw your pet sends a spot (their approximate location), a note and perhaps a photo. You see the sighting; they are not identified to you, and you are not identified to them.
+- **How long:** an alert leaves the map when you mark the pet safe home or remove it, and in any case after 60 days. The share page shows a found pet as found for 30 days, then nothing. "Delete my map account" deletes your alerts and sightings too.
+- Raising an alert needs a sign-in (Google or Apple) but not a place on the map.
+
 ## Sharing with your household (optional)
 If you start or join a household (for example you and your partner both caring for your dog), and only then:
 - **Sign-in:** the same Google or Apple sign-in as the pet map.

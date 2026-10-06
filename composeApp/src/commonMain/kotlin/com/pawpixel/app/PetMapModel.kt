@@ -34,6 +34,7 @@ class PetMapModel(
     private val SESSION get() = "$dir/session.json"
     private val AREA get() = "$dir/area.json"
     private val SHARED get() = "$dir/shared.json"
+    private val LOST get() = "$dir/lost.json"
 
     val client = MapClient(settings, http, object : SessionStore {
         override fun load() = files.readText(SESSION)
@@ -54,6 +55,20 @@ class PetMapModel(
     /** Local pet ids shown on the map; null = not chosen yet (all). */
     var sharedPetIds: Set<String>? = files.readText(SHARED)?.let { runCatching { Json.parse(it).list.mapNotNull { p -> p.str }.toSet() }.getOrNull() }
         private set
+
+    /** Open lost-pet alerts raised from this phone: local pet id -> alert id. */
+    var lostAlerts: Map<String, String> = files.readText(LOST)?.let { runCatching {
+        Json.parse(it).list.mapNotNull { e -> val pet = e["pet"].str ?: return@mapNotNull null; val id = e["id"].str ?: return@mapNotNull null; pet to id }.toMap()
+    }.getOrNull() } ?: emptyMap()
+        private set
+
+    /** The open alert for a pet, if one was raised from this phone. */
+    fun alertFor(petId: String): String? = lostAlerts[petId]
+
+    fun recordAlert(petId: String, lostId: String?) {
+        lostAlerts = if (lostId == null) lostAlerts - petId else lostAlerts + (petId to lostId)
+        files.writeText(LOST, Json.arr(lostAlerts.map { (pet, id) -> Json.obj("pet" to pet, "id" to id) }).stringify())
+    }
 
     /** Signs in with Google/Apple (or the test account). False if the owner cancelled. */
     suspend fun signIn(): Boolean {
@@ -108,6 +123,7 @@ class PetMapModel(
         files.delete(dir)
         myArea = null
         sharedPetIds = null
+        lostAlerts = emptyMap()
     }
 
     private fun forgetChoices() {

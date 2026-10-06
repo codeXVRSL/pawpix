@@ -229,6 +229,9 @@ class MapClient(
     /** Shares the sign-in with family sharing (see [HouseholdClient]). */
     val api = SupabaseApi(settings, http, store, nowMs)
 
+    /** Lost and Found: alerts, sightings, safe home (same sign-in). */
+    val lost = LostClient(api)
+
     val isSignedIn: Boolean get() = api.isSignedIn
     val userId: String? get() = api.userId
 

@@ -58,7 +58,7 @@ object ReminderPlanner {
     /** Of [MAX_PENDING], at most this many are health reminders (they can be months ahead). */
     const val MAX_HEALTH = 20
 
-    fun plan(state: AppState, nowMs: Long, clock: LocalClock, horizonMs: Long = HORIZON_MS): List<Reminder> {
+    fun plan(state: AppState, nowMs: Long, clock: LocalClock, horizonMs: Long = HORIZON_MS, country: String = ""): List<Reminder> {
         if (!state.settings.remindersEnabled) return emptyList()
         val out = ArrayList<Reminder>()
         val health = ArrayList<Reminder>()
@@ -101,8 +101,8 @@ object ReminderPlanner {
                 cycle += n
             }
         }
-        val keptHealth = (bundle(health.filter { it.atMs >= quietUntil }, state).sortedBy { it.atMs }.take(MAX_HEALTH - 1) +
-            listOfNotNull(rabiesMonth(state, nowMs, clock))).sortedBy { it.atMs }
+        val keptHealth = (bundle(health.filter { it.atMs >= quietUntil }, state).sortedBy { it.atMs }.take(MAX_HEALTH - 3) +
+            listOfNotNull(rabiesMonth(state, nowMs, clock)) + noiseNights(state, nowMs, clock, country)).sortedBy { it.atMs }
         val daily = bundleDaily(out.filter { it.atMs >= quietUntil }, state, clock).sortedBy { it.atMs }.take(MAX_PENDING - keptHealth.size)
         return (daily + keptHealth).sortedBy { it.atMs }
     }
@@ -153,6 +153,51 @@ object ReminderPlanner {
 
     private const val RABIES_MONTH_ID = "rabies-month"
     const val RABIES_MONTH_LEAD_MS = 45 * DAY_MS
+
+    /**
+     * Noise nights: more pets run away on fireworks nights than on any other (reports jump 30 to 60
+     * percent around July 4 in the US; PAWS counts the same spike every New Year's Eve in the
+     * Philippines). Two notes per night for owners of a living pet: the day before at 9:00 (check
+     * the collar and tag, plan a quiet spot) and the evening itself at 17:00 (keep them inside).
+     * New Year's Eve is everyone's; the others follow the phone's country. No Done button.
+     */
+    fun noiseNights(state: AppState, nowMs: Long, clock: LocalClock, country: String = ""): List<Reminder> {
+        val pet = state.pets.firstOrNull { !it.remembered } ?: return emptyList()
+        val (year, _, _) = LocalClock.civil(clock.dayIndex(nowMs))
+        val out = ArrayList<Reminder>()
+        for ((key, month, day) in noiseNightDates(country)) for (y in listOf(year, year + 1)) {
+            val night = LocalClock.dayOf(y, month, day)
+            val eve = clock.at(night - 1, NOISE_EVE_MINUTE)
+            val tonight = clock.at(night, NOISE_NIGHT_MINUTE)
+            if (tonight <= nowMs || eve - nowMs > NOISE_LEAD_MS) continue
+            if (eve > nowMs) out += Reminder(
+                stableId("noise-$key-eve", eve, false), taskId = "", petId = pet.id, atMs = eve,
+                title = "🎆 " + tr("Noise night tomorrow"),
+                body = tr("Fireworks tomorrow night. Check {0}'s collar and tag today, and plan a quiet spot inside.", pet.name),
+                exact = false, quickDone = false, taskIds = emptyList(), slots = emptyList(),
+            )
+            out += Reminder(
+                stableId("noise-$key", tonight, false), taskId = "", petId = pet.id, atMs = tonight,
+                title = "🎆 " + tr("Noise night tonight"),
+                body = tr("Keep {0} inside tonight, doors and gates closed. More pets go missing tonight than any other night.", pet.name),
+                exact = false, quickDone = false, taskIds = emptyList(), slots = emptyList(),
+            )
+        }
+        return out.sortedBy { it.atMs }.take(2)
+    }
+
+    /** (key, month, day): New Year's Eve for everyone; the Fourth of July (US) and Bonfire Night (GB) by country. */
+    fun noiseNightDates(country: String): List<Triple<String, Int, Int>> = buildList {
+        add(Triple("nye", 12, 31))
+        when (country.uppercase()) {
+            "US" -> add(Triple("july4", 7, 4))
+            "GB" -> add(Triple("bonfire", 11, 5))
+        }
+    }
+
+    const val NOISE_EVE_MINUTE = 9 * 60
+    const val NOISE_NIGHT_MINUTE = 17 * 60
+    const val NOISE_LEAD_MS = 45 * DAY_MS
 
     /** Reminders this close together become one notification. */
     const val BUNDLE_WINDOW_MS = 30 * MINUTE_MS

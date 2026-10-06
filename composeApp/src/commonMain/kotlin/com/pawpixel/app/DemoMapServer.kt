@@ -25,9 +25,17 @@ class DemoMapServer(private val nowMs: () -> Long) : Http {
     private val walks = ArrayList<Walk>()
     private var seededAround: String? = null
     private val fakeOwners = ArrayList<FakeOwner>()
+    private val lost = ArrayList<Lost>()
+    private val sightings = ArrayList<Seen>()
 
     private class FakeOwner(val id: String, val cell: LocationGrid.Cell, val pets: List<FakePet>)
     private class FakePet(val id: String, val name: String, val species: String, val ears: String, val look: String)
+    private class Lost(
+        val id: String, val name: String, val species: String, val ears: String?, val look: String, val description: String?,
+        val photos: List<String>, val lat: Double, val lng: Double, val lastSeenAtMs: Long, val createdAtMs: Long, val ownerId: String,
+        var foundAtMs: Long? = null,
+    )
+    private class Seen(val id: String, val lostId: String, val lat: Double, val lng: Double, val note: String?, val photo: String?, val atMs: Long, val reporter: String)
     private class Walk(
         val id: String, val title: String, val startsAtMs: Long, val cell: LocationGrid.Cell, val areaLabel: String,
         val venueName: String, val venueLat: Double, val venueLng: Double, val capacity: Int, val details: String?,
@@ -104,7 +112,74 @@ class DemoMapServer(private val nowMs: () -> Long) : Http {
                     "areas" to cellsWithPets().size, "walks" to walks.count { it.approved && it.startsAtMs > nowMs() },
                 ))).stringify())
             }
+            // Lost and Found (0010), same shapes as the real server.
+            path.endsWith("/rpc/report_lost") -> {
+                if (lost.count { it.ownerId == me && it.foundAtMs == null } >= 3) return HttpResponse(400, """{"message":"you already have 3 open alerts"}""")
+                val photos = body["p_photos"].list.mapNotNull { it.str }.take(3)
+                val l = Lost(
+                    Ids.newId(), body["p_name"].str ?: "Pet", body["p_species"].str ?: "OTHER", body["p_ears"].str, body["p_look"].str ?: "",
+                    body["p_description"].str, photos, body["p_lat"].double ?: NAGA_LAT, body["p_lng"].double ?: NAGA_LNG,
+                    body["p_last_seen_at"].str?.let(com.pawpixel.map.IsoTime::parseMs) ?: nowMs(), nowMs(), me,
+                )
+                lost += l
+                ok("\"${l.id}\"")
+            }
+            path.endsWith("/rpc/lost_nearby") -> {
+                val lat = body["p_lat"].double ?: NAGA_LAT; val lng = body["p_lng"].double ?: NAGA_LNG
+                val radius = (body["p_radius_km"].double ?: 15.0).coerceIn(1.0, 100.0)
+                seedLost(LocationGrid.snap(lat, lng)); pretendSighting()
+                val rows = lost.filter { it.foundAtMs == null }
+                    .map { it to LocationGrid.distanceKm(lat, lng, it.lat, it.lng) }.filter { it.second <= radius }.sortedBy { it.second }
+                ok(Json.arr(rows.map { (l, d) ->
+                    Json.obj("id" to l.id, "name" to l.name, "species" to l.species, "ears" to l.ears, "look" to l.look, "description" to l.description,
+                        "last_seen_lat" to l.lat, "last_seen_lng" to l.lng, "last_seen_at" to iso(l.lastSeenAtMs), "created_at" to iso(l.createdAtMs),
+                        "photo_count" to l.photos.size, "sightings" to sightings.count { it.lostId == l.id }, "mine" to (l.ownerId == me), "distance_km" to d)
+                }).stringify())
+            }
+            path.endsWith("/rpc/lost_details") -> {
+                val l = lost.firstOrNull { it.id == body["p_id"].str && (it.ownerId == me || it.foundAtMs == null) }
+                ok(if (l == null) "[]" else Json.arr(listOf(Json.obj(
+                    "id" to l.id, "name" to l.name, "species" to l.species, "ears" to l.ears, "look" to l.look, "description" to l.description,
+                    "photos" to Json.arr(l.photos), "last_seen_lat" to l.lat, "last_seen_lng" to l.lng, "last_seen_at" to iso(l.lastSeenAtMs),
+                    "created_at" to iso(l.createdAtMs), "found_at" to l.foundAtMs?.let(::iso), "mine" to (l.ownerId == me),
+                ))).stringify())
+            }
+            path.endsWith("/rpc/report_sighting") -> {
+                val l = lost.firstOrNull { it.id == body["p_lost_id"].str && it.foundAtMs == null } ?: return HttpResponse(400, """{"message":"this alert is closed"}""")
+                val s = Seen(Ids.newId(), l.id, body["p_lat"].double ?: l.lat, body["p_lng"].double ?: l.lng, body["p_note"].str, body["p_photo"].str, nowMs(), me)
+                sightings += s
+                ok("\"${s.id}\"")
+            }
+            path.endsWith("/rpc/lost_sightings_for") -> {
+                pretendSighting()
+                val l = lost.firstOrNull { it.id == body["p_lost_id"].str && it.ownerId == me }
+                ok(Json.arr(sightings.filter { l != null && it.lostId == l.id }.sortedByDescending { it.atMs }.map { s ->
+                    Json.obj("id" to s.id, "lat" to s.lat, "lng" to s.lng, "note" to s.note, "photo" to s.photo, "created_at" to iso(s.atMs))
+                }).stringify())
+            }
+            path.endsWith("/rpc/mark_found") -> { lost.firstOrNull { it.id == body["p_id"].str && it.ownerId == me }?.let { it.foundAtMs = nowMs() }; ok() }
+            path.endsWith("/rpc/cancel_lost") -> { lost.removeAll { it.id == body["p_id"].str && it.ownerId == me }; ok() }
+            path.startsWith("/rest/v1/my_lost_pets") -> ok(Json.arr(lost.filter { it.ownerId == me }.sortedByDescending { it.createdAtMs }.map { l ->
+                Json.obj("id" to l.id, "name" to l.name, "species" to l.species, "created_at" to iso(l.createdAtMs), "found_at" to l.foundAtMs?.let(::iso),
+                    "last_seen_at" to iso(l.lastSeenAtMs), "sightings" to sightings.count { it.lostId == l.id })
+            }).stringify())
             else -> ok()
+        }
+    }
+
+    /** One pretend alert near the area: a dog called Kape, last seen by the market this morning. */
+    private fun seedLost(cell: LocationGrid.Cell) {
+        if (lost.any { it.ownerId == "owner-2" }) return
+        lost += Lost(
+            "demo-lost", "Kape", "DOG", "FLOPPY", LOOKS[4], "Brown aspin, red collar, friendly but shy. Answers to Kape.", emptyList(),
+            cell.centerLat + 0.006, cell.centerLng + 0.004, nowMs() - 5 * 3_600_000L, nowMs() - 4 * 3_600_000L, "owner-2",
+        )
+    }
+
+    /** The demo neighbourhood answers an alert of yours with a sighting after a short while. */
+    private fun pretendSighting() {
+        for (l in lost) if (l.ownerId == me && l.foundAtMs == null && nowMs() - l.createdAtMs > SIGHTING_AFTER_MS && sightings.none { it.lostId == l.id && it.reporter == "owner-3" }) {
+            sightings += Seen(Ids.newId(), l.id, l.lat + 0.003, l.lng - 0.002, "Saw a pet like this near the market gate, heading east. I'm at the sari-sari store if you want to call: 0917 555 0123.", null, nowMs(), "owner-3")
         }
     }
 
@@ -169,6 +244,7 @@ class DemoMapServer(private val nowMs: () -> Long) : Http {
         const val NAGA_LAT = 13.6218
         const val NAGA_LNG = 123.1948
         const val APPROVE_AFTER_MS = 20_000L
+        const val SIGHTING_AFTER_MS = 15_000L
         /** Settings that route the map client to this server; the "test account" sign-in skips Google. */
         val SETTINGS = MapSettings("https://demo.pawpixel.local", "demo", "", "", "", testEmail = "demo@pawpixel.app", testPassword = "demo")
         private val PETS = listOf(

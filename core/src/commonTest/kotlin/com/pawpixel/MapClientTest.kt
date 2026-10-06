@@ -258,3 +258,74 @@ class MvtTest {
         assertTrue(com.pawpixel.map.Mvt.decode(ByteArray(0)).layers.isEmpty())
     }
 }
+
+class LostClientTest {
+    private val settings = MapSettings("https://x.supabase.co", "anon", "", "", "")
+    private val log = ArrayList<HttpRequest>()
+    private val saved = arrayOfNulls<String>(1)
+    private val store = object : SessionStore {
+        override fun load() = saved[0]
+        override fun save(json: String?) { saved[0] = json }
+    }
+    private var reply: (HttpRequest) -> HttpResponse = { HttpResponse(200, "[]") }
+    private val http = Http { r -> log += r; reply(r) }
+
+    private fun signedIn(): MapClient {
+        reply = { HttpResponse(200, """{"access_token":"tok1","refresh_token":"ref1","expires_in":3600,"user":{"id":"u1"}}""") }
+        val c = MapClient(settings, http, store) { 1_700_000_000_000L }
+        runSync { c.signInWithIdToken("google", "idtok", "raw-nonce") }
+        reply = { HttpResponse(200, "[]") }
+        log.clear()
+        return c
+    }
+
+    @Test fun anAlertCarriesTheLookTheSpotAndSmallPhotosAsBase64() {
+        val c = signedIn()
+        reply = { HttpResponse(200, "\"lost-1\"") }
+        val photo = ByteArray(10) { it.toByte() }
+        val big = ByteArray(com.pawpixel.map.LostClient.MAX_PHOTO_BYTES + 1)
+        val id = runSync {
+            c.lost.report(com.pawpixel.map.LostDraft("Kape", "DOG", "FLOPPY", "3;abc;000", "  Brown, red collar  ", 13.62, 123.19, 1_700_000_000_000L - 3_600_000L, listOf(photo, big)))
+        }
+        assertEquals("lost-1", id)
+        val body = Json.parse(log.single().body!!)
+        assertTrue(log.single().url.endsWith("/rest/v1/rpc/report_lost"))
+        assertEquals("Kape", body["p_name"].str)
+        assertEquals("Brown, red collar", body["p_description"].str)
+        assertEquals(13.62, body["p_lat"].double)
+        assertEquals("2023-11-14T21:13:20Z", body["p_last_seen_at"].str)
+        assertEquals(listOf(com.pawpixel.core.Base64.encode(photo)), body["p_photos"].list.map { it.str }, "the oversized photo is left out")
+    }
+
+    @Test fun nearbyAlertsAndTheirDetailsParse() {
+        val c = signedIn()
+        reply = { r ->
+            if (r.url.endsWith("lost_nearby")) HttpResponse(200, """[{"id":"l1","name":"Kape","species":"DOG","ears":"FLOPPY","look":"1;2b2430;${"0".repeat(64)}","description":"Brown aspin",
+                "last_seen_lat":13.63,"last_seen_lng":123.2,"last_seen_at":"2026-10-06T01:00:00+00:00","created_at":"2026-10-06T02:00:00+00:00","photo_count":2,"sightings":1,"mine":false,"distance_km":0.8}]""")
+            else HttpResponse(200, """[{"id":"l1","name":"Kape","species":"DOG","ears":"FLOPPY","look":"","description":null,"photos":["AQID"],
+                "last_seen_lat":13.63,"last_seen_lng":123.2,"last_seen_at":"2026-10-06T01:00:00+00:00","created_at":"2026-10-06T02:00:00+00:00","found_at":null,"mine":true}]""")
+        }
+        val near = runSync { c.lost.nearby(13.62, 123.19) }
+        assertEquals(1, near.size)
+        assertEquals("Kape", near[0].name); assertEquals(2, near[0].photoCount); assertEquals(0.8, near[0].distanceKm)
+        assertTrue(near[0].look != null, "the look code decodes to a pixel pet")
+        assertEquals(com.pawpixel.map.IsoTime.parseMs("2026-10-06T01:00:00Z"), near[0].lastSeenAtMs)
+        val d = runSync { c.lost.details("l1") }!!
+        assertEquals(listOf(1.toByte(), 2.toByte(), 3.toByte()), d.photos.single().toList())
+        assertTrue(d.mine); assertEquals(null, d.foundAtMs)
+        val args = Json.parse(log.last().body!!)
+        assertEquals("l1", args["p_id"].str)
+    }
+
+    @Test fun aSightingSafeHomeAndCancelHitTheRightCalls() {
+        val c = signedIn()
+        reply = { HttpResponse(200, "\"s1\"") }
+        runSync { c.lost.reportSighting("l1", 13.631, 123.2, "  near the market  ", null) }
+        val s = Json.parse(log.last().body!!)
+        assertEquals("near the market", s["p_note"].str); assertEquals("l1", s["p_lost_id"].str)
+        reply = { HttpResponse(200, "") }
+        runSync { c.lost.markFound("l1"); c.lost.cancel("l2") }
+        assertTrue(log[log.size - 2].url.endsWith("/rpc/mark_found") && log.last().url.endsWith("/rpc/cancel_lost"))
+        assertEquals("l2", Json.parse(log.last().body!!)["p_id"].str)
+    }
+}

@@ -374,6 +374,80 @@ class EndToEndTest {
             find(By.text("Care"), 15_000) // the Care key is back in the dock
         }
 
+        step("lost and found: the alert goes up with the album photo, shows on the map, a sighting comes in, safe home") {
+            // The real server when this build has one (the test account signs in), else the in-app demo.
+            val real = repo.map.settings.isConfigured
+            val model = if (real) repo.map else repo.demoMap
+            retrying { find(By.text("More")).click() }
+            retrying { scrollTo(By.text("Lost?")).click() }
+            find(By.text("Is Chelsea missing?"), 15_000)
+            retrying { device.findObjects(By.clazz("android.widget.EditText"))[0].text = "Grey tabby, pink collar with a bell" }
+            retrying { scrollTo(By.text("Earlier today")).click() }
+            scrollTo(By.text("Alert owners nearby"))
+            Thread.sleep(600)
+            shot("lost-form")
+            retrying { scrollTo(By.text("Alert owners nearby")).click() }
+            find(By.text("Alert is on for Chelsea"), 40_000)
+            val id = model.alertFor(petId)
+            check(id != null) { "no alert recorded for the pet" }
+            val details = runBlocking { model.client.lost.details(id!!) }
+            check(details != null && details.photos.size == 1 && details.description == "Grey tabby, pink collar with a bell" && details.mine) { "alert not as sent: $details" }
+            // Earlier runs that died mid-way may have left alerts open on the shared test account: at most 3 are allowed.
+            runBlocking { model.client.lost.mine().filter { it.foundAtMs == null && it.id != id }.forEach { model.client.lost.cancel(it.id) } }
+            shot("lost-alert")
+            closePanel() // the alert page drops: the room shows it's reported lost
+            find(By.text("Reported lost"), 15_000)
+
+            // On the map: red flag, the Lost pets tab, and (demo) the neighbourhood's own lost dog with a sighting to report.
+            retrying { find(By.text("More")).click() }
+            retrying { scrollTo(By.text("Pet map")).click() }
+            if (!real) retrying { find(By.text("Try the demo map")).click() }
+            retrying { find(By.text("I'm 18 or older")).click() }
+            retrying { find(By.textStartsWith("Show my pixel pets")).click() }
+            retrying { scrollTo(By.textContains("and join")).click() }
+            find(By.text("Nearby"), 60_000)
+            retrying { find(By.textStartsWith("Lost pets (")).click() }
+            find(By.textStartsWith("Yours · Chelsea"), 20_000)
+            if (!real) {
+                retrying { find(By.text("Kape")).click() }
+                find(By.text("LOST: Kape"), 15_000)
+                retrying { find(By.text("I saw them")).click() }
+                find(By.text("You saw Kape?"), 15_000)
+                retrying { device.findObjects(By.clazz("android.widget.EditText")).last().text = "Near the plaza fountain" }
+                retrying { find(By.text("Send sighting")).click() }
+                find(By.textStartsWith("Thank you."), 20_000)
+                shot("lost-sheet")
+                retrying { find(By.text("Close")).click() }
+                val kape = runBlocking { model.client.lost.nearby(model.myArea!!.centerLat, model.myArea!!.centerLng) }.first { it.name == "Kape" }
+                check(kape.sightings == 1) { "the sighting wasn't counted: $kape" }
+            }
+            retrying { find(By.text("Nearby")).click() }
+            Thread.sleep(1_500)
+            shot("lost-map")
+            retrying { find(By.text("More")).click() }
+            retrying { find(By.text("Leave the map")).click() }
+            retrying { find(By.text("Leave")).click() }
+            find(By.text("I'm 18 or older"), 20_000)
+            closePanel() // the map
+            closePanel() // the More panel
+            find(By.text("Reported lost"), 15_000)
+
+            // Safe home: (demo) a sighting has come in by now; the alert closes with a welcome.
+            if (!real) waitFor("the demo neighbourhood reports a sighting", 40_000) { runBlocking { model.client.lost.sightings(id!!) }.isNotEmpty() }
+            retrying { find(By.text("Alert")).click() }
+            find(By.text("Alert is on for Chelsea"), 20_000)
+            if (!real) { find(By.text("Sightings (1)"), 15_000); find(By.textContains("market gate")) }
+            retrying { scrollTo(By.text("Safe home!")).click() }
+            retrying { find(By.text("Yes, safe home")).click() }
+            find(By.text("Welcome home, Chelsea!"), 20_000)
+            shot("lost-home")
+            check(runBlocking { model.client.lost.details(id!!) }?.foundAtMs != null) { "the alert should be closed on the server" }
+            retrying { find(By.textStartsWith("Back to Chelsea")).click() }
+            find(By.text("Chelsea"), 15_000)
+            check(model.alertFor(petId) == null) { "the phone should forget the closed alert" }
+            if (real) runBlocking { model.client.lost.cancel(id!!) } // leave the test account clean
+        }
+
         step("home is the pet's room") {
             find(By.text("Chelsea")) // her name plate
             find(By.desc("Settings"))

@@ -210,7 +210,7 @@ class HealthPlanTest {
         assertFalse(r.quickDone)
         assertTrue(r.taskIds.isEmpty() && r.refs.isEmpty())
         // Not months ahead (it's planned again whenever PawPixel runs), and not again after it's shown.
-        assertTrue(ReminderPlanner.plan(s, clock.at(LocalClock.dayOf(2026, 12, 1), 12 * 60), clock).isEmpty())
+        assertTrue(ReminderPlanner.plan(s, clock.at(LocalClock.dayOf(2026, 12, 1), 12 * 60), clock).none { "Rabies" in it.title }) // only New Year's Eve notes on Dec 1
         assertTrue(ReminderPlanner.plan(s, clock.at(LocalClock.dayOf(2027, 3, 1), 10 * 60), clock).isEmpty())
         // Only for dogs and cats, and only with reminders on.
         assertTrue(ReminderPlanner.plan(s.copy(pets = s.pets.map { it.copy(species = Species.OTHER) }), feb, clock).isEmpty())

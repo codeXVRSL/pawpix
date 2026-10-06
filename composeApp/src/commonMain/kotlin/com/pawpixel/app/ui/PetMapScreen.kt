@@ -66,6 +66,7 @@ import com.pawpixel.map.IsoTime
 import com.pawpixel.map.MapArea
 import com.pawpixel.map.MapException
 import com.pawpixel.map.MapPet
+import com.pawpixel.map.LostPet
 import com.pawpixel.map.Venue
 import com.pawpixel.sprite.Ears
 import com.pawpixel.sprite.PetArt
@@ -89,7 +90,7 @@ private const val NAGA_LNG = 123.1948
 fun PetMapScreen(app: AppScope, state: AppState, map: PetMapModel = app.repo.map) {
     // Debug builds can switch to the in-app demo map when the real one isn't set up.
     var active by remember { mutableStateOf(map) }
-    PetMapBody(app, state, active, onDemo = { active = PetMapModel.demo(app.repo.platform, app.repo.platform.files) })
+    PetMapBody(app, state, active, onDemo = { active = app.repo.demoMap })
 }
 
 @Composable
@@ -283,6 +284,9 @@ private fun ReadyMap(app: AppScope, map: PetMapModel, state: AppState, areas: Li
     var stats by remember { mutableStateOf<CommunityStats?>(null) }
     // Walks on the map (pins) and the host's form; "placing" is the map waiting for a tap on the meeting spot.
     var walks by remember { mutableStateOf<List<Gathering>>(emptyList()) }
+    // Lost pets within 15 km: red flags on the map, their own tab, and a sheet with the photos.
+    var lost by remember { mutableStateOf<List<LostPet>>(emptyList()) }
+    var openLost by remember { mutableStateOf<LostPet?>(null) }
     var form by remember { mutableStateOf<WalkForm?>(null) }
     var placing by remember { mutableStateOf(false) }
     var refresh by remember { mutableStateOf(0) }
@@ -290,6 +294,7 @@ private fun ReadyMap(app: AppScope, map: PetMapModel, state: AppState, areas: Li
         act {
             walks = map.client.gatherings()
             stats = map.client.communityStats()
+            map.myArea?.let { lost = map.client.lost.nearby(it.centerLat, it.centerLng) }
         }
     }
     Column(Modifier.fillMaxSize()) {
@@ -297,6 +302,7 @@ private fun ReadyMap(app: AppScope, map: PetMapModel, state: AppState, areas: Li
         Row(Modifier.padding(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             ChoiceChip(tab == 0, { tab = 0 }, tr("Nearby"))
             ChoiceChip(tab == 1, { tab = 1 }, tr("Gatherings"))
+            ChoiceChip(tab == 2, { tab = 2 }, if (lost.isEmpty()) tr("Lost pets") else tr("Lost pets ({0})", lost.size))
         }
         if (tab == 0 || placing) {
             Box(Modifier.weight(1f).fillMaxWidth().padding(top = 8.dp)) {
@@ -308,6 +314,8 @@ private fun ReadyMap(app: AppScope, map: PetMapModel, state: AppState, areas: Li
                     walks = walks.filter { it.cellLat != null && it.cellLng != null }.map { MapFlag(it.cellLat!!, it.cellLng!!, it.title) },
                     onWalkTap = { tab = 1 },
                     marker = form?.spot,
+                    lost = lost.map { MapFlag(it.lastSeenLat, it.lastSeenLng, it.name) },
+                    onLostTap = { f -> openLost = lost.firstOrNull { it.name == f.title && it.lastSeenLat == f.lat && it.lastSeenLng == f.lng } },
                     // The spot picked: back to the Gatherings tab, where the form reopens.
                     onMapTap = if (placing) ({ lat, lng -> form = (form ?: WalkForm()).copy(spot = lat to lng); placing = false; tab = 1 }) else null,
                     modifier = Modifier.fillMaxSize(),
@@ -331,10 +339,13 @@ private fun ReadyMap(app: AppScope, map: PetMapModel, state: AppState, areas: Li
                 }
                 if (!placing) selected?.let { a -> AreaPets(app, map, a, act, onClose = { selected = null }, modifier = Modifier.align(Alignment.BottomCenter)) }
             }
+        } else if (tab == 2) {
+            LostList(app, lost, onOpen = { openLost = it })
         } else {
             Gatherings(app, map, walks, act, onHost = { form = form ?: WalkForm() }, onChanged = { refresh++ })
         }
     }
+    openLost?.let { LostPetSheet(app, map, it, onClose = { openLost = null; refresh++ }) }
     form?.let { f ->
         var busy by remember { mutableStateOf(false) }
         var error by remember { mutableStateOf<String?>(null) }

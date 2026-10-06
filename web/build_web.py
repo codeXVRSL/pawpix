@@ -26,4 +26,12 @@ if model.exists():
 wasm = here / "ort-wasm-simd-threaded.wasm"
 if wasm.exists():
     (dist / wasm.name).write_bytes(wasm.read_bytes())
+# The lost-pet share page (PawPixel's "Lost and Found"): a finder without the app sees the alert.
+# Needs the server's URL and anon key, so it's written only when they're set.
+import os
+url, anon = os.environ.get("PAWPIXEL_SUPABASE_URL", ""), os.environ.get("PAWPIXEL_SUPABASE_ANON_KEY", "")
+if url and anon:
+    (dist / "lost.html").write_text((here / "lost.template.html").read_text().replace("/*SUPABASE_URL*/", url.rstrip("/")).replace("/*ANON_KEY*/", anon))
+else:
+    print("note: PAWPIXEL_SUPABASE_URL / PAWPIXEL_SUPABASE_ANON_KEY not set; lost.html (the lost-pet share page) not written")
 print("Wrote", dist)

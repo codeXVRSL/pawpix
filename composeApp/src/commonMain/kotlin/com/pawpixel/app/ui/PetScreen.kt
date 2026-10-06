@@ -137,6 +137,7 @@ fun PetScreen(app: AppScope, state: AppState, pet: Pet) {
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             UndoStrip(app, pet, lastDone) { lastDone = null }
+            if (lostAlertFor(app, pet.id) != null) LostStrip(app, pet)
             if (pet.remembered) {
                 MemoryStrip(app, state, pet)
             } else if (statuses.isEmpty()) {
@@ -293,6 +294,21 @@ private fun MemoryStrip(app: AppScope, state: AppState, pet: Pet) {
                 )
             }
             PrimaryPill(tr("Album"), icon = PixelIcons.CAMERA) { app.navigate(Screen.PetSection(pet.id, "album")) }
+        }
+    }
+}
+
+/** While a lost alert is on: the way to its sightings, right on the room. */
+@Composable
+private fun LostStrip(app: AppScope, pet: Pet) {
+    ToyPanel(Modifier.padding(horizontal = 16.dp, vertical = 6.dp), face = Color(0xFFFFE9E4), lip = Color(0xFFD9574A), padding = 12.dp) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            CandyTile(PixelIcons.BELL, Candy.Coral, size = 40.dp)
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text(tr("Reported lost"), style = MaterialTheme.typography.titleSmall, color = Color(0xFF2B2135))
+                Text(tr("Owners nearby are looking. Sightings show in the alert."), style = MaterialTheme.typography.labelSmall, color = Color(0xFF6E6287))
+            }
+            PrimaryPill(tr("Alert"), icon = PixelIcons.BELL) { app.navigate(Screen.PetSection(pet.id, "lost")) }
         }
     }
 }

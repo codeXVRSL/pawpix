@@ -101,6 +101,16 @@ store build.) For the release job, add the secrets to the "Build release bundle"
   the `target_user`. Their pets disappear from everyone's map at once.
 - Presence expires after 14 days without opening the map.
 
+- **Lost and Found** (migration 0010) needs nothing from you day to day: owners raise alerts from a pet's page,
+  owners within 15 km see them on the map's "Lost pets" tab and report sightings, and the owner closes the alert
+  with "Safe home". Alerts expire after 60 days; a banned owner can't raise one. Abuse shows up in the usual
+  `reports` table (report the pet) and in `lost_pets` itself (delete the row to take an alert down).
+- **The share link** in an alert ("Seen Kape? Report a sighting here: https://pawpixel.app/lost#<id>") opens a
+  page that shows the alert to anyone, no app needed. Build it with
+  `PAWPIXEL_SUPABASE_URL=... PAWPIXEL_SUPABASE_ANON_KEY=... python3 web/build_web.py <core.js>` (it writes
+  `web/dist/lost.html`) and host it at `pawpixel.app/lost` (any static host: GitHub Pages, Netlify). Until it's
+  hosted the link still carries the alert id; the text itself has the description and the map spot.
+
 ## 7. Before launching (also in docs/MAP_SAFETY.md)
 - Update your privacy policy (docs/PRIVACY.md has the map section) and the store privacy labels
   (docs/STORE_LISTING.md).

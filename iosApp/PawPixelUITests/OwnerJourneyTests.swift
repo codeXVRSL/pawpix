@@ -278,6 +278,27 @@ final class OwnerJourneyTests: XCTestCase {
             try scrollTo("Back").tap() // the More panel drops
         }
 
+        step("lost and found: raise an alert, then safe home") {
+            try find("More").tap()
+            try scrollTo(query: element(containing: "Lost?"), "Lost?").tap()
+            try find(containing: "Is", timeout: 15)
+            let field = app.textViews.firstMatch.exists ? app.textViews.firstMatch : app.textFields.firstMatch
+            if field.waitForExistence(timeout: 5) { field.tap(); field.typeText("Grey tabby, pink collar") }
+            try scrollTo("Earlier today").tap()
+            shot("lost-form")
+            try scrollTo("Alert owners nearby").tap()
+            guard element(containing: "Alert is on for").waitForExistence(timeout: 40) else {
+                log.append("      note: the alert didn't go up (no server and no demo sign-in?); skipping the rest"); try find("Back").tap(); try scrollTo("Back").tap(); return
+            }
+            shot("lost-alert")
+            try scrollTo("Safe home!").tap()
+            try find("Yes, safe home").tap()
+            try find(containing: "Welcome home", timeout: 20)
+            shot("lost-home")
+            try find(containing: "Back to").tap()
+            try find(containing: "Care", timeout: 15)
+        }
+
         step("share with your household (no server in this CI build: says it's not available yet)") {
             try find("Share").tap()
             try scrollTo(query: element(containing: "Share with your household"), "Share with your household").tap()

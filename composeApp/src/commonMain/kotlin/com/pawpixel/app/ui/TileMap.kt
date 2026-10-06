@@ -75,6 +75,7 @@ private const val MIN_ZOOM = 11
 private const val MAX_ZOOM = 17
 private val Ink = Color(0xFF2B2135)
 private val Berry = Color(0xFFE8374E)
+private val LostRed = Color(0xFFD9574A)
 private val Cream = Color(0xFFFFF4E0)
 private val Sand = Color(0xFFF6E7CC)
 
@@ -109,6 +110,9 @@ fun TileMap(
     marker: Pair<Double, Double>? = null,
     /** While set, a tap on the map picks a spot instead of a pin. */
     onMapTap: ((Double, Double) -> Unit)? = null,
+    /** Lost pets, as red flags where they were last seen. */
+    lost: List<MapFlag> = emptyList(),
+    onLostTap: (MapFlag) -> Unit = {},
 ) {
     val density = LocalDensity.current.density
     // Each map pixel is a whole number of screen pixels: crisp pixel-art streets.
@@ -231,7 +235,7 @@ fun TileMap(
                         if (pinch < 0.6) { setZoom(zoom - 1); pinch = 1.0 }
                     }
                 }
-                .pointerInput(areas, walks, onMapTap) {
+                .pointerInput(areas, walks, lost, onMapTap) {
                     detectTapGestures(
                         onDoubleTap = { setZoom(zoom + 1) },
                         onTap = { tap ->
@@ -243,6 +247,8 @@ fun TileMap(
                             }
                             val hit = areas.minByOrNull { (toScreen(it.lat, it.lng) - tap).getDistance() }
                             if (hit != null && (toScreen(hit.lat, hit.lng) - tap).getDistance() < 28 * density) { onAreaTap(hit); return@detectTapGestures }
+                            val missing = lost.minByOrNull { (toScreen(it.lat, it.lng) - tap).getDistance() }
+                            if (missing != null && (toScreen(missing.lat, missing.lng) - tap).getDistance() < 28 * density) { onLostTap(missing); return@detectTapGestures }
                             val walk = walks.minByOrNull { (toScreen(it.lat, it.lng) - tap).getDistance() }
                             if (walk != null && (toScreen(walk.lat, walk.lng) - tap).getDistance() < 28 * density) onWalkTap(walk)
                         },
@@ -257,7 +263,22 @@ fun TileMap(
             // Walks sit a little to the right of the area pin, so both stay tappable in a shared area.
             for (w in walks) drawFlag(toScreen(w.lat, w.lng) + Offset(26 * density, 0f), density)
             for (a in areas) drawPin(toScreen(a.lat, a.lng), a.pets, density, text)
+            for (l in lost) drawLostFlag(toScreen(l.lat, l.lng), density)
             marker?.let { (lat, lng) -> drawMarker(toScreen(lat, lng), density) }
+        }
+        val lostLabel = tr("Show the lost pet")
+        for (l in lost) {
+            val label = tr("Lost pet: {0}", l.title)
+            Box(
+                Modifier
+                    .offset {
+                        val p = toScreen(l.lat, l.lng)
+                        val half = 24.dp.roundToPx()
+                        IntOffset(p.x.roundToInt() - half, p.y.roundToInt() - 2 * half)
+                    }
+                    .size(48.dp)
+                    .semantics { contentDescription = label; onClick(label = lostLabel) { onLostTap(l); true } },
+            )
         }
         val walkLabel = tr("Show walks")
         for (w in walks) {
@@ -398,6 +419,21 @@ private fun DrawScope.drawFlag(at: Offset, density: Float) {
     }
     drawRect(Ink, Offset(at.x - px * 1.5f, top + h + px), Size(px * 3, px * 2))
     drawRect(Leaf, Offset(at.x - px / 2, top + h), Size(px, px * 2))
+}
+
+/** A lost pet's pin: a coral box with a "!" where the pet was last seen. */
+private fun DrawScope.drawLostFlag(at: Offset, density: Float) {
+    val px = (2 * density).roundToInt().toFloat().coerceAtLeast(2f)
+    val w = px * 9; val h = px * 9
+    val left = (at.x - w / 2).roundToInt().toFloat(); val top = (at.y - h - px * 3).roundToInt().toFloat()
+    drawRect(Ink, Offset(left - px, top - px), Size(w + 2 * px, h + 2 * px))
+    drawRect(LostRed, Offset(left, top), Size(w, h))
+    drawRect(Color(0xFFFFB3A8), Offset(left, top), Size(w, px))
+    // "!"
+    drawRect(Cream, Offset(left + px * 4, top + px * 2), Size(px, px * 4))
+    drawRect(Cream, Offset(left + px * 4, top + px * 7), Size(px, px))
+    drawRect(Ink, Offset(at.x - px * 1.5f, top + h + px), Size(px * 3, px * 2))
+    drawRect(LostRed, Offset(at.x - px / 2, top + h), Size(px, px * 2))
 }
 
 /** The spot being placed: a berry cross with a dot, exactly where the tap was. */

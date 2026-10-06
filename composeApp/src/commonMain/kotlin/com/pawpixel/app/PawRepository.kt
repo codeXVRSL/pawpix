@@ -77,6 +77,8 @@ class PawRepository(val platform: Platform) {
 
     /** The opt-in pet map (sign-in session, shared pets, your ~1 km area). */
     val map: PetMapModel by lazy { PetMapModel(platform, files, onAccountDeleted = { family.forgetLocally() }) }
+    /** The in-app demo map (debug builds, when the real one isn't set up): one pretend server for the whole app. */
+    val demoMap: PetMapModel by lazy { PetMapModel.demo(platform, files) }
 
     /** Family sharing (same sign-in as the map). */
     val family: FamilyModel by lazy { FamilyModel(this, map) }
@@ -143,7 +145,7 @@ class PawRepository(val platform: Platform) {
         val (snapshot, reminders) = withContext(Dispatchers.Default) {
             // Pets made before the widgets animated get their idle frames drawn once.
             for (pet in state.pets) if (!files.exists(WidgetSnapshot.framePath(pet.id, Mood.CONTENT, 0))) writeWidgetPoses(pet)
-            WidgetSnapshot.build(state, now, clock) to ReminderPlanner.plan(state, now, clock)
+            WidgetSnapshot.build(state, now, clock) to ReminderPlanner.plan(state, now, clock, country = platform.systemCountry())
         }
         files.writeText(WidgetSnapshot.FILE_NAME, snapshot.stringify())
         _widgetRevision.value = _widgetRevision.value + 1
