@@ -91,7 +91,10 @@ object MoodEngine {
 
     /** [known]: [statuses] at the same moment, when the caller already has them. */
     fun read(state: AppState, petId: String, nowMs: Long, clock: LocalClock, known: List<TaskStatus>? = null): MoodReading {
-        val name = state.pet(petId)?.name ?: tr("Your pet")
+        val pet = state.pet(petId)
+        val name = pet?.name ?: tr("Your pet")
+        // A remembered pet rests: nothing is due, nothing is missed.
+        if (pet != null && pet.remembered) return MoodReading(Mood.SLEEPY, tr("{0} is resting. Forever in your heart.", name), 100, null)
         if (state.isAway(nowMs)) {
             val night = isNight(clock.minuteOfDay(nowMs), state.settings)
             return if (night) MoodReading(Mood.SLEEPY, tr("{0} is sleeping", name), 100, null)

@@ -7,6 +7,7 @@ import com.pawpixel.map.HttpRequest
 import com.pawpixel.map.HttpResponse
 import com.pawpixel.map.MapClient
 import com.pawpixel.map.MapException
+import com.pawpixel.map.WalkDraft
 import com.pawpixel.map.MapSettings
 import com.pawpixel.map.SessionStore
 import com.pawpixel.map.SharedPet
@@ -118,6 +119,34 @@ class MapClientTest {
         assertTrue(g.iAmGoing && g.going == 4 && g.areaLabel == "Plaza Rizal area")
         val e = runCatching { runSync { c.rsvp("g", true) } }.exceptionOrNull() as MapException
         assertEquals(MapException.Kind.FULL, e.kind)
+    }
+
+    @Test fun hostingAWalkSendsTheVenueAndItsCellAndReadsItBack() {
+        val c = signedIn()
+        reply = { r ->
+            when {
+                r.url.endsWith("host_walk") -> HttpResponse(200, "\"walk1\"")
+                r.url.contains("my_walks") -> HttpResponse(200, """[{"id":"walk1","title":"Sunrise walk","starts_at":"2026-10-11T22:00:00+00:00","area_label":"Plaza Rizal area","venue_name":"Plaza Rizal fountain","capacity":15,"going":1,"approved":false,"details":null}]""")
+                r.url.endsWith("community_stats") -> HttpResponse(200, """[{"owners":12,"pets":19,"areas":2,"walks":1}]""")
+                else -> HttpResponse(200, "[]")
+            }
+        }
+        val id = runSync { c.hostWalk(WalkDraft("  Sunrise walk ", 1_791_194_400_000L, "", "Plaza Rizal fountain", 13.6238, 123.1851, 15, "Bring water")) }
+        assertEquals("walk1", id)
+        val sent = Json.parse(log.single { it.url.endsWith("host_walk") }.body!!)
+        assertEquals("Sunrise walk", sent["p_title"].str)
+        assertEquals("2026-10-05T10:00:00Z", sent["p_starts_at"].str)
+        val cell = LocationGrid.snap(13.6238, 123.1851)
+        assertEquals(cell.id, sent["p_cell_id"].str)
+        assertEquals(cell.centerLat, sent["p_cell_lat"].double)
+        assertEquals(13.6238, sent["p_venue_lat"].double)
+        assertEquals("Near Plaza Rizal fountain", sent["p_area_label"].str, "a blank area label is made from the venue")
+        val mine = runSync { c.myWalks() }.single()
+        assertTrue(!mine.approved && mine.going == 1 && mine.details == null)
+        val stats = runSync { c.communityStats() }
+        assertEquals(19, stats.pets)
+        runSync { c.cancelWalk("walk1") }
+        assertTrue(log.last().url.endsWith("cancel_walk"))
     }
 
     @Test fun offlineIsReportedPlainly() {

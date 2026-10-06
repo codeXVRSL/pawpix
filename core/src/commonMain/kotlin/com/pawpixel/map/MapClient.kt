@@ -51,9 +51,29 @@ data class MapPet(val id: String, val name: String, val species: String, val ear
 data class Gathering(
     val id: String, val title: String, val startsAt: String, val cellId: String, val areaLabel: String,
     val capacity: Int, val going: Int, val iAmGoing: Boolean,
+    /** The host's note ("Bring water, we'll stop at the fountain"). */
+    val details: String? = null,
+    /** The walk's ~1 km area, for a pin on the map (null for walks added before this was kept). */
+    val cellLat: Double? = null, val cellLng: Double? = null,
+    val iAmHost: Boolean = false,
 )
 
 data class Venue(val name: String, val lat: Double, val lng: Double)
+
+/** A walk an owner proposes from the app; it shows to everyone once the moderator approves it. */
+data class WalkDraft(
+    val title: String, val startsAtMs: Long, val areaLabel: String, val venueName: String,
+    val venueLat: Double, val venueLng: Double, val capacity: Int = 20, val details: String = "",
+)
+
+/** One of your own walks: waiting for approval or on the map. */
+data class MyWalk(
+    val id: String, val title: String, val startsAt: String, val areaLabel: String, val venueName: String,
+    val capacity: Int, val going: Int, val approved: Boolean, val details: String?,
+)
+
+/** How big the community is, pilot-wide: no area, no name, no id. */
+data class CommunityStats(val owners: Int, val pets: Int, val areas: Int, val walks: Int)
 
 /** What an owner puts on the map for one of their pets. */
 data class SharedPet(val localId: String, val name: String, val species: String, val ears: String, val look: String)
@@ -160,8 +180,10 @@ class SupabaseApi(
         return r
     }
 
-    fun isoNow(): String {
-        val ms = nowMs()
+    fun isoNow(): String = isoAt(nowMs())
+
+    /** A moment as the server reads it: "2026-10-11T08:00:00Z". */
+    fun isoAt(ms: Long): String {
         val days = ms.floorDiv(86_400_000L)
         val rem = ms - days * 86_400_000L
         val (y, m, d) = com.pawpixel.core.LocalClock.civil(days)
@@ -268,8 +290,52 @@ class MapClient(
                 capacity = g["capacity"].int ?: 0,
                 going = g["going"].int ?: 0,
                 iAmGoing = g["i_am_going"].bool ?: false,
+                details = g["details"].str?.ifBlank { null },
+                cellLat = g["cell_lat"].double, cellLng = g["cell_lng"].double,
+                iAmHost = g["i_am_host"].bool ?: false,
             )
         }
+
+    // ---------- Hosting walks ----------
+
+    /**
+     * Proposes a walk: it waits for the moderator, then shows to everyone. The venue is a public
+     * place the host picked on the map; its ~1 km cell is what the list shows before RSVP.
+     * Returns the walk's id. Throws [MapException.Kind.REFUSED] with the server's reason (too many
+     * waiting, a time out of range).
+     */
+    suspend fun hostWalk(draft: WalkDraft): String {
+        val cell = LocationGrid.snap(draft.venueLat, draft.venueLng)
+        val args = Json.obj(
+            "p_title" to draft.title.trim().take(80).ifBlank { tr("Pet walk") },
+            "p_starts_at" to api.isoAt(draft.startsAtMs),
+            "p_cell_id" to cell.id, "p_cell_lat" to cell.centerLat, "p_cell_lng" to cell.centerLng,
+            "p_area_label" to draft.areaLabel.trim().take(60).ifBlank { tr("Near {0}", draft.venueName.trim().take(40)) },
+            "p_venue_name" to draft.venueName.trim().take(80),
+            "p_venue_lat" to draft.venueLat, "p_venue_lng" to draft.venueLng,
+            "p_capacity" to draft.capacity.coerceIn(2, 200),
+            "p_details" to draft.details.trim().take(300).ifBlank { null },
+        )
+        return Json.parse(rpc("host_walk", args)).str ?: throw MapException(MapException.Kind.SERVER, "No id")
+    }
+
+    /** Your own walks, waiting for approval or on the map. */
+    suspend fun myWalks(): List<MyWalk> =
+        Json.parse(rest("GET", "/rest/v1/my_walks?select=*")).list.mapNotNull { w ->
+            MyWalk(
+                id = w["id"].str ?: return@mapNotNull null, title = w["title"].str ?: "", startsAt = w["starts_at"].str ?: "",
+                areaLabel = w["area_label"].str ?: "", venueName = w["venue_name"].str ?: "", capacity = w["capacity"].int ?: 0,
+                going = w["going"].int ?: 0, approved = w["approved"].bool ?: false, details = w["details"].str?.ifBlank { null },
+            )
+        }
+
+    suspend fun cancelWalk(id: String) { rpc("cancel_walk", Json.obj("p_id" to id)) }
+
+    /** Pilot-wide totals: owners on the map, their pets, areas with 3+ owners, walks coming up. */
+    suspend fun communityStats(): CommunityStats {
+        val r = Json.parse(rpc("community_stats")).list.firstOrNull() ?: return CommunityStats(0, 0, 0, 0)
+        return CommunityStats(r["owners"].int ?: 0, r["pets"].int ?: 0, r["areas"].int ?: 0, r["walks"].int ?: 0)
+    }
 
     /** Going or not; returns how many are going. Throws [MapException.Kind.FULL] when full. */
     suspend fun rsvp(gatheringId: String, going: Boolean): Int =

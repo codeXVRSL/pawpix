@@ -71,6 +71,12 @@ private val Sand = Color(0xFFF6E7CC)
 
 /** 7x6 pixel paw drawn inside each area pin. */
 private val PAW = listOf(".#...#.", "##.#.##", "...#...", ".#####.", "#######", ".##.##.")
+/** 7x6 pixel flag drawn inside each walk pin. */
+private val FLAG = listOf("#.....", "#####.", "######", "#####.", "#.....", "#.....")
+private val Leaf = Color(0xFF5EA64C)
+
+/** A walk on the map: its ~1 km area (never the venue) and its title. */
+data class MapFlag(val lat: Double, val lng: Double, val title: String)
 
 /**
  * A street map drawn the pixel way: 256 px tiles scaled by a whole number with no smoothing, so
@@ -87,6 +93,13 @@ fun TileMap(
     myArea: LocationGrid.Cell?,
     onAreaTap: (MapArea) -> Unit,
     modifier: Modifier = Modifier,
+    /** Walks coming up, as flag pins on their areas. */
+    walks: List<MapFlag> = emptyList(),
+    onWalkTap: (MapFlag) -> Unit = {},
+    /** A spot the owner is placing (a walk's meeting place). */
+    marker: Pair<Double, Double>? = null,
+    /** While set, a tap on the map picks a spot instead of a pin. */
+    onMapTap: ((Double, Double) -> Unit)? = null,
 ) {
     val density = LocalDensity.current.density
     // Each map pixel is a whole number of screen pixels: crisp pixel-art streets.
@@ -158,12 +171,20 @@ fun TileMap(
                         if (pinch < 0.6) { setZoom(zoom - 1); pinch = 1.0 }
                     }
                 }
-                .pointerInput(areas) {
+                .pointerInput(areas, walks, onMapTap) {
                     detectTapGestures(
                         onDoubleTap = { setZoom(zoom + 1) },
                         onTap = { tap ->
+                            if (onMapTap != null) {
+                                val wx = cx + (tap.x - size.width / 2.0) / scale
+                                val wy = cy + (tap.y - size.height / 2.0) / scale
+                                onMapTap(WebMercator.lat(wy, zoom).coerceIn(-85.0, 85.0), WebMercator.lng(wx, zoom).coerceIn(-180.0, 180.0))
+                                return@detectTapGestures
+                            }
                             val hit = areas.minByOrNull { (toScreen(it.lat, it.lng) - tap).getDistance() }
-                            if (hit != null && (toScreen(hit.lat, hit.lng) - tap).getDistance() < 28 * density) onAreaTap(hit)
+                            if (hit != null && (toScreen(hit.lat, hit.lng) - tap).getDistance() < 28 * density) { onAreaTap(hit); return@detectTapGestures }
+                            val walk = walks.minByOrNull { (toScreen(it.lat, it.lng) - tap).getDistance() }
+                            if (walk != null && (toScreen(walk.lat, walk.lng) - tap).getDistance() < 28 * density) onWalkTap(walk)
                         },
                     )
                 },
@@ -171,7 +192,24 @@ fun TileMap(
             drawRect(Sand)
             if (settings.hasTiles) drawTiles(tiles, zoom, cx, cy, scale) else drawPixelGrid(cx, cy, scale)
             myArea?.let { drawMyArea(it, ::toScreen, density) }
+            // Walks sit a little to the right of the area pin, so both stay tappable in a shared area.
+            for (w in walks) drawFlag(toScreen(w.lat, w.lng) + Offset(26 * density, 0f), density)
             for (a in areas) drawPin(toScreen(a.lat, a.lng), a.pets, density, text)
+            marker?.let { (lat, lng) -> drawMarker(toScreen(lat, lng), density) }
+        }
+        val walkLabel = tr("Show walks")
+        for (w in walks) {
+            val label = tr("Walk: {0}", w.title)
+            Box(
+                Modifier
+                    .offset {
+                        val p = toScreen(w.lat, w.lng)
+                        val half = 24.dp.roundToPx()
+                        IntOffset(p.x.roundToInt() - half + (26 * density).roundToInt(), p.y.roundToInt() - 2 * half)
+                    }
+                    .size(48.dp)
+                    .semantics { contentDescription = label; onClick(label = walkLabel) { onWalkTap(w); true } },
+            )
         }
 
         // The pins, for screen readers: drawn on the map above, listed here where they are, each
@@ -253,6 +291,31 @@ private fun DrawScope.drawMyArea(cell: LocationGrid.Cell, toScreen: (Double, Dou
     drawRect(Berry.copy(alpha = 0.12f), tl, Size(br.x - tl.x, br.y - tl.y))
     drawRect(Berry, tl, Size(br.x - tl.x, br.y - tl.y),
         style = Stroke(width = 2 * density, pathEffect = PathEffect.dashPathEffect(floatArrayOf(8 * density, 6 * density))))
+}
+
+/** A walk's pin: a leaf-green box with a flag, and a pointer below. */
+private fun DrawScope.drawFlag(at: Offset, density: Float) {
+    val px = (2 * density).roundToInt().toFloat().coerceAtLeast(2f)
+    val w = px * 9; val h = px * 9
+    val left = (at.x - w / 2).roundToInt().toFloat(); val top = (at.y - h - px * 3).roundToInt().toFloat()
+    drawRect(Ink, Offset(left - px, top - px), Size(w + 2 * px, h + 2 * px))
+    drawRect(Leaf, Offset(left, top), Size(w, h))
+    drawRect(Color(0xFF9BD98A), Offset(left, top), Size(w, px))
+    for ((r, row) in FLAG.withIndex()) for ((c, ch) in row.withIndex()) {
+        if (ch == '#') drawRect(Cream, Offset(left + px * (1.5f + c), top + px * (1.5f + r)), Size(px, px))
+    }
+    drawRect(Ink, Offset(at.x - px * 1.5f, top + h + px), Size(px * 3, px * 2))
+    drawRect(Leaf, Offset(at.x - px / 2, top + h), Size(px, px * 2))
+}
+
+/** The spot being placed: a berry cross with a dot, exactly where the tap was. */
+private fun DrawScope.drawMarker(at: Offset, density: Float) {
+    val px = (2 * density).roundToInt().toFloat().coerceAtLeast(2f)
+    drawRect(Ink, Offset(at.x - px * 6, at.y - px), Size(px * 12, px * 2))
+    drawRect(Ink, Offset(at.x - px, at.y - px * 6), Size(px * 2, px * 12))
+    drawRect(Berry, Offset(at.x - px * 5, at.y - px / 2), Size(px * 10, px))
+    drawRect(Berry, Offset(at.x - px / 2, at.y - px * 5), Size(px, px * 10))
+    drawRect(Cream, Offset(at.x - px, at.y - px), Size(px * 2, px * 2))
 }
 
 /** A chunky pixel pin: outlined berry box with a paw and the pet count, and a little pointer below. */

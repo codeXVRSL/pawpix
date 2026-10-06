@@ -43,7 +43,34 @@ object StateOps {
             tasks = state.tasks.filterNot { it.petId == petId },
             completions = state.completions.filterNot { it.taskId in taskIds },
             weights = state.weights.filterNot { it.petId == petId },
+            album = state.album.filterNot { it.petId == petId },
         )
+    }
+
+    // ---- The album ----
+
+    /** Adds a photo to the front of the pet's album (the newest is first). Over the limit, the oldest goes. */
+    fun addAlbumPhoto(state: AppState, photo: AlbumPhoto): AppState {
+        val clean = photo.copy(caption = cleanCaption(photo.caption))
+        val others = state.album.filterNot { it.id == clean.id }
+        val mine = others.filter { it.petId == clean.petId }.sortedByDescending { it.atMs }.take(AppState.MAX_ALBUM_PHOTOS_PER_PET - 1)
+        return state.copy(album = others.filterNot { it.petId == clean.petId } + mine + clean)
+    }
+
+    fun setAlbumCaption(state: AppState, photoId: String, caption: String): AppState =
+        state.copy(album = state.album.map { if (it.id == photoId) it.copy(caption = cleanCaption(caption)) else it })
+
+    fun removeAlbumPhoto(state: AppState, photoId: String): AppState = state.copy(album = state.album.filterNot { it.id == photoId })
+
+    private fun cleanCaption(caption: String) = caption.trim().take(AppState.MAX_CAPTION)
+
+    /**
+     * The pet passed away on local day [day] (null: it's back to being cared for, in case of a slip).
+     * Its reminders stop at once; its tasks, records, weights and album all stay.
+     */
+    fun rememberPet(state: AppState, petId: String, day: Long?, nowMs: Long): AppState {
+        val pet = state.pet(petId) ?: return state
+        return updatePet(state, pet.copy(rememberedDay = day, editedAtMs = nowMs))
     }
 
     fun upsertTask(state: AppState, task: CareTask): AppState {

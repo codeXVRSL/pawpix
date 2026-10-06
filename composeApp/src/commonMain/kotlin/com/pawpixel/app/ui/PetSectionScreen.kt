@@ -60,7 +60,7 @@ import kotlinx.coroutines.withContext
 fun PetSectionScreen(app: AppScope, state: AppState, pet: Pet, section: String) {
     val title = when (section) {
         "care" -> tr("Care"); "health" -> tr("Health"); "weight" -> tr("Weight"); "wardrobe" -> tr("Wardrobe")
-        "share" -> tr("Share"); "pets" -> tr("Your pets"); "more" -> tr("More"); else -> tr("Share")
+        "share" -> tr("Share"); "pets" -> tr("Your pets"); "more" -> tr("More"); "album" -> tr("Album"); else -> tr("Share")
     }
     Panel(app, state, pet, title) {
         when (section) {
@@ -70,6 +70,7 @@ fun PetSectionScreen(app: AppScope, state: AppState, pet: Pet, section: String) 
             "wardrobe" -> Wardrobe(app, pet)
             "pets" -> PetsPanel(app, state, pet)
             "more" -> MorePanel(app, state, pet)
+            "album" -> AlbumPanel(app, state, pet)
             else -> ShareSection(app, pet)
         }
     }
@@ -141,6 +142,12 @@ private fun MenuRow(icon: PixelIcon, title: String, detail: String?, toy: Toy, o
 private fun MorePanel(app: AppScope, state: AppState, pet: Pet) {
     var renaming by remember { mutableStateOf(false) }
     var showProDialog by remember { mutableStateOf(false) }
+    var remembering by remember { mutableStateOf(false) }
+    val photos = state.albumFor(pet.id).size
+    MenuRow(
+        PixelIcons.CAMERA, tr("Album"),
+        if (photos == 0) tr("Photos of {0}, kept for good", pet.name) else tr("{0} photos, kept for good", photos), Candy.Coral,
+    ) { app.navigate(Screen.PetSection(pet.id, "album")) }
     MenuRow(PixelIcons.PENCIL, tr("Edit {0}", pet.name), tr("Name, type and birthday"), Candy.Peach) { renaming = true }
     MenuRow(PixelIcons.PLUS, tr("Add another pet"), tr("From a photo"), Candy.Butter) {
         if (StateOps.canAddPet(state)) app.navigate(Screen.CreatePet) else showProDialog = true
@@ -151,7 +158,12 @@ private fun MorePanel(app: AppScope, state: AppState, pet: Pet) {
         PixelIcons.PEOPLE, tr("Family"),
         if (household != null) household.name else tr("Care for your pets together"), Candy.Lavender,
     ) { app.navigate(Screen.Family()) }
+    MenuRow(
+        PixelIcons.STAR, if (pet.remembered) tr("Remembered") else tr("In loving memory"),
+        if (pet.remembered) tr("Since {0}", LocalClock.shortDate(pet.rememberedDay ?: 0)) else tr("If {0} has passed away", pet.name), Candy.Lavender,
+    ) { remembering = true }
     if (renaming) RenameDialog(app, pet) { renaming = false }
+    if (remembering) RememberDialog(app, pet) { remembering = false }
     if (showProDialog) {
         AlertDialog(
             onDismissRequest = { showProDialog = false },

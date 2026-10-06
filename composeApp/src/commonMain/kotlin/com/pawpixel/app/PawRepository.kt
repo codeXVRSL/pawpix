@@ -1,5 +1,6 @@
 package com.pawpixel.app
 
+import com.pawpixel.core.AlbumPhoto
 import com.pawpixel.core.AppState
 import com.pawpixel.i18n.I18n
 import com.pawpixel.i18n.Lang
@@ -272,6 +273,39 @@ class PawRepository(val platform: Platform) {
         _cardRevision.value = _cardRevision.value + 1
     }
 
+    // ---- The album (real photos the owner keeps with the pet, for good) ----
+
+    /**
+     * Adds a photo to the pet's album. Re-encoded on the phone (long side at most [ALBUM_MAX_SIDE])
+     * so a 12-megapixel shot becomes ~300 KB and still fits a backup, which also drops its location
+     * and other metadata. Returns the photo, or null if the picture couldn't be read.
+     */
+    suspend fun addAlbumPhoto(petId: String, photo: ByteArray, caption: String = ""): AlbumPhoto? {
+        val img = platform.decodePhoto(photo, ALBUM_MAX_SIDE) ?: return null
+        val bytes = platform.encodeJpeg(img, 86) ?: withContext(Dispatchers.Default) { Png.encode(img) }
+        val entry = AlbumPhoto(Ids.newId(), petId, now(), caption)
+        if (!files.writeBytes(Backup.albumPhotoPath(petId, entry.id), bytes)) return null
+        val before = _state.value.albumFor(petId)
+        val s = update { StateOps.addAlbumPhoto(it, entry) }
+        // Over the album's limit the oldest photo left the state: its file goes too.
+        for (gone in before.filter { old -> s.album.none { it.id == old.id } }) files.delete(Backup.albumPhotoPath(petId, gone.id))
+        _cardRevision.value = _cardRevision.value + 1
+        return entry
+    }
+
+    fun albumPhoto(photo: AlbumPhoto): ByteArray? = files.readBytes(Backup.albumPhotoPath(photo.petId, photo.id))
+
+    suspend fun setAlbumCaption(photoId: String, caption: String) = update { StateOps.setAlbumCaption(it, photoId, caption) }
+
+    suspend fun deleteAlbumPhoto(photo: AlbumPhoto) {
+        update { StateOps.removeAlbumPhoto(it, photo.id) }
+        files.delete(Backup.albumPhotoPath(photo.petId, photo.id))
+        _cardRevision.value = _cardRevision.value + 1
+    }
+
+    /** The pet passed away (today unless [day] says otherwise). Its reminders stop; everything else stays. */
+    suspend fun rememberPet(petId: String, day: Long? = clock.dayIndex(now())) = update { StateOps.rememberPet(it, petId, day, now()) }
+
     /** A card photo from an older version, kept with the item rather than a record. */
     fun card(task: CareTask): ByteArray? = files.readBytes(Backup.cardPath(task.petId, task.id))
     fun hasCard(task: CareTask): Boolean = files.exists(Backup.cardPath(task.petId, task.id))
@@ -533,6 +567,8 @@ class PawRepository(val platform: Platform) {
         const val WIDGET_SCALE = 4
         /** Health photos: big enough to read a vaccination card, small enough for backups (~250 KB). */
         const val CARD_MAX_SIDE = 1280
+        /** Album photos: a phone screen's worth of detail, ~300 KB each. */
+        const val ALBUM_MAX_SIDE = 1600
         private const val STAGING = "restore"
         private const val OLD_SPRITES = "sprites.old"
     }

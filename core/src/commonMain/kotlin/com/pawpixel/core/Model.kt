@@ -70,7 +70,15 @@ data class Pet(
     val editedAtMs: Long = 0,
     /** The owner's Pet Studio choices ([com.pawpixel.sprite.PetStyle.encode]); null = as the photo says. */
     val style: String? = null,
+    /**
+     * The local day the pet passed away, when the owner chose to remember it: no more reminders or
+     * needs, its room is quiet, and its album and history stay for as long as the owner wants them.
+     */
+    val rememberedDay: Long? = null,
 ) {
+    /** Kept in memory: no care is due, and nothing about it is ever "overdue". */
+    val remembered: Boolean get() = rememberedDay != null
+
     /**
      * Everything the pixel pet is drawn from. A screen that keeps a drawing of the pet keys it by
      * this, so a new outfit, ears or a look from the household shows at once (a name change doesn't redraw).
@@ -141,6 +149,13 @@ data class Completion(
 /** A weigh-in: [grams] on local day [day]. */
 data class Weight(val petId: String, val day: Long, val grams: Int)
 
+/**
+ * One photo in a pet's album: a real photo the owner keeps with the pet, on this phone and in
+ * backups (never uploaded). The file is at [Backup.albumPhotoPath]; [atMs] is when it was added
+ * (the photo's own date isn't read: its metadata is dropped on purpose, see [Backup]).
+ */
+data class AlbumPhoto(val id: String, val petId: String, val atMs: Long, val caption: String = "")
+
 data class Settings(
     val remindersEnabled: Boolean = true,
     /**
@@ -170,8 +185,11 @@ data class AppState(
     val completions: List<Completion> = emptyList(),
     val settings: Settings = Settings(),
     val weights: List<Weight> = emptyList(),
+    val album: List<AlbumPhoto> = emptyList(),
 ) {
     fun weightsFor(petId: String): List<Weight> = weights.filter { it.petId == petId }.sortedBy { it.day }
+    /** A pet's album, newest first. */
+    fun albumFor(petId: String): List<AlbumPhoto> = album.filter { it.petId == petId }.sortedByDescending { it.atMs }
     fun pet(id: String): Pet? = pets.firstOrNull { it.id == id }
     fun task(id: String): CareTask? = tasks.firstOrNull { it.id == id }
     fun isAway(nowMs: Long): Boolean = nowMs < settings.awayUntilMs
@@ -183,6 +201,9 @@ data class AppState(
         /** Completions kept per task; enough for ~5 weeks of 4x/day learning. */
         const val MAX_COMPLETIONS_PER_TASK = 140
         const val MAX_WEIGHTS_PER_PET = 200
+        /** Album photos per pet (~300 KB each): a full album still fits a backup file. */
+        const val MAX_ALBUM_PHOTOS_PER_PET = 100
+        const val MAX_CAPTION = 140
         const val MAX_CARE_DAYS = 3000
         /** Longest repeat: yearly. */
         const val MAX_EVERY_DAYS = 365

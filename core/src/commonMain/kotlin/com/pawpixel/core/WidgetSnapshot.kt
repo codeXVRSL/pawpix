@@ -43,7 +43,8 @@ object WidgetSnapshot {
         com.pawpixel.sprite.Poses.frameSequence(mood).map { framePath(petId, mood, it) }
 
     fun build(state: AppState, nowMs: Long, clock: LocalClock, horizonMs: Long = HORIZON_MS): Json {
-        val pets = state.pets.map { pet -> petJson(state, pet, nowMs, clock, horizonMs) }
+        // Pets still being cared for come first; a remembered pet shows only if it's all there is.
+        val pets = state.pets.filterNot { it.remembered }.ifEmpty { state.pets }.map { pet -> petJson(state, pet, nowMs, clock, horizonMs) }
         // The widgets' own words, in the owner's language (the iOS widget can't run Kotlin).
         val labels = Json.obj(
             "done" to tr("Done"),
@@ -85,7 +86,8 @@ object WidgetSnapshot {
     private fun track(state: AppState, pet: Pet, from: Long, end: Long, clock: LocalClock, withIfDone: Boolean): Json.Obj {
         // Hundreds of samples: each task's records and learned times (which only change by the day,
         // as every record here is at or before [from]) are worked out once.
-        val tasks = state.tasksFor(pet.id)
+        // A remembered pet has nothing due: the widget shows it resting, with no Done to tap.
+        val tasks = if (pet.remembered) emptyList() else state.tasksFor(pet.id)
         val records = state.completions.groupBy { it.taskId }
         val learned = HashMap<Pair<String, Long>, List<Int>>()
         val samples = MoodEngine.samples(from, end - from, STEP_MS).map { t ->

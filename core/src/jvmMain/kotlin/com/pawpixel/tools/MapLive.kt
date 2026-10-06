@@ -20,6 +20,7 @@ import com.pawpixel.map.MapException
 import com.pawpixel.map.MapSettings
 import com.pawpixel.map.SessionStore
 import com.pawpixel.map.SharedPet
+import com.pawpixel.map.WalkDraft
 import com.pawpixel.sprite.PetArt
 import com.pawpixel.sprite.PetLook
 import java.net.URI
@@ -89,6 +90,23 @@ fun main() {
     run { viewer.join(emptyList(), LocationGrid.snap(10.0, 120.0)) }
     val gatherings = run { viewer.gatherings() }
     check("gatherings list reads", gatherings.isEmpty() || gatherings.all { it.title.isNotBlank() }, gatherings)
+
+    // Hosting a walk: proposed by one owner, hidden until approved, shown to the rest after.
+    val walkId = run { owners[0].hostWalk(WalkDraft("Sunrise walk", System.currentTimeMillis() + 3 * 86_400_000L, "Plaza Rizal area", "Plaza Rizal fountain", 13.6238, 123.1851, 15, "Bring water")) }
+    val mine = run { owners[0].myWalks() }
+    check("the host sees the proposal waiting", mine.singleOrNull { it.id == walkId }?.let { !it.approved && it.going == 1 && it.venueName == "Plaza Rizal fountain" } == true, mine)
+    check("others don't see it yet", run { viewer.gatherings() }.none { it.id == walkId })
+    val approve = HttpRequest.newBuilder(URI("$url/rest/v1/gatherings?id=eq.$walkId")).header("apikey", service)
+        .header("Authorization", "Bearer $service").header("Content-Type", "application/json")
+        .method("PATCH", HttpRequest.BodyPublishers.ofString("""{"approved":true}""")).build()
+    check("moderator approves", java.send(approve, BodyHandlers.ofString()).statusCode() in 200..204)
+    val shown = run { viewer.gatherings() }.firstOrNull { it.id == walkId }
+    check("once approved everyone sees it, with its area pin and note", shown != null && shown.cellLat != null && shown.details == "Bring water" && !shown.iAmHost, shown)
+    check("the host is marked as host", run { owners[0].gatherings() }.firstOrNull { it.id == walkId }?.iAmHost == true)
+    val stats = run { viewer.communityStats() }
+    check("community totals read", stats.owners >= 3 && stats.walks >= 1, stats)
+    run { owners[0].cancelWalk(walkId) }
+    check("the host can cancel it", run { owners[0].myWalks() }.none { it.id == walkId })
 
     run { owners[2].leaveMap() }
     check("leaving the map works", !run { owners[2].hasJoined() })

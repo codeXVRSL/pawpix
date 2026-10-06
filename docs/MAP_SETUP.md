@@ -61,6 +61,10 @@ store build.) For the release job, add the secrets to the "Build release bundle"
 - **Create a gathering** (you, as moderator): Supabase → Table editor → `gatherings` → Insert row.
   Fill title, starts_at, cell_id (copy from any `map_presence` row in that area), area_label
   (e.g. "Plaza Rizal area"), venue_name, venue_lat/lng, capacity, and set **approved = true**.
+- **Walks owners propose** ("Host a walk" in the app) also land in `gatherings`, with **approved = false**
+  and the host's `details`. Check that `venue_name` / `venue_lat`,`venue_lng` is a public place (open the
+  coordinates in a map), then set **approved = true**; it shows to everyone at once, with the host marked.
+  Delete the row to decline. A host has at most 3 proposals waiting, and the walk must be within 90 days.
 - **Reports** arrive in the `reports` table. To remove someone: set `map_profiles.banned = true` for
   the `target_user`. Their pets disappear from everyone's map at once.
 - Presence expires after 14 days without opening the map.

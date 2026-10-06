@@ -320,6 +320,56 @@ class EndToEndTest {
             closePanel()
         }
 
+        step("album: a photo with a caption, kept with the pet and in its backup") {
+            retrying { find(By.text("More")).click() }
+            retrying { scrollTo(By.text("Album")).click() }
+            find(By.text("No photos yet"), 15_000)
+            shot("album-empty")
+            retrying { find(By.text("Add photo")).click() } // the stubbed picker returns the test photo
+            find(By.text("Caption"), 20_000)
+            retrying { find(By.clazz("android.widget.EditText")).text = "First day home" }
+            retrying { find(By.text("Save")).click() }
+            waitFor("photo in the album") { repo.state.value.albumFor(petId).size == 1 }
+            val added = repo.state.value.albumFor(petId).single()
+            check(added.caption == "First day home") { "caption not saved: $added" }
+            val bytes = repo.albumPhoto(added)
+            check(bytes != null && bytes[0] == 0xFF.toByte() && bytes[1] == 0xD8.toByte()) { "album photo isn't a JPEG" }
+            check(Backup.albumPhotoPath(petId, added.id) in Backup.filesFor(repo.state.value, petId)) { "album photo not in the backup list" }
+            val thumb = By.desc("Photo of Chelsea: First day home")
+            find(thumb, 20_000)
+            Thread.sleep(800) // the thumbnail decodes in the background
+            shot("album")
+            retrying { find(thumb).click() }
+            find(By.text("Edit caption"))
+            Thread.sleep(800)
+            shot("album-photo")
+            retrying { find(By.text("Close")).click() }
+            closePanel() // the album
+            closePanel() // the More panel
+            find(By.text("Chelsea"))
+        }
+
+        step("in loving memory: the room goes quiet, the album stays, and it can be undone") {
+            retrying { find(By.text("More")).click() }
+            retrying { scrollTo(By.text("In loving memory")).click() }
+            find(By.text("Remember Chelsea?"))
+            retrying { find(By.text("Remember Chelsea")).click() }
+            waitFor("pet remembered") { repo.state.value.pets.single().remembered }
+            closePanel() // the More panel
+            find(By.text("Forever in your heart"), 15_000)
+            find(By.text("In loving memory"))
+            check(repo.state.value.albumFor(petId).size == 1) { "the album should stay" }
+            check(ReminderPlanner.plan(repo.state.value, repo.now(), repo.clock).isEmpty()) { "a remembered pet gets no reminders" }
+            Thread.sleep(1_000)
+            shot("memory")
+            retrying { find(By.text("More")).click() }
+            retrying { scrollTo(By.text("Remembered")).click() }
+            retrying { find(By.text("Bring back")).click() }
+            waitFor("pet cared for again") { !repo.state.value.pets.single().remembered }
+            closePanel()
+            find(By.text("Care"), 15_000) // the Care key is back in the dock
+        }
+
         step("home is the pet's room") {
             find(By.text("Chelsea")) // her name plate
             find(By.desc("Settings"))
@@ -412,6 +462,35 @@ class EndToEndTest {
             waitFor("RSVP saved on the server", 20_000) { runBlocking { repo.map.client.gatherings() }.any { it.iAmGoing } }
             find(By.textStartsWith("Meet at: Plaza Rizal"), 20_000)
             shot("pet-map-gathering")
+
+            // Host a walk: the form, the meeting spot tapped on the map, and the proposal waiting for approval.
+            find(By.textContains("walks coming up"), 15_000)
+            retrying { scrollTo(By.text("Host a walk")).click() }
+            find(By.text("Send for approval"), 15_000)
+            retrying { find(By.clazz("android.widget.EditText")).text = "Saturday walk" }
+            val tomorrow = com.pawpixel.app.ui.formatDay(repo.clock.dayIndex(repo.now()) + 1)
+            retrying { scrollTo(By.text(tomorrow)).click() }
+            retrying { scrollTo(By.text("Tap the spot on the map")).click() }
+            find(By.textStartsWith("Tap the meeting place"), 15_000)
+            shot("pet-map-place-spot")
+            Thread.sleep(800)
+            device.click(device.displayWidth / 2, (tabsBottom + mapBottom) / 2 + (40 * ctx.resources.displayMetrics.density).toInt())
+            find(By.text("Spot set"), 15_000)
+            val placeLabel = scrollTo(By.text("Meeting place"))
+            retrying {
+                val field = device.findObjects(By.clazz("android.widget.EditText")).filter { it.visibleBounds.top > placeLabel.visibleBounds.bottom }
+                    .minByOrNull { it.visibleBounds.top } ?: error("no venue field under 'Meeting place'")
+                field.text = "Plaza Rizal fountain"
+            }
+            shot("pet-map-host-walk")
+            retrying { find(By.text("Send for approval")).click() }
+            find(By.textStartsWith("Waiting for approval"), 20_000)
+            val mine = runBlocking { repo.map.client.myWalks() }
+            check(mine.any { it.title == "Saturday walk" && !it.approved && it.venueName == "Plaza Rizal fountain" }) { "walk not proposed: $mine" }
+            shot("pet-map-my-walk")
+            retrying { scrollTo(By.text("Cancel this walk")).click() }
+            retrying { find(By.text("Cancel the walk")).click() }
+            waitFor("walk cancelled", 20_000) { runBlocking { repo.map.client.myWalks() }.none { it.title == "Saturday walk" } }
 
             retrying { find(By.text("More")).click() }
             retrying { find(By.text("Leave the map")).click() }

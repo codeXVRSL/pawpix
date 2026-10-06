@@ -63,6 +63,8 @@ import com.pawpixel.core.HealthPlan
 import com.pawpixel.core.Milestones
 import com.pawpixel.core.MoodEngine
 import com.pawpixel.core.Pet
+import com.pawpixel.core.LocalClock
+import com.pawpixel.core.Sky
 import com.pawpixel.core.TaskStatus
 import com.pawpixel.i18n.tr
 import com.pawpixel.i18n.trName
@@ -97,9 +99,10 @@ fun PetScreen(app: AppScope, state: AppState, pet: Pet) {
         if (event is PetEvent.Cared) { burst = app.now + reaction!!.nonce; haptics.performHapticFeedback(HapticFeedbackType.LongPress) }
     }
     val clock = app.repo.clock
-    val phase = phaseFor(app, state)
+    // A remembered pet's room is a quiet night: the lamp on, stars in the window.
+    val phase = if (pet.remembered) Sky.Phase.NIGHT else phaseFor(app, state)
     val big = largeText()
-    val celebrating = Milestones.toCelebrate(pet) != null
+    val celebrating = !pet.remembered && Milestones.toCelebrate(pet) != null
     // The bottom HUD's real height (two rows of meters at big fonts): the pet's floor sits above it.
     var hudHeight by remember { mutableStateOf(HUD_DEPTH) }
     val density = LocalDensity.current
@@ -121,7 +124,7 @@ fun PetScreen(app: AppScope, state: AppState, pet: Pet) {
                 GlassButton(PixelIcons.GEAR, tr("Settings")) { app.navigate(Screen.Settings) }
             }
             // A milestone pops up here, over the room, with confetti; the bubble moves under it then.
-            Box(Modifier.padding(top = 10.dp)) { MilestoneBanner(app, pet) }
+            if (!pet.remembered) Box(Modifier.padding(top = 10.dp)) { MilestoneBanner(app, pet) }
             if (celebrating) SpeechBubble(reading.caption, Modifier.padding(top = 10.dp).align(Alignment.CenterHorizontally))
         }
         // What the pet is thinking: a bubble just over its head.
@@ -134,7 +137,9 @@ fun PetScreen(app: AppScope, state: AppState, pet: Pet) {
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             UndoStrip(app, pet, lastDone) { lastDone = null }
-            if (statuses.isEmpty()) {
+            if (pet.remembered) {
+                MemoryStrip(app, state, pet)
+            } else if (statuses.isEmpty()) {
                 EmptyNeeds(app, pet)
             } else {
                 FlowRow(
@@ -152,7 +157,8 @@ fun PetScreen(app: AppScope, state: AppState, pet: Pet) {
                 }
             }
             val keys = listOf(
-                DockItem(PixelIcons.PAW, tr("Care")) { app.navigate(Screen.PetSection(pet.id, "care")) },
+                if (pet.remembered) DockItem(PixelIcons.CAMERA, tr("Album")) { app.navigate(Screen.PetSection(pet.id, "album")) }
+                else DockItem(PixelIcons.PAW, tr("Care")) { app.navigate(Screen.PetSection(pet.id, "care")) },
                 DockItem(PixelIcons.HEART, tr("Health")) { app.navigate(Screen.PetSection(pet.id, "health")) },
                 DockItem(PixelIcons.SHIRT, tr("Wardrobe")) { app.navigate(Screen.PetSection(pet.id, "wardrobe")) },
                 DockItem(PixelIcons.SHARE, tr("Share")) { app.navigate(Screen.PetSection(pet.id, "share")) },
@@ -168,7 +174,10 @@ fun PetScreen(app: AppScope, state: AppState, pet: Pet) {
 private fun NamePlate(app: AppScope, state: AppState, pet: Pet, score: Int) {
     val many = state.pets.size > 1
     val label = if (many) tr("Switch pet") else null
-    val age = pet.birthDay?.let { HealthPlan.ageLabel(it, app.repo.clock.dayIndex(app.now)) }
+    val age = when {
+        pet.remembered -> tr("Forever in your heart")
+        else -> pet.birthDay?.let { HealthPlan.ageLabel(it, app.repo.clock.dayIndex(app.now)) }
+    }
     ToyPanel(
         Modifier.widthIn(max = 230.dp), face = Color.White, lip = Color(0xFFE6D5C3), shape = RoundedCornerShape(16.dp), padding = 0.dp,
         onClick = if (many) ({ app.navigate(Screen.PetSection(pet.id, "pets")) }) else null, onClickLabel = label,
@@ -264,6 +273,26 @@ private fun UndoStrip(app: AppScope, pet: Pet, last: TaskStatus?, onGone: () -> 
                 Text(tr("{0} done", name), style = MaterialTheme.typography.labelMedium, color = Color(0xFF2B2135))
                 LinkButton(tr("Undo"), modifier = Modifier.semantics { contentDescription = undoLabel }) { onGone(); app.launch { app.repo.undo(t.id) } }
             }
+        }
+    }
+}
+
+/** A remembered pet: in place of its needs, its dates and the door to its album. */
+@Composable
+private fun MemoryStrip(app: AppScope, state: AppState, pet: Pet) {
+    val photos = state.albumFor(pet.id).size
+    val since = LocalClock.shortDate(pet.rememberedDay ?: 0)
+    ToyPanel(Modifier.padding(horizontal = 16.dp, vertical = 6.dp), face = Color.White, lip = Color(0xFFE6D5C3), padding = 12.dp) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            CandyTile(PixelIcons.STAR, Candy.Lavender, size = 40.dp)
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text(tr("In loving memory"), style = MaterialTheme.typography.titleSmall, color = Color(0xFF2B2135))
+                Text(
+                    if (photos == 0) since else tr("{0} · {1} photos", since, photos),
+                    style = MaterialTheme.typography.labelSmall, color = Color(0xFF6E6287),
+                )
+            }
+            PrimaryPill(tr("Album"), icon = PixelIcons.CAMERA) { app.navigate(Screen.PetSection(pet.id, "album")) }
         }
     }
 }

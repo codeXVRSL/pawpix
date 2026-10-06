@@ -5,6 +5,7 @@ _Last updated: [date]. Replace the bracketed parts and publish this page before 
 **Short version:** PawPixel works on your phone. Your photos are never uploaded. Only if you choose to join the **pet map** or **share pets with your household** do a few things go to PawPixel's server: for the map, your pixel pets, their names and your rough area (about 1 km); for a household, the pets you share, their care and who did it; and in both cases the Google or Apple account you sign in with.
 
 ## What PawPixel stores, and where
+- **Your pet's album:** photos you add to a pet's album are re-encoded on your phone (which drops their location and other metadata) and kept only on your phone and in backup files you save yourself. They are never uploaded.
 - **Your pet's photo:** used on your phone to make the pixel sprite. PawPixel keeps only a small (256×256) crop so it can make your before/after card and remake the sprite. The original stays in your photo library.
 - **Your pets, care tasks and when you did them:** stored in the app's private storage on your phone, and used to set your pet's mood and your reminder times.
 - **Widget data:** a copy of your pet's mood and sprite, in storage shared only with PawPixel's own home-screen widget.
@@ -26,7 +27,8 @@ If you join the pet map, and only then:
 If you start or join a household (for example you and your partner both caring for your dog), and only then:
 - **Sign-in:** the same Google or Apple sign-in as the pet map.
 - **What the server stores and your household sees:** the name you choose to show them (e.g. "Jamaica"); the pets you choose to share: name, dog or cat, ear shape, outfit, birthday if you gave one, where you tapped its eyes, and a short pixel "look code" (up to three fur colours and where they sit on the face), which is all another phone needs to draw the same pixel pet; their care tasks and health schedules; and a care log: each Done (when, and who), and each Undo (when, and who). The names of the people in the household.
-- **Never shared:** photos (not the pet's photo, not its face crop, not vaccination-card photos), your location, your reminder settings, your weigh-ins.
+- **Never shared:** photos (not the pet's photo, not its face crop, not vaccination-card photos, not the album), your location, your reminder settings, your weigh-ins.
+- **Walks you host:** if you propose a walk on the map, its title, time, your note, the meeting place you tapped (a public spot, never your home) and the account you signed in with go to the server, and the title, time, area and note are shown to other owners once a moderator approves it. The exact meeting place is shown only to people who say they're going.
 - **Who can see it:** only the people in your household, who joined with an invite code (8 characters, valid for 7 days). Our server enforces this; a household has at most 8 people.
 - **How long:** until you leave, the household ends, or you delete your account. Undone records are kept in the log (marked undone) so every phone learns about the undo; each task keeps its latest 400 records.
 - **Leaving and deleting:** "Leave" removes you from the household; shared pets stay on your phone. Care records you logged stay with the household. The person who started it can remove people, and "Stop sharing for everyone" deletes the household and everything the server kept for it (each phone keeps its own copy). Deleting your account removes you and marks your records as by an unknown person; a household with nobody left is deleted.

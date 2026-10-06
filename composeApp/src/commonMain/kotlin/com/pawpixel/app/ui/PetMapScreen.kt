@@ -59,6 +59,9 @@ import com.pawpixel.core.Pet
 import com.pawpixel.core.Species
 import com.pawpixel.i18n.tr
 import com.pawpixel.map.Gathering
+import com.pawpixel.sprite.PixelIcons
+import com.pawpixel.map.MyWalk
+import com.pawpixel.map.CommunityStats
 import com.pawpixel.map.IsoTime
 import com.pawpixel.map.MapArea
 import com.pawpixel.map.MapException
@@ -145,7 +148,7 @@ fun PetMapScreen(app: AppScope, state: AppState) {
                     phase = MapPhase.Ready(map.client.nearbyAreas(area))
                 }
             }
-            is MapPhase.Ready -> ReadyMap(app, map, p.areas, act = ::act)
+            is MapPhase.Ready -> ReadyMap(app, map, state, p.areas, act = ::act)
         }
     }
 }
@@ -219,6 +222,10 @@ private fun MapMenu(
     Box {
         GhostPill(tr("More")) { open = true }
         DropdownMenu(open, { open = false }) {
+            DropdownMenuItem({ Text(tr("Invite pet friends")) }, onClick = {
+                open = false
+                app.repo.platform.shareText(mapInviteText(state.pets.filter { map.sharedPetIds?.contains(it.id) ?: true }.map { it.name }))
+            })
             DropdownMenuItem({ Text(tr("Update my area")) }, onClick = {
                 open = false
                 act { map.locate() ?: throw IllegalStateException(tr("Couldn't get your approximate location.")); onChanged() }
@@ -250,34 +257,96 @@ private fun MapMenu(
 }
 
 @Composable
-private fun ReadyMap(app: AppScope, map: PetMapModel, areas: List<MapArea>, act: (suspend () -> Unit) -> Unit) {
+private fun ReadyMap(app: AppScope, map: PetMapModel, state: AppState, areas: List<MapArea>, act: (suspend () -> Unit) -> Unit) {
     var tab by remember { mutableStateOf(0) }
     var selected by remember { mutableStateOf<MapArea?>(null) }
+    var stats by remember { mutableStateOf<CommunityStats?>(null) }
+    // Walks on the map (pins) and the host's form; "placing" is the map waiting for a tap on the meeting spot.
+    var walks by remember { mutableStateOf<List<Gathering>>(emptyList()) }
+    var form by remember { mutableStateOf<WalkForm?>(null) }
+    var placing by remember { mutableStateOf(false) }
+    var refresh by remember { mutableStateOf(0) }
+    LaunchedEffect(refresh) {
+        act {
+            walks = map.client.gatherings()
+            stats = map.client.communityStats()
+        }
+    }
     Column(Modifier.fillMaxSize()) {
+        stats?.let { CommunityStrip(it) }
         Row(Modifier.padding(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             ChoiceChip(tab == 0, { tab = 0 }, tr("Nearby"))
             ChoiceChip(tab == 1, { tab = 1 }, tr("Gatherings"))
         }
-        if (tab == 0) {
+        if (tab == 0 || placing) {
             Box(Modifier.weight(1f).fillMaxWidth().padding(top = 8.dp)) {
                 val area = map.myArea
                 TileMap(
                     map.settings, app.repo.platform,
                     area?.centerLat ?: NAGA_LAT, area?.centerLng ?: NAGA_LNG,
                     areas, area, onAreaTap = { selected = it },
+                    walks = walks.filter { it.cellLat != null && it.cellLng != null }.map { MapFlag(it.cellLat!!, it.cellLng!!, it.title) },
+                    onWalkTap = { tab = 1 },
+                    marker = form?.spot,
+                    onMapTap = if (placing) ({ lat, lng -> form = (form ?: WalkForm()).copy(spot = lat to lng); placing = false }) else null,
                     modifier = Modifier.fillMaxSize(),
                 )
-                if (areas.isEmpty()) {
+                if (placing) {
+                    SoftCard(Modifier.align(Alignment.TopCenter).padding(12.dp), tone = Tone.Accent) {
+                        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                            Text(tr("Tap the meeting place: a public spot like a plaza or a park gate."), style = MaterialTheme.typography.bodyMedium)
+                            LinkButton(tr("Cancel"), color = MaterialTheme.colorScheme.onPrimaryContainer) { placing = false }
+                        }
+                    }
+                } else if (areas.isEmpty()) {
                     SoftCard(Modifier.align(Alignment.TopCenter).padding(12.dp), tone = Tone.Surface) {
-                        Text(tr("No areas with 3+ owners near you yet. Invite pet friends in your area to PawPixel!"), style = MaterialTheme.typography.bodyMedium)
+                        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                            Text(tr("No areas with 3+ owners near you yet. Invite pet friends in your area to PawPixel!"), style = MaterialTheme.typography.bodyMedium)
+                            GhostPill(tr("Invite pet friends"), icon = PixelIcons.SHARE) {
+                                app.repo.platform.shareText(mapInviteText(state.pets.filter { map.sharedPetIds?.contains(it.id) ?: true }.map { it.name }))
+                            }
+                        }
                     }
                 }
-                selected?.let { a -> AreaPets(app, map, a, act, onClose = { selected = null }, modifier = Modifier.align(Alignment.BottomCenter)) }
+                if (!placing) selected?.let { a -> AreaPets(app, map, a, act, onClose = { selected = null }, modifier = Modifier.align(Alignment.BottomCenter)) }
             }
         } else {
-            Gatherings(app, map, act)
+            Gatherings(app, map, walks, act, onHost = { form = form ?: WalkForm() }, onChanged = { refresh++ })
         }
     }
+    form?.let { f ->
+        var busy by remember { mutableStateOf(false) }
+        var error by remember { mutableStateOf<String?>(null) }
+        if (!placing) HostWalkDialog(
+            app, f, busy, error,
+            onChange = { form = it },
+            onPickSpot = { placing = true; tab = 0 },
+            onSubmit = {
+                val draft = f.draft(app.repo.clock) ?: return@HostWalkDialog
+                busy = true; error = null
+                app.launch {
+                    try {
+                        map.client.hostWalk(draft)
+                        form = null
+                        refresh++
+                    } catch (e: MapException) {
+                        error = e.message
+                    } finally { busy = false }
+                }
+            },
+            onClose = { form = null },
+        )
+    }
+}
+
+/** "128 owners · 190 pets · 6 areas · 2 walks coming up": the community, in one line. */
+@Composable
+private fun CommunityStrip(stats: CommunityStats) {
+    Text(
+        tr("{0} owners · {1} pets · {2} areas · {3} walks coming up", stats.owners, stats.pets, stats.areas, stats.walks),
+        style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+    )
 }
 
 @Composable
@@ -373,42 +442,63 @@ private fun ReportDialog(pet: MapPet, onDone: () -> Unit, send: (String, String?
     )
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun Gatherings(app: AppScope, map: PetMapModel, act: (suspend () -> Unit) -> Unit) {
+private fun Gatherings(
+    app: AppScope, map: PetMapModel, walks: List<Gathering>, act: (suspend () -> Unit) -> Unit,
+    onHost: () -> Unit, onChanged: () -> Unit,
+) {
     var list by remember { mutableStateOf<List<Gathering>?>(null) }
+    var mine by remember { mutableStateOf<List<MyWalk>>(emptyList()) }
     val venues = remember { mutableStateOf(mapOf<String, Venue>()) }
-    LaunchedEffect(Unit) {
+    LaunchedEffect(walks) {
         act {
             val g = map.client.gatherings()
             list = g
-            venues.value = g.filter { it.iAmGoing }.mapNotNull { x -> map.client.venue(x.id)?.let { x.id to it } }.toMap()
+            mine = map.client.myWalks()
+            venues.value = g.filter { it.iAmGoing || it.iAmHost }.mapNotNull { x -> map.client.venue(x.id)?.let { x.id to it } }.toMap()
         }
     }
     val items = list
-    when {
-        items == null -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
-        items.isEmpty() -> SoftCard(Modifier.fillMaxWidth().padding(16.dp), tone = Tone.Tonal) {
-            Text(tr("No gatherings yet. The first Naga pet walk will be announced here."), style = MaterialTheme.typography.bodyMedium)
+    if (items == null) { Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }; return }
+    LazyColumn(Modifier.fillMaxSize().padding(horizontal = 16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        item { Spacer(Modifier.height(4.dp)) }
+        item {
+            SoftCard(Modifier.fillMaxWidth(), tone = Tone.Calm) {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(tr("Walks are hosted by owners like you, at public places."), style = MaterialTheme.typography.bodyMedium)
+                    PrimaryPill(tr("Host a walk"), icon = PixelIcons.PLUS, onClick = onHost)
+                }
+            }
         }
-        else -> LazyColumn(Modifier.fillMaxSize().padding(horizontal = 16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            item { Spacer(Modifier.height(4.dp)) }
-            // The key includes the RSVP, so the card is rebuilt (and re-announced to screen readers) when it changes.
-            items(items, key = { "${it.id}:${it.iAmGoing}:${it.id in venues.value}" }) { g ->
-                SoftCard(Modifier.fillMaxWidth(), tone = Tone.Surface) {
-                    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                        Text(g.title, style = MaterialTheme.typography.titleLarge)
-                        Text(IsoTime.parseMs(g.startsAt)?.let { formatDateTime(it, app.repo.clock) } ?: g.startsAt)
-                        Text(g.areaLabel, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        val left = (g.capacity - g.going).coerceAtLeast(0)
-                        Text(tr("{0} going · {1}", g.going, if (left == 0) tr("full") else tr("{0} spots left", left)), style = MaterialTheme.typography.bodySmall)
-                        val venue = venues.value[g.id]
-                        if (g.iAmGoing && venue != null) {
-                            Text(tr("Meet at: {0}", venue.name), fontWeight = FontWeight.Bold)
-                            GhostPill(tr("Open in maps")) {
-                                app.repo.platform.openUrl("https://www.google.com/maps/search/?api=1&query=${venue.lat},${venue.lng}")
-                            }
+        if (items.isEmpty()) item {
+            SoftCard(Modifier.fillMaxWidth(), tone = Tone.Tonal) {
+                Text(tr("No gatherings yet. The first Naga pet walk will be announced here."), style = MaterialTheme.typography.bodyMedium)
+            }
+        }
+        // The key includes the RSVP, so the card is rebuilt (and re-announced to screen readers) when it changes.
+        items(items, key = { "${it.id}:${it.iAmGoing}:${it.id in venues.value}" }) { g ->
+            SoftCard(Modifier.fillMaxWidth(), tone = Tone.Surface) {
+                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Text(g.title, style = MaterialTheme.typography.titleLarge)
+                    Text(IsoTime.parseMs(g.startsAt)?.let { formatDateTime(it, app.repo.clock) } ?: g.startsAt)
+                    Text(g.areaLabel, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    g.details?.let { Text(it, style = MaterialTheme.typography.bodyMedium) }
+                    val left = (g.capacity - g.going).coerceAtLeast(0)
+                    Text(
+                        (if (g.iAmHost) tr("You're hosting") + " · " else "") +
+                            tr("{0} going · {1}", g.going, if (left == 0) tr("full") else tr("{0} spots left", left)),
+                        style = MaterialTheme.typography.bodySmall,
+                    )
+                    val venue = venues.value[g.id]
+                    if ((g.iAmGoing || g.iAmHost) && venue != null) {
+                        Text(tr("Meet at: {0}", venue.name), fontWeight = FontWeight.Bold)
+                        GhostPill(tr("Open in maps")) {
+                            app.repo.platform.openUrl("https://www.google.com/maps/search/?api=1&query=${venue.lat},${venue.lng}")
                         }
-                        PrimaryPill(
+                    }
+                    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        if (!g.iAmHost) PrimaryPill(
                             if (g.iAmGoing) tr("Can't make it") else tr("I'm going"),
                             enabled = g.iAmGoing || left > 0,
                             onClick = {
@@ -421,11 +511,17 @@ private fun Gatherings(app: AppScope, map: PetMapModel, act: (suspend () -> Unit
                                 }
                             },
                         )
+                        GhostPill(tr("Invite a friend"), icon = PixelIcons.SHARE) { app.repo.platform.shareText(walkInviteText(g, app.repo.clock)) }
                     }
                 }
             }
-            item { Spacer(Modifier.height(16.dp)) }
         }
+        item {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                MyWalksSection(app, mine) { w -> act { map.client.cancelWalk(w.id); onChanged() } }
+            }
+        }
+        item { Spacer(Modifier.height(16.dp)) }
     }
 }
 
@@ -433,8 +529,10 @@ private val MONTHS = listOf("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Au
 private val WEEKDAYS = listOf("Thu", "Fri", "Sat", "Sun", "Mon", "Tue", "Wed") // 1970-01-01 was a Thursday
 
 /** "Sat, Oct 4 · 8:00 AM" in the phone's time zone. */
-fun formatDateTime(ms: Long, clock: LocalClock): String {
-    val day = clock.dayIndex(ms)
+fun formatDateTime(ms: Long, clock: LocalClock): String = formatDay(clock.dayIndex(ms)) + " · " + formatTime(ms, clock)
+
+/** "Sat, Oct 4" for a local day index. */
+fun formatDay(day: Long): String {
     val z = day + 719468
     val era = z.floorDiv(146097L)
     val doe = z - era * 146097
@@ -443,5 +541,5 @@ fun formatDateTime(ms: Long, clock: LocalClock): String {
     val mp = (5 * doy + 2) / 153
     val d = doy - (153 * mp + 2) / 5 + 1
     val m = if (mp < 10) mp + 3 else mp - 9
-    return "${tr(WEEKDAYS[day.mod(7L).toInt()])}, ${tr(MONTHS[(m - 1).toInt()])} $d · ${formatTime(ms, clock)}"
+    return "${tr(WEEKDAYS[day.mod(7L).toInt()])}, ${tr(MONTHS[(m - 1).toInt()])} $d"
 }

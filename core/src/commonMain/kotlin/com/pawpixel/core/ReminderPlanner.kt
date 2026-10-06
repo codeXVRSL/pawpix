@@ -70,6 +70,7 @@ object ReminderPlanner {
         for (task in state.tasks) {
             if (!task.remindersOn) continue
             val pet = state.pet(task.petId) ?: continue
+            if (pet.remembered) continue
             val slots = AdaptiveTiming.effectiveSlots(task, state.completions, nowMs, clock)
             if (slots.isEmpty()) continue
             val status = CareEngine.status(task, state.completions, nowMs, clock, slots, pet)
@@ -138,7 +139,7 @@ object ReminderPlanner {
      * the other reminders it's planned again whenever PawPixel runs, so only within [RABIES_MONTH_LEAD_MS].
      */
     fun rabiesMonth(state: AppState, nowMs: Long, clock: LocalClock): Reminder? {
-        val pet = state.pets.firstOrNull { it.species != Species.OTHER } ?: return null
+        val pet = state.pets.firstOrNull { it.species != Species.OTHER && !it.remembered } ?: return null
         val (year, _, _) = LocalClock.civil(clock.dayIndex(nowMs))
         val at = listOf(year, year + 1).map { clock.at(LocalClock.dayOf(it, 3, 1), RABIES_MONTH_MINUTE) }.first { it > nowMs }
         if (at - nowMs > RABIES_MONTH_LEAD_MS) return null

@@ -7,6 +7,7 @@ Plays several owners through the real Auth + PostgREST APIs and checks every pri
 docs/MAP_SAFETY.md. Standard library only.
 """
 import json, os, sys, urllib.request, urllib.error, uuid
+from datetime import datetime, timedelta, timezone
 
 URL = os.environ["SUPABASE_URL"].rstrip("/")
 ANON = os.environ["ANON_KEY"]
@@ -119,6 +120,51 @@ s, n = rpc(d, "rsvp", {"p_id": gid, "p_going": True})
 check("you must join the map to RSVP", s >= 400, (s, n))
 s, n = rpc(b, "rsvp", {"p_id": gid, "p_going": False})
 check("you can cancel", s == 200 and n == 1, (s, n))
+
+# The community hosts its own walks (0008). b is on the map; d never joined.
+SOON = (datetime.now(timezone.utc) + timedelta(days=7)).strftime("%Y-%m-%dT%H:%M:%SZ")
+walk = {"p_title": "  Sunset walk at the Plaza  ", "p_starts_at": SOON, "p_cell_id": NAGA[0],
+        "p_cell_lat": NAGA[1], "p_cell_lng": NAGA[2], "p_area_label": "Plaza Rizal area", "p_venue_name": "Plaza Rizal fountain",
+        "p_venue_lat": 13.6238, "p_venue_lng": 123.1851, "p_capacity": 10, "p_details": "Bring water"}
+s, wid = rpc(b, "host_walk", walk)
+check("an owner on the map can propose a walk", s == 200 and isinstance(wid, str), (s, wid))
+s, r = rpc(d, "host_walk", walk)
+check("you must join the map to host", s >= 400, (s, r))
+s, rows = call("GET", "/rest/v1/gatherings_public?select=id", token=c["token"])
+check("a proposed walk stays hidden until approved", s == 200 and wid not in [x["id"] for x in rows], (s, rows))
+s, mine = call("GET", "/rest/v1/my_walks?select=*", token=b["token"])
+check("the host sees it waiting, with the venue, trimmed title, and themselves going",
+      s == 200 and len(mine) == 1 and mine[0]["approved"] is False and mine[0]["venue_name"] == "Plaza Rizal fountain"
+      and mine[0]["title"] == "Sunset walk at the Plaza" and mine[0]["going"] == 1, (s, mine))
+s, other = call("GET", "/rest/v1/my_walks?select=*", token=c["token"])
+check("nobody else sees it in their walks", s == 200 and other == [], (s, other))
+s, r = rpc(b, "host_walk", dict(walk, p_starts_at="2000-01-01T09:00:00Z"))
+s2, r2 = rpc(b, "host_walk", dict(walk, p_starts_at="2099-01-01T09:00:00Z"))
+check("a walk in the past, or more than 90 days out, is refused", s >= 400 and s2 >= 400, (s, r, s2, r2))
+for i in range(2): rpc(b, "host_walk", dict(walk, p_title=f"Walk {i}"))
+s, r = rpc(b, "host_walk", dict(walk, p_title="Walk 3"))
+check("at most 3 walks waiting per host", s >= 400 and "3 walks" in json.dumps(r), (s, r))
+call("PATCH", f"/rest/v1/gatherings?id=eq.{wid}", {"approved": True}, key=SERVICE)
+s, rows = call("GET", "/rest/v1/gatherings_public?select=*", token=c["token"])
+pub = next((x for x in rows if x["id"] == wid), None)
+check("once approved, everyone sees it with the note and area pin, but no venue",
+      s == 200 and pub is not None and pub["details"] == "Bring water" and pub["cell_lat"] == NAGA[1] and "venue_name" not in pub
+      and pub["i_am_host"] is False, (s, pub))
+s, rows = call("GET", "/rest/v1/gatherings_public?select=id,i_am_host", token=b["token"])
+check("the host is marked as host", s == 200 and next(x for x in rows if x["id"] == wid)["i_am_host"] is True, (s, rows))
+s, v = rpc(b, "gathering_details", {"p_id": wid})
+check("the host sees the venue without an RSVP", s == 200 and v and v[0]["venue_name"] == "Plaza Rizal fountain", (s, v))
+s, stats = rpc(c, "community_stats")
+check("community totals count owners, pets, areas and walks, nothing else",
+      s == 200 and stats and set(stats[0]) == {"owners", "pets", "areas", "walks"} and stats[0]["owners"] >= 3 and stats[0]["walks"] >= 2, (s, stats))
+s, _ = rpc(c, "cancel_walk", {"p_id": wid})
+s2, rows = call("GET", f"/rest/v1/gatherings?id=eq.{wid}&select=id", key=SERVICE)
+check("only the host can cancel a walk", len(rows) == 1, (s, rows))
+s, _ = rpc(b, "cancel_walk", {"p_id": wid})
+s2, rows = call("GET", f"/rest/v1/gatherings?id=eq.{wid}&select=id", key=SERVICE)
+check("the host can cancel it", s in (200, 204) and rows == [], (s, rows))
+for row in call("GET", f"/rest/v1/gatherings?host_id=eq.{b['id']}&select=id", key=SERVICE)[1]:
+    call("DELETE", f"/rest/v1/gatherings?id=eq.{row['id']}", key=SERVICE)
 
 # Moderation and self-service
 call("PATCH", f"/rest/v1/map_profiles?user_id=eq.{b['id']}", {"banned": True}, key=SERVICE)

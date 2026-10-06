@@ -14,7 +14,7 @@ object Backup {
     const val FORMAT = "pawpixel-backup"
     const val VERSION = 1
     /** The only files a backup may carry, so a crafted file can't write anywhere else. */
-    private val FILE_PATH = Regex("sprites/([a-z0-9]{1,40})/(head\\.bin|photo\\.bin|(card|rec)-[a-z0-9]{1,40}\\.jpg)")
+    private val FILE_PATH = Regex("sprites/([a-z0-9]{1,40})/(head\\.bin|photo\\.bin|(card|rec|album)-[a-z0-9]{1,40}\\.jpg)")
     /**
      * Much larger than any real backup (a pet is ~100 KB, a record photo ~250 KB), to refuse junk early.
      * The iOS document picker uses the same limit (SwiftHost.swift).
@@ -30,8 +30,12 @@ object Backup {
         val health = state.tasksFor(petId).filter { it.kind.health }
         val ids = health.map { it.id }.toSet()
         return listOf("sprites/$petId/head.bin", "sprites/$petId/photo.bin") + health.map { cardPath(petId, it.id) } +
-            state.completions.filter { it.taskId in ids }.map { recordPhotoPath(petId, it.id) }
+            state.completions.filter { it.taskId in ids }.map { recordPhotoPath(petId, it.id) } +
+            state.album.filter { it.petId == petId }.map { albumPhotoPath(petId, it.id) }
     }
+
+    /** A photo in the pet's album (JPEG, long side at most 1600 px, metadata dropped). */
+    fun albumPhotoPath(petId: String, photoId: String) = "sprites/$petId/album-$photoId.jpg"
 
     /** Older versions: one photo of the vaccination card per health item. */
     fun cardPath(petId: String, taskId: String) = "sprites/$petId/card-$taskId.jpg"

@@ -29,6 +29,7 @@ object StateCodec {
                 "accessory" to p.accessory,
                 "style" to p.style,
                 "edited" to p.editedAtMs,
+                "remembered" to p.rememberedDay,
                 "sprite" to Json.obj(
                     "size" to p.sprite.size, "colors" to p.sprite.colors,
                     "outline" to p.sprite.outline, "vibrance" to p.sprite.vibrance,
@@ -46,6 +47,7 @@ object StateCodec {
             )
         },
         "weights" to state.weights.map { w -> Json.obj("petId" to w.petId, "day" to w.day, "g" to w.grams) },
+        "album" to state.album.map { a -> Json.obj("id" to a.id, "petId" to a.petId, "at" to a.atMs, "caption" to a.caption) },
         "completions" to state.completions.map { c ->
             Json.obj("taskId" to c.taskId, "at" to c.atMs, "minute" to c.localMinute, "day" to c.localDay, "id" to c.id, "by" to c.by)
         },
@@ -120,6 +122,7 @@ object StateCodec {
                 accessory = p["accessory"].str?.takeIf { com.pawpixel.sprite.Accessory.of(it) != null },
                 style = p["style"].str?.takeIf { com.pawpixel.sprite.PetStyle.decode(it) != null },
                 editedAtMs = p["edited"].long ?: 0L,
+                rememberedDay = p["remembered"].long,
                 sprite = SpriteSettings(
                     size = sp["size"].int ?: spriteDefaults.size,
                     colors = sp["colors"].int ?: spriteDefaults.colors,
@@ -168,6 +171,11 @@ object StateCodec {
             val g = w["g"].int?.takeIf { it in 1..200_000 } ?: return@mapNotNull null
             Weight(petId, w["day"].long ?: return@mapNotNull null, g)
         }
+        val album = root["album"].list.mapNotNull { a ->
+            val id = a["id"].str?.takeIf { ID.matches(it) } ?: return@mapNotNull null
+            val petId = a["petId"].str?.takeIf { it in petIds } ?: return@mapNotNull null
+            AlbumPhoto(id, petId, a["at"].long ?: 0L, (a["caption"].str ?: "").take(AppState.MAX_CAPTION))
+        }.distinctBy { it.id }
         // Older saves have no care calendar: start it from the records they do have.
         val withDays = pets.map { p ->
             if (p.careDays.isNotEmpty()) p else {
@@ -175,7 +183,7 @@ object StateCodec {
                 p.copy(careDays = completions.filter { it.taskId in ids }.map { it.localDay }.distinct().sorted())
             }
         }
-        return AppState(withDays, tasks, completions, settings, weights)
+        return AppState(withDays, tasks, completions, settings, weights, album)
     }
 
     private val ID = Regex("[a-z0-9]{1,40}")
