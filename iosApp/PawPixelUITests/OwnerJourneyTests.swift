@@ -25,7 +25,7 @@ final class OwnerJourneyTests: XCTestCase {
         app.launchEnvironment["PAWPIXEL_TEST_RESET"] = "1"
         // The notification permission alert appears when the pet is saved.
         addUIInterruptionMonitor(withDescription: "Notifications") { alert in
-            for label in ["Allow", "Allow Notifications"] where alert.buttons[label].exists {
+            for label in ["Allow", "Allow Notifications", "Allow While Using App", "Allow Once"] where alert.buttons[label].exists {
                 alert.buttons[label].tap(); return true
             }
             return false
@@ -251,6 +251,33 @@ final class OwnerJourneyTests: XCTestCase {
             try scrollTo("Back").tap() // the More panel drops
         }
 
+        step("demo map (no server): join, the pets nearby, a walk, RSVP, host a walk") {
+            try find("More").tap()
+            try scrollTo(query: element(containing: "Pet map"), "Pet map").tap()
+            guard element("Try the demo map").waitForExistence(timeout: 10) else {
+                log.append("      note: this build has a map server; the demo isn't offered"); try find("Back").tap(); try scrollTo("Back").tap(); return
+            }
+            try find("Try the demo map").tap()
+            try find("I'm 18 or older").tap()
+            try find(containing: "Show my pixel pets").tap()
+            try scrollTo(query: element(containing: "and join"), "join").tap()
+            try find("Nearby", timeout: 30)
+            try find(containing: "walks coming up")
+            sleep(2)
+            shot("demo-map")
+            try find("Gatherings").tap()
+            try find(containing: "Sunday pet walk", timeout: 15)
+            try scrollTo("I'm going").tap()
+            try find(containing: "Meet at: Plaza Rizal", timeout: 15)
+            shot("demo-map-walk")
+            try scrollTo("Host a walk").tap()
+            try find("Send for approval")
+            shot("demo-map-host")
+            try find("Cancel").tap()
+            try find("Back").tap() // the map
+            try scrollTo("Back").tap() // the More panel drops
+        }
+
         step("share with your household (no server in this CI build: says it's not available yet)") {
             try find("Share").tap()
             try scrollTo(query: element(containing: "Share with your household"), "Share with your household").tap()
@@ -314,6 +341,13 @@ final class OwnerJourneyTests: XCTestCase {
     private func find(_ label: String, timeout: TimeInterval = 15) throws -> XCUIElement {
         let e = element(label)
         guard e.waitForExistence(timeout: timeout) else { throw Failure("not on screen: \(label)") }
+        return e
+    }
+
+    @discardableResult
+    private func find(containing text: String, timeout: TimeInterval = 15) throws -> XCUIElement {
+        let e = element(containing: text)
+        guard e.waitForExistence(timeout: timeout) else { throw Failure("not on screen: …\(text)…") }
         return e
     }
 

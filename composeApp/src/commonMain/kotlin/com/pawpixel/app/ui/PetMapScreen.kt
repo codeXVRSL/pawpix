@@ -87,7 +87,14 @@ private const val NAGA_LNG = 123.1948
  */
 @Composable
 fun PetMapScreen(app: AppScope, state: AppState, map: PetMapModel = app.repo.map) {
-    var phase by remember { mutableStateOf<MapPhase>(MapPhase.Checking) }
+    // Debug builds can switch to the in-app demo map when the real one isn't set up.
+    var active by remember { mutableStateOf(map) }
+    PetMapBody(app, state, active, onDemo = { active = PetMapModel.demo(app.repo.platform, app.repo.platform.files) })
+}
+
+@Composable
+private fun PetMapBody(app: AppScope, state: AppState, map: PetMapModel, onDemo: () -> Unit) {
+    var phase by remember(map) { mutableStateOf<MapPhase>(MapPhase.Checking) }
     var busy by remember { mutableStateOf(false) }
     var message by remember { mutableStateOf<String?>(null) }
 
@@ -119,7 +126,7 @@ fun PetMapScreen(app: AppScope, state: AppState, map: PetMapModel = app.repo.map
         }
     }
 
-    LaunchedEffect(Unit) {
+    LaunchedEffect(map) {
         phase = when {
             !map.settings.isConfigured -> MapPhase.NotSetUp
             !map.client.isSignedIn || map.myArea == null -> MapPhase.Join
@@ -128,15 +135,20 @@ fun PetMapScreen(app: AppScope, state: AppState, map: PetMapModel = app.repo.map
     }
 
     Column(Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding()) {
-        TopBar(app, tr("Pet map"), Modifier.padding(horizontal = 16.dp)) {
+        TopBar(app, if (map.isDemo) tr("Pet map (demo)") else tr("Pet map"), Modifier.padding(horizontal = 16.dp)) {
             if (phase is MapPhase.Ready) MapMenu(app, map, state, onChanged = { act { load() } }, onLeft = { phase = MapPhase.Join }, act = ::act)
         }
+        if (map.isDemo) Text(
+            tr("Demo: pretend owners and walks, on this phone only. Nothing is sent anywhere."),
+            style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(horizontal = 16.dp),
+        )
         message?.let {
             Text(it, color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp))
         }
         when (val p = phase) {
             MapPhase.Checking -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
-            MapPhase.NotSetUp -> NotSetUp()
+            MapPhase.NotSetUp -> NotSetUp(if (app.repo.platform.isDebugBuild) onDemo else null)
             MapPhase.Join -> JoinMap(app, map, state, busy) { chosen ->
                 act {
                     if (!map.signIn()) return@act
@@ -153,11 +165,20 @@ fun PetMapScreen(app: AppScope, state: AppState, map: PetMapModel = app.repo.map
 }
 
 @Composable
-private fun NotSetUp() {
-    SoftCard(Modifier.fillMaxWidth().padding(16.dp), tone = Tone.Calm) {
-        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text(tr("The pet map is coming soon"), style = MaterialTheme.typography.titleMedium)
-            Text(tr("Meet other pet owners in Naga at public pet walks. The map isn't switched on in this version of the app yet."))
+private fun NotSetUp(onDemo: (() -> Unit)?) {
+    Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        SoftCard(Modifier.fillMaxWidth(), tone = Tone.Calm) {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(tr("The pet map is coming soon"), style = MaterialTheme.typography.titleMedium)
+                Text(tr("Meet other pet owners in Naga at public pet walks. The map isn't switched on in this version of the app yet."))
+            }
+        }
+        if (onDemo != null) SoftCard(Modifier.fillMaxWidth(), tone = Tone.Surface) {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(tr("Test build: try the demo map"), style = MaterialTheme.typography.titleMedium)
+                Text(tr("Pretend owners, pixel pets and walks around Naga, all on this phone: join, host a walk, RSVP, report. Nothing is sent anywhere."), style = MaterialTheme.typography.bodyMedium)
+                PrimaryPill(tr("Try the demo map"), icon = PixelIcons.PIN, onClick = onDemo)
+            }
         }
     }
 }

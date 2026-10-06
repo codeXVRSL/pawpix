@@ -16,3 +16,8 @@ pawpixel.properties
 .claude/
 __pycache__/
 dist/
+
+# Map server setup (scripts/setup-map-server.sh): never commit these
+pawpixel.properties
+.supabase-db-password
+.supabase/

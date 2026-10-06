@@ -1,5 +1,26 @@
 # Switching on the pet map and household sharing
 
+## The short way (one command)
+
+```
+SUPABASE_ACCESS_TOKEN=sbp_...  scripts/setup-map-server.sh --repo codeXVRSL/pawpix
+```
+
+The token comes from [supabase.com/dashboard/account/tokens](https://supabase.com/dashboard/account/tokens).
+The script creates the Supabase project (Singapore), applies every migration, makes a test account
+for debug builds, writes `pawpixel.properties` for local builds, and stores the values as GitHub
+secrets. The next CI run's **debug APK** then has the map switched on: it signs in with the test
+account (no Google needed), so you can join, see the pixel pets around you, RSVP and host walks
+right away. Walks owners propose wait in the dashboard for your approval (section 6).
+
+Google sign-in (section 2) and map tiles (section 4) are the two things left by hand; store builds
+need Google sign-in, and without tiles the map draws a plain grid behind the pins.
+
+Until a server exists, debug APKs offer **"Try the demo map"** on the map screen: pretend owners,
+pets and walks around Naga, kept on the phone, so the whole flow can be tried without any setup.
+
+## The long way, step by step
+
 The map and household sharing use the same server and sign-in. Both are built and tested (against a real Supabase in CI), but a store build needs **your**
 accounts. Until these settings are filled in, the app shows "The pet map is coming soon", and
 everything else works as before.
@@ -23,7 +44,10 @@ and a map-tile key. Then you put six values into the build.
 1. In [Google Cloud Console](https://console.cloud.google.com) → APIs & Services → Credentials, create:
    - an **OAuth client ID, type "Web application"**. Its client ID is `PAWPIXEL_GOOGLE_WEB_CLIENT_ID`.
    - an **OAuth client ID, type "Android"** for package `com.pawpixel.app` with your app's **SHA-1**
-     (both the upload key and Play's app-signing key: Play Console → App integrity).
+     (both the upload key and Play's app-signing key: Play Console → App integrity). For **debug
+     builds** (CI's APK and Android Studio) add a third Android client with the checked-in debug
+     keystore's SHA-1: `37:5B:E3:3D:DA:5C:CC:BF:75:2D:09:C4:F4:9D:D5:AC:99:75:47:4B`
+     (`composeApp/debug.keystore`, password `android`; a debug key, not a secret).
 2. In Supabase → Authentication → Sign In / Providers → **Google**: enable it, paste the *web* client ID
    (and secret). Leave "Skip nonce checks" **off**: the app sends a nonce.
 

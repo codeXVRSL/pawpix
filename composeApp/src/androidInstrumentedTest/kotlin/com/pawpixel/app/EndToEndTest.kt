@@ -328,10 +328,14 @@ class EndToEndTest {
             retrying { find(By.text("Add photo")).click() } // the stubbed picker returns the test photo
             find(By.text("Caption"), 20_000)
             retrying { find(By.clazz("android.widget.EditText")).text = "First day home" }
-            retrying { find(By.text("Save")).click() }
-            waitFor("photo in the album") { repo.state.value.albumFor(petId).size == 1 }
+            waitFor("caption typed") { device.findObject(By.text("First day home")) != null }
+            // A tap while the keyboard is still settling can go nowhere: Save until the dialog is gone.
+            retrying {
+                find(By.text("Save")).click()
+                check(device.wait(Until.gone(By.text("Caption")), 3_000) == true) { "the caption dialog is still open" }
+            }
+            waitFor("caption saved") { repo.state.value.albumFor(petId).singleOrNull()?.caption == "First day home" }
             val added = repo.state.value.albumFor(petId).single()
-            check(added.caption == "First day home") { "caption not saved: $added" }
             val bytes = repo.albumPhoto(added)
             check(bytes != null && bytes[0] == 0xFF.toByte() && bytes[1] == 0xD8.toByte()) { "album photo isn't a JPEG" }
             check(Backup.albumPhotoPath(petId, added.id) in Backup.filesFor(repo.state.value, petId)) { "album photo not in the backup list" }

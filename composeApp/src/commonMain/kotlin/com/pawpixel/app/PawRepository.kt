@@ -346,6 +346,7 @@ class PawRepository(val platform: Platform) {
         // If you joined the pet map, delete that account too (best effort: offline still wipes the phone).
         if (map.client.isSignedIn) runCatching { map.deleteAccount() }
         map.forgetLocally()
+        files.delete("map-demo")
         family.clearLocal()
         mutex.withLock {
             files.delete("sprites")

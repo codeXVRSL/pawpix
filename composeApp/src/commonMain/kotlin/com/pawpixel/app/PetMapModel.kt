@@ -21,8 +21,21 @@ class PetMapModel(
     val settings: MapSettings = MapBuildConfig,
     /** The account is gone (deleted from the map screen): family sharing forgets it too. */
     private val onAccountDeleted: suspend () -> Unit = {},
+    /** The server, normally the platform's HTTP; the demo map passes its in-app pretend server. */
+    http: com.pawpixel.map.Http = platform.http,
+    /** Where this model keeps its session, area and choices (the demo keeps its own, apart from the real map's). */
+    private val dir: String = "map",
+    /** Used in place of the phone's location when it isn't available (the demo starts in Naga). */
+    private val fallbackLocation: Pair<Double, Double>? = null,
 ) {
-    val client = MapClient(settings, platform.http, object : SessionStore {
+    /** The in-app demo, not PawPixel's server: the screen says so. */
+    val isDemo: Boolean get() = dir != "map"
+
+    private val SESSION get() = "$dir/session.json"
+    private val AREA get() = "$dir/area.json"
+    private val SHARED get() = "$dir/shared.json"
+
+    val client = MapClient(settings, http, object : SessionStore {
         override fun load() = files.readText(SESSION)
         override fun save(json: String?) { if (json == null) files.delete(SESSION) else files.writeText(SESSION, json) }
     }, platform::nowMs)
@@ -57,7 +70,7 @@ class PetMapModel(
 
     /** Asks for approximate location and snaps it to a ~1 km cell. Null if refused/unavailable. */
     suspend fun locate(): LocationGrid.Cell? {
-        val (lat, lng) = platform.approximateLocation() ?: return null
+        val (lat, lng) = platform.approximateLocation() ?: fallbackLocation ?: return null
         return LocationGrid.snap(lat, lng).also { cell ->
             myArea = cell
             files.writeText(AREA, Json.obj("id" to cell.id, "lat" to cell.centerLat, "lng" to cell.centerLng).stringify())
@@ -92,7 +105,7 @@ class PetMapModel(
     /** Local only: sign out and forget area and choices (e.g. "Delete all my data"). */
     fun forgetLocally() {
         client.signOutLocally()
-        files.delete("map")
+        files.delete(dir)
         myArea = null
         sharedPetIds = null
     }
@@ -104,8 +117,10 @@ class PetMapModel(
     }
 
     companion object {
-        private const val SESSION = "map/session.json"
-        private const val AREA = "map/area.json"
-        private const val SHARED = "map/shared.json"
+        /** A model for the demo map (debug builds): the pretend server, its own files, starting in Naga. */
+        fun demo(platform: Platform, files: FileStore): PetMapModel = PetMapModel(
+            platform, files, DemoMapServer.SETTINGS, http = DemoMapServer(platform::nowMs), dir = "map-demo",
+            fallbackLocation = DemoMapServer.NAGA_LAT to DemoMapServer.NAGA_LNG,
+        )
     }
 }

@@ -73,6 +73,12 @@ internal object FilScreens6 {
         "{0} is on PawPixel's pet map. Put your pet on it too, and let's meet at a walk: {1}" to "Nasa pet map ng PawPixel si {0}. Ilagay mo rin ang alaga mo, at magkita tayo sa isang paglalakad: {1}",
         "{0} are on PawPixel's pet map. Put your pet on it too, and let's meet at a walk: {1}" to "Nasa pet map ng PawPixel sina {0}. Ilagay mo rin ang alaga mo, at magkita tayo sa isang paglalakad: {1}",
         "Show walks" to "Ipakita ang mga paglalakad",
+        // The demo map (test builds)
+        "Pet map (demo)" to "Pet map (demo)",
+        "Demo: pretend owners and walks, on this phone only. Nothing is sent anywhere." to "Demo: mga kunwaring may-ari at paglalakad, sa teleponong ito lang. Walang ipinapadala kahit saan.",
+        "Test build: try the demo map" to "Test build: subukan ang demo map",
+        "Pretend owners, pixel pets and walks around Naga, all on this phone: join, host a walk, RSVP, report. Nothing is sent anywhere." to "Mga kunwaring may-ari, pixel pet at paglalakad sa paligid ng Naga, lahat sa teleponong ito: sumali, mag-host ng paglalakad, mag-RSVP, mag-report. Walang ipinapadala kahit saan.",
+        "Try the demo map" to "Subukan ang demo map",
         "Walk: {0}" to "Paglalakad: {0}",
         "Pet walk" to "Pet walk",
         "Near {0}" to "Malapit sa {0}",

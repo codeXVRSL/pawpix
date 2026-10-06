@@ -122,6 +122,14 @@ android {
     // Release signing comes from environment variables (CI secrets), never from the repo.
     val keystore = System.getenv("PAWPIXEL_KEYSTORE")?.takeIf { it.isNotBlank() && file(it).exists() }
     signingConfigs {
+        // Debug builds are signed with the checked-in debug keystore (password "android"), so every
+        // machine and CI run produces the same SHA-1: the one registered for Google sign-in on the map.
+        getByName("debug") {
+            storeFile = file("debug.keystore")
+            storePassword = "android"
+            keyAlias = "androiddebugkey"
+            keyPassword = "android"
+        }
         if (keystore != null) create("release") {
             storeFile = file(keystore)
             storePassword = System.getenv("PAWPIXEL_KEYSTORE_PASSWORD")
