@@ -59,6 +59,7 @@ fun CarePanel(app: AppScope, state: AppState, pet: Pet) {
     // A walk timed with the app: the pet trots along, steps are counted, and it logs as care.
     if (!pet.remembered) {
         val walks = CareStats.walkWeek(state, pet.id, app.now, clock)
+        val km = walks.km
         SoftCard(Modifier.fillMaxWidth(), tone = Tone.Calm) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
@@ -66,9 +67,9 @@ fun CarePanel(app: AppScope, state: AppState, pet: Pet) {
                     Text(
                         when {
                             walks.walks == 0 -> tr("None yet. Time one and {0} trots along.", pet.name)
-                            walks.walks == 1 && walks.km != null -> tr("1 walk · {0} min · about {1} km", walks.minutes, kmText(walks.km))
+                            walks.walks == 1 && km != null -> tr("1 walk · {0} min · about {1} km", walks.minutes, kmText(km))
                             walks.walks == 1 -> tr("1 walk · {0} min", walks.minutes)
-                            walks.km != null -> tr("{0} walks · {1} min · about {2} km", walks.walks, walks.minutes, kmText(walks.km))
+                            km != null -> tr("{0} walks · {1} min · about {2} km", walks.walks, walks.minutes, kmText(km))
                             else -> tr("{0} walks · {1} min", walks.walks, walks.minutes)
                         },
                         style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
