@@ -75,6 +75,8 @@ interface Platform {
     val http: Http
     /** Downloads a map tile (or null on any failure). */
     suspend fun fetchBytes(url: String): ByteArray?
+    /** Unpacks a gzip file (some tile servers send tiles that way); null when the platform can't. */
+    fun gunzip(bytes: ByteArray): ByteArray? = null
     /** Approximate location, asking permission first. Null if refused or unavailable. Snapped to a grid by the caller. */
     suspend fun approximateLocation(): Pair<Double, Double>?
     /** "Sign in with Google" (Android) / "Sign in with Apple" (iOS). */

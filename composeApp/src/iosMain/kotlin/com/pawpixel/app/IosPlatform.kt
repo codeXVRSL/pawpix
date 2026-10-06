@@ -208,6 +208,8 @@ class IosPlatform(private val host: IosHost) : Platform {
         }
     }
 
+    override fun gunzip(bytes: ByteArray): ByteArray? = Gzip.inflate(bytes)
+
     override suspend fun fetchBytes(url: String): ByteArray? = suspendCancellableCoroutine { cont ->
         val u = platform.Foundation.NSURL.URLWithString(url)
         if (u == null) { cont.resume(null); return@suspendCancellableCoroutine }

@@ -214,12 +214,47 @@ class MapStyleTest {
         assertEquals(rgb(0xAA, 0xD3, 0xDF), tile.pixels[0], "the original tile is untouched")
     }
 
-    @Test fun freeTilesAreTheDefaultAndABuildsOwnWin() {
+    @Test fun freeVectorTilesAreTheDefaultAndABuildsOwnRasterWins() {
         val free = MapSettings("", "", "", "", "")
-        assertTrue(free.hasTiles && free.streetTileUrl.contains("{z}") && free.labelTileUrl != null && free.streetAttribution.contains("OpenStreetMap"))
-        val own = MapSettings("", "", "https://tiles.example/{z}/{x}/{y}.png", "© Example", "")
-        assertEquals("https://tiles.example/{z}/{x}/{y}.png", own.streetTileUrl)
-        assertEquals(null, own.labelTileUrl)
+        assertTrue(free.usesVectorTiles && free.streetAttribution.contains("OpenFreeMap"))
+        val own = MapSettings("", "", "https://tiles.example/{z}/{x}/{y}.png", "© Example", "", tileKey = "k1")
+        assertTrue(!own.usesVectorTiles)
+        assertEquals("https://tiles.example/{z}/{x}/{y}.png?key=k1", own.streetTileUrl)
         assertEquals("© Example", own.streetAttribution)
+        assertEquals("https://t.example/{z}/{x}/{y}.png?key=abc", MapSettings("", "", "https://t.example/{z}/{x}/{y}.png?key=abc", "", "", tileKey = "k1").streetTileUrl)
+    }
+}
+
+class MvtTest {
+    @Test fun aWrittenTileReadsBackWithItsLayersTagsAndGeometry() {
+        val bytes = com.pawpixel.map.MvtWriter()
+            .layer("water") { polygon(intArrayOf(0, 0, 4096, 0, 4096, 4096, 0, 4096, 0, 0), "class" to "lake") }
+            .layer("transportation") {
+                line(intArrayOf(10, 20, 500, 20, 500, 900), "class" to "primary")
+                line(intArrayOf(0, 4000, 4096, 4000), "class" to "minor", "name" to "Magsaysay Avenue")
+            }
+            .layer("place") { point(2048, 2048, "name" to "Naga", "class" to "city") }
+            .bytes()
+        val tile = com.pawpixel.map.Mvt.decode(bytes)
+        assertEquals(setOf("water", "transportation", "place"), tile.layers.keys)
+        val water = tile.layers.getValue("water").features.single()
+        assertTrue(water.isPolygon)
+        assertEquals("lake", water.str("class"))
+        assertEquals(listOf(0, 0, 4096, 0, 4096, 4096, 0, 4096, 0, 0), water.geometry.single().toList())
+        val roads = tile.layers.getValue("transportation").features
+        assertEquals(2, roads.size)
+        assertEquals(listOf(10, 20, 500, 20, 500, 900), roads[0].geometry.single().toList())
+        assertEquals("Magsaysay Avenue", roads[1].str("name"))
+        assertEquals(4096, tile.layers.getValue("transportation").extent)
+        val naga = tile.layers.getValue("place").features.single()
+        assertTrue(naga.isPoint)
+        assertEquals(listOf(2048, 2048), naga.geometry.single().toList())
+        assertEquals("city", naga.str("class"))
+    }
+
+    @Test fun junkDoesNotCrashTheReader() {
+        val tile = com.pawpixel.map.Mvt.decode(byteArrayOf(0x1a, 0x7f, 0x01, 0x02))
+        assertTrue(tile.layers.isEmpty() || tile.layers.values.all { it.features.isEmpty() })
+        assertTrue(com.pawpixel.map.Mvt.decode(ByteArray(0)).layers.isEmpty())
     }
 }

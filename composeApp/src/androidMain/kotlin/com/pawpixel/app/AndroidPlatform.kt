@@ -248,6 +248,9 @@ class AndroidPlatform(private val context: Context) : Platform {
         }
     }
 
+    override fun gunzip(bytes: ByteArray): ByteArray? =
+        runCatching { java.util.zip.GZIPInputStream(bytes.inputStream()).use { it.readBytes() } }.getOrNull()
+
     override suspend fun fetchBytes(url: String): ByteArray? = withContext(Dispatchers.IO) {
         runCatching {
             val c = (java.net.URL(url).openConnection() as java.net.HttpURLConnection).apply {

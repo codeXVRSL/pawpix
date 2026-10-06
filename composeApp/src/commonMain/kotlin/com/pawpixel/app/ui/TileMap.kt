@@ -54,6 +54,11 @@ import com.pawpixel.core.LocationGrid
 import com.pawpixel.i18n.tr
 import com.pawpixel.map.MapArea
 import com.pawpixel.map.MapSettings
+import androidx.compose.ui.graphics.drawscope.rotate
+import kotlinx.coroutines.async
+import com.pawpixel.core.Json
+import com.pawpixel.map.Mvt
+import com.pawpixel.map.VectorTile
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.Dispatchers
 import com.pawpixel.app.toImageBitmap
@@ -113,8 +118,8 @@ fun TileMap(
     var cy by remember { mutableDoubleStateOf(WebMercator.y(centerLat, 15)) }
     var size by remember { mutableStateOf(IntSize.Zero) }
     val tiles = remember { mutableStateMapOf<String, ImageBitmap>() }
-    // Street names, drawn crisp over the cartoon streets (a separate, transparent layer of tiles).
-    val labels = remember { mutableStateMapOf<String, ImageBitmap>() }
+    // Street and place names per screen tile, drawn crisp over the cartoon.
+    val tileLabels = remember { mutableStateMapOf<String, List<MapLabel>>() }
     val order = remember { ArrayDeque<String>() }
     val pending = remember { HashSet<String>() }
     val failed = remember { HashSet<String>() }
@@ -133,15 +138,51 @@ fun TileMap(
         cx = WebMercator.x(myArea?.centerLng ?: centerLng, zoom)
         cy = WebMercator.y(myArea?.centerLat ?: centerLat, zoom)
     }
+    // Vector tiles: the current tile URL from OpenFreeMap's TileJSON, and the parsed zoom-14 tiles.
+    var vectorTemplate by remember { mutableStateOf<String?>(null) }
+    val vectorTiles = remember { HashMap<String, VectorTile>() }
+    val vectorOrder = remember { ArrayDeque<String>() }
+    val vectorPending = remember { HashMap<String, kotlinx.coroutines.Deferred<VectorTile?>>() }
 
     fun toScreen(lat: Double, lng: Double) = Offset(
         ((WebMercator.x(lng, zoom) - cx) * scale + size.width / 2.0).toFloat(),
         ((WebMercator.y(lat, zoom) - cy) * scale + size.height / 2.0).toFloat(),
     )
 
+    LaunchedEffect(settings.usesVectorTiles) {
+        if (!settings.usesVectorTiles) return@LaunchedEffect
+        // One small request names the tiles' current address ("tiles": ["https://.../{z}/{x}/{y}.pbf"]).
+        vectorTemplate = platform.fetchBytes(MapSettings.VECTOR_TILEJSON)?.let { bytes ->
+            runCatching { Json.parse(bytes.decodeToString())["tiles"].list.firstOrNull()?.str }.getOrNull()
+        }?.takeIf { it.contains("{z}") }
+        if (vectorTemplate == null) platform.log("Map: couldn't read the vector tile address")
+    }
+
+    /** A zoom-14 vector tile, fetched and parsed once, shared by every screen tile cut from it. */
+    suspend fun vectorTile(template: String, z: Int, x: Int, y: Int): VectorTile? {
+        val vkey = "$z/$x/$y"
+        vectorTiles[vkey]?.let { return it }
+        val job = vectorPending.getOrPut(vkey) {
+            scope.async(Dispatchers.Default) {
+                val raw = platform.fetchBytes(WebMercator.tileUrl(template, z, x, y)) ?: return@async null
+                val bytes = if (raw.size > 2 && raw[0] == 0x1f.toByte() && raw[1] == 0x8b.toByte()) platform.gunzip(raw) ?: return@async null else raw
+                runCatching { Mvt.decode(bytes) }.getOrNull()
+            }
+        }
+        val tile = job.await()
+        vectorPending.remove(vkey)
+        if (tile != null) {
+            vectorTiles[vkey] = tile
+            vectorOrder.addLast(vkey)
+            while (vectorOrder.size > 40) vectorTiles.remove(vectorOrder.removeFirst())
+        }
+        return tile
+    }
+
     // Load the tiles on screen (plus one ring around), newest first; keep ~150 in memory.
-    LaunchedEffect(zoom, cx.toInt() / 128, cy.toInt() / 128, size, settings.streetTileUrl) {
+    LaunchedEffect(zoom, cx.toInt() / 128, cy.toInt() / 128, size, settings.streetTileUrl, vectorTemplate) {
         if (size == IntSize.Zero) return@LaunchedEffect
+        val template = if (settings.usesVectorTiles) vectorTemplate ?: return@LaunchedEffect else settings.streetTileUrl
         val n = 1 shl zoom
         val halfW = size.width / 2.0 / scale; val halfH = size.height / 2.0 / scale
         val tx0 = floor((cx - halfW) / 256).toInt() - 1; val tx1 = floor((cx + halfW) / 256).toInt() + 1
@@ -152,18 +193,25 @@ fun TileMap(
             if (key in tiles || key in pending || key in failed) continue
             pending += key
             scope.launch {
-                // The streets, repainted as PawPixel's cartoon (off the main thread), and their names.
-                val img = platform.fetchBytes(WebMercator.tileUrl(settings.streetTileUrl, zoom, x, ty))?.let { bytes ->
-                    withContext(Dispatchers.Default) { platform.decodePhoto(bytes, 512)?.let { MapStyle.cartoon(it).toImageBitmap() } }
+                var found: List<MapLabel> = emptyList()
+                val img = if (settings.usesVectorTiles) {
+                    // Vector tiles end at zoom 14: closer views draw the right part of that tile, bigger.
+                    val d = (zoom - MapSettings.VECTOR_MAX_ZOOM).coerceAtLeast(0)
+                    val vt = vectorTile(template, zoom - d, x shr d, ty shr d)
+                    vt?.let { withContext(Dispatchers.Default) { CartoonTiles.draw(it, zoom, x and ((1 shl d) - 1), ty and ((1 shl d) - 1), d) } }
+                        ?.also { found = it.labels }?.image
+                } else {
+                    // Raster tiles from the build's own provider, repainted as the cartoon (off the main thread).
+                    platform.fetchBytes(WebMercator.tileUrl(template, zoom, x, ty))?.let { bytes ->
+                        withContext(Dispatchers.Default) { platform.decodePhoto(bytes, 512)?.let { MapStyle.cartoon(it).toImageBitmap() } }
+                    }
                 }
                 pending -= key
                 if (img == null) { failed += key; return@launch }
                 tiles[key] = img
+                tileLabels[key] = found
                 order.addLast(key)
-                while (order.size > 150) { val old = order.removeFirst(); tiles.remove(old); labels.remove(old) }
-                settings.labelTileUrl?.let { url ->
-                    platform.fetchBytes(WebMercator.tileUrl(url, zoom, x, ty))?.let(::decodeImage)?.let { labels[key] = it }
-                }
+                while (order.size > 150) { val old = order.removeFirst(); tiles.remove(old); tileLabels.remove(old) }
             }
         }
     }
@@ -204,7 +252,7 @@ fun TileMap(
             drawRect(Color(MapStyle.LAND))
             if (tiles.isEmpty()) drawPixelGrid(cx, cy, scale)
             drawTiles(tiles, zoom, cx, cy, scale, crisp = true)
-            drawTiles(labels, zoom, cx, cy, scale, crisp = false)
+            drawLabels(tileLabels, zoom, cx, cy, scale, density, text)
             myArea?.let { drawMyArea(it, ::toScreen, density) }
             // Walks sit a little to the right of the area pin, so both stay tappable in a shared area.
             for (w in walks) drawFlag(toScreen(w.lat, w.lng) + Offset(26 * density, 0f), density)
@@ -283,6 +331,35 @@ private fun DrawScope.drawTiles(tiles: Map<String, ImageBitmap>, zoom: Int, cx: 
         val top = ((ty * 256.0 - cy) * scale + size.height / 2).roundToInt()
         drawImage(img, IntOffset.Zero, IntSize(img.width, img.height), IntOffset(left, top), IntSize(tilePx, tilePx),
             filterQuality = if (crisp) FilterQuality.None else FilterQuality.High)
+    }
+}
+
+/** Street and place names over the cartoon, each once, with a cream halo so they read on any paint. */
+private fun DrawScope.drawLabels(
+    labels: Map<String, List<MapLabel>>, zoom: Int, cx: Double, cy: Double, scale: Int, density: Float, text: androidx.compose.ui.text.TextMeasurer,
+) {
+    val n = 1 shl zoom
+    val halfW = size.width / 2.0 / scale; val halfH = size.height / 2.0 / scale
+    val tx0 = floor((cx - halfW) / 256).toInt(); val tx1 = floor((cx + halfW) / 256).toInt()
+    val ty0 = max(0, floor((cy - halfH) / 256).toInt()); val ty1 = minOf(n - 1, floor((cy + halfH) / 256).toInt())
+    val tilePx = 256f * scale
+    val seen = HashSet<String>()
+    for (ty in ty0..ty1) for (tx in tx0..tx1) {
+        val list = labels["$zoom/${((tx % n) + n) % n}/$ty"] ?: continue
+        val left = ((tx * 256.0 - cx) * scale + size.width / 2).toFloat()
+        val top = ((ty * 256.0 - cy) * scale + size.height / 2).toFloat()
+        for (l in list) {
+            if (!seen.add(l.text)) continue
+            val px = left + l.x * tilePx / CartoonTiles.SIDE; val py = top + l.y * tilePx / CartoonTiles.SIDE
+            val measured = text.measure(l.text, TextStyle(color = Ink, fontSize = if (l.big) 14.sp else 11.sp, fontWeight = FontWeight.Black))
+            val halo = text.measure(l.text, TextStyle(color = Cream, fontSize = if (l.big) 14.sp else 11.sp, fontWeight = FontWeight.Black))
+            val at = Offset(px - measured.size.width / 2f, py - measured.size.height / 2f)
+            rotate(l.angle, pivot = Offset(px, py)) {
+                val h = density.coerceAtLeast(1f)
+                for ((ox, oy) in listOf(-h to 0f, h to 0f, 0f to -h, 0f to h)) drawText(halo, topLeft = at + Offset(ox, oy))
+                drawText(measured, topLeft = at)
+            }
+        }
     }
 }
 

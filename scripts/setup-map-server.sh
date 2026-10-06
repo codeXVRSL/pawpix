@@ -11,7 +11,8 @@
 #
 # What you still do by hand afterwards (Google won't let a script do it): Google sign-in, section 2
 # of docs/MAP_SETUP.md. Until then, debug APKs sign in with the test account this script creates.
-# Optional: PAWPIXEL_TILE_KEY=... (the free CARTO street-tile key, section 4) is stored as a secret too.
+# The street map needs nothing (free OpenFreeMap tiles). Optional: PAWPIXEL_TILE_KEY=... for a raster
+# provider you set yourself (section 4) is stored as a secret too.
 set -euo pipefail
 
 NAME="pawpixel"; REGION="ap-southeast-1"; REPO=""

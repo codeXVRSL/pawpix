@@ -22,24 +22,27 @@ data class MapSettings(
 ) {
     val isConfigured: Boolean get() = supabaseUrl.isNotBlank() && anonKey.isNotBlank()
 
-    /** The street tiles to draw: the build's own, or the free default (see [FREE_TILES]). */
-    val streetTileUrl: String get() = if (tileUrl.contains("{z}")) tileUrl else keyed(FREE_TILES)
-    /** Street names, as a separate layer drawn crisp over the cartoon; only with the default tiles. */
-    val labelTileUrl: String? get() = if (tileUrl.contains("{z}")) null else keyed(FREE_LABELS)
-    private fun keyed(url: String) = if (tileKey.isBlank()) url else "$url?key=$tileKey"
-    val streetAttribution: String get() = if (tileUrl.contains("{z}")) tileAttribution else FREE_ATTRIBUTION
+    /**
+     * Without a tile URL of its own, the build draws OpenFreeMap's vector tiles as PawPixel's own
+     * cartoon (free, no key, see [VECTOR_TILEJSON]). With one, it draws those raster tiles,
+     * repainted (see [MapStyle]).
+     */
+    val usesVectorTiles: Boolean get() = !tileUrl.contains("{z}")
+    val streetTileUrl: String get() = if (tileKey.isBlank() || tileUrl.contains("key=")) tileUrl else tileUrl + (if ('?' in tileUrl) "&" else "?") + "key=$tileKey"
+    val streetAttribution: String get() = if (usesVectorTiles) FREE_ATTRIBUTION else tileAttribution
     val hasTiles: Boolean get() = true
 
     companion object {
         /**
-         * Free street tiles with no key: CARTO's Voyager basemap (OpenStreetMap data), the plain
-         * map without names, which the app repaints as a cartoon (see [MapStyle]); the names come
-         * from the matching labels layer. Attribution is required and shown on the map. Fair-use
-         * terms: fine for a pilot; a big app should move to a keyed provider (docs/MAP_SETUP.md).
+         * OpenFreeMap: free vector tiles of the whole world (OpenMapTiles schema, OpenStreetMap
+         * data), no key, no registration, no limits (https://openfreemap.org). This TileJSON names
+         * the current tile URL; the app reads it once per session. Attribution is required and
+         * shown on the map.
          */
-        const val FREE_TILES = "https://basemaps.cartocdn.com/rastertiles/voyager_nolabels/{z}/{x}/{y}.png"
-        const val FREE_LABELS = "https://basemaps.cartocdn.com/rastertiles/voyager_only_labels/{z}/{x}/{y}@2x.png"
-        const val FREE_ATTRIBUTION = "© OpenStreetMap contributors © CARTO"
+        const val VECTOR_TILEJSON = "https://tiles.openfreemap.org/planet"
+        const val FREE_ATTRIBUTION = "© OpenFreeMap © OpenMapTiles © OpenStreetMap contributors"
+        /** Vector tiles stop at this zoom; closer views scale a part of this zoom's tile. */
+        const val VECTOR_MAX_ZOOM = 14
     }
 }
 

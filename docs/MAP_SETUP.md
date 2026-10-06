@@ -14,7 +14,7 @@ account (no Google needed), so you can join, see the pixel pets around you, RSVP
 right away. Walks owners propose wait in the dashboard for your approval (section 6).
 
 Google sign-in (section 2) is the one thing left by hand for store builds. The street map works
-out of the box (section 4: free CARTO tiles, repainted as a cartoon; a free key keeps them loading).
+out of the box (section 4: free OpenFreeMap tiles, drawn as PawPixel's cartoon).
 
 Until a server exists, debug APKs offer **"Try the demo map"** on the map screen: pretend owners,
 pets and walks around Naga, kept on the phone, so the whole flow can be tried without any setup.
@@ -57,24 +57,24 @@ and a map-tile key. Then you put six values into the build.
 2. In Supabase → Authentication → Providers → **Apple**: enable it and add `com.pawpixel.app` as a
    client ID (native sign-in needs no Services ID or secret).
 
-## 4. Map tiles (free)
-The map is a real street map of the world (OpenStreetMap data) that the app repaints as its own
-cartoon: water, parks, roads and buildings come out in PawPixel's candy colours as chunky pixels,
-with the street names drawn crisp on top (`core/.../map/MapStyle.kt`). No setting is needed to get
-it: by default the app loads **CARTO's Voyager** raster tiles (`basemaps.cartocdn.com`), which are
-free with the attribution the map already shows ("© OpenStreetMap contributors © CARTO").
+## 4. Map tiles (free, nothing to set up)
+The map is a real street map of the world that the app draws itself, as a cartoon: from
+**OpenFreeMap**'s vector tiles (OpenStreetMap data in the OpenMapTiles schema, served free, with no
+key, no registration and no usage limits, at `tiles.openfreemap.org`), the app paints water, parks,
+blocks, buildings and roads in PawPixel's candy colours as chunky pixels, and writes the street and
+place names on top in its own type (`core/.../map/Mvt.kt` reads the tiles, `composeApp/.../ui/CartoonTiles.kt`
+paints them). The attribution the map shows ("© OpenFreeMap © OpenMapTiles © OpenStreetMap contributors")
+is the only condition. The app reads OpenFreeMap's TileJSON once per session to find the current
+tile address, so their occasional data updates need no app change.
 
-CARTO asks for a **free key** (no account needed): request one at
-[carto.com/basemaps](https://carto.com/basemaps/) and put it in `PAWPIXEL_TILE_KEY` (a GitHub secret,
-or `pawpixel.properties`). Free limits are generous for a pilot: 5 million tile loads a month for
-non-commercial use, 1 million for commercial use; one owner looking at the map loads a few dozen
-tiles. Keep the attribution visible (the app does). Without a key the tiles may stop loading, and
-the map falls back to a plain grid with the pins still working.
+Cost: none. OpenFreeMap is funded by donations; if PawPixel grows big, consider donating or hosting
+its tiles yourself (their data is open), which is a URL change here.
 
-Any other provider with a `{z}/{x}/{y}` URL works too (MapTiler, Stadia, your own tile server):
-set `PAWPIXEL_TILE_URL` and `PAWPIXEL_TILE_ATTRIBUTION`, and the cartoon repaint applies to it as
-well. Don't point the app at `tile.openstreetmap.org`: OpenStreetMap's own servers aren't meant
-for apps.
+A raster provider still works if you prefer one (MapTiler, Stadia, CARTO; most want a free key):
+set `PAWPIXEL_TILE_URL` (`{z}/{x}/{y}`), `PAWPIXEL_TILE_ATTRIBUTION` and, where the key goes in the
+URL's query, `PAWPIXEL_TILE_KEY`; the app repaints those tiles into the same cartoon palette
+(`core/.../map/MapStyle.kt`). Don't point it at `tile.openstreetmap.org`: OpenStreetMap's own
+servers aren't for apps.
 
 ## 5. Put the values into the build
 Either as **GitHub repository secrets** (for CI release builds) with these names, or in a local,
