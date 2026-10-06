@@ -78,7 +78,7 @@ fun HostWalkDialog(
                 OutlinedTextField(form.title, { onChange(form.copy(title = it.take(80))) }, label = { Text(tr("Title")) }, singleLine = true, modifier = Modifier.fillMaxWidth(), shape = MaterialTheme.shapes.small)
                 GroupLabel(tr("Meeting place"))
                 OutlinedTextField(form.venueName, { onChange(form.copy(venueName = it.take(80))) }, label = { Text(tr("Public place, e.g. Plaza Rizal fountain")) }, singleLine = true, modifier = Modifier.fillMaxWidth(), shape = MaterialTheme.shapes.small)
-                OutlinedTextField(form.areaLabel, { onChange(form.copy(areaLabel = it.take(60))) }, label = { Text(tr("Area, as shown before RSVP (e.g. Plaza Rizal area)")) }, singleLine = true, modifier = Modifier.fillMaxWidth(), shape = MaterialTheme.shapes.small)
+                OutlinedTextField(form.areaLabel, { onChange(form.copy(areaLabel = it.take(60))) }, label = { Text(tr("Area (e.g. Plaza Rizal area)")) }, singleLine = true, modifier = Modifier.fillMaxWidth(), shape = MaterialTheme.shapes.small)
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     GhostPill(if (form.spot == null) tr("Tap the spot on the map") else tr("Move the spot"), icon = PixelIcons.PIN, onClick = onPickSpot)
                     if (form.spot != null) Text(tr("Spot set"), color = Paw.palette.good, fontWeight = FontWeight.Bold)

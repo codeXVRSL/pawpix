@@ -51,7 +51,7 @@ internal object FilScreens6 {
         "Time" to "Oras",
         "Meeting place" to "Tagpuan",
         "Public place, e.g. Plaza Rizal fountain" to "Pampublikong lugar, hal. fountain ng Plaza Rizal",
-        "Area, as shown before RSVP (e.g. Plaza Rizal area)" to "Lugar, gaya ng ipinapakita bago mag-RSVP (hal. Plaza Rizal area)",
+        "Area (e.g. Plaza Rizal area)" to "Lugar (hal. Plaza Rizal area)",
         "Tap the spot on the map" to "I-tap ang lugar sa mapa",
         "Move the spot" to "Ilipat ang lugar",
         "Spot set" to "Nakatakda ang lugar",
