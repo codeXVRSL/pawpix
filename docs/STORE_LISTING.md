@@ -13,6 +13,14 @@ Turn your real pet into a pixel pet on your home screen. Its mood follows care.
 **Short description, Filipino** (79/80)
 Gawing pixel pet ang alaga mo sa home screen. Sumusunod ang mood sa pag-aalaga.
 
+**Short description, Spanish** (80/80)
+Tu mascota real, en píxeles, en tu pantalla de inicio. Su ánimo sigue tu cariño.
+
+**Short description, Brazilian Portuguese** (77/80)
+Seu pet de verdade, em pixels, na tela inicial. O humor dele segue os cuidados.
+
+Google Play takes one listing per language: add Spanish (es-419 and es-ES) and Portuguese (pt-BR) with the short descriptions above and a translation of the full description, since the app now speaks both. Filipino (fil) for the Philippines.
+
 **Full description**
 
 Meet your pet's pixel twin.
@@ -34,9 +42,10 @@ SHARE THEM
 • Make a looping GIF of your pet being themselves.
 • Share a before/after card: the real photo next to the pixel version.
 • Pals: a circle of up to 20 friends whose pixel pets visit your pet's room and send treats. No feed, no followers.
+• Moments: one photo of the day for your pals only, gone after two days. No likes, no comments.
 
 IF THEY EVER GO MISSING
-• One tap raises a Lost alert: owners within 15 km see the photos and can report a sighting; you close it with "Safe home".
+• One tap raises a Lost alert: owners within 15 km (10 miles) see the photos and can report a sighting; you close it with "Safe home".
 • A Pet ID card for the collar: scan the QR and reach the owner without a phone number on the tag.
 • Noise-night reminders before New Year's Eve, the night most pets run away.
 
@@ -44,6 +53,8 @@ LITTLE THINGS, EVERY DAY
 • The weather outside in the room: hot pavement, rain and thunder, in your pet's own words.
 • Time a walk and your pixel pet trots along while your phone counts the steps.
 • Birthdays, gotcha days and seasons decorate the room.
+• A small challenge each month, counted from what you already log: care days, walks, photos.
+• Vaccine schedules that follow your country, and km or miles, kg or lb, the way you measure.
 
 PRIVATE BY DESIGN
 • No account. No ads. No tracking.
@@ -51,7 +62,7 @@ PRIVATE BY DESIGN
 
 Your first pet is free. PawPixel Pro (coming soon) adds more pets and hand-finished sprites by a pixel artist.
 
-Made in Naga City, Philippines.
+Made in Naga City, Philippines, for pet owners everywhere. In English, Filipino, Spanish and Portuguese.
 
 **Category:** Lifestyle · **Tags:** Pets, Widgets
 **Content rating:** Everyone, with **user interaction** (the optional pet map lets users see other users' pet names and meet at events; there's reporting and blocking). The map is 18+ inside the app.
@@ -88,8 +99,10 @@ Your real pet, in pixels
 **Promotional text** (145/170)
 Snap a photo of your dog or cat and meet their pixel twin. It lives on your home screen, gets hungry at mealtime and cheers up when you tap Done.
 
-**Keywords** (94/100, no spaces after commas, no trademarks)
-virtual pet,pet care,reminder,feed,walk,pixel art,dog,cat,puppy,kitten,sprite,8bit,cute,mascot
+**Keywords** (96/100, no spaces after commas, no trademarks)
+virtual pet,pet care,reminder,feed,walk,pixel art,dog,cat,puppy,kitten,sprite,8bit,cute,lost pet
+
+Localize the App Store listing too (Spanish (Mexico), Spanish (Spain), Portuguese (Brazil)): subtitle, promotional text, keywords and description, from the same strings as the app.
 
 **Description:** use the Google Play full description above (Apple doesn't render bullets specially; plain line breaks are fine).
 
