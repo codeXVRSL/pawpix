@@ -231,7 +231,9 @@ final class OwnerJourneyTests: XCTestCase {
             shot("album")
             try find("Back").tap() // the album
             try scrollTo(query: element(containing: "In loving memory"), "In loving memory").tap()
-            try find(containing: "Remember ").tap()
+            let remember = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Remember ")).firstMatch
+            guard remember.waitForExistence(timeout: 10) else { throw Failure("no Remember button") }
+            remember.tap()
             try scrollTo("Back").tap() // the More panel drops
             try find("Forever in your heart")
             sleep(1)
@@ -431,8 +433,10 @@ final class OwnerJourneyTests: XCTestCase {
     }
 
     private func dismissKeyboard() {
-        if app.keyboards.buttons["Return"].exists { app.keyboards.buttons["Return"].tap() }
-        else if app.keyboards.buttons["return"].exists { app.keyboards.buttons["return"].tap() }
+        // The key is "Return" or "Done" (lowercase on some keyboards), depending on the field's IME action.
+        for key in ["Return", "return", "Done", "done", "Go", "go"] {
+            if app.keyboards.buttons[key].exists { app.keyboards.buttons[key].tap(); return }
+        }
     }
 
     private func allowNotificationsIfAsked() {

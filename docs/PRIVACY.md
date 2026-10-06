@@ -41,7 +41,7 @@ If your pet goes missing and you raise an alert, and only then:
 If you make an ID card for a pet, and only then: the pet's name, dog or cat, look code, your note and (if you add it) the microchip number are stored on our server and shown to anyone who opens the card's link, usually by scanning the QR code on the collar tag. Not your name, your account or your number. A finder can send you a message (and a contact line if they choose) which you read in the app. "Remove card" deletes the card and its messages; deleting your map account does too.
 
 ## Pals (optional)
-If you add a pal by code, and only then: you and that person see each other's pixel pets (name, dog or cat, look code), the treats you send each other's pets, and nothing else: no photos, no location, no care history, no name or account. Your pal code is yours alone to give out. "Unpal" ends it from either side; deleting your map account deletes your code, pals and treats.
+If you add a pal by code, and only then: you and that person see each other's pixel pets (name, dog or cat, look code), the treats you send each other's pets, and the moments you choose to share (one small photo with a caption, shrunk on your phone with its location data dropped, visible to your pals only and gone after two days), and nothing else: no other photos, no location, no care history, no name or account. Your pal code is yours alone to give out. "Unpal" ends it from either side; deleting your map account deletes your code, pals and treats.
 
 ## Sharing with your household (optional)
 If you start or join a household (for example you and your partner both caring for your dog), and only then:

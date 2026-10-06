@@ -222,11 +222,14 @@ private fun LostForm(app: AppScope, state: AppState, pet: Pet, map: PetMapModel?
 }
 
 /** A photo for an alert: at most 640 px on its long side, re-encoded (EXIF and GPS dropped), under 120 KB. */
-suspend fun shrinkForAlert(platform: Platform, bytes: ByteArray): ByteArray? {
-    for ((side, quality) in listOf(640 to 72, 480 to 60, 360 to 50)) {
+suspend fun shrinkForAlert(platform: Platform, bytes: ByteArray): ByteArray? = shrinkPhoto(platform, bytes, LostClient.MAX_PHOTO_BYTES, 640)
+
+/** A photo re-encoded small enough for the server (EXIF and GPS dropped): [longSide] px at most, then smaller until it fits [maxBytes]. */
+suspend fun shrinkPhoto(platform: Platform, bytes: ByteArray, maxBytes: Int, longSide: Int): ByteArray? {
+    for ((side, quality) in listOf(longSide to 72, longSide * 3 / 4 to 60, longSide * 9 / 16 to 50, longSide / 2 to 40)) {
         val img = platform.decodePhoto(bytes, side) ?: return null
         val out = platform.encodeJpeg(img, quality) ?: return null
-        if (out.size <= LostClient.MAX_PHOTO_BYTES) return out
+        if (out.size <= maxBytes) return out
     }
     return null
 }

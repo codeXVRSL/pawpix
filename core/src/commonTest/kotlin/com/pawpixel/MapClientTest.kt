@@ -398,4 +398,22 @@ class PalClientTest {
         val inbox = runSync { c.pals.inbox() }
         assertEquals("Biscuit", inbox.single().fromPet); assertEquals("pat", inbox.single().kind)
     }
+
+    @Test fun momentsGoUpAsBase64AndComeBackAsBytes() {
+        val c = signedIn()
+        reply = { HttpResponse(200, "") }
+        val jpeg = byteArrayOf(-1, -40, -1, -32, 0, 16)
+        runSync { c.pals.setMoment("Chelsea", "Sunday nap", jpeg) }
+        val body = Json.parse(log.last().body!!)
+        assertEquals("Chelsea", body["p_pet_name"].str); assertEquals("Sunday nap", body["p_caption"].str)
+        assertEquals(com.pawpixel.core.Base64.encode(jpeg), body["p_photo"].str)
+        assertTrue(runCatching { runSync { c.pals.setMoment("Chelsea", "", ByteArray(com.pawpixel.map.PalClient.MAX_MOMENT_BYTES + 1)) } }.isFailure)
+        reply = { HttpResponse(200, """[
+            {"pal_id":"u1","pet_name":"Chelsea","caption":"Sunday nap","photo":"${com.pawpixel.core.Base64.encode(jpeg)}","updated_at":"2026-10-06T05:00:00+00:00"},
+            {"pal_id":"pal-9","pet_name":"Biscuit","caption":"","photo":"","updated_at":"2026-10-06T04:00:00+00:00"}]""") }
+        val moments = runSync { c.pals.moments() }
+        assertEquals(2, moments.size)
+        assertTrue(moments[0].isMine(c.userId)); assertTrue(moments[0].photo.contentEquals(jpeg))
+        assertTrue(!moments[1].isMine(c.userId) && moments[1].photo.isEmpty())
+    }
 }

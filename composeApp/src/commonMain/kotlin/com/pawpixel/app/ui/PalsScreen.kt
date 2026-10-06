@@ -1,6 +1,9 @@
 package com.pawpixel.app.ui
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
@@ -41,6 +44,7 @@ import com.pawpixel.core.AppState
 import com.pawpixel.core.Species
 import com.pawpixel.i18n.tr
 import com.pawpixel.map.MapException
+import com.pawpixel.map.Moment
 import com.pawpixel.map.Pal
 import com.pawpixel.map.PalClient
 import com.pawpixel.map.PalPet
@@ -62,6 +66,8 @@ fun PalsScreen(app: AppScope, state: AppState) {
     var busy by remember { mutableStateOf(false) }
     var message by remember { mutableStateOf<String?>(null) }
     var treatFor by remember { mutableStateOf<PalPet?>(null) }
+    var moments by remember { mutableStateOf<List<Moment>>(emptyList()) }
+    var sharing by remember { mutableStateOf(false) }
     var refresh by remember { mutableStateOf(0) }
     val clipboard = LocalClipboardManager.current
     fun act(block: suspend () -> Unit) {
@@ -75,6 +81,7 @@ fun PalsScreen(app: AppScope, state: AppState) {
         act {
             pals = map.refreshPals(state.pets) { app.repo.art(it) }
             code = map.client.pals.myCode()
+            moments = map.client.pals.moments()
         }
     }
     Column(Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding()) {
@@ -90,7 +97,7 @@ fun PalsScreen(app: AppScope, state: AppState) {
                 return@Column
             }
             SoftCard(Modifier.fillMaxWidth(), tone = Tone.Calm) {
-                Text(tr("Up to {0} friends, by code only. Pals see your pixel pets and their names, never your photos, your place or your care. Their pets drop by your room; send theirs a treat.", PalClient.MAX_PALS), style = MaterialTheme.typography.bodyMedium)
+                Text(tr("Up to {0} friends, by code only. Pals see your pixel pets and their names, and only the moments you choose to share: never your place or your care. Their pets drop by your room; send theirs a treat.", PalClient.MAX_PALS), style = MaterialTheme.typography.bodyMedium)
             }
             SoftCard(Modifier.fillMaxWidth(), tone = Tone.Accent) {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp), horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
@@ -119,6 +126,11 @@ fun PalsScreen(app: AppScope, state: AppState) {
             }
             message?.let { Text(it, color = if (it.startsWith(tr("You're pals"))) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
 
+            if (pals.isNotEmpty() || moments.isNotEmpty()) {
+                GroupLabel(tr("Moments"))
+                MomentsRow(app, map, moments, pals, onShare = { sharing = true }, onClear = { act { map.client.pals.clearMoment(); moments = map.client.pals.moments() } })
+            }
+
             GroupLabel(if (pals.isEmpty()) tr("Your pals") else tr("Your pals ({0})", pals.size))
             if (pals.isEmpty()) SoftCard(Modifier.fillMaxWidth(), tone = Tone.Tonal) {
                 Text(tr("No pals yet. Share your code with one friend: their pixel pet will be on your rug tomorrow."), style = MaterialTheme.typography.bodyMedium)
@@ -126,12 +138,117 @@ fun PalsScreen(app: AppScope, state: AppState) {
             pals.forEach { pal -> PalCard(app, map, pal, onTreat = { treatFor = it }, onRemove = { act { map.client.pals.remove(pal.id); refresh++ } }) }
         }
     }
+    if (sharing && map != null) ShareMomentDialog(app, state, onClose = { sharing = false }) { petName, caption, photo ->
+        sharing = false
+        act { map.client.pals.setMoment(petName, caption, photo); moments = map.client.pals.moments(); message = tr("Shared with your pals for two days.") }
+    }
     treatFor?.let { pet ->
         TreatDialog(app, state, pet, onClose = { treatFor = null }) { kind, fromName ->
             treatFor = null
             act { map!!.client.pals.sendTreat(pet.palId, pet.petId, fromName, kind); message = tr("Sent to {0}!", pet.name) }
         }
     }
+}
+
+/**
+ * Moments: one photo a day each, for pals only, gone after two days. Yours first (with "Take it
+ * down"), then your pals' newest first. A moment that came without a photo shows the pixel pet.
+ */
+@Composable
+private fun MomentsRow(app: AppScope, map: PetMapModel, moments: List<Moment>, pals: List<Pal>, onShare: () -> Unit, onClear: () -> Unit) {
+    val myId = map.client.userId
+    val mine = moments.firstOrNull { it.isMine(myId) }
+    val theirs = moments.filter { !it.isMine(myId) }
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text(
+            if (theirs.isEmpty()) tr("A photo of the day for your pals and nobody else. It's gone after two days; no likes, no comments.")
+            else tr("From your pals in the last two days. Yours is gone after two days; no likes, no comments."),
+            style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        LazyRow(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            item(key = "mine") {
+                Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.width(if (mine == null) 168.dp else 132.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    if (mine != null) {
+                        MomentPhoto(mine, pals, tr("Your moment: {0}", mine.caption.ifBlank { mine.petName }))
+                        Text(mine.caption.ifBlank { mine.petName }, style = MaterialTheme.typography.bodySmall, maxLines = 2, textAlign = TextAlign.Center)
+                        LinkButton(tr("Take it down"), color = MaterialTheme.colorScheme.error, onClick = onClear)
+                        LinkButton(tr("Share another"), onClick = onShare)
+                    } else {
+                        Box(
+                            Modifier.size(132.dp).background(MaterialTheme.colorScheme.surfaceContainerHigh, MaterialTheme.shapes.medium),
+                            contentAlignment = Alignment.Center,
+                        ) { PixelIcon(PixelIcons.CAMERA, size = 32.dp) }
+                        PrimaryPill(tr("Share a moment"), icon = PixelIcons.CAMERA, onClick = onShare)
+                    }
+                }
+            }
+            items(theirs, key = { it.palId }) { m ->
+                Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.width(132.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    MomentPhoto(m, pals, tr("{0}'s moment: {1}", m.petName, m.caption))
+                    Text(m.petName, fontWeight = FontWeight.Bold, maxLines = 1)
+                    Text(m.caption.ifBlank { agoText(m.atMs, app.now) }, style = MaterialTheme.typography.bodySmall, maxLines = 2, textAlign = TextAlign.Center)
+                    Text(agoText(m.atMs, app.now), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            }
+        }
+    }
+}
+
+/** The moment's photo, or the pal's pixel pet when it came without one. */
+@Composable
+private fun MomentPhoto(m: Moment, pals: List<Pal>, description: String) {
+    if (m.photo.isNotEmpty()) AlertPhoto(m.photo, description, Modifier.size(132.dp))
+    else {
+        val pet = pals.firstOrNull { it.id == m.palId }?.pets?.firstOrNull { it.name == m.petName } ?: pals.firstOrNull { it.id == m.palId }?.pets?.firstOrNull()
+        val species = Species.entries.firstOrNull { it.name == pet?.species } ?: Species.OTHER
+        val img = remember(m.palId, pet?.petId) { pet?.look?.let { PetArt(it, species, Ears.of(pet.ears)).still } }
+        SpriteView(img, Modifier.size(132.dp), animate = false, description = description)
+    }
+}
+
+/** Pick a photo (the album or the phone), a pet, a caption; it's shrunk on the phone before it goes anywhere. */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun ShareMomentDialog(app: AppScope, state: AppState, onClose: () -> Unit, onShare: (String, String, ByteArray) -> Unit) {
+    val platform = app.repo.platform
+    val pets = state.pets.filter { !it.remembered }
+    var petName by remember { mutableStateOf(pets.firstOrNull()?.name ?: tr("A pet")) }
+    var caption by remember { mutableStateOf("") }
+    var photo by remember { mutableStateOf<ByteArray?>(null) }
+    var shrinking by remember { mutableStateOf(false) }
+    val pick = com.pawpixel.app.rememberPhotoPicker { bytes -> if (bytes != null) app.launch { shrinking = true; photo = shrinkPhoto(platform, bytes, PalClient.MAX_MOMENT_BYTES, 480); shrinking = false } }
+    val album = pets.firstOrNull { it.name == petName }?.let { state.albumFor(it.id) }?.take(6) ?: emptyList()
+    androidx.compose.material3.AlertDialog(
+        onDismissRequest = onClose,
+        title = { Text(tr("Share a moment")) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                if (pets.size > 1) FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    pets.forEach { p -> ChoiceChip(petName == p.name, { petName = p.name; photo = null }, p.name) }
+                }
+                val p = photo
+                if (p != null) AlertPhoto(p, tr("The photo to share"), Modifier.size(120.dp))
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    GhostPill(if (p == null) tr("Pick a photo") else tr("Another photo"), icon = PixelIcons.CAMERA, enabled = !shrinking) { pick() }
+                }
+                if (album.isNotEmpty() && p == null) {
+                    Text(tr("Or from {0}'s album", petName), style = MaterialTheme.typography.bodySmall)
+                    LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        items(album, key = { it.id }) { a ->
+                            val bytes = remember(a.id) { app.repo.albumPhoto(a) }
+                            if (bytes != null) Box(Modifier.clickable {
+                                app.launch { shrinking = true; photo = shrinkPhoto(platform, bytes, PalClient.MAX_MOMENT_BYTES, 480); shrinking = false }
+                            }) { AlertPhoto(bytes, a.caption.ifBlank { tr("Album photo") }, Modifier.size(64.dp)) }
+                        }
+                    }
+                }
+                OutlinedTextField(caption, { caption = it.take(80) }, label = { Text(tr("Caption (optional)")) }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                Text(tr("Only your pals see it, for two days. The photo is shrunk on your phone first; its location data is dropped."), style = MaterialTheme.typography.bodySmall)
+            }
+        },
+        confirmButton = { androidx.compose.material3.TextButton(enabled = photo != null && !shrinking, onClick = { photo?.let { onShare(petName, caption.trim(), it) } }) { Text(tr("Share")) } },
+        dismissButton = { androidx.compose.material3.TextButton(onClick = onClose) { Text(tr("Cancel")) } },
+    )
 }
 
 @Composable

@@ -31,6 +31,7 @@ class DemoMapServer(private val nowMs: () -> Long) : Http {
     private var palPets: List<Json> = emptyList()
     private val treats = ArrayList<Json>()
     private var treatedAtMs = 0L
+    private var myMoment: Json? = null
     private val cardMessages = ArrayList<CardMsg>()
     private val sightings = ArrayList<Seen>()
 
@@ -194,6 +195,16 @@ class DemoMapServer(private val nowMs: () -> Long) : Http {
                     (owner?.pets ?: emptyList()).map { p -> Json.obj("pal_id" to id, "pet_id" to p.id, "name" to p.name, "species" to p.species, "ears" to p.ears, "look" to p.look, "since" to iso(since)) }
                         .ifEmpty { listOf(Json.obj("pal_id" to id, "pet_id" to null, "name" to null, "species" to null, "ears" to null, "look" to null, "since" to iso(since))) }
                 }).stringify())
+            }
+            path.endsWith("/rpc/set_moment") -> {
+                myMoment = Json.obj("pal_id" to me, "pet_name" to (body["p_pet_name"].str ?: "A pet"), "caption" to (body["p_caption"].str ?: ""), "photo" to (body["p_photo"].str ?: ""), "updated_at" to iso(nowMs()))
+                ok()
+            }
+            path.endsWith("/rpc/clear_moment") -> { myMoment = null; ok() }
+            path.endsWith("/rpc/pals_moments") -> {
+                // Biscuit's owner shared a moment this morning (the demo has no photo: the screen shows the pixel pet).
+                val theirs = if ("owner-0" in pals) listOf(Json.obj("pal_id" to "owner-0", "pet_name" to "Biscuit", "caption" to "Sunday nap in the sun", "photo" to "", "updated_at" to iso(nowMs() - 3 * 3_600_000L))) else emptyList()
+                ok(Json.arr(listOfNotNull(myMoment) + theirs).stringify())
             }
             path.endsWith("/rpc/send_treat") -> ok()
             path.endsWith("/rpc/treats_inbox") -> {

@@ -1,5 +1,6 @@
 package com.pawpixel.map
 
+import com.pawpixel.core.Base64
 import com.pawpixel.core.Json
 import com.pawpixel.sprite.PetLook
 
@@ -8,6 +9,12 @@ data class PalPet(val palId: String, val petId: String, val name: String, val sp
 
 /** One pal: their id and the pets they show (an empty list until they share any). */
 data class Pal(val id: String, val pets: List<PalPet>, val sinceMs: Long)
+
+/** A pal's moment: one small photo of their pet with a caption, for pals only, gone after two days. [photo] is the JPEG (empty if none came). */
+data class Moment(val palId: String, val petName: String, val caption: String, val photo: ByteArray, val atMs: Long) {
+    /** Your own, shown back so you can see what's up and take it down. */
+    fun isMine(myId: String?) = myId != null && palId == myId
+}
 
 /** A treat (pat, ball) a pal's pet sent one of yours. */
 data class Treat(val id: String, val toPetId: String, val fromPet: String, val kind: String, val atMs: Long)
@@ -51,8 +58,26 @@ class PalClient(private val api: SupabaseApi) {
         Treat(t["id"].str ?: return@mapNotNull null, t["to_pet"].str ?: "", t["from_pet"].str ?: "", t["kind"].str ?: "treat", t["created_at"].str?.let(IsoTime::parseMs) ?: 0L)
     }
 
+    /** Shares today's moment (replacing the last one). The photo must already be a small JPEG (see [MAX_MOMENT_BYTES]). */
+    suspend fun setMoment(petName: String, caption: String, photo: ByteArray) {
+        require(photo.size in 1..MAX_MOMENT_BYTES) { "photo too big" }
+        api.rpc("set_moment", Json.obj("p_pet_name" to petName, "p_caption" to caption.take(80), "p_photo" to Base64.encode(photo)))
+    }
+
+    suspend fun clearMoment() { api.rpc("clear_moment") }
+
+    /** Your pals' moments from the last two days (and your own), newest first. */
+    suspend fun moments(): List<Moment> = Json.parse(api.rpc("pals_moments")).list.mapNotNull { m ->
+        Moment(
+            m["pal_id"].str ?: return@mapNotNull null, m["pet_name"].str ?: "A pet", m["caption"].str ?: "",
+            m["photo"].str?.let { runCatching { Base64.decode(it) }.getOrNull() } ?: ByteArray(0), m["updated_at"].str?.let(IsoTime::parseMs) ?: 0L,
+        )
+    }
+
     companion object {
         const val MAX_PALS = 20
+        /** 64 KB a moment (90,000 base64 characters on the server). */
+        const val MAX_MOMENT_BYTES = 64_000
         val KINDS = listOf("treat", "pat", "ball")
     }
 }
