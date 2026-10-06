@@ -23,6 +23,9 @@ If you join the pet map, and only then:
 - **Leaving and deleting:** "Leave the map" removes your pets and area. "Delete my map account" (or Settings → Delete all my data) deletes your account and everything above from the server immediately.
 - The map is for people 18 and over.
 
+## The weather (only with a map area)
+Once you have an area on the pet map, the app asks Open-Meteo (open-meteo.com) for the weather at the centre of that ~1 km square, at most once an hour, so your pet can mention hot pavement or rain. Open-Meteo gets the square's coordinates and nothing else; no account, no key.
+
 ## Lost and Found (optional)
 If your pet goes missing and you raise an alert, and only then:
 - **What is sent:** the pet's name, dog or cat, its look code, the note you write, the album photos you choose (up to 3, shrunk, with photo metadata such as GPS removed), and the spot where the pet was last seen (which you pick on the map). This is the only time PawPixel uploads a photo.

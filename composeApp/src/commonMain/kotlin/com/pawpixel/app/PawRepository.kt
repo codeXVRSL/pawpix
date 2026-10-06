@@ -77,6 +77,8 @@ class PawRepository(val platform: Platform) {
 
     /** The opt-in pet map (sign-in session, shared pets, your ~1 km area). */
     val map: PetMapModel by lazy { PetMapModel(platform, files, onAccountDeleted = { family.forgetLocally() }) }
+    /** The weather outside, for the room's bubble (only once the owner has an area on the map). */
+    val weather: WeatherModel by lazy { WeatherModel(platform, files) }
     /** The in-app demo map (debug builds, when the real one isn't set up): one pretend server for the whole app. */
     val demoMap: PetMapModel by lazy { PetMapModel.demo(platform, files) }
 

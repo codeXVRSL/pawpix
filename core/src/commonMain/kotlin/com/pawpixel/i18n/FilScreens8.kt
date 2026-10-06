@@ -164,6 +164,18 @@ internal object FilScreens8 {
         "{0} sent {1} a treat!" to "Pinadalhan ni {0} ng treat si {1}!",
         "{0}, a pal's pet, is visiting" to "Bumibisita si {0}, alaga ng kaibigan",
         "{0} is visiting" to "Bumibisita si {0}",
+        // The weather outside
+        "Weather outside: {0}" to "Panahon sa labas: {0}",
+        "thunder" to "kulog", "snow" to "niyebe", "rain" to "ulan", "fog" to "hamog", "cloudy" to "maulap", "sunny" to "maaraw", "clear night" to "maaliwalas na gabi",
+        "Thunder outside. {0} may want to hide: stay close and keep the doors shut." to "May kulog sa labas. Baka magtago si {0}: manatiling malapit at isara ang mga pinto.",
+        "{0}° out: the pavement burns paws. Walk {1} early or after sunset, and bring water." to "{0}° sa labas: nakakapaso ng paa ang semento. Ipasyal si {1} nang maaga o pagkalubog ng araw, at magdala ng tubig.",
+        "{0}° out. Keep {1} in the shade with fresh water." to "{0}° sa labas. Ilagay si {1} sa lilim na may sariwang tubig.",
+        "It feels like {0}° today. Water and shade for {1}, and no midday walks." to "Parang {0}° ngayon. Tubig at lilim para kay {1}, at walang pasyal sa tanghali.",
+        "Snow! Short trips out for {0}, and dry those paws after." to "Niyebe! Maikling labas lang para kay {0}, at patuyuin ang mga paa pagkatapos.",
+        "Rain out there. A short walk, then a towel for {0}." to "Umuulan sa labas. Maikling pasyal, tapos tuwalya para kay {0}.",
+        "Rain today. A window-watching day for {0}." to "Umuulan ngayon. Araw ng panonood sa bintana para kay {0}.",
+        "Chilly out. {0} might like a warm spot (or a sweater) today." to "Malamig sa labas. Baka gusto ni {0} ng mainit na sulok (o sweater) ngayon.",
+        "Lovely out. Perfect walk weather for {0}." to "Ang ganda sa labas. Perpektong panahon para ipasyal si {0}.",
         // Noise nights
         "Noise night tomorrow" to "Maingay na gabi bukas",
         "Noise night tonight" to "Maingay na gabi ngayon",

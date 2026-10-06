@@ -39,6 +39,7 @@ import androidx.compose.runtime.Composable
 import com.pawpixel.sprite.PetArt
 import com.pawpixel.sprite.Ears
 import com.pawpixel.core.Species
+import com.pawpixel.core.WeatherAdvice
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -129,6 +130,15 @@ fun PetScreen(app: AppScope, state: AppState, pet: Pet) {
             fresh.firstOrNull()?.let { treatBubble = treatText(it.fromPet, pet.name, it.kind); burst = app.now }
         }
         LaunchedEffect(treatBubble) { if (treatBubble != null) { kotlinx.coroutines.delay(9_000); treatBubble = null } }
+        // The weather outside (for the owner's map area), as a chip and, when it matters, the pet's bubble for a moment.
+        var weather by remember { mutableStateOf(app.repo.weather.fresh()) }
+        var weatherBubble by remember { mutableStateOf<String?>(null) }
+        LaunchedEffect(pet.id) {
+            val area = palModel?.myArea
+            if (area != null) weather = runCatching { app.repo.weather.current(area.centerLat, area.centerLng) }.getOrNull() ?: weather
+            val w = weather ?: return@LaunchedEffect
+            if (!pet.remembered) WeatherAdvice.advice(w, pet.name, pet.species)?.let { weatherBubble = it; kotlinx.coroutines.delay(8_000); weatherBubble = null }
+        }
         visitor?.let { v ->
             val species = Species.entries.firstOrNull { it.name == v.species } ?: Species.OTHER
             val img = remember(v.petId) { v.look?.let { PetArt(it, species, Ears.of(v.ears)).still } }
@@ -146,7 +156,10 @@ fun PetScreen(app: AppScope, state: AppState, pet: Pet) {
         // Top HUD: the name plate (and the pet switcher when there's more than one pet), the gear.
         Column(Modifier.fillMaxWidth().statusBarsPadding().padding(horizontal = 12.dp, vertical = 10.dp)) {
             Row(verticalAlignment = Alignment.Top) {
-                NamePlate(app, state, pet, reading.score)
+                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    NamePlate(app, state, pet, reading.score)
+                    weather?.let { w -> WeatherChip(w) }
+                }
                 Spacer(Modifier.weight(1f))
                 GlassButton(PixelIcons.GEAR, tr("Settings")) { app.navigate(Screen.Settings) }
             }
@@ -155,7 +168,7 @@ fun PetScreen(app: AppScope, state: AppState, pet: Pet) {
             if (celebrating) SpeechBubble(reading.caption, Modifier.padding(top = 10.dp).align(Alignment.CenterHorizontally))
         }
         // What the pet is thinking: a bubble just over its head.
-        if (!celebrating) SpeechBubble(treatBubble ?: reading.caption, Modifier.align(Alignment.TopCenter).padding(top = screenHeight * 0.27f))
+        if (!celebrating) SpeechBubble(treatBubble ?: weatherBubble ?: reading.caption, Modifier.align(Alignment.TopCenter).padding(top = screenHeight * 0.27f))
 
         // Bottom HUD: Undo (for a few seconds after a tap), the need meters, the five keys.
         Column(
@@ -321,6 +334,21 @@ private fun MemoryStrip(app: AppScope, state: AppState, pet: Pet) {
                 )
             }
             PrimaryPill(tr("Album"), icon = PixelIcons.CAMERA) { app.navigate(Screen.PetSection(pet.id, "album")) }
+        }
+    }
+}
+
+/** "31° · sunny": the weather outside, from Open-Meteo, for the owner's area. */
+@Composable
+private fun WeatherChip(w: com.pawpixel.core.Weather) {
+    val label = tr("Weather outside: {0}", WeatherAdvice.chip(w))
+    Box(
+        Modifier.background(Color.White, RoundedCornerShape(10.dp)).border(1.dp, Color(0xFFE6D5C3), RoundedCornerShape(10.dp))
+            .padding(horizontal = 8.dp, vertical = 3.dp).semantics { contentDescription = label },
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+            PixelIcon(if (w.rain || w.storm) PixelIcons.DROP else if (w.isDay) PixelIcons.SPARKLE else PixelIcons.MOON, tint = Color(0xFF6E6287), size = 12.dp)
+            Text(WeatherAdvice.chip(w), style = MaterialTheme.typography.labelSmall, color = Color(0xFF2B2135))
         }
     }
 }
