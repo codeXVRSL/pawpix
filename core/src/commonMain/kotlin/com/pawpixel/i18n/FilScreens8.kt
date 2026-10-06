@@ -176,6 +176,7 @@ internal object FilScreens8 {
         "Rain today. A window-watching day for {0}." to "Umuulan ngayon. Araw ng panonood sa bintana para kay {0}.",
         "Chilly out. {0} might like a warm spot (or a sweater) today." to "Malamig sa labas. Baka gusto ni {0} ng mainit na sulok (o sweater) ngayon.",
         "Lovely out. Perfect walk weather for {0}." to "Ang ganda sa labas. Perpektong panahon para ipasyal si {0}.",
+        "{0} days together" to "{0} araw na magkasama",
         // Noise nights
         "Noise night tomorrow" to "Maingay na gabi bukas",
         "Noise night tonight" to "Maingay na gabi ngayon",

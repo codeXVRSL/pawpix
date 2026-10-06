@@ -215,9 +215,13 @@ fun PetScreen(app: AppScope, state: AppState, pet: Pet) {
 private fun NamePlate(app: AppScope, state: AppState, pet: Pet, score: Int) {
     val many = state.pets.size > 1
     val label = if (many) tr("Switch pet") else null
+    // Age when the birthday is known; otherwise the days you've been together (never a streak to break).
+    val together = ((app.now - pet.createdAtMs) / com.pawpixel.core.DAY_MS).toInt()
     val age = when {
         pet.remembered -> tr("Forever in your heart")
-        else -> pet.birthDay?.let { HealthPlan.ageLabel(it, app.repo.clock.dayIndex(app.now)) }
+        pet.birthDay != null -> HealthPlan.ageLabel(pet.birthDay, app.repo.clock.dayIndex(app.now))
+        together >= 1 -> tr("{0} days together", together)
+        else -> null
     }
     ToyPanel(
         Modifier.widthIn(max = 230.dp), face = Color.White, lip = Color(0xFFE6D5C3), shape = RoundedCornerShape(16.dp), padding = 0.dp,
