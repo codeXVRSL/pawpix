@@ -40,14 +40,17 @@ object I18n {
     fun lookup(en: String, l: Lang = lang): String = when (l) {
         Lang.EN -> en
         Lang.FIL -> filipino[en] ?: en
-        Lang.ES -> EsCore.map[en] ?: en
-        Lang.PT -> PtCore.map[en] ?: en
+        Lang.ES -> spanish[en] ?: en
+        Lang.PT -> portuguese[en] ?: en
     }
 
     fun has(en: String): Boolean = filipino.containsKey(en)
 
     /** The keys of the partial Spanish and Portuguese tables (tests check they're real strings). */
-    val spanishKeys: Set<String> get() = EsCore.map.keys + PtCore.map.keys
+    val spanishKeys: Set<String> get() = spanish.keys + portuguese.keys
+
+    val spanish: Map<String, String> by lazy { EsCore.map + EsScreens.map }
+    val portuguese: Map<String, String> by lazy { PtCore.map + PtScreens.map }
 
     /** Fills {0}, {1}... in one pass, so a pet named "{1}" stays "{1}". */
     fun format(template: String, args: Array<out Any?>): String {
