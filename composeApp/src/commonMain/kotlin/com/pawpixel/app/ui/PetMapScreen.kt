@@ -86,8 +86,7 @@ private const val NAGA_LNG = 123.1948
  * whose venue appears once you say you're going. Nothing here uses your exact location.
  */
 @Composable
-fun PetMapScreen(app: AppScope, state: AppState) {
-    val map = app.repo.map
+fun PetMapScreen(app: AppScope, state: AppState, map: PetMapModel = app.repo.map) {
     var phase by remember { mutableStateOf<MapPhase>(MapPhase.Checking) }
     var busy by remember { mutableStateOf(false) }
     var message by remember { mutableStateOf<String?>(null) }

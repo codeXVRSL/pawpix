@@ -57,7 +57,7 @@ private val TIMES = listOf(6 * 60, 7 * 60, 8 * 60, 16 * 60, 17 * 60, 18 * 60)
 private val SIZES = listOf(10, 20, 30, 50)
 
 /**
- * "Host a walk": title, a day in the next two weeks, a time, the meeting place (named, and tapped
+ * "Host a walk": title, a day in the next ten days, a time, the meeting place (named, and tapped
  * on the map), how many can come, and a note. It goes to the moderator, then to everyone.
  */
 @OptIn(ExperimentalLayoutApi::class)
@@ -68,7 +68,7 @@ fun HostWalkDialog(
 ) {
     val clock = app.repo.clock
     val today = clock.dayIndex(app.now)
-    val days = (1..14).map { today + it }
+    val days = (1..10).map { today + it }
     AlertDialog(
         onDismissRequest = { if (!busy) onClose() },
         title = { Text(tr("Host a walk")) },
