@@ -174,6 +174,8 @@ data class Settings(
     val widgetTipDismissed: Boolean = false,
     /** "en", "fil", or "" to follow the phone's language. */
     val language: String = "",
+    /** [Units.METRIC], [Units.IMPERIAL], or "" to follow the phone's country. */
+    val units: String = "",
     val pro: Boolean = false,
     /** Local minute to start "sleepy" night mode. */
     val nightStart: Int = 22 * 60,

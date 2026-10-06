@@ -115,6 +115,7 @@ class PawRepository(val platform: Platform) {
     /** Everything drawn after this speaks the owner's language (Settings → Language, or the phone's). */
     private fun applyLanguage(state: AppState) {
         I18n.lang = Lang.resolve(state.settings.language, platform.systemLanguage())
+        com.pawpixel.core.Units.configure(state.settings.units, platform.systemCountry())
     }
 
     /**
@@ -128,7 +129,7 @@ class PawRepository(val platform: Platform) {
             val n = change(_state.value).let { if (stamp) HouseholdSync.stamp(_state.value, it, now()) else it }
             if (n != _state.value) {
                 if (!files.writeText(STATE_FILE, StateCodec.encode(n))) platform.log("Couldn't save state.json (phone full?)")
-                if (n.settings.language != _state.value.settings.language) applyLanguage(n)
+                if (n.settings.language != _state.value.settings.language || n.settings.units != _state.value.settings.units) applyLanguage(n)
                 _state.value = n
             }
             // Inside the lock, so concurrent updates (UI, widget, notification) publish in order.

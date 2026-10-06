@@ -44,6 +44,7 @@ import com.pawpixel.core.LocalClock
 import com.pawpixel.core.MoodEngine
 import com.pawpixel.core.Pet
 import com.pawpixel.core.StateOps
+import com.pawpixel.core.Units
 import com.pawpixel.core.WeightTrend
 import com.pawpixel.i18n.tr
 import com.pawpixel.sprite.PixelIcon
@@ -120,7 +121,7 @@ fun Panel(app: AppScope, state: AppState, pet: Pet?, title: String, content: @Co
 @Composable
 private fun WeightDoor(app: AppScope, state: AppState, pet: Pet) {
     val weights = state.weightsFor(pet.id)
-    val detail = weights.lastOrNull()?.let { tr("{0} on {1}", WeightTrend.kg(it.grams), LocalClock.shortDate(it.day)) } ?: tr("Keep track of weigh-ins")
+    val detail = weights.lastOrNull()?.let { tr("{0} on {1}", Units.weight(it.grams), LocalClock.shortDate(it.day)) } ?: tr("Keep track of weigh-ins")
     MenuRow(PixelIcons.SCALE, tr("Weight"), detail, Candy.Sky) { app.navigate(Screen.PetSection(pet.id, "weight")) }
 }
 

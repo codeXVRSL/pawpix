@@ -37,6 +37,7 @@ import com.pawpixel.core.Pet
 import com.pawpixel.core.Species
 import com.pawpixel.core.TaskKind
 import com.pawpixel.core.TaskStatus
+import com.pawpixel.core.Units
 import com.pawpixel.i18n.tr
 import com.pawpixel.i18n.trName
 import com.pawpixel.sprite.PixelIcons
@@ -67,9 +68,9 @@ fun CarePanel(app: AppScope, state: AppState, pet: Pet) {
                     Text(
                         when {
                             walks.walks == 0 -> tr("None yet. Time one and {0} trots along.", pet.name)
-                            walks.walks == 1 && km != null -> tr("1 walk · {0} min · about {1} km", walks.minutes, kmText(km))
+                            walks.walks == 1 && km != null -> tr("1 walk · {0} min · about {1}", walks.minutes, Units.distance(km))
                             walks.walks == 1 -> tr("1 walk · {0} min", walks.minutes)
-                            km != null -> tr("{0} walks · {1} min · about {2} km", walks.walks, walks.minutes, kmText(km))
+                            km != null -> tr("{0} walks · {1} min · about {2}", walks.walks, walks.minutes, Units.distance(km))
                             else -> tr("{0} walks · {1} min", walks.walks, walks.minutes)
                         },
                         style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -93,6 +94,7 @@ fun CarePanel(app: AppScope, state: AppState, pet: Pet) {
             nextMilestoneLine(pet)?.let { Hint(it) }
         }
     }
+    if (!pet.remembered) ChallengeCard(app, state, pet)
     val household = app.repo.family.household
     if (pet.shared && household != null) {
         val others = household.members.filter { it.userId != app.repo.family.myUserId }.joinToString { it.name }

@@ -49,6 +49,7 @@ import com.pawpixel.core.DAY_MS
 import com.pawpixel.core.LocalClock
 import com.pawpixel.core.Pet
 import com.pawpixel.core.Weight
+import com.pawpixel.core.Units
 import com.pawpixel.core.WeightTrend
 import com.pawpixel.i18n.tr
 import com.pawpixel.sprite.PixelIcons
@@ -69,7 +70,7 @@ fun WeightSection(app: AppScope, state: AppState, pet: Pet) {
         SoftCard(Modifier.fillMaxWidth(), tone = Tone.Surface) {
             Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text(WeightTrend.kg(last.grams), style = MaterialTheme.typography.headlineMedium)
+                    Text(Units.weight(last.grams), style = MaterialTheme.typography.headlineMedium)
                     Hint(tr("on {0}", LocalClock.shortDate(last.day)), Modifier.padding(bottom = 6.dp))
                 }
                 WeightTrend.change(weights)?.let { Hint(it) }
@@ -89,7 +90,7 @@ fun WeightSection(app: AppScope, state: AppState, pet: Pet) {
                     if (i > 0) HorizontalDivider(color = Paw.palette.hairline)
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text(LocalClock.shortDate(w.day), modifier = Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium)
-                        Text(WeightTrend.kg(w.grams), fontWeight = FontWeight.Bold)
+                        Text(Units.weight(w.grams), fontWeight = FontWeight.Bold)
                         val editLabel = tr("Edit the weigh-in on {0}", LocalClock.shortDate(w.day))
                         LinkButton(tr("Edit"), modifier = Modifier.semantics { contentDescription = editLabel }, color = MaterialTheme.colorScheme.onSurfaceVariant) { editing = w }
                     }
@@ -124,16 +125,18 @@ private fun WeightChart(weights: List<Weight>) {
     val measurer = rememberTextMeasurer()
     val small = MaterialTheme.typography.labelSmall.copy(color = ink)
     val bold = MaterialTheme.typography.labelMedium.copy(color = strong, fontWeight = FontWeight.Bold)
-    val (bottom, top, every) = WeightTrend.axis(weights.map { it.grams })
+    // The axis is laid out in the shown unit (kg or lb), in "hundredths" so the round steps fit either.
+    fun shown(grams: Int) = Units.weightTenths(grams) * 100
+    val (bottom, top, every) = WeightTrend.axis(weights.map { shown(it.grams) })
     val first = weights.first(); val last = weights.last()
     val desc = tr(
         "Weight chart: {0} weigh-ins, from {1} on {2} to {3} on {4}",
-        weights.size, WeightTrend.kg(first.grams), LocalClock.shortDate(first.day), WeightTrend.kg(last.grams), LocalClock.shortDate(last.day),
+        weights.size, Units.weight(first.grams), LocalClock.shortDate(first.day), Units.weight(last.grams), LocalClock.shortDate(last.day),
     )
     Canvas(Modifier.fillMaxWidth().height(170.dp).semantics { contentDescription = desc }) {
         val ticks = (bottom..top step every).toList()
-        val tickLabels = ticks.map { measurer.measure(WeightTrend.kgInput(it), small) }
-        val unit = measurer.measure("kg", small)
+        val tickLabels = ticks.map { measurer.measure(Units.tenthsText(it / 100), small) }
+        val unit = measurer.measure(Units.weightUnit, small)
         val left = (tickLabels.maxOf { it.size.width }).toFloat() + 8.dp.toPx()
         val right = size.width - 8.dp.toPx()
         val plotTop = unit.size.height + 6.dp.toPx()
@@ -161,18 +164,18 @@ private fun WeightChart(weights: List<Weight>) {
         }
 
         val path = Path()
-        weights.forEachIndexed { i, w -> if (i == 0) path.moveTo(x(w.day), y(w.grams)) else path.lineTo(x(w.day), y(w.grams)) }
+        weights.forEachIndexed { i, w -> if (i == 0) path.moveTo(x(w.day), y(shown(w.grams))) else path.lineTo(x(w.day), y(shown(w.grams))) }
         drawPath(path, line, style = Stroke(width = 2.5.dp.toPx()))
         var labelledX = Float.MAX_VALUE
         for (i in weights.indices.reversed()) {
             val w = weights[i]
-            val px = x(w.day); val py = y(w.grams)
+            val px = x(w.day); val py = y(shown(w.grams))
             val latest = i == weights.lastIndex
             drawCircle(line, if (latest) 5.dp.toPx() else 4.dp.toPx(), Offset(px, py))
             drawCircle(background, if (latest) 2.dp.toPx() else 1.5.dp.toPx(), Offset(px, py))
             // Value labels right to left, skipping any that would crowd the one after.
             if (labelledX - px < 40.dp.toPx()) continue
-            val label = measurer.measure(WeightTrend.kgInput(w.grams), if (latest) bold else small)
+            val label = measurer.measure(Units.weightInput(w.grams), if (latest) bold else small)
             val ly = (py - label.size.height - 6.dp.toPx()).let { if (it < plotTop - unit.size.height) py + 6.dp.toPx() else it }
             drawText(label, topLeft = Offset((px - label.size.width / 2f).coerceIn(left, size.width - label.size.width), ly))
             labelledX = px
@@ -189,13 +192,14 @@ private fun WeightDialog(
     name: String, today: Long, initial: Weight?, last: Weight?,
     onDismiss: () -> Unit, onDelete: (() -> Unit)?, onSave: (day: Long, grams: Int) -> Unit,
 ) {
-    var text by remember { mutableStateOf(initial?.let { WeightTrend.kgInput(it.grams) } ?: "") }
+    var text by remember { mutableStateOf(initial?.let { Units.weightInput(it.grams) } ?: "") }
     var day by remember { mutableStateOf(initial?.day ?: today) }
     var picking by remember { mutableStateOf(false) }
-    val grams = WeightTrend.parseKg(text)
-    fun nudge(by: Int) {
+    val grams = Units.parseWeight(text)
+    val unit = Units.weightUnit
+    fun nudge(tenths: Int) {
         val from = grams ?: last?.grams ?: 0
-        text = WeightTrend.kgInput((from + by).coerceIn(WeightTrend.STEP_G, WeightTrend.MAX_G))
+        text = Units.tenthsText((Units.weightTenths(from) + tenths).coerceIn(1, Units.weightTenths(WeightTrend.MAX_G)))
     }
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -203,16 +207,16 @@ private fun WeightDialog(
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 OutlinedTextField(
-                    text, { text = it.take(6) }, label = { Text(tr("Kilograms, e.g. 4.2")) }, singleLine = true,
+                    text, { text = it.take(6) }, label = { Text(if (Units.pounds) tr("Pounds, e.g. 9.3") else tr("Kilograms, e.g. 4.2")) }, singleLine = true,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal), shape = MaterialTheme.shapes.small,
                     isError = text.isNotBlank() && grams == null, modifier = Modifier.fillMaxWidth(),
                 )
                 // Or step from the last weigh-in, without the keyboard.
                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    StepKg("−1", tr("Subtract 1 kg")) { nudge(-10 * WeightTrend.STEP_G) }
-                    StepKg("−0.1", tr("Subtract 0.1 kg")) { nudge(-WeightTrend.STEP_G) }
-                    StepKg("+0.1", tr("Add 0.1 kg")) { nudge(WeightTrend.STEP_G) }
-                    StepKg("+1", tr("Add 1 kg")) { nudge(10 * WeightTrend.STEP_G) }
+                    StepKg("−1", tr("Subtract 1 {0}", unit)) { nudge(-10) }
+                    StepKg("−0.1", tr("Subtract 0.1 {0}", unit)) { nudge(-1) }
+                    StepKg("+0.1", tr("Add 0.1 {0}", unit)) { nudge(1) }
+                    StepKg("+1", tr("Add 1 {0}", unit)) { nudge(10) }
                 }
                 Text(tr("Weighed on"), style = MaterialTheme.typography.bodyMedium)
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {

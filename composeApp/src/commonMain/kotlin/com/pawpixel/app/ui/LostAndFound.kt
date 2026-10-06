@@ -51,6 +51,7 @@ import com.pawpixel.core.LocalClock
 import com.pawpixel.core.LocationGrid
 import com.pawpixel.core.Pet
 import com.pawpixel.core.Species
+import com.pawpixel.core.Units
 import com.pawpixel.i18n.tr
 import com.pawpixel.map.LostClient
 import com.pawpixel.map.LostDetails
@@ -129,7 +130,7 @@ private fun LostForm(app: AppScope, state: AppState, pet: Pet, map: PetMapModel?
         Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Text(tr("Is {0} missing?", pet.name), style = MaterialTheme.typography.titleLarge)
             Text(
-                if (map != null) tr("Raise an alert: PawPixel owners within 15 km see {0}'s photos and pixel twin on their map and can report where they saw {0}. Nobody sees your name or your home.", pet.name)
+                if (map != null) tr("Raise an alert: PawPixel owners within {1} see {0}'s photos and pixel twin on their map and can report where they saw {0}. Nobody sees your name or your home.", pet.name, Units.radius(15))
                 else tr("This version of the app isn't connected to PawPixel's server yet, so alerts to owners nearby aren't on. You can still share a notice."),
                 style = MaterialTheme.typography.bodyMedium,
             )
@@ -346,7 +347,7 @@ private fun SightingCard(app: AppScope, s: Sighting, d: LostDetails?, now: Long)
         Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
             val km = d?.let { LocationGrid.distanceKm(it.lastSeenLat, it.lastSeenLng, s.lat, s.lng) }
             Text(
-                if (km == null) agoText(s.createdAtMs, now) else tr("{0} · {1} km from where they were last seen", agoText(s.createdAtMs, now), kmText(km)),
+                if (km == null) agoText(s.createdAtMs, now) else tr("{0} · {1} from where they were last seen", agoText(s.createdAtMs, now), Units.distance(km)),
                 style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             s.note?.let { Text(it, style = MaterialTheme.typography.bodyMedium) }
@@ -358,7 +359,7 @@ private fun SightingCard(app: AppScope, s: Sighting, d: LostDetails?, now: Long)
     }
 }
 
-fun kmText(km: Double): String = if (km < 1) "0." + ((km * 10).toInt()) else if (km < 10) ((km * 10).toInt() / 10.0).toString() else km.toInt().toString()
+fun kmText(km: Double): String = Units.number(km)
 
 /** A JPEG from the server, decoded off the main thread. */
 @Composable
@@ -392,7 +393,7 @@ fun LostPetSheet(app: AppScope, map: PetMapModel, lost: LostPet, onClose: () -> 
                     Column(Modifier.weight(1f)) {
                         Text(tr("LOST: {0}", lost.name), style = MaterialTheme.typography.titleLarge)
                         Text(
-                            tr("Last seen {0} · {1} km from your area", agoText(lost.lastSeenAtMs, now), kmText(lost.distanceKm)),
+                            tr("Last seen {0} · {1} from your area", agoText(lost.lastSeenAtMs, now), Units.distance(lost.distanceKm)),
                             style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
@@ -484,7 +485,7 @@ fun LostList(app: AppScope, lost: List<LostPet>, onOpen: (LostPet) -> Unit) {
                     SpriteView(img, Modifier.size(56.dp), animate = false, description = tr("Pixel {0}", l.name))
                     Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                         Text((if (l.mine) tr("Yours") + " · " else "") + l.name, style = MaterialTheme.typography.titleMedium)
-                        Text(tr("Last seen {0} · {1} km away", agoText(l.lastSeenAtMs, now), kmText(l.distanceKm)), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(tr("Last seen {0} · {1} away", agoText(l.lastSeenAtMs, now), Units.distance(l.distanceKm)), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         l.description?.let { Text(it, style = MaterialTheme.typography.bodySmall, maxLines = 2) }
                     }
                     PixelIcon(PixelIcons.CHEVRON_RIGHT, tint = MaterialTheme.colorScheme.onSurfaceVariant, size = 14.dp)

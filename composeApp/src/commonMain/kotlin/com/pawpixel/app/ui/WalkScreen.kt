@@ -33,6 +33,7 @@ import com.pawpixel.app.toImageBitmap
 import com.pawpixel.core.AppState
 import com.pawpixel.core.Mood
 import com.pawpixel.core.Pet
+import com.pawpixel.core.Units
 import com.pawpixel.i18n.tr
 import com.pawpixel.sprite.Chibi
 import com.pawpixel.sprite.Frame
@@ -92,7 +93,7 @@ fun WalkScreen(app: AppScope, state: AppState, pet: Pet) {
                 when {
                     counting == false -> tr("This phone has no step counter; the walk is timed.")
                     st == null -> tr("Counting steps…")
-                    else -> tr("{0} steps · about {1} km", st, kmText(st * 0.0007))
+                    else -> tr("{0} steps · about {1}", st, Units.distance(st * 0.0007))
                 },
                 style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant,
             )

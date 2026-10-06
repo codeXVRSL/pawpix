@@ -102,7 +102,7 @@ object ReminderPlanner {
             }
         }
         val keptHealth = (bundle(health.filter { it.atMs >= quietUntil }, state).sortedBy { it.atMs }.take(MAX_HEALTH - 3) +
-            listOfNotNull(rabiesMonth(state, nowMs, clock)) + noiseNights(state, nowMs, clock, country) + occasions(state, nowMs, clock)).sortedBy { it.atMs }
+            listOfNotNull(rabiesMonth(state, nowMs, clock, country)) + noiseNights(state, nowMs, clock, country) + occasions(state, nowMs, clock)).sortedBy { it.atMs }
         val daily = bundleDaily(out.filter { it.atMs >= quietUntil }, state, clock).sortedBy { it.atMs }.take(MAX_PENDING - keptHealth.size)
         return (daily + keptHealth).sortedBy { it.atMs }
     }
@@ -138,7 +138,8 @@ object ReminderPlanner {
      * March 1. It isn't about a task, so it has no Done button ([Reminder.taskIds] is empty). Like
      * the other reminders it's planned again whenever PawPixel runs, so only within [RABIES_MONTH_LEAD_MS].
      */
-    fun rabiesMonth(state: AppState, nowMs: Long, clock: LocalClock): Reminder? {
+    fun rabiesMonth(state: AppState, nowMs: Long, clock: LocalClock, country: String = ""): Reminder? {
+        if (country.isNotBlank() && country.uppercase() != "PH") return null // a Philippine month
         val pet = state.pets.firstOrNull { it.species != Species.OTHER && !it.remembered } ?: return null
         val (year, _, _) = LocalClock.civil(clock.dayIndex(nowMs))
         val at = listOf(year, year + 1).map { clock.at(LocalClock.dayOf(it, 3, 1), RABIES_MONTH_MINUTE) }.first { it > nowMs }

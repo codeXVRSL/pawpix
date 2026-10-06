@@ -42,8 +42,9 @@ object Milestones {
     }
 }
 
-/** Weight over time, for the pet page. */
+/** Weight over time, for the pet page. Shown in kg or lb (see [Units]); stored in grams. */
 object WeightTrend {
+    /** Always kilograms (backups, tests). What the owner sees goes through [Units.weight]. */
     fun kg(grams: Int): String {
         val tenths = (grams + 50) / 100
         return "${tenths / 10}.${tenths % 10} kg"
@@ -88,6 +89,6 @@ object WeightTrend {
         val d = last.grams - prev.grams
         if (kotlin.math.abs(d) < 50) return tr("About the same as {0}", LocalClock.shortDate(prev.day))
         val sign = if (d > 0) "+" else "−"
-        return tr("{0} kg since {1}", sign + kg(kotlin.math.abs(d)).removeSuffix(" kg"), LocalClock.shortDate(prev.day))
+        return tr("{0} since {1}", sign + Units.weight(kotlin.math.abs(d)), LocalClock.shortDate(prev.day))
     }
 }

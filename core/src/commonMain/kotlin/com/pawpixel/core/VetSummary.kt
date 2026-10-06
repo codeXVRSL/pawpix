@@ -24,8 +24,8 @@ object VetSummary {
             val last = weights.last()
             val prev = weights.dropLast(1).lastOrNull()
             val change = prev?.let { p -> val d = last.grams - p.grams; if (d == 0) tr("no change since {0}", LocalClock.shortDate(p.day)) else tr("{0}{1} g since {2}", if (d > 0) "+" else "", d, LocalClock.shortDate(p.day)) }
-            sb.appendLine(if (change == null) tr("{0} on {1}", WeightTrend.kg(last.grams), LocalClock.shortDate(last.day)) else tr("{0} on {1} ({2})", WeightTrend.kg(last.grams), LocalClock.shortDate(last.day), change))
-            weights.takeLast(6).dropLast(1).reversed().forEach { sb.appendLine("  " + tr("{0} on {1}", WeightTrend.kg(it.grams), LocalClock.shortDate(it.day))) }
+            sb.appendLine(if (change == null) tr("{0} on {1}", Units.weight(last.grams), LocalClock.shortDate(last.day)) else tr("{0} on {1} ({2})", Units.weight(last.grams), LocalClock.shortDate(last.day), change))
+            weights.takeLast(6).dropLast(1).reversed().forEach { sb.appendLine("  " + tr("{0} on {1}", Units.weight(it.grams), LocalClock.shortDate(it.day))) }
         }
 
         val health = CareStats.healthDue(state, pet.id, nowMs, clock)

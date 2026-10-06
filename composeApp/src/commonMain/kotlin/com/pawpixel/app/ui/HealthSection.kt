@@ -76,13 +76,19 @@ fun HealthSection(app: AppScope, state: AppState, pet: Pet) {
     health.forEach { h -> key(h.task.id) { HealthRow(app, state, pet, h) } }
     if (health.isNotEmpty()) {
         GhostPill(tr("+ Add health item")) { app.navigate(Screen.EditTask(pet.id, null, health = true)) }
+        val ph = app.repo.platform.systemCountry().let { it == "PH" || it.isBlank() }
         Hint(
-            if (HealthPlan.isYoung(pet.birthDay, today))
-                tr("The first-year plan follows common Philippine schedules. If {0} missed a dose, ask your vet how to catch up; tap Edit to change anything.", pet.name)
-            else tr("Schedules are typical for adult pets in the Philippines. Your vet's advice comes first: tap Edit to change them."),
+            when {
+                HealthPlan.isYoung(pet.birthDay, today) && ph ->
+                    tr("The first-year plan follows common Philippine schedules. If {0} missed a dose, ask your vet how to catch up; tap Edit to change anything.", pet.name)
+                HealthPlan.isYoung(pet.birthDay, today) ->
+                    tr("The first-year plan follows the WSAVA vaccination guidelines. If {0} missed a dose, ask your vet how to catch up; tap Edit to change anything.", pet.name)
+                ph -> tr("Schedules are typical for adult pets in the Philippines. Your vet's advice comes first: tap Edit to change them.")
+                else -> tr("Schedules are typical for adult dogs and cats. Your vet's advice comes first: tap Edit to change them.")
+            },
         )
     }
-    if (pet.species != Species.OTHER) PhilippineInfoCard(app)
+    if (pet.species != Species.OTHER && app.repo.platform.systemCountry().let { it == "PH" || it.isBlank() }) PhilippineInfoCard(app)
 
     if (askBirthday) {
         BirthdayDialog(

@@ -35,6 +35,7 @@ import com.pawpixel.app.rememberFilePicker
 import com.pawpixel.core.AppState
 import com.pawpixel.core.Backup
 import com.pawpixel.core.MINUTES_PER_DAY
+import com.pawpixel.core.Units
 import com.pawpixel.i18n.tr
 import com.pawpixel.sprite.PixelIcons
 
@@ -105,6 +106,20 @@ fun SettingsScreen(app: AppScope, state: AppState) {
                 }
             }
             Hint(tr("Filipino translations are new: tell us if something sounds off."))
+        }
+
+        Group(PixelIcons.SCALE, tr("Units")) {
+            val country = app.repo.platform.systemCountry()
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                listOf(
+                    "" to tr("Phone's country ({0})", Units.autoLabel(country)),
+                    Units.METRIC to Units.label(miles = false, pounds = false),
+                    Units.IMPERIAL to Units.label(miles = true, pounds = true),
+                ).forEach { (code, label) ->
+                    ChoiceChip(s.units == code, { app.launch { app.repo.setSettings(s.copy(units = code)) } }, label)
+                }
+            }
+            Hint(tr("Walks, distances on the map and weigh-ins. Weights are kept in grams, so switching loses nothing."))
         }
 
         Group(PixelIcons.PEOPLE, tr("Household")) {

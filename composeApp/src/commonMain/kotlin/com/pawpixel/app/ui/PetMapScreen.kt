@@ -57,6 +57,7 @@ import com.pawpixel.core.AppState
 import com.pawpixel.core.LocalClock
 import com.pawpixel.core.Pet
 import com.pawpixel.core.Species
+import com.pawpixel.core.Units
 import com.pawpixel.i18n.tr
 import com.pawpixel.map.Gathering
 import com.pawpixel.sprite.PixelIcons
@@ -198,7 +199,7 @@ private fun JoinMap(app: AppScope, map: PetMapModel, state: AppState, busy: Bool
             Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 Text(tr("Meet pet owners near you"), style = MaterialTheme.typography.titleLarge)
                 Text(tr("• Other owners see your pixel pets and their names. Never your photos."))
-                Text(tr("• Your area shows as a square about 1 km wide. Your exact location never leaves your phone."))
+                Text(tr("• Your area shows as a square about {0} wide. Your exact location never leaves your phone.", Units.distance(1.0)))
                 Text(tr("• An area only appears once 3 or more owners are in it."))
                 Text(tr("• Gatherings are at public places. The venue shows after you say you're going."))
                 Text(tr("• Leave any time, and delete your map account from this screen."))
@@ -434,13 +435,13 @@ private fun AreaPets(
             dismissButton = { TextButton(onClick = { blockFor = null }) { Text(tr("Cancel")) } },
         )
     }
-    reportFor?.let { pet -> ReportDialog(pet, onDone = { reportFor = null }) { reason, details -> act { map.client.report(pet.id, reason, details) } } }
+    reportFor?.let { pet -> ReportDialog(pet, philippines = app.repo.platform.systemCountry().let { it == "PH" || it.isBlank() }, onDone = { reportFor = null }) { reason, details -> act { map.client.report(pet.id, reason, details) } } }
 }
 
 private fun speciesOf(name: String) = Species.entries.firstOrNull { it.name == name } ?: Species.OTHER
 
 @Composable
-private fun ReportDialog(pet: MapPet, onDone: () -> Unit, send: (String, String?) -> Unit) {
+private fun ReportDialog(pet: MapPet, philippines: Boolean, onDone: () -> Unit, send: (String, String?) -> Unit) {
     val reasons = listOf("spam" to tr("Spam or fake"), "harassment" to tr("Harassment"), "unsafe" to tr("Unsafe behaviour"),
         "child_safety" to tr("Child safety"), "other" to tr("Something else"))
     var reason by remember { mutableStateOf("spam") }
@@ -450,7 +451,7 @@ private fun ReportDialog(pet: MapPet, onDone: () -> Unit, send: (String, String?
         onDismissRequest = onDone,
         title = { Text(if (sent) tr("Thanks for telling us") else tr("Report {0}", pet.name)) },
         text = {
-            if (sent) Text(tr("We'll look at it. If someone is in danger, contact the police (911 in the Philippines)."))
+            if (sent) Text(if (philippines) tr("We'll look at it. If someone is in danger, contact the police (911 in the Philippines).") else tr("We'll look at it. If someone is in danger, contact the police."))
             else Column {
                 Column(Modifier.selectableGroup()) {
                     reasons.forEach { (key, label) ->
