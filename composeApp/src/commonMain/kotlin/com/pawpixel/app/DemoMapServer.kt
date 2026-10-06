@@ -89,6 +89,12 @@ class DemoMapServer(private val nowMs: () -> Long) : Http {
                 } else if (going.remove(w.id)) w.going--
                 ok(w.going.toString())
             }
+            path.endsWith("/rpc/gathering_pets") -> {
+                val w = walks.firstOrNull { it.id == body["p_id"].str && it.approved } ?: return ok()
+                val mine = if (w.id in going) myPets.map { p -> Json.obj("pet_id" to "mine-" + p["local_id"].str, "name" to p["name"].str, "species" to p["species"].str, "ears" to p["ears"].str, "look" to p["look"].str, "mine" to true) } else emptyList()
+                val theirs = visibleOwners().take(minOf(w.going, 6)).flatMap { o -> o.pets.map { p -> Json.obj("pet_id" to p.id, "name" to p.name, "species" to p.species, "ears" to p.ears, "look" to p.look, "mine" to false) } }
+                ok(Json.arr(mine + theirs).stringify())
+            }
             path.endsWith("/rpc/gathering_details") -> {
                 val w = walks.firstOrNull { it.id == body["p_id"].str && it.approved && (it.id in going || it.hostId == me) }
                 ok(if (w == null) "[]" else Json.arr(listOf(Json.obj("venue_name" to w.venueName, "venue_lat" to w.venueLat, "venue_lng" to w.venueLng))).stringify())

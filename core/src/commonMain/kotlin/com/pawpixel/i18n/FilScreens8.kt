@@ -203,6 +203,7 @@ internal object FilScreens8 {
         "One year together!" to "Isang taon nang magkasama!",
         "Open PawPixel: the room is decorated." to "Buksan ang PawPixel: nakadekorasyon ang kuwarto.",
         "Extra treats today. The room is decorated for it." to "Dagdag na treat ngayon. Nakadekorasyon ang kuwarto para rito.",
+        "Going:" to "Sasama:",
         // Noise nights
         "Noise night tomorrow" to "Maingay na gabi bukas",
         "Noise night tonight" to "Maingay na gabi ngayon",

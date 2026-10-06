@@ -374,6 +374,13 @@ class MapClient(
     suspend fun rsvp(gatheringId: String, going: Boolean): Int =
         Json.parse(rpc("rsvp", Json.obj("p_id" to gatheringId, "p_going" to going))).int ?: 0
 
+    /** Who's coming, as pixel pets: the map pets of owners who said they're going (never the owners). */
+    suspend fun gatheringPets(gatheringId: String): List<MapPet> =
+        Json.parse(rpc("gathering_pets", Json.obj("p_id" to gatheringId))).list.mapNotNull { p ->
+            MapPet(p["pet_id"].str ?: return@mapNotNull null, p["name"].str ?: "Pet", p["species"].str ?: "OTHER", p["ears"].str,
+                p["look"].str?.let(PetLook::decode), p["mine"].bool ?: false)
+        }
+
     /** The exact venue: only returned once you've RSVP'd. */
     suspend fun venue(gatheringId: String): Venue? =
         Json.parse(rpc("gathering_details", Json.obj("p_id" to gatheringId))).list.firstOrNull()?.let { v ->

@@ -121,6 +121,13 @@ check("you must join the map to RSVP", s >= 400, (s, n))
 s, n = rpc(b, "rsvp", {"p_id": gid, "p_going": False})
 check("you can cancel", s == 200 and n == 1, (s, n))
 
+# Who's coming, as pixel pets (0013): the RSVPed owners' map pets, never the owners.
+s, going = rpc(c, "gathering_pets", {"p_id": gid})
+check("a walk shows the pixel pets of the owners going, with no owner ids",
+      s == 200 and len(going) >= 1 and all(set(x) == {"pet_id", "name", "species", "ears", "look", "mine"} for x in going), (s, going))
+s, anon_going = call("POST", "/rest/v1/rpc/gathering_pets", {"p_id": gid})
+check("signed-out callers see nobody", s in (401, 403) or anon_going == [], (s, anon_going))
+
 # The community hosts its own walks (0008). b is on the map; d never joined.
 SOON = (datetime.now(timezone.utc) + timedelta(days=7)).strftime("%Y-%m-%dT%H:%M:%SZ")
 walk = {"p_title": "  Sunset walk at the Plaza  ", "p_starts_at": SOON, "p_cell_id": NAGA[0],

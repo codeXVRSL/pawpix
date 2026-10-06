@@ -522,6 +522,7 @@ private fun Gatherings(
                             tr("{0} going · {1}", g.going, if (left == 0) tr("full") else tr("{0} spots left", left)),
                         style = MaterialTheme.typography.bodySmall,
                     )
+                    if (g.going > 0) GoingPets(map, g)
                     val venue = venues.value[g.id]
                     if ((g.iAmGoing || g.iAmHost) && venue != null) {
                         Text(tr("Meet at: {0}", venue.name), fontWeight = FontWeight.Bold)
@@ -554,6 +555,27 @@ private fun Gatherings(
             }
         }
         item { Spacer(Modifier.height(16.dp)) }
+    }
+}
+
+/** The pixel pets of the owners going to a walk, in a row: a reason to go, and an ad for the maker. */
+@Composable
+private fun GoingPets(map: PetMapModel, g: Gathering) {
+    var pets by remember(g.id, g.going) { mutableStateOf<List<MapPet>?>(null) }
+    LaunchedEffect(g.id, g.going) { pets = runCatching { map.client.gatheringPets(g.id) }.getOrDefault(emptyList()) }
+    val list = pets ?: return
+    if (list.isEmpty()) return
+    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+        Text(tr("Going:"), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            items(list, key = { it.id }) { pet ->
+                Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.width(56.dp)) {
+                    val img = remember(pet.id) { pet.look?.let { PetArt(it, speciesOf(pet.species), Ears.of(pet.ears)).still } }
+                    SpriteView(img, Modifier.size(44.dp), animate = false, description = tr("Pixel {0}", pet.name))
+                    Text(pet.name, style = MaterialTheme.typography.labelSmall, maxLines = 1)
+                }
+            }
+        }
     }
 }
 
