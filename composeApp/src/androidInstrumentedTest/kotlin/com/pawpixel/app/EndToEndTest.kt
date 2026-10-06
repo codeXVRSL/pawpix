@@ -484,7 +484,19 @@ class EndToEndTest {
                 retrying { find(By.text("Send")).click() }
                 find(By.textStartsWith("Sent to"), 15_000)
                 check(model.pals.size == 1 && model.pals[0].pets.map { it.name }.containsAll(listOf("Biscuit", "Tala"))) { "pals not cached: ${model.pals}" }
+                // A moment: the album photo with a caption, shared for two days, then taken down.
+                find(By.text("Biscuit"), 15_000) // the demo pal's moment (shown with the pixel pet: the demo has no photo)
+                retrying { scrollTo(By.text("Share a moment")).click() }
+                find(By.text("Caption (optional)"), 15_000)
+                retrying { find(By.desc("First day home")).click() } // the album photo from the album step
+                find(By.desc("The photo to share"), 20_000)
+                retrying { find(By.clazz("android.widget.EditText")).text = "Sunday nap" }
+                retrying { find(By.text("Share")).click() }
+                find(By.textStartsWith("Shared with your pals"), 20_000)
+                scrollTo(By.descStartsWith("Your moment: Sunday nap"))
                 shot("pals")
+                retrying { scrollTo(By.text("Take it down")).click() }
+                waitFor("moment taken down", 15_000) { runBlocking { model.client.pals.moments() }.none { it.isMine(model.client.userId) } }
                 // Back in the room: the pal's pet is visiting, and 15 s later the demo pal's treat shows as the bubble.
                 waitFor("the demo pal sends a ball", 40_000) { runBlocking { model.client.pals.inbox() }.isNotEmpty() }
                 retrying { find(By.desc("Back")).click() }
