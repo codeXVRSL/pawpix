@@ -59,6 +59,7 @@ fun HealthSection(app: AppScope, state: AppState, pet: Pet) {
     val health = CareStats.healthDue(state, pet.id, app.now, app.repo.clock)
     var askBirthday by remember { mutableStateOf(false) }
 
+    TonalPill(tr("Vet visit summary"), icon = PixelIcons.STETHO) { app.navigate(Screen.PetSection(pet.id, "vet")) }
     if (health.isEmpty()) {
         Hint(
             tr("Keep track of {0}'s anti-rabies shot, other vaccines, deworming, tick & flea care and vet check-ups.", pet.name) + " " +
@@ -309,4 +310,28 @@ val WHEN_CHOICES = listOf(0 to "Today", 1 to "Yesterday", 7 to "A week ago", 30 
 fun everyLabel(days: Int): String = when (days) {
     1 -> tr("daily"); 7 -> tr("weekly"); 14 -> tr("every 2 weeks"); 30 -> tr("monthly"); 90 -> tr("every 3 months"); 180 -> tr("every 6 months"); 365 -> tr("yearly")
     else -> tr("every {0} days", days)
+}
+
+
+/**
+ * One page for the vet: weight and how it moved, what was given when and what's due, the daily
+ * routine, this week's walks. Copy it, or share it by Messenger or email.
+ */
+@Composable
+fun VetVisitPanel(app: AppScope, state: AppState, pet: Pet) {
+    val map = lostModel(app)
+    val summary = remember(state, pet.id, app.now) {
+        com.pawpixel.core.VetSummary.text(state, pet, app.now, app.repo.clock, map?.let { m -> m.cardFor(pet.id)?.let { null } })
+    }
+    val clipboard = androidx.compose.ui.platform.LocalClipboardManager.current
+    var copied by remember { mutableStateOf(false) }
+    Hint(tr("Everything the vet usually asks, from your own records. Hold the phone up, or send it ahead."))
+    androidx.compose.foundation.layout.Row(horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(8.dp)) {
+        PrimaryPill(tr("Share"), icon = PixelIcons.SHARE) { app.repo.platform.shareText(summary) }
+        GhostPill(if (copied) tr("Copied ✓") else tr("Copy")) { clipboard.setText(androidx.compose.ui.text.AnnotatedString(summary)); copied = true }
+    }
+    SoftCard(Modifier.fillMaxWidth(), tone = Tone.Surface) {
+        Text(summary, style = MaterialTheme.typography.bodyMedium, fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace)
+    }
+    Hint(tr("Schedules here are what you recorded in PawPixel; your vet's records come first."))
 }

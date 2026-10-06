@@ -511,10 +511,9 @@ class EndToEndTest {
             waitFor("walk recorded") { repo.state.value.walksFor(petId).size == 1 }
             val walk = repo.state.value.walksFor(petId).single()
             check(walk.endMs - walk.startMs >= 2_000) { "walk too short: $walk" }
-            find(By.text("Chelsea"), 15_000) // back in the room
-            retrying { find(By.text("Care")).click() }
-            find(By.textStartsWith("1 walk ·"), 15_000)
+            find(By.textStartsWith("1 walk ·"), 15_000) // back on the Care panel, the week's line updated
             closePanel()
+            find(By.text("Chelsea"), 15_000) // the room
         }
 
         step("home is the pet's room") {

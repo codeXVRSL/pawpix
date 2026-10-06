@@ -60,7 +60,7 @@ import kotlinx.coroutines.withContext
 fun PetSectionScreen(app: AppScope, state: AppState, pet: Pet, section: String) {
     val title = when (section) {
         "care" -> tr("Care"); "health" -> tr("Health"); "weight" -> tr("Weight"); "wardrobe" -> tr("Wardrobe")
-        "share" -> tr("Share"); "pets" -> tr("Your pets"); "more" -> tr("More"); "album" -> tr("Album"); "lost" -> tr("Lost and Found"); else -> tr("Share")
+        "share" -> tr("Share"); "pets" -> tr("Your pets"); "more" -> tr("More"); "album" -> tr("Album"); "lost" -> tr("Lost and Found"); "vet" -> tr("Vet visit"); else -> tr("Share")
     }
     Panel(app, state, pet, title) {
         when (section) {
@@ -72,6 +72,7 @@ fun PetSectionScreen(app: AppScope, state: AppState, pet: Pet, section: String) 
             "more" -> MorePanel(app, state, pet)
             "album" -> AlbumPanel(app, state, pet)
             "lost" -> LostPanel(app, state, pet)
+            "vet" -> VetVisitPanel(app, state, pet)
             else -> ShareSection(app, pet)
         }
     }
