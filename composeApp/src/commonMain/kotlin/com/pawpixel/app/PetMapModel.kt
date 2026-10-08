@@ -147,7 +147,7 @@ class PetMapModel(
             client.signInWithPassword(settings.testEmail, settings.testPassword)
             return true
         }
-        val raw = Sha256.newNonce()
+        val raw = Sha256.newNonce(platform.secureRandomBytes(32))
         val identity = platform.signInForMap(Sha256.hex(raw), settings.googleWebClientId) ?: return false
         client.signInWithIdToken(identity.provider, identity.idToken, raw)
         return true

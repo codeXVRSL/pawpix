@@ -109,7 +109,8 @@ fun PalsScreen(app: AppScope, state: AppState) {
                         modifier = Modifier.semantics { contentDescription = if (c == null) tr("Loading…") else tr("Pal code {0}", c.toList().joinToString(" ")) },
                     )
                     Text(tr("Give it to a friend with PawPixel. It never expires; unpal anyone any time."), style = MaterialTheme.typography.bodySmall, textAlign = TextAlign.Center)
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                        LinkButton(tr("New code"), enabled = c != null && !busy) { act { code = map.client.pals.newCode(); message = tr("Your old code no longer works."); good = true } }
                         GhostPill(tr("Copy"), enabled = c != null) { c?.let { clipboard.setText(AnnotatedString(it)) } }
                         PrimaryPill(tr("Share"), enabled = c != null, icon = PixelIcons.SHARE) {
                             c?.let { app.repo.platform.shareText(tr("Be my pal on PawPixel: open More → Pals and enter my code {0}. Your pixel pet will visit mine!", it)) }

@@ -27,9 +27,13 @@ class PalClient(private val api: SupabaseApi) {
     /** Your own code to hand to friends (made the first time). */
     suspend fun myCode(): String = Json.parse(api.rpc("my_pal_code")).str ?: throw MapException(MapException.Kind.SERVER, "No code")
 
-    /** Becomes pals with the code's owner; returns their id. Refused with the server's reason otherwise. */
+    /** Becomes pals with the code's owner; returns their id. A wrong code counts against ten an hour. */
     suspend fun add(code: String): String =
-        Json.parse(api.rpc("add_pal", Json.obj("p_code" to code.trim().uppercase()))).str ?: throw MapException(MapException.Kind.SERVER, "No pal")
+        Json.parse(api.rpc("add_pal_tracked", Json.obj("p_code" to code.trim().uppercase()))).str
+            ?: throw MapException(MapException.Kind.SERVER, com.pawpixel.i18n.tr("no pal with that code"))
+
+    /** Replaces your code: the old one stops working for anyone who had it. */
+    suspend fun newCode(): String = Json.parse(api.rpc("new_pal_code")).str ?: throw MapException(MapException.Kind.SERVER, "No code")
 
     suspend fun remove(palId: String) { api.rpc("remove_pal", Json.obj("p_user" to palId)) }
 

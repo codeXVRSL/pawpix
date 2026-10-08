@@ -180,6 +180,13 @@ class DemoMapServer(private val nowMs: () -> Long) : Http {
             }).stringify())
             // Pals (0012): your code is DEMO22; the codes JAM1LA and BANTAY belong to pretend owners.
             path.endsWith("/rpc/my_pal_code") -> ok("\"DEMO22\"")
+            path.endsWith("/rpc/new_pal_code") -> ok("\"DEMO33\"")
+            path.endsWith("/rpc/add_pal_tracked") -> {
+                val code = (body["p_code"].str ?: "").trim().uppercase()
+                val id = when (code) { "JAM1LA" -> "owner-0"; "BANTAY" -> "owner-3"; "DEMO22", "DEMO33" -> return HttpResponse(400, """{"message":"that is your own code"}"""); else -> return ok("null") }
+                pals.getOrPut(id) { nowMs() }
+                ok("\"$id\"")
+            }
             path.endsWith("/rpc/add_pal") -> {
                 val code = (body["p_code"].str ?: "").trim().uppercase()
                 val id = when (code) { "JAM1LA" -> "owner-0"; "BANTAY" -> "owner-3"; "DEMO22" -> return HttpResponse(400, """{"message":"that is your own code"}"""); else -> return HttpResponse(400, """{"message":"no pal with that code"}""") }

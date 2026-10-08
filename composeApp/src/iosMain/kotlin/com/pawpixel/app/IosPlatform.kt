@@ -138,6 +138,13 @@ class IosPlatform(private val host: IosHost) : Platform {
     override fun systemLanguage(): String = (NSLocale.preferredLanguages.firstOrNull() as? String) ?: "en"
     override fun systemCountry(): String = NSLocale.currentLocale.countryCode ?: ""
 
+    @OptIn(kotlinx.cinterop.ExperimentalForeignApi::class)
+    override fun secureRandomBytes(n: Int): ByteArray {
+        val out = ByteArray(n)
+        out.usePinned { pinned -> platform.Security.SecRandomCopyBytes(platform.Security.kSecRandomDefault, n.toULong(), pinned.addressOf(0)) }
+        return out
+    }
+
     // ---- Walks: the pedometer ----
     private var pedometer: platform.CoreMotion.CMPedometer? = null
     private var pedometerSteps: Int? = null

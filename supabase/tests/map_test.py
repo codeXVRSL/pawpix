@@ -89,6 +89,9 @@ s2, cells = rpc(e, "nearby_cells", {"p_cell_lat": NAGA[1], "p_cell_lng": NAGA[2]
 check("blocking an owner drops the area below 3, so it hides", s in (200, 204) and cells == [], (s, s2, cells))
 s, cells = rpc(c, "nearby_cells", {"p_cell_lat": NAGA[1], "p_cell_lng": NAGA[2]})
 check("blocks work both ways only for the pair (others still see it)", s == 200 and len(cells) == 1, (s, cells))
+# An owner's area can move three times a day (0017): a puppet account can't sweep a city for lone owners.
+moves = [call("POST", "/rest/v1/map_presence", {"owner_id": e["id"], "cell_id": f"g1000:{9400 + i}:27600", "cell_lat": 13.7, "cell_lng": 123.2 + i / 100}, e["token"], prefer="resolution=merge-duplicates")[0] for i in range(5)]
+check("the fourth change of area in a day is refused", all(m in (200, 201, 204) for m in moves[:3]) and all(m >= 400 for m in moves[3:]), moves)
 
 s, _ = rpc(d, "report_pet", {"p_pet_id": pets[0]["pet_id"], "p_reason": "spam", "p_details": "test"})
 s2, reports = call("GET", "/rest/v1/reports?select=reason,target_user", key=SERVICE)
@@ -108,6 +111,8 @@ s, rows = call("GET", "/rest/v1/gatherings_public?select=*", token=d["token"])
 check("gatherings list shows no venue", s == 200 and len(rows) == 1 and "venue_name" not in rows[0] and rows[0]["i_am_going"] is False, (s, rows))
 s, rows = call("GET", "/rest/v1/gatherings?select=*", token=d["token"])
 check("the raw gatherings table isn't readable", s == 200 and rows == [], (s, rows))
+s, r = call("POST", "/rest/v1/rsvps", {"gathering_id": gid, "user_id": a["id"]}, token=a["token"])
+check("an RSVP can't be inserted directly, only through rsvp() (0017)", s >= 400, (s, r))
 s, r = call("POST", "/rest/v1/gatherings", {"host_id": a["id"], "title": "Sneaky walk", "starts_at": "2099-01-01T08:00:00Z", "cell_id": "x",
                                              "area_label": "", "venue_name": "", "venue_lat": 0, "venue_lng": 0, "capacity": 2, "approved": False}, token=a["token"])
 check("a walk can't be inserted directly, only proposed through host_walk (0016)", s >= 400, (s, r))
@@ -292,9 +297,20 @@ check("the owner can take a moment down", s in (200, 204) and moments == [], (s,
 s, rows = call("GET", "/rest/v1/pal_moments?select=*", token=d["token"])
 check("the moments table itself is closed", rows in ([], None) or s >= 400, (s, rows))
 
+s, _ = rpc(d, "send_treat", {"p_to_user": a["id"], "p_to_pet": "p1", "p_from_pet": "G4g0", "p_kind": "pat"})
+s2, inbox = rpc(a, "treats_inbox")
+check("a treat's sender name goes through the word filter (0017)", s in (200, 204) and inbox[0]["from_pet"] == "A pal", (s, inbox))
 s, _ = rpc(a, "remove_pal", {"p_user": d["id"]})
 s2, pals = rpc(d, "pals_list")
 check("either side can unpal", s in (200, 204) and pals == [], (s, pals))
+s, r = rpc(d, "add_pal_tracked", {"p_code": code})
+check("someone who unpalled you can't be re-added with their old code (0017)", s == 200 and r is None, (s, r))
+s, code_a2 = rpc(a, "new_pal_code")
+s2, r = rpc(e, "add_pal_tracked", {"p_code": code})
+check("a replaced code stops working", s == 200 and code_a2 != code and len(code_a2) == 6 and r is None, (s, code_a2, r))
+misses = [rpc(e, "add_pal_tracked", {"p_code": f"ZZZZ{i:02d}"})[0] for i in range(10)]
+s, r = rpc(e, "add_pal_tracked", {"p_code": code_a2})
+check("ten wrong codes in an hour lock guessing, even for a right one", all(m == 200 for m in misses) and s >= 400, (misses, s, r))
 s, rows = call("GET", "/rest/v1/pal_pets?select=*", token=d["token"])
 check("the pal tables themselves are closed", rows in ([], None) or s >= 400, (s, rows))
 
@@ -305,6 +321,13 @@ check("a banned owner's pets disappear (area drops below 3)", s == 200 and cells
 s, _ = call("PATCH", f"/rest/v1/map_profiles?user_id=eq.{b['id']}", {"banned": False}, b["token"])
 s2, rows = call("GET", f"/rest/v1/map_profiles?user_id=eq.{b['id']}&select=banned", key=SERVICE)
 check("a banned owner can't unban themselves", s >= 400 and rows[0]["banned"] is True, (s, rows))
+s, _ = call("DELETE", f"/rest/v1/map_profiles?user_id=eq.{b['id']}", token=b["token"])
+rpc(b, "leave_map")
+s2, rows = call("GET", f"/rest/v1/map_profiles?user_id=eq.{b['id']}&select=banned", key=SERVICE)
+check("a banned owner can't delete the profile and come back clean (0017)", len(rows) == 1 and rows[0]["banned"] is True, (s, rows))
+s, _ = call("POST", "/rest/v1/map_profiles", {"user_id": b["id"], "confirmed_adult": True}, b["token"], prefer="resolution=merge-duplicates")
+s2, rows = call("GET", f"/rest/v1/map_profiles?user_id=eq.{b['id']}&select=banned", key=SERVICE)
+check("re-joining keeps the ban", rows[0]["banned"] is True, (s, rows))
 
 for bad, want in (("G4g0", "A dog"), ("tang!na mo", "A dog"), ("Grape", "Grape"), ("Petite", "Petite")):
     s, r = call("POST", "/rest/v1/map_pets", {"owner_id": a["id"], "name": bad, "species": "DOG", "ears": "FLOPPY", "look": LOOK},

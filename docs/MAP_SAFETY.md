@@ -26,3 +26,6 @@ Pets on the map are **pixel pets only**: the app sends a short look code (colour
 - [ ] Strip EXIF/GPS from any uploaded real photos on the device
 - [ ] Moderation plan: who checks reports, and how fast
 - [ ] Start with one founder-hosted monthly walk in Naga, not a city-wide map
+
+## Limits that make scanning expensive (migration 0017)
+An area shows only with three or more owners in it. Someone with puppet accounts could in theory move them into a square to tip a lone owner over the line, so an account can change its area at most three times a day, a banned account keeps its ban even if it leaves and re-joins, RSVPs and walk proposals only go through the server functions that check capacity and bans, pal codes can be replaced and wrong guesses are limited to ten an hour, and a pal who removed you can't be added back with their old code.

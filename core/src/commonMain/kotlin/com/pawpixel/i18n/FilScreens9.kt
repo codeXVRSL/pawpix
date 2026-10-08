@@ -41,6 +41,9 @@ internal object FilScreens9 {
         "Up to {0} friends, by code only. Pals see your pixel pets and their names, and only the moments you choose to share: never your place or your care. Their pets drop by your room; send theirs a treat." to
             "Hanggang {0} kaibigan, sa code lang. Nakikita ng mga pal ang mga pixel na alaga mo at ang pangalan nila, at ang mga moment lang na pinili mong ibahagi: hindi kailanman ang lugar mo o ang pag-aalaga mo. Dumadalaw ang mga alaga nila sa kuwarto mo; padalhan ng treat ang kanila.",
         "Moments" to "Mga moment",
+        "New code" to "Bagong code",
+        "Your old code no longer works." to "Hindi na gumagana ang luma mong code.",
+        "no pal with that code" to "walang pal na may ganoong code",
         "Shared with your pals for two days." to "Ibinahagi sa mga pal mo sa loob ng dalawang araw.",
         "A photo of the day for your pals and nobody else. It's gone after two days; no likes, no comments." to
             "Isang litrato ng araw para sa mga pal mo at wala nang iba. Nawawala pagkatapos ng dalawang araw; walang like, walang comment.",

@@ -211,6 +211,8 @@ class AndroidPlatform(private val context: Context) : Platform {
     override fun systemLanguage(): String = java.util.Locale.getDefault().language
     override fun systemCountry(): String = java.util.Locale.getDefault().country
 
+    override fun secureRandomBytes(n: Int): ByteArray = ByteArray(n).also { java.security.SecureRandom().nextBytes(it) }
+
     override fun widgetInstalled(): Boolean = runCatching {
         android.appwidget.AppWidgetManager.getInstance(context)
             .getAppWidgetIds(android.content.ComponentName(context, com.pawpixel.app.widget.PetWidgetReceiver::class.java)).isNotEmpty()

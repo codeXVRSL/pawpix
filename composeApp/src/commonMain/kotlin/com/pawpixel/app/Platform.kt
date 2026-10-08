@@ -84,6 +84,9 @@ interface Platform {
     /** Diagnostic line in the system log (logcat / Console), never shown to the user. */
     fun log(message: String) {}
 
+    /** Random bytes from the platform's secure generator (the sign-in nonce). */
+    fun secureRandomBytes(n: Int): ByteArray = ByteArray(n).also { kotlin.random.Random.Default.nextBytes(it) }
+
     // ---- Pet map (opt-in) ----
 
     /** HTTP for the map server. */

@@ -45,9 +45,12 @@ object Sha256 {
 
     fun hex(text: String): String = hash(text.encodeToByteArray()).joinToString("") { (it.toInt() and 0xff).toString(16).padStart(2, '0') }
 
-    /** A fresh random nonce (URL-safe). */
-    fun newNonce(random: kotlin.random.Random = kotlin.random.Random.Default): String {
+    /** A fresh random nonce (URL-safe). Pass the platform's secure random bytes; the default is for tests. */
+    fun newNonce(random: kotlin.random.Random = kotlin.random.Random.Default): String = newNonce(ByteArray(32).also { random.nextBytes(it) })
+
+    fun newNonce(bytes: ByteArray): String {
         val alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_"
-        return (1..32).map { alphabet[random.nextInt(alphabet.length)] }.joinToString("")
+        require(bytes.size >= 32)
+        return (0 until 32).map { alphabet[(bytes[it].toInt() and 0x3f)] }.joinToString("")
     }
 }
