@@ -86,7 +86,7 @@ private val FLAG = listOf("#.....", "#####.", "######", "#####.", "#.....", "#..
 private val Leaf = Color(0xFF5EA64C)
 
 /** A walk on the map: its ~1 km area (never the venue) and its title. */
-data class MapFlag(val lat: Double, val lng: Double, val title: String)
+data class MapFlag(val lat: Double, val lng: Double, val title: String, val id: String = "")
 
 /**
  * A street map drawn the pixel way: 256 px tiles scaled by a whole number with no smoothing, so

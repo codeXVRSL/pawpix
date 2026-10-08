@@ -262,11 +262,11 @@ class AndroidPlatform(private val context: Context) : Platform {
     private fun hasActivityPermission() = Build.VERSION.SDK_INT < 29 ||
         context.checkSelfPermission(android.Manifest.permission.ACTIVITY_RECOGNITION) == android.content.pm.PackageManager.PERMISSION_GRANTED
 
-    override suspend fun startSteps(): Boolean {
-        val sm = context.getSystemService(android.hardware.SensorManager::class.java) ?: return false
-        val sensor = sm.getDefaultSensor(android.hardware.Sensor.TYPE_STEP_COUNTER) ?: return false
-        if (!hasActivityPermission() && activityPermission?.invoke() != true) return false
-        if (!hasActivityPermission()) return false
+    override suspend fun startSteps(): StepStart {
+        val sm = context.getSystemService(android.hardware.SensorManager::class.java) ?: return StepStart.NO_SENSOR
+        val sensor = sm.getDefaultSensor(android.hardware.Sensor.TYPE_STEP_COUNTER) ?: return StepStart.NO_SENSOR
+        if (!hasActivityPermission() && activityPermission?.invoke() != true) return StepStart.DENIED
+        if (!hasActivityPermission()) return StepStart.DENIED
         stopSteps()
         stepsAtStart = null; stepsNow = null
         val l = object : android.hardware.SensorEventListener {
@@ -278,7 +278,7 @@ class AndroidPlatform(private val context: Context) : Platform {
             override fun onAccuracyChanged(sensor: android.hardware.Sensor?, accuracy: Int) {}
         }
         stepListener = l
-        return sm.registerListener(l, sensor, android.hardware.SensorManager.SENSOR_DELAY_UI)
+        return if (sm.registerListener(l, sensor, android.hardware.SensorManager.SENSOR_DELAY_UI)) StepStart.COUNTING else StepStart.NO_SENSOR
     }
 
     override fun stepsSoFar(): Int? {

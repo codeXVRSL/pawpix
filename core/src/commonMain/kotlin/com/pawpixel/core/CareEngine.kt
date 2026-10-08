@@ -91,6 +91,13 @@ class LocalClock(private val offsetAt: (Long) -> Long) {
         }
 
         fun fixed(offsetMs: Long) = LocalClock { offsetMs }
+
+        /** "7:00 AM" for a minute of the day (the app and the vet summary share it). */
+        fun formatMinute(minute: Int): String {
+            val h = minute / 60; val m = minute % 60
+            val h12 = if (h % 12 == 0) 12 else h % 12
+            return "$h12:${m.toString().padStart(2, '0')} " + (if (h < 12) com.pawpixel.i18n.tr("AM") else com.pawpixel.i18n.tr("PM"))
+        }
         /** Philippine Standard Time, UTC+8, no daylight saving. */
         val MANILA = fixed(8 * HOUR_MS)
     }

@@ -53,7 +53,7 @@ fun WalkScreen(app: AppScope, state: AppState, pet: Pet) {
     val startMs = remember { app.repo.now() }
     var elapsed by remember { mutableIntStateOf(0) }
     var steps by remember { mutableStateOf<Int?>(null) }
-    var counting by remember { mutableStateOf<Boolean?>(null) }
+    var counting by remember { mutableStateOf<com.pawpixel.app.StepStart?>(null) }
     var ending by remember { mutableStateOf(false) }
     val art = remember(pet.lookKey) { app.repo.art(pet) }
     // The pet trots: the four walk frames, uneven timing, never mirrored.
@@ -68,11 +68,12 @@ fun WalkScreen(app: AppScope, state: AppState, pet: Pet) {
         while (true) {
             delay(1_000)
             elapsed = ((app.repo.now() - startMs) / 1000).toInt()
-            if (counting == true) steps = platform.stepsSoFar()
+            if (counting == com.pawpixel.app.StepStart.COUNTING) steps = platform.stepsSoFar()
         }
     }
     LaunchedEffect(frames) { if (frames != null) while (true) { delay(if (frame % 2 == 0) 260L else 160L); frame = (frame + 1) % 4 } }
-    DisposableEffect(Unit) { onDispose { platform.keepScreenOn(false) } }
+    // Leaving by the back key (or the system back) still stops the step sensor.
+    DisposableEffect(Unit) { onDispose { platform.keepScreenOn(false); platform.stopSteps() } }
 
     Column(Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding()) {
         TopBar(app, tr("Walk with {0}", pet.name), Modifier.padding(horizontal = 16.dp))
@@ -91,7 +92,8 @@ fun WalkScreen(app: AppScope, state: AppState, pet: Pet) {
             val st = steps
             Text(
                 when {
-                    counting == false -> tr("This phone has no step counter; the walk is timed.")
+                    counting == com.pawpixel.app.StepStart.NO_SENSOR -> tr("This phone has no step counter; the walk is timed.")
+                    counting == com.pawpixel.app.StepStart.DENIED -> tr("Steps need the physical activity permission (Settings → Apps → PawPixel). The walk is timed meanwhile.")
                     st == null -> tr("Counting steps…")
                     else -> tr("{0} steps · about {1}", st, Units.distance(st * 0.0007))
                 },
@@ -103,7 +105,7 @@ fun WalkScreen(app: AppScope, state: AppState, pet: Pet) {
                 PrimaryPill(if (ending) tr("Saving…") else tr("End walk"), enabled = !ending, big = true, icon = PixelIcons.CHECK) {
                     ending = true
                     app.launch {
-                        app.repo.endWalk(pet.id, startMs, if (counting == true) platform.stepsSoFar() else null)
+                        app.repo.endWalk(pet.id, startMs, if (counting == com.pawpixel.app.StepStart.COUNTING) platform.stepsSoFar() else null)
                         app.back()
                     }
                 }

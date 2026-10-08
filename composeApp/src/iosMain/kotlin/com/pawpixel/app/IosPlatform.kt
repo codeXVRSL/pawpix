@@ -142,13 +142,14 @@ class IosPlatform(private val host: IosHost) : Platform {
     private var pedometer: platform.CoreMotion.CMPedometer? = null
     private var pedometerSteps: Int? = null
 
-    override suspend fun startSteps(): Boolean {
-        if (!platform.CoreMotion.CMPedometer.isStepCountingAvailable()) return false
+    override suspend fun startSteps(): StepStart {
+        if (!platform.CoreMotion.CMPedometer.isStepCountingAvailable()) return StepStart.NO_SENSOR
+        if (platform.CoreMotion.CMPedometer.authorizationStatus() == platform.CoreMotion.CMAuthorizationStatusDenied) return StepStart.DENIED
         stopSteps()
         val p = platform.CoreMotion.CMPedometer()
         pedometer = p; pedometerSteps = 0
         p.startPedometerUpdatesFromDate(NSDate()) { data, _ -> data?.numberOfSteps?.let { pedometerSteps = it.intValue } }
-        return true
+        return StepStart.COUNTING
     }
 
     override fun stepsSoFar(): Int? = pedometerSteps

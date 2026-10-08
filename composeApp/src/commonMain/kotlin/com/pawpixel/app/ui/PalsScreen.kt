@@ -65,13 +65,14 @@ fun PalsScreen(app: AppScope, state: AppState) {
     var entry by remember { mutableStateOf("") }
     var busy by remember { mutableStateOf(false) }
     var message by remember { mutableStateOf<String?>(null) }
+    var good by remember { mutableStateOf(false) } // the message is good news (green), not an error
     var treatFor by remember { mutableStateOf<PalPet?>(null) }
     var moments by remember { mutableStateOf<List<Moment>>(emptyList()) }
     var sharing by remember { mutableStateOf(false) }
     var refresh by remember { mutableStateOf(0) }
     val clipboard = LocalClipboardManager.current
     fun act(block: suspend () -> Unit) {
-        busy = true; message = null
+        busy = true; message = null; good = false
         app.launch {
             try { block() } catch (e: MapException) { message = e.message } catch (e: Exception) { message = e.message ?: tr("Something went wrong. Please try again.") }
             finally { busy = false }
@@ -121,10 +122,10 @@ fun PalsScreen(app: AppScope, state: AppState) {
                 OutlinedTextField(entry, { entry = it.uppercase().take(6) }, label = { Text(tr("Their code")) }, singleLine = true, modifier = Modifier.weight(1f))
                 PrimaryPill(tr("Add"), enabled = entry.length == 6 && !busy) {
                     val typed = entry
-                    act { map.client.pals.add(typed); entry = ""; refresh++; message = tr("You're pals now.") }
+                    act { map.client.pals.add(typed); entry = ""; refresh++; message = tr("You're pals now."); good = true }
                 }
             }
-            message?.let { Text(it, color = if (it.startsWith(tr("You're pals"))) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
+            message?.let { Text(it, color = if (good) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
 
             if (pals.isNotEmpty() || moments.isNotEmpty()) {
                 GroupLabel(tr("Moments"))
@@ -140,12 +141,12 @@ fun PalsScreen(app: AppScope, state: AppState) {
     }
     if (sharing && map != null) ShareMomentDialog(app, state, onClose = { sharing = false }) { petName, caption, photo ->
         sharing = false
-        act { map.client.pals.setMoment(petName, caption, photo); moments = map.client.pals.moments(); message = tr("Shared with your pals for two days.") }
+        act { map.client.pals.setMoment(petName, caption, photo); moments = map.client.pals.moments(); message = tr("Shared with your pals for two days."); good = true }
     }
     treatFor?.let { pet ->
         TreatDialog(app, state, pet, onClose = { treatFor = null }) { kind, fromName ->
             treatFor = null
-            act { map!!.client.pals.sendTreat(pet.palId, pet.petId, fromName, kind); message = tr("Sent to {0}!", pet.name) }
+            act { map!!.client.pals.sendTreat(pet.palId, pet.petId, fromName, kind); message = tr("Sent to {0}!", pet.name); good = true }
         }
     }
 }

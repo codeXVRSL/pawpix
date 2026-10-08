@@ -3,6 +3,10 @@ package com.pawpixel.i18n
 /** Filipino for units (km or miles, kg or lb), the country-aware health notes, and the monthly challenge. */
 internal object FilScreens9 {
     val map: Map<String, String> = mapOf(
+        "Steps need the physical activity permission (Settings → Apps → PawPixel). The walk is timed meanwhile." to
+            "Kailangan ng physical activity permission para sa mga hakbang (Settings → Apps → PawPixel). Samantala, naka-timer ang lakad.",
+        "AM" to "AM", "PM" to "PM",
+
         // Units
         "Units" to "Mga sukat",
         "Phone's country ({0})" to "Bansa ng telepono ({0})",

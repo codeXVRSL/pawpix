@@ -38,7 +38,7 @@ data class MyLostPet(val id: String, val name: String, val createdAtMs: Long, va
 class LostClient(private val api: SupabaseApi) {
     /** Raises the alert and returns its id. The server refuses a fourth open alert and oversized photos. */
     suspend fun report(draft: LostDraft): String {
-        val photos = draft.photos.take(MAX_PHOTOS).filter { it.size <= MAX_PHOTO_BYTES }.map { Base64.encode(it) }
+        val photos = draft.photos.filter { it.size <= MAX_PHOTO_BYTES }.take(MAX_PHOTOS).map { Base64.encode(it) }
         val args = Json.obj(
             "p_name" to draft.name.trim().take(24).ifBlank { tr("Pet") },
             "p_species" to draft.species, "p_ears" to draft.ears, "p_look" to draft.look,

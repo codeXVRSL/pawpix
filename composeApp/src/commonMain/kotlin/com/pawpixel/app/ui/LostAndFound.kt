@@ -276,6 +276,7 @@ private fun OpenAlert(app: AppScope, map: PetMapModel, pet: Pet, alertId: String
             if (!map.signIn()) return@act
             details = map.client.lost.details(alertId)
             sightings = map.client.lost.sightings(alertId)
+            if (details?.foundAtMs != null) home = true // closed on the server already (Safe home tapped, then the app was left)
         }
     }
 
@@ -367,7 +368,8 @@ fun kmText(km: Double): String = Units.number(km)
 /** A JPEG from the server, decoded off the main thread. */
 @Composable
 fun AlertPhoto(bytes: ByteArray, description: String, modifier: Modifier = Modifier) {
-    val image by produceState<ImageBitmap?>(null, bytes.size) { value = withContext(Dispatchers.Default) { runCatching { decodeImage(bytes) }.getOrNull() } }
+    val key = remember(bytes) { bytes.contentHashCode() }
+    val image by produceState<ImageBitmap?>(null, bytes.size, key) { value = withContext(Dispatchers.Default) { runCatching { decodeImage(bytes) }.getOrNull() } }
     Box(modifier.clip(MaterialTheme.shapes.small).border(1.dp, Paw.palette.hairline, MaterialTheme.shapes.small).semantics { contentDescription = description }) {
         image?.let { Image(it, contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.size(120.dp)) }
     }

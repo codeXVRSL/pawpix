@@ -50,7 +50,7 @@ interface Platform {
     // ---- Walks ----
 
     /** Starts counting steps for a walk (asks for permission first). False when this phone can't count steps. */
-    suspend fun startSteps(): Boolean = false
+    suspend fun startSteps(): StepStart = StepStart.NO_SENSOR
     /** Steps since [startSteps], or null without a counter. */
     fun stepsSoFar(): Int? = null
     fun stopSteps() {}
@@ -121,3 +121,6 @@ expect fun rememberPhotoPicker(onResult: (ByteArray?) -> Unit): () -> Unit
 /** Returns a launcher that opens the system file picker (for restoring a backup) and reports the file's bytes. */
 @Composable
 expect fun rememberFilePicker(onResult: (ByteArray?) -> Unit): () -> Unit
+
+/** How a walk's step counting began: counting, no step sensor on this phone, or the owner refused the permission. */
+enum class StepStart { COUNTING, NO_SENSOR, DENIED }

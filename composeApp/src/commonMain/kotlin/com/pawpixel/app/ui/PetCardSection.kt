@@ -128,7 +128,11 @@ fun PetCardSection(app: AppScope, pet: Pet) {
                     TonalPill(tr("Print the tag"), icon = PixelIcons.SHARE) { app.repo.platform.openUrl(PetCardClient.url(id) + "&print") }
                     GhostPill(tr("Share link")) { app.repo.platform.shareText(tr("{0}'s PawPixel ID card: {1}", pet.name, PetCardClient.url(id))) }
                     LinkButton(tr("Remove card"), color = MaterialTheme.colorScheme.error) {
-                        app.launch { runCatching { map.client.cards.remove(pet.id) }; map.recordCard(pet.id, null); cardId = null; messages = null }
+                        app.launch {
+                            try {
+                                if (map.signIn()) { map.client.cards.remove(pet.id); map.recordCard(pet.id, null); cardId = null; messages = null }
+                            } catch (e: Exception) { error = e.message ?: tr("Something went wrong. Please try again.") }
+                        }
                     }
                 }
             }

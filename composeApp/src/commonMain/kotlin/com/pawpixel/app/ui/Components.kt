@@ -485,11 +485,7 @@ fun HeartBurst(trigger: Any?, modifier: Modifier = Modifier) {
 
 fun formatTime(ms: Long, clock: LocalClock): String = formatMinute(clock.minuteOfDay(ms))
 
-fun formatMinute(minute: Int): String {
-    val h = minute / 60; val m = minute % 60
-    val h12 = if (h % 12 == 0) 12 else h % 12
-    return "$h12:${m.toString().padStart(2, '0')} ${if (h < 12) "AM" else "PM"}"
-}
+fun formatMinute(minute: Int): String = LocalClock.formatMinute(minute)
 
 fun relativeDay(ms: Long, now: Long, clock: LocalClock): String {
     val d = clock.dayIndex(ms) - clock.dayIndex(now)

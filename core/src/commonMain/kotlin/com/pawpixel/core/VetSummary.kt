@@ -59,9 +59,5 @@ object VetSummary {
     }
 
     /** "7:00 AM", "5:30 PM". */
-    private fun hm(minute: Int): String {
-        val h = minute / 60; val m = minute % 60
-        val h12 = if (h % 12 == 0) 12 else h % 12
-        return "$h12:${m.toString().padStart(2, '0')} " + (if (h < 12) "AM" else "PM")
-    }
+    private fun hm(minute: Int): String = LocalClock.formatMinute(minute)
 }

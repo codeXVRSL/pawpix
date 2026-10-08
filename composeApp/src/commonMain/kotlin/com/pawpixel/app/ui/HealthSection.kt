@@ -20,6 +20,7 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
@@ -333,8 +334,15 @@ fun everyLabel(days: Int): String = when (days) {
 @Composable
 fun VetVisitPanel(app: AppScope, state: AppState, pet: Pet) {
     val map = lostModel(app)
-    val summary = remember(state, pet.id, app.now) {
-        com.pawpixel.core.VetSummary.text(state, pet, app.now, app.repo.clock, map?.let { m -> m.cardFor(pet.id)?.let { null } })
+    // The microchip number lives on the Pet ID card (server side): fetched once when there is a card.
+    var microchip by remember(pet.id) { mutableStateOf<String?>(null) }
+    LaunchedEffect(pet.id, map?.cardFor(pet.id)) {
+        val m = map ?: return@LaunchedEffect
+        if (m.cardFor(pet.id) == null || !m.client.isSignedIn) return@LaunchedEffect
+        microchip = runCatching { m.client.cards.mine().firstOrNull { it.localId == pet.id }?.microchip?.ifBlank { null } }.getOrNull()
+    }
+    val summary = remember(state, pet.id, app.now, microchip) {
+        com.pawpixel.core.VetSummary.text(state, pet, app.now, app.repo.clock, microchip)
     }
     val clipboard = androidx.compose.ui.platform.LocalClipboardManager.current
     var copied by remember { mutableStateOf(false) }

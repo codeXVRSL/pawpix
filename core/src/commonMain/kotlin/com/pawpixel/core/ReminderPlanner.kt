@@ -57,6 +57,8 @@ object ReminderPlanner {
     const val HEALTH_FOLLOW_UP_MS = 3 * DAY_MS
     /** Of [MAX_PENDING], at most this many are health reminders (they can be months ahead). */
     const val MAX_HEALTH = 20
+    /** Of [MAX_HEALTH], at most this many are notes rather than tasks (Rabies Month, noise nights, birthdays). */
+    const val MAX_NOTES = 6
 
     fun plan(state: AppState, nowMs: Long, clock: LocalClock, horizonMs: Long = HORIZON_MS, country: String = ""): List<Reminder> {
         if (!state.settings.remindersEnabled) return emptyList()
@@ -101,8 +103,10 @@ object ReminderPlanner {
                 cycle += n
             }
         }
-        val keptHealth = (bundle(health.filter { it.atMs >= quietUntil }, state).sortedBy { it.atMs }.take(MAX_HEALTH - 3) +
-            listOfNotNull(rabiesMonth(state, nowMs, clock, country)) + noiseNights(state, nowMs, clock, country) + occasions(state, nowMs, clock)).sortedBy { it.atMs }
+        // Notes that aren't tasks (Rabies Month, noise nights, birthdays) wait out away mode too, and the health cap holds whatever the pet count.
+        val notes = (listOfNotNull(rabiesMonth(state, nowMs, clock, country)) + noiseNights(state, nowMs, clock, country) + occasions(state, nowMs, clock))
+            .filter { it.atMs >= quietUntil }.sortedBy { it.atMs }.take(MAX_NOTES)
+        val keptHealth = (bundle(health.filter { it.atMs >= quietUntil }, state).sortedBy { it.atMs }.take(MAX_HEALTH - notes.size) + notes).sortedBy { it.atMs }
         val daily = bundleDaily(out.filter { it.atMs >= quietUntil }, state, clock).sortedBy { it.atMs }.take(MAX_PENDING - keptHealth.size)
         return (daily + keptHealth).sortedBy { it.atMs }
     }

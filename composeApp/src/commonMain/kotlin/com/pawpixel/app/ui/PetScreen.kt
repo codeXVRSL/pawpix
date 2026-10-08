@@ -221,7 +221,7 @@ private fun NamePlate(app: AppScope, state: AppState, pet: Pet, score: Int) {
     val many = state.pets.size > 1
     val label = if (many) tr("Switch pet") else null
     // Age when the birthday is known; otherwise the days you've been together (never a streak to break).
-    val together = ((app.now - pet.createdAtMs) / com.pawpixel.core.DAY_MS).toInt()
+    val together = if (pet.createdAtMs > 0) ((app.now - pet.createdAtMs) / com.pawpixel.core.DAY_MS).toInt() else 0
     val birthDay = pet.birthDay
     val age = when {
         pet.remembered -> tr("Forever in your heart")

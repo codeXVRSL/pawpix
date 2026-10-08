@@ -315,8 +315,8 @@ private fun ReadyMap(app: AppScope, map: PetMapModel, state: AppState, areas: Li
                     walks = walks.filter { it.cellLat != null && it.cellLng != null }.map { MapFlag(it.cellLat!!, it.cellLng!!, it.title) },
                     onWalkTap = { tab = 1 },
                     marker = form?.spot,
-                    lost = lost.map { MapFlag(it.lastSeenLat, it.lastSeenLng, it.name) },
-                    onLostTap = { f -> openLost = lost.firstOrNull { it.name == f.title && it.lastSeenLat == f.lat && it.lastSeenLng == f.lng } },
+                    lost = lost.map { MapFlag(it.lastSeenLat, it.lastSeenLng, it.name, id = it.id) },
+                    onLostTap = { f -> openLost = lost.firstOrNull { it.id == f.id } },
                     // The spot picked: back to the Gatherings tab, where the form reopens.
                     onMapTap = if (placing) ({ lat, lng -> form = (form ?: WalkForm()).copy(spot = lat to lng); placing = false; tab = 1 }) else null,
                     modifier = Modifier.fillMaxSize(),

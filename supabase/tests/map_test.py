@@ -195,6 +195,8 @@ check("the share link's page reads the alert without signing in, owner left out"
       s == 200 and len(pub) == 1 and pub[0]["name"] == "Kape" and pub[0]["found"] is False and "owner_id" not in pub[0] and "id" not in pub[0], (s, pub))
 s, sid = rpc(a, "report_sighting", {"p_lost_id": lid, "p_lat": NAGA[1] + 0.005, "p_lng": NAGA[2], "p_note": "Saw him near the plaza, call 0917..."})
 check("a sighting can be reported", s == 200 and isinstance(sid, str), (s, sid))
+s, r = rpc(d, "report_sighting", {"p_lost_id": lid, "p_lat": NAGA[1], "p_lng": NAGA[2]})
+check("the owner can't report a sighting on their own alert (0015)", s >= 400, (s, r))
 s, seen = rpc(d, "lost_sightings_for", {"p_lost_id": lid})
 check("the owner sees the sightings (where, when, the note), never who",
       s == 200 and len(seen) == 1 and seen[0]["note"].startswith("Saw him") and "reporter_id" not in seen[0], (s, seen))
