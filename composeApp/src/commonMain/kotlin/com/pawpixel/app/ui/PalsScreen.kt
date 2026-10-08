@@ -216,7 +216,14 @@ private fun ShareMomentDialog(app: AppScope, state: AppState, onClose: () -> Uni
     var caption by remember { mutableStateOf("") }
     var photo by remember { mutableStateOf<ByteArray?>(null) }
     var shrinking by remember { mutableStateOf(false) }
-    val pick = com.pawpixel.app.rememberPhotoPicker { bytes -> if (bytes != null) app.launch { shrinking = true; photo = shrinkPhoto(platform, bytes, PalClient.MAX_MOMENT_BYTES, 480); shrinking = false } }
+    var trouble by remember { mutableStateOf<String?>(null) }
+    fun shrink(bytes: ByteArray) = app.launch {
+        shrinking = true; trouble = null
+        try { photo = shrinkPhoto(platform, bytes, PalClient.MAX_MOMENT_BYTES, 480); if (photo == null) trouble = tr("That photo couldn't be read. Try another.") }
+        catch (e: Exception) { trouble = tr("That photo couldn't be read. Try another.") }
+        finally { shrinking = false }
+    }
+    val pick = com.pawpixel.app.rememberPhotoPicker { bytes -> if (bytes != null) shrink(bytes) }
     val album = pets.firstOrNull { it.name == petName }?.let { state.albumFor(it.id) }?.take(6) ?: emptyList()
     androidx.compose.material3.AlertDialog(
         onDismissRequest = onClose,
@@ -235,13 +242,14 @@ private fun ShareMomentDialog(app: AppScope, state: AppState, onClose: () -> Uni
                     Text(tr("Or from {0}'s album", petName), style = MaterialTheme.typography.bodySmall)
                     LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                         items(album, key = { it.id }) { a ->
-                            val bytes = remember(a.id) { app.repo.albumPhoto(a) }
-                            if (bytes != null) Box(Modifier.clickable {
-                                app.launch { shrinking = true; photo = shrinkPhoto(platform, bytes, PalClient.MAX_MOMENT_BYTES, 480); shrinking = false }
-                            }) { AlertPhoto(bytes, a.caption.ifBlank { tr("Album photo") }, Modifier.size(64.dp)) }
+                            // Read off the main thread: originals can be a few MB each.
+                            val bytes by androidx.compose.runtime.produceState<ByteArray?>(null, a.id) { value = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Default) { app.repo.albumPhoto(a) } }
+                            val b = bytes
+                            if (b != null) Box(Modifier.clickable { shrink(b) }) { AlertPhoto(b, a.caption.ifBlank { tr("Album photo") }, Modifier.size(64.dp)) }
                         }
                     }
                 }
+                trouble?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
                 OutlinedTextField(caption, { caption = it.take(80) }, label = { Text(tr("Caption (optional)")) }, singleLine = true, modifier = Modifier.fillMaxWidth())
                 Text(tr("Only your pals see it, for two days. The photo is shrunk on your phone first; its location data is dropped."), style = MaterialTheme.typography.bodySmall)
             }

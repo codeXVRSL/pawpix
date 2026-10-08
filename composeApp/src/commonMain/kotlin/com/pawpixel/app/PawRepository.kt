@@ -116,6 +116,7 @@ class PawRepository(val platform: Platform) {
     private fun applyLanguage(state: AppState) {
         I18n.lang = Lang.resolve(state.settings.language, platform.systemLanguage())
         com.pawpixel.core.Units.configure(state.settings.units, platform.systemCountry())
+        HealthPlan.homeCountry = platform.systemCountry()
     }
 
     /**

@@ -24,7 +24,7 @@ class VetSummaryTest {
         assertTrue(text.startsWith("Kape · Dog"), text)
         assertTrue("Born Mar 15, 2024" in text || "Born 15 Mar 2024" in text || "Born" in text, text)
         assertTrue("Microchip 9810200123" in text)
-        assertTrue("8.6 kg" in text && "+400 g since" in text, text)
+        assertTrue("8.6 kg" in text && "+0.4 kg since" in text, text)
         assertTrue("Feed: 7:00 AM, 5:00 PM" in text, text)
         assertTrue("WALKS" !in text, "no walks, no walks section")
     }

@@ -93,7 +93,7 @@ object Units {
         val typedLb = raw.endsWith("lb") || raw.endsWith("lbs")
         val typedKg = raw.endsWith("kg")
         val t = raw.removeSuffix("lbs").removeSuffix("lb").removeSuffix("kg").trim().replace(',', '.')
-        val v = t.toDoubleOrNull()?.takeIf { it.isFinite() && it > 0 } ?: return null
+        val v = t.toDoubleOrNull()?.takeIf { it.isFinite() && it > 0 && it <= 1000 } ?: return null // 1000 kg or lb: nothing a vet weighs
         val inPounds = typedLb || (pounds && !typedKg)
         val tenths = kotlin.math.floor(v * 10 + 0.5).toInt()
         val grams = if (inPounds) kotlin.math.floor(tenths / 10.0 * GRAMS_PER_POUND + 0.5).toInt() else tenths * WeightTrend.STEP_G

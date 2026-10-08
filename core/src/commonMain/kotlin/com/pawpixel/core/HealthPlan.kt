@@ -67,7 +67,8 @@ object HealthPlan {
     val FROM_8_WEEKS = HealthSchedule(firstAgeDays = 8 * W)
     val FIRST_CHECKUP_DOG = HealthSchedule(firstAgeDays = 6 * W)
 
-    data class Item(val kind: TaskKind, val title: String, val everyDays: Int, val schedule: HealthSchedule? = null)
+    /** [key] names what the item is for across regions ("rabies", "core", "fleatick"...), so a plan isn't added twice under two names. */
+    data class Item(val kind: TaskKind, val title: String, val everyDays: Int, val schedule: HealthSchedule? = null, val key: String = title.lowercase())
 
     /**
      * Where the pet lives, from the phone's country: the usual items and their names differ.
@@ -84,6 +85,12 @@ object HealthPlan {
      * - [WORLD]: the WSAVA core schedule with the international names (DHPP, FVRCP, rabies from 12 weeks).
      */
     enum class Region { PH, NORTH_AMERICA, UK, AUSTRALIA, WORLD }
+
+    /** The phone's country ("US", "PH"...), set at start-up like [Units]; blank means the Philippines (the pilot). */
+    @kotlin.concurrent.Volatile
+    var homeCountry: String = ""
+
+    fun isPhilippines(country: String = homeCountry): Boolean = regionOf(country) == Region.PH
 
     fun regionOf(country: String): Region = when (country.trim().uppercase()) {
         "", "PH" -> Region.PH
@@ -103,73 +110,87 @@ object HealthPlan {
     fun items(species: Species, country: String = ""): List<Item> = itemsIn(species, regionOf(country))
 
     fun itemsIn(species: Species, region: Region): List<Item> {
-        if (species == Species.OTHER) return listOf(Item(TaskKind.VET, "Vet check-up", 365))
-        val deworm = Item(TaskKind.DEWORM, "Deworming", 90, if (species == Species.DOG) DEWORM_DOG else DEWORM_CAT)
-        val fleaTick = Item(TaskKind.FLEA_TICK, "Flea & tick prevention", 30, FROM_8_WEEKS)
-        val heartworm = Item(TaskKind.FLEA_TICK, "Heartworm prevention", 30, FROM_8_WEEKS)
-        val checkup = Item(TaskKind.VET, "Vet check-up", 365, if (species == Species.DOG) FIRST_CHECKUP_DOG else FROM_8_WEEKS)
+        if (species == Species.OTHER) return listOf(Item(TaskKind.VET, "Vet check-up", 365, key = KEY_CHECKUP))
+        val deworm = Item(TaskKind.DEWORM, "Deworming", 90, if (species == Species.DOG) DEWORM_DOG else DEWORM_CAT, KEY_DEWORM)
+        val fleaTick = Item(TaskKind.FLEA_TICK, "Flea & tick prevention", 30, FROM_8_WEEKS, KEY_FLEA_TICK)
+        val heartworm = Item(TaskKind.FLEA_TICK, "Heartworm prevention", 30, FROM_8_WEEKS, KEY_HEARTWORM)
+        val checkup = Item(TaskKind.VET, "Vet check-up", 365, if (species == Species.DOG) FIRST_CHECKUP_DOG else FROM_8_WEEKS, KEY_CHECKUP)
         return when (region) {
             Region.PH -> philippineItems(species)
             Region.NORTH_AMERICA -> if (species == Species.DOG) listOf(
-                Item(TaskKind.VACCINE, "Rabies vaccine", 365, RABIES_12W),
-                Item(TaskKind.VACCINE, "DAPP vaccine", 365, DHPP),
-                Item(TaskKind.VACCINE, "Leptospirosis vaccine", 365, LEPTO),
+                Item(TaskKind.VACCINE, "Rabies vaccine", 365, RABIES_12W, KEY_RABIES),
+                Item(TaskKind.VACCINE, "DAPP vaccine", 365, DHPP, KEY_CORE),
+                Item(TaskKind.VACCINE, "Leptospirosis vaccine", 365, LEPTO, KEY_LEPTO),
                 deworm, fleaTick, heartworm, checkup,
             ) else listOf(
-                Item(TaskKind.VACCINE, "Rabies vaccine", 365, RABIES_12W),
-                Item(TaskKind.VACCINE, "FVRCP vaccine", 365, FVRCP),
-                Item(TaskKind.VACCINE, "FeLV vaccine", 365, FELV),
+                Item(TaskKind.VACCINE, "Rabies vaccine", 365, RABIES_12W, KEY_RABIES),
+                Item(TaskKind.VACCINE, "FVRCP vaccine", 365, FVRCP, KEY_CORE),
+                Item(TaskKind.VACCINE, "FeLV vaccine", 365, FELV, KEY_FELV),
                 deworm, fleaTick, checkup,
             )
             Region.UK -> if (species == Species.DOG) listOf(
-                Item(TaskKind.VACCINE, "DHP vaccine", 365, UK_DOG),
-                Item(TaskKind.VACCINE, "Leptospirosis vaccine", 365, UK_DOG),
+                Item(TaskKind.VACCINE, "DHP vaccine", 365, UK_DOG, KEY_CORE),
+                Item(TaskKind.VACCINE, "Leptospirosis vaccine", 365, UK_DOG, KEY_LEPTO),
                 deworm, fleaTick, checkup,
             ) else listOf(
-                Item(TaskKind.VACCINE, "FVRCP vaccine", 365, UK_CAT),
-                Item(TaskKind.VACCINE, "FeLV vaccine", 365, UK_CAT),
+                Item(TaskKind.VACCINE, "FVRCP vaccine", 365, UK_CAT, KEY_CORE),
+                Item(TaskKind.VACCINE, "FeLV vaccine", 365, UK_CAT, KEY_FELV),
                 deworm, fleaTick, checkup,
             )
             Region.AUSTRALIA -> if (species == Species.DOG) listOf(
-                Item(TaskKind.VACCINE, "C5 vaccine", 365, DHPP),
+                Item(TaskKind.VACCINE, "C5 vaccine", 365, DHPP, KEY_CORE),
                 deworm, fleaTick, heartworm, checkup,
             ) else listOf(
-                Item(TaskKind.VACCINE, "F3 vaccine", 365, FVRCP),
+                Item(TaskKind.VACCINE, "F3 vaccine", 365, FVRCP, KEY_CORE),
                 deworm, fleaTick, checkup,
             )
             Region.WORLD -> if (species == Species.DOG) listOf(
-                Item(TaskKind.VACCINE, "Rabies vaccine", 365, RABIES_12W),
-                Item(TaskKind.VACCINE, "DHPP vaccine", 365, DHPP),
+                Item(TaskKind.VACCINE, "Rabies vaccine", 365, RABIES_12W, KEY_RABIES),
+                Item(TaskKind.VACCINE, "DHPP vaccine", 365, DHPP, KEY_CORE),
                 deworm, fleaTick, checkup,
             ) else listOf(
-                Item(TaskKind.VACCINE, "Rabies vaccine", 365, RABIES_12W),
-                Item(TaskKind.VACCINE, "FVRCP vaccine", 365, FVRCP),
+                Item(TaskKind.VACCINE, "Rabies vaccine", 365, RABIES_12W, KEY_RABIES),
+                Item(TaskKind.VACCINE, "FVRCP vaccine", 365, FVRCP, KEY_CORE),
                 deworm, fleaTick, checkup,
             )
         }
     }
 
-    /** Every region's items for [species]: a plan made on one phone keeps its schedule on a household phone elsewhere. */
-    fun allItems(species: Species): List<Item> = Region.entries.flatMap { itemsIn(species, it) }.distinctBy { it.kind to it.title.lowercase() }
+    /** Every region's items for [species], the phone's own region first: a plan made on one phone keeps its schedule on a household phone elsewhere. */
+    fun allItems(species: Species, country: String = homeCountry): List<Item> {
+        val home = regionOf(country)
+        return itemsIn(species, home) + (ALL_ITEMS.getValue(species).filter { (r, _) -> r != home }.map { it.second })
+    }
+
+    private val ALL_ITEMS: Map<Species, List<Pair<Region, Item>>> by lazy {
+        Species.entries.associateWith { sp -> Region.entries.flatMap { r -> itemsIn(sp, r).map { r to it } } }
+    }
+
+    /** What an existing task is for, across regions ("rabies", "core"...), or its title when it isn't one of the usual items. */
+    fun keyOf(species: Species, task: CareTask): String =
+        ALL_ITEMS.getValue(species).firstOrNull { (_, i) -> i.kind == task.kind && i.title.equals(task.title.trim(), ignoreCase = true) }?.second?.key ?: task.title.trim().lowercase()
 
     private fun philippineItems(species: Species): List<Item> = when (species) {
         Species.DOG -> listOf(
-            Item(TaskKind.VACCINE, "Anti-rabies shot", 365, RABIES),
-            Item(TaskKind.VACCINE, "5-in-1 vaccine", 365, DHPP),
-            Item(TaskKind.DEWORM, "Deworming", 90, DEWORM_DOG),
-            Item(TaskKind.FLEA_TICK, "Tick & flea prevention", 30, FROM_8_WEEKS),
-            Item(TaskKind.FLEA_TICK, "Heartworm prevention", 30, FROM_8_WEEKS),
-            Item(TaskKind.VET, "Vet check-up", 365, FIRST_CHECKUP_DOG),
+            Item(TaskKind.VACCINE, "Anti-rabies shot", 365, RABIES, KEY_RABIES),
+            Item(TaskKind.VACCINE, "5-in-1 vaccine", 365, DHPP, KEY_CORE),
+            Item(TaskKind.DEWORM, "Deworming", 90, DEWORM_DOG, KEY_DEWORM),
+            Item(TaskKind.FLEA_TICK, "Tick & flea prevention", 30, FROM_8_WEEKS, KEY_FLEA_TICK),
+            Item(TaskKind.FLEA_TICK, "Heartworm prevention", 30, FROM_8_WEEKS, KEY_HEARTWORM),
+            Item(TaskKind.VET, "Vet check-up", 365, FIRST_CHECKUP_DOG, KEY_CHECKUP),
         )
         Species.CAT -> listOf(
-            Item(TaskKind.VACCINE, "Anti-rabies shot", 365, RABIES),
-            Item(TaskKind.VACCINE, "FVRCP vaccine", 365, FVRCP),
-            Item(TaskKind.DEWORM, "Deworming", 90, DEWORM_CAT),
-            Item(TaskKind.FLEA_TICK, "Tick & flea prevention", 30, FROM_8_WEEKS),
-            Item(TaskKind.VET, "Vet check-up", 365, FROM_8_WEEKS),
+            Item(TaskKind.VACCINE, "Anti-rabies shot", 365, RABIES, KEY_RABIES),
+            Item(TaskKind.VACCINE, "FVRCP vaccine", 365, FVRCP, KEY_CORE),
+            Item(TaskKind.DEWORM, "Deworming", 90, DEWORM_CAT, KEY_DEWORM),
+            Item(TaskKind.FLEA_TICK, "Tick & flea prevention", 30, FROM_8_WEEKS, KEY_FLEA_TICK),
+            Item(TaskKind.VET, "Vet check-up", 365, FROM_8_WEEKS, KEY_CHECKUP),
         )
-        Species.OTHER -> listOf(Item(TaskKind.VET, "Vet check-up", 365))
+        Species.OTHER -> listOf(Item(TaskKind.VET, "Vet check-up", 365, key = KEY_CHECKUP))
     }
+
+    const val KEY_RABIES = "rabies"; const val KEY_CORE = "core"; const val KEY_LEPTO = "lepto"; const val KEY_FELV = "felv"
+    const val KEY_DEWORM = "deworm"; const val KEY_FLEA_TICK = "fleatick"; const val KEY_HEARTWORM = "heartworm"; const val KEY_CHECKUP = "checkup"
 
     fun isYoung(birthDay: Long?, today: Long): Boolean = birthDay != null && today - birthDay in 0 until YOUNG_DAYS
 
@@ -236,8 +257,9 @@ object HealthPlan {
      */
     fun addTo(state: AppState, pet: Pet, nowMs: Long, clock: LocalClock, newId: () -> String = { Ids.newId() }, country: String = ""): AppState {
         val today = clock.dayIndex(nowMs)
-        val have = state.tasksFor(pet.id).map { it.title.trim().lowercase() }.toSet()
-        return items(pet.species, country).filter { it.title.lowercase() !in have }.fold(state) { acc, item ->
+        // Matched by what the item is for, not its name: a household phone abroad doesn't add "Rabies vaccine" next to "Anti-rabies shot".
+        val have = state.tasksFor(pet.id).map { keyOf(pet.species, it) }.toSet()
+        return items(pet.species, country).filter { it.key !in have }.fold(state) { acc, item ->
             val base = StateOps.defaultTask(pet, item.kind, today, newId(), nowMs)
             StateOps.upsertTask(acc, base.copy(title = item.title, everyDays = item.everyDays))
         }

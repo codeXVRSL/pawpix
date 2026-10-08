@@ -15,6 +15,7 @@ internal object FilScreens9 {
         "{0} km" to "{0} km",
         "{0} miles" to "{0} milya",
         "{0} since {1}" to "{0} mula {1}",
+        "{0}{1} since {2}" to "{0}{1} mula noong {2}",
         "Pounds, e.g. 9.3" to "Libra (lb), hal. 9.3",
         "Subtract 1 {0}" to "Bawasan ng 1 {0}",
         "Subtract 0.1 {0}" to "Bawasan ng 0.1 {0}",
@@ -68,8 +69,13 @@ internal object FilScreens9 {
         "Flea & tick prevention" to "Pangontra sa pulgas at garapata",
 
         // Health notes outside the Philippines
-        "The first-year plan follows the WSAVA vaccination guidelines. If {0} missed a dose, ask your vet how to catch up; tap Edit to change anything." to
-            "Sumusunod ang unang-taong plano sa WSAVA vaccination guidelines. Kung may nalaktawang dose si {0}, itanong sa vet kung paano hahabol; i-tap ang Edit para baguhin ang kahit ano.",
+        "the AAHA and AAFP vaccination guidelines" to "ang AAHA at AAFP vaccination guidelines",
+        "the BSAVA vaccination guidance" to "ang BSAVA vaccination guidance",
+        "the AVA vaccination policy" to "ang AVA vaccination policy",
+        "the WSAVA vaccination guidelines" to "ang WSAVA vaccination guidelines",
+        "The first-year plan follows {1}. If {0} missed a dose, ask your vet how to catch up; tap Edit to change anything." to
+            "Sumusunod ang unang-taong plano sa {1}. Kung may nalaktawang dose si {0}, itanong sa vet kung paano hahabol; i-tap ang Edit para baguhin ang kahit ano.",
+        "That photo couldn't be read. Try another." to "Hindi mabasa ang litratong iyon. Sumubok ng iba.",
         "Schedules are typical for adult dogs and cats. Your vet's advice comes first: tap Edit to change them." to
             "Karaniwang iskedyul ito para sa adult na aso at pusa. Mas mahalaga ang payo ng vet mo: i-tap ang Edit para baguhin.",
 

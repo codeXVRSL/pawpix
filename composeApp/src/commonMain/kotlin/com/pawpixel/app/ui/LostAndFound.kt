@@ -130,7 +130,7 @@ private fun LostForm(app: AppScope, state: AppState, pet: Pet, map: PetMapModel?
         Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Text(tr("Is {0} missing?", pet.name), style = MaterialTheme.typography.titleLarge)
             Text(
-                if (map != null) tr("Raise an alert: PawPixel owners within {1} see {0}'s photos and pixel twin on their map and can report where they saw {0}. Nobody sees your name or your home.", pet.name, Units.radius(15))
+                if (map != null) tr("Raise an alert: PawPixel owners within {1} see {0}'s photos and pixel twin on their map and can report where they saw {0}. Nobody sees your name or your home.", pet.name, Units.radius(LostClient.DEFAULT_RADIUS_KM.toInt()))
                 else tr("This version of the app isn't connected to PawPixel's server yet, so alerts to owners nearby aren't on. You can still share a notice."),
                 style = MaterialTheme.typography.bodyMedium,
             )

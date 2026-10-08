@@ -9,7 +9,9 @@ create table public.pal_moments (
   pet_name   text not null check (char_length(pet_name) between 1 and 24),
   caption    text not null default '' check (char_length(caption) <= 80),
   photo      text not null check (char_length(photo) between 1 and 90000),   -- base64 JPEG, about 64 KB at most
-  updated_at timestamptz not null default now()
+  updated_at timestamptz not null default now(),
+  set_day    date not null default current_date,  -- how many times it was set today (a stuck app can't flood)
+  sets_today int not null default 1
 );
 
 alter table public.pal_moments enable row level security;
@@ -17,7 +19,7 @@ alter table public.pal_moments enable row level security;
 -- Share today's moment (replacing yesterday's). At most 10 a day, so a stuck app can't flood.
 create or replace function public.set_moment(p_pet_name text, p_caption text, p_photo text) returns void
 language plpgsql security definer set search_path = public as $$
-declare n text; c text;
+declare n text; c text; today_sets int;
 begin
   if auth.uid() is null then raise exception 'sign in first' using errcode = 'insufficient_privilege'; end if;
   if exists (select 1 from map_profiles where user_id = auth.uid() and banned) then
@@ -30,8 +32,15 @@ begin
   if n = '' or pawpixel_name_blocked(n) then n := 'A pet'; end if;
   c := left(btrim(coalesce(p_caption, '')), 80);
   if pawpixel_name_blocked(c) then c := ''; end if;
-  insert into pal_moments (owner_id, pet_name, caption, photo, updated_at) values (auth.uid(), n, c, p_photo, now())
-  on conflict (owner_id) do update set pet_name = excluded.pet_name, caption = excluded.caption, photo = excluded.photo, updated_at = now();
+  select case when set_day = current_date then sets_today else 0 end into today_sets from pal_moments where owner_id = auth.uid();
+  if coalesce(today_sets, 0) >= 10 then
+    raise exception 'that is plenty of moments for today' using errcode = 'check_violation';
+  end if;
+  insert into pal_moments (owner_id, pet_name, caption, photo, updated_at, set_day, sets_today) values (auth.uid(), n, c, p_photo, now(), current_date, 1)
+  on conflict (owner_id) do update set pet_name = excluded.pet_name, caption = excluded.caption, photo = excluded.photo, updated_at = now(),
+    sets_today = case when pal_moments.set_day = current_date then pal_moments.sets_today + 1 else 1 end, set_day = current_date;
+  -- Old moments are swept here, so the table never keeps a dead 64 KB row for long.
+  delete from pal_moments where updated_at < now() - interval '3 days';
 end $$;
 
 create or replace function public.clear_moment() returns void
@@ -52,8 +61,3 @@ language sql stable security definer set search_path = public as $$
   limit 25;
 $$;
 
--- Old moments go on their own (the fetch already hides them; this keeps the table small).
-create or replace function public.sweep_moments() returns void
-language sql security definer set search_path = public as $$
-  delete from pal_moments where updated_at < now() - interval '3 days';
-$$;

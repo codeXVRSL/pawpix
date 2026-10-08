@@ -263,8 +263,23 @@ class RegionalHealthPlanTest {
         val us = HealthPlan.addTo(AppState(pets = listOf(kitten)), kitten, now, clock, ids(), country = "US")
         val felv = us.tasks.single { it.title == "FeLV vaccine" }
         assertNotNull(HealthPlan.scheduleFor(kitten, felv)) // matched across regions, not just the phone's
-        // Adding the Philippine items on the household's other phone adds only what's missing by name.
+        // Adding the Philippine items on the household's other phone adds nothing: rabies, flea & tick, FVRCP, deworming and the check-up are there under other names.
         val both = HealthPlan.addTo(us, kitten, now, clock, ids(), country = "PH")
-        assertEquals(us.tasks.size + 2, both.tasks.size) // anti-rabies shot and tick & flea (named differently); FVRCP, deworming, check-up already there
+        assertEquals(us.tasks.size, both.tasks.size)
+        assertEquals(HealthPlan.KEY_RABIES, HealthPlan.keyOf(Species.CAT, us.tasks.single { it.title == "Rabies vaccine" }))
+    }
+
+    @Test fun aSharedTitleFollowsThePhonesOwnRegion() {
+        val kitten = Pet("c1", "Tala", Species.CAT, 0, birthDay = today - 9 * 7)
+        val fvrcp = CareTask("t", "c1", TaskKind.VACCINE, "FVRCP vaccine", listOf(9 * 60), everyDays = 365)
+        val was = HealthPlan.homeCountry
+        try {
+            HealthPlan.homeCountry = "GB"
+            assertEquals(HealthPlan.UK_CAT, HealthPlan.scheduleFor(kitten, fvrcp)) // 9 and 12 weeks
+            HealthPlan.homeCountry = "US"
+            assertEquals(HealthPlan.FVRCP, HealthPlan.scheduleFor(kitten, fvrcp)) // 8, 12, 16 weeks
+            HealthPlan.homeCountry = ""
+            assertEquals(HealthPlan.FVRCP, HealthPlan.scheduleFor(kitten, fvrcp))
+        } finally { HealthPlan.homeCountry = was }
     }
 }

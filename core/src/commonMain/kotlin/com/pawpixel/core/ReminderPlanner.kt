@@ -139,7 +139,7 @@ object ReminderPlanner {
      * the other reminders it's planned again whenever PawPixel runs, so only within [RABIES_MONTH_LEAD_MS].
      */
     fun rabiesMonth(state: AppState, nowMs: Long, clock: LocalClock, country: String = ""): Reminder? {
-        if (country.isNotBlank() && country.uppercase() != "PH") return null // a Philippine month
+        if (!HealthPlan.isPhilippines(country)) return null // a Philippine month
         val pet = state.pets.firstOrNull { it.species != Species.OTHER && !it.remembered } ?: return null
         val (year, _, _) = LocalClock.civil(clock.dayIndex(nowMs))
         val at = listOf(year, year + 1).map { clock.at(LocalClock.dayOf(it, 3, 1), RABIES_MONTH_MINUTE) }.first { it > nowMs }

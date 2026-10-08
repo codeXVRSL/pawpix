@@ -248,7 +248,7 @@ class EndToEndTest {
             Thread.sleep(500)
             shot("health-section")
             // Rabies rules and local help: a Philippine card, shown on a Philippine (or unknown-country) phone only.
-            if (repo.platform.systemCountry().let { it == "PH" || it.isBlank() }) {
+            if (com.pawpixel.core.HealthPlan.isPhilippines(repo.platform.systemCountry())) {
                 retrying { scrollTo(By.text("Rabies rules and where to get shots")).click() }
                 scrollTo(By.textContains("City Veterinary Office"))
                 shot("health-local-help")

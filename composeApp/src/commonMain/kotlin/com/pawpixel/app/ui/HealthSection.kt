@@ -76,19 +76,26 @@ fun HealthSection(app: AppScope, state: AppState, pet: Pet) {
     health.forEach { h -> key(h.task.id) { HealthRow(app, state, pet, h) } }
     if (health.isNotEmpty()) {
         GhostPill(tr("+ Add health item")) { app.navigate(Screen.EditTask(pet.id, null, health = true)) }
-        val ph = app.repo.platform.systemCountry().let { it == "PH" || it.isBlank() }
+        val region = HealthPlan.regionOf(app.repo.platform.systemCountry())
+        val source = when (region) {
+            HealthPlan.Region.PH -> null
+            HealthPlan.Region.NORTH_AMERICA -> tr("the AAHA and AAFP vaccination guidelines")
+            HealthPlan.Region.UK -> tr("the BSAVA vaccination guidance")
+            HealthPlan.Region.AUSTRALIA -> tr("the AVA vaccination policy")
+            HealthPlan.Region.WORLD -> tr("the WSAVA vaccination guidelines")
+        }
         Hint(
             when {
-                HealthPlan.isYoung(pet.birthDay, today) && ph ->
+                HealthPlan.isYoung(pet.birthDay, today) && source == null ->
                     tr("The first-year plan follows common Philippine schedules. If {0} missed a dose, ask your vet how to catch up; tap Edit to change anything.", pet.name)
                 HealthPlan.isYoung(pet.birthDay, today) ->
-                    tr("The first-year plan follows the WSAVA vaccination guidelines. If {0} missed a dose, ask your vet how to catch up; tap Edit to change anything.", pet.name)
-                ph -> tr("Schedules are typical for adult pets in the Philippines. Your vet's advice comes first: tap Edit to change them.")
+                    tr("The first-year plan follows {1}. If {0} missed a dose, ask your vet how to catch up; tap Edit to change anything.", pet.name, source)
+                source == null -> tr("Schedules are typical for adult pets in the Philippines. Your vet's advice comes first: tap Edit to change them.")
                 else -> tr("Schedules are typical for adult dogs and cats. Your vet's advice comes first: tap Edit to change them.")
             },
         )
     }
-    if (pet.species != Species.OTHER && app.repo.platform.systemCountry().let { it == "PH" || it.isBlank() }) PhilippineInfoCard(app)
+    if (pet.species != Species.OTHER && HealthPlan.isPhilippines(app.repo.platform.systemCountry())) PhilippineInfoCard(app)
 
     if (askBirthday) {
         BirthdayDialog(

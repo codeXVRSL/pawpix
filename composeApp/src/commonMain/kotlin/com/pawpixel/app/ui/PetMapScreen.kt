@@ -435,7 +435,7 @@ private fun AreaPets(
             dismissButton = { TextButton(onClick = { blockFor = null }) { Text(tr("Cancel")) } },
         )
     }
-    reportFor?.let { pet -> ReportDialog(pet, philippines = app.repo.platform.systemCountry().let { it == "PH" || it.isBlank() }, onDone = { reportFor = null }) { reason, details -> act { map.client.report(pet.id, reason, details) } } }
+    reportFor?.let { pet -> ReportDialog(pet, philippines = com.pawpixel.core.HealthPlan.isPhilippines(app.repo.platform.systemCountry()), onDone = { reportFor = null }) { reason, details -> act { map.client.report(pet.id, reason, details) } } }
 }
 
 private fun speciesOf(name: String) = Species.entries.firstOrNull { it.name == name } ?: Species.OTHER
