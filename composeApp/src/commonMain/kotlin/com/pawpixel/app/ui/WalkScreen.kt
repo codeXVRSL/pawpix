@@ -68,7 +68,10 @@ fun WalkScreen(app: AppScope, state: AppState, pet: Pet) {
         while (true) {
             delay(1_000)
             elapsed = ((app.repo.now() - startMs) / 1000).toInt()
-            if (counting == com.pawpixel.app.StepStart.COUNTING) steps = platform.stepsSoFar()
+            if (counting == com.pawpixel.app.StepStart.COUNTING) {
+                val s = platform.stepsSoFar()
+                if (s == null) counting = com.pawpixel.app.StepStart.DENIED else steps = s // null while counting: the phone said no after the prompt
+            }
         }
     }
     LaunchedEffect(frames) { if (frames != null) while (true) { delay(if (frame % 2 == 0) 260L else 160L); frame = (frame + 1) % 4 } }

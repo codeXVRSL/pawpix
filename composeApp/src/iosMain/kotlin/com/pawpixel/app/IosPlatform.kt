@@ -141,7 +141,8 @@ class IosPlatform(private val host: IosHost) : Platform {
     @OptIn(kotlinx.cinterop.ExperimentalForeignApi::class)
     override fun secureRandomBytes(n: Int): ByteArray {
         val out = ByteArray(n)
-        out.usePinned { pinned -> platform.Security.SecRandomCopyBytes(platform.Security.kSecRandomDefault, n.toULong(), pinned.addressOf(0)) }
+        val status = out.usePinned { pinned -> platform.Security.SecRandomCopyBytes(platform.Security.kSecRandomDefault, n.toULong(), pinned.addressOf(0)) }
+        check(status == platform.Security.errSecSuccess) { "SecRandomCopyBytes failed: $status" } // never a zero nonce
         return out
     }
 
@@ -151,11 +152,13 @@ class IosPlatform(private val host: IosHost) : Platform {
 
     override suspend fun startSteps(): StepStart {
         if (!platform.CoreMotion.CMPedometer.isStepCountingAvailable()) return StepStart.NO_SENSOR
-        if (platform.CoreMotion.CMPedometer.authorizationStatus() == platform.CoreMotion.CMAuthorizationStatusDenied) return StepStart.DENIED
+        val auth = platform.CoreMotion.CMPedometer.authorizationStatus()
+        if (auth == platform.CoreMotion.CMAuthorizationStatusDenied || auth == platform.CoreMotion.CMAuthorizationStatusRestricted) return StepStart.DENIED
         stopSteps()
         val p = platform.CoreMotion.CMPedometer()
         pedometer = p; pedometerSteps = 0
-        p.startPedometerUpdatesFromDate(NSDate()) { data, _ -> data?.numberOfSteps?.let { pedometerSteps = it.intValue } }
+        // A refusal at the first prompt arrives here as an error with no data: steps become null (the walk stays timed).
+        p.startPedometerUpdatesFromDate(NSDate()) { data, error -> if (data != null) pedometerSteps = data.numberOfSteps.intValue else if (error != null) pedometerSteps = null }
         return StepStart.COUNTING
     }
 

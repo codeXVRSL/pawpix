@@ -72,7 +72,12 @@ struct Provider: AppIntentTimelineProvider {
 
     func timeline(for configuration: SelectPetIntent, in context: Context) async -> Timeline<PetEntry> {
         // No file yet: the app reloads widgets when it writes one.
-        guard let snap = WidgetStore.snapshot() else { return Timeline(entries: [.empty(nil)], policy: .never) }
+        guard let snap = WidgetStore.snapshot() else {
+            var e = PetEntry.empty(nil) // the chosen sky even before the app has written anything
+            e.sky = configuration.sky.phase(at: Date(), nightStart: 22 * 60, nightEnd: 6 * 60)
+            e.showName = configuration.showName
+            return Timeline(entries: [e], policy: .never)
+        }
         let now = Date()
         let taps = WidgetStore.pendingTaps()
         let images = ImageCache()
@@ -84,13 +89,13 @@ struct Provider: AppIntentTimelineProvider {
         return Timeline(entries: entries, policy: .atEnd)
     }
 
-    private func entry(_ snap: Snapshot, at date: Date, choice: String?, taps: [PendingTap], images: ImageCache) -> PetEntry {
-        guard let face = snap.face(at: date, choice: choice, taps: taps) else { return .empty(snap.labels) }
-        return PetEntry(date: date, face: face, image: images.image(face.sprite), labels: snap.labels ?? [:])
-    }
-
     private func entry(_ snap: Snapshot, at date: Date, configuration: SelectPetIntent, taps: [PendingTap], images: ImageCache) -> PetEntry {
-        var e = entry(snap, at: date, choice: configuration.pet?.id, taps: taps, images: images)
+        var e: PetEntry
+        if let face = snap.face(at: date, choice: configuration.pet?.id, taps: taps) {
+            e = PetEntry(date: date, face: face, image: images.image(face.sprite), labels: snap.labels ?? [:])
+        } else {
+            e = .empty(snap.labels)
+        }
         e.sky = configuration.sky.phase(at: date, nightStart: snap.nightStart, nightEnd: snap.nightEnd)
         e.showName = configuration.showName
         return e

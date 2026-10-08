@@ -43,13 +43,14 @@ enum SkyPhase: String {
         nightStart <= nightEnd ? (minute >= nightStart && minute < nightEnd) : (minute >= nightStart || minute < nightEnd)
     }
 
+    /// Mirrors core Sky.phase: the owner's bedtime decides the night; up early is dawn, up late is dusk.
     static func at(minuteOfDay minute: Int, nightStart: Int, nightEnd: Int) -> SkyPhase {
         if isNight(minute, nightStart: nightStart, nightEnd: nightEnd) { return .night }
-        if minute < dawnStart { return .night }
+        if minute < dawnStart { return .dawn }
         if minute < dayStart { return .dawn }
         if minute < duskStart { return .day }
         if minute < duskEnd { return .dusk }
-        return .night
+        return .dusk
     }
 
     static func at(_ date: Date, nightStart: Int, nightEnd: Int, calendar: Calendar = .current) -> SkyPhase {

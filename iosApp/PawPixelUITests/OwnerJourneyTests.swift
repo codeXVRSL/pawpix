@@ -70,7 +70,7 @@ final class OwnerJourneyTests: XCTestCase {
             shot("name-keyboard-open")
             // Type like a person: tap the keys (lowercase, the field doesn't auto-capitalise).
             // If the text input session wasn't ready yet, nothing lands: wait and type again.
-            let saveButton = element(containing: "Save ")
+            let saveButton = element(containing: "Save \(petName)") // "Save mochi" (or "Save mochimochi" if a key doubled): the blank-name "Save pet" doesn't count
             // The name may land even when that button is below the fold: the field's value says so.
             // Compose exposes the field's text as its label on iOS (and as a value on some versions).
             let typed = app.descendants(matching: .any).matching(NSPredicate(format: "value CONTAINS %@ OR label CONTAINS %@", petName, petName)).firstMatch
@@ -99,7 +99,7 @@ final class OwnerJourneyTests: XCTestCase {
             let ret = app.keyboards.buttons["Return"].exists ? app.keyboards.buttons["Return"] : app.keyboards.buttons["return"]
             if tipContinue.exists { tipContinue.tap(); sleep(1) }
             if ret.exists && ret.isHittable { ret.tap() }
-            try scrollTo(query: element(containing: "Save "), "Save").tap() // the big Save under the form (the header's can sit under the status bar after the keyboard scrolls the page)
+            try scrollTo(query: element(containing: "Save \(petName)"), "Save").tap() // the big Save under the form (the header's can sit under the status bar after the keyboard scrolls the page)
             allowNotificationsIfAsked()
             try find("Care", timeout: 30)
             sleep(2)
@@ -394,7 +394,8 @@ final class OwnerJourneyTests: XCTestCase {
     private func scrollTo(query e: XCUIElement, _ what: String) throws -> XCUIElement {
         // "Hittable" but tucked under the status bar (a top-bar button after the keyboard scrolled the
         // page) still can't be tapped: keep scrolling until it is clear of it.
-        func onScreen() -> Bool { e.exists && e.isHittable && e.frame.minY >= 60 }
+        let statusBarBottom = app.statusBars.firstMatch.exists ? app.statusBars.firstMatch.frame.maxY : 0
+        func onScreen() -> Bool { e.exists && e.isHittable && e.frame.minY >= statusBarBottom }
         _ = e.waitForExistence(timeout: 5)
         if onScreen() { return settled(e) }
         for up in [true, false] {
