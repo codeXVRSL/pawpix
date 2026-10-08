@@ -91,34 +91,3 @@ fun GlassButton(icon: PixelIcon, label: String, modifier: Modifier = Modifier, n
         shape = Pill, onClickLabel = label, onClick = onClick,
     ) { Box(Modifier.size(38.dp), contentAlignment = Alignment.Center) { PixelIcon(icon, tint = Color(0xFF2B2135), size = 18.dp) } }
 }
-
-/** A key of text over the room (the Edit action). */
-@Composable
-fun GlassPill(text: String, label: String, modifier: Modifier = Modifier, night: Boolean = false, onClick: () -> Unit) {
-    Pressable(
-        modifier.semantics { contentDescription = label }, face = Color.White, lip = Color(0xFFE6D5C3), outline = Color(0xFFE6D5C3),
-        shape = Pill, onClickLabel = label, onClick = onClick, contentPadding = PaddingValues(horizontal = 16.dp),
-    ) { Box(Modifier.height(38.dp), contentAlignment = Alignment.Center) { Text(text, style = MaterialTheme.typography.labelMedium, color = Color(0xFF2B2135), modifier = Modifier.clearAndSetSemantics {}) } }
-}
-
-/**
- * A door on the pet's page (Health, Weight, Wardrobe, Share): an icon tile, a title and one line of
- * what's inside, in a card that opens its own screen. Four of them make a 2x2 grid.
- */
-@Composable
-fun DoorTile(icon: PixelIcon, title: String, detail: String, modifier: Modifier = Modifier, toy: Toy = Candy.Peach, onClick: () -> Unit) {
-    val p = Paw.palette
-    val face = if (p.dark) MaterialTheme.colorScheme.surfaceContainerHigh else Color.White
-    val lip = if (p.dark) Color(0xFF3B3150) else Color(0xFFE6D5C3)
-    ToyPanel(modifier, face = face, lip = lip, outline = lip, padding = 14.dp, onClick = onClick, onClickLabel = title) {
-        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            Box(Modifier.size(38.dp).clip(RoundedCornerShape(12.dp)).background(toy.face).border(2.dp, toy.lip, RoundedCornerShape(12.dp)), contentAlignment = Alignment.Center) {
-                PixelIcon(icon, tint = toy.ink, size = 20.dp)
-            }
-            Column(verticalArrangement = Arrangement.spacedBy(1.dp)) {
-                Text(title, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                Text(detail, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 2, overflow = TextOverflow.Ellipsis)
-            }
-        }
-    }
-}

@@ -160,14 +160,8 @@ private fun TaskRow(app: AppScope, state: AppState, pet: Pet, s: TaskStatus) {
         else -> tr("Next {0}", s.nextDueMs?.let { relativeDay(it, app.now, clock) } ?: "-")
     }
     val done = s.allDoneThisCycle
-    // How much is left before it's needed again: full right after care, empty when overdue.
-    val interval = if (t.everyDays > 1) t.everyDays * com.pawpixel.core.DAY_MS else com.pawpixel.core.DAY_MS / t.slots.size.coerceAtLeast(1)
-    val nextDue = s.nextDueMs
-    val fraction = when {
-        s.isOverdue -> 0f
-        nextDue != null -> ((nextDue - app.now).toFloat() / interval).coerceIn(0.1f, 1f)
-        else -> 1f
-    }
+    // How much is left before it's needed again: full right after care, empty when overdue (the same number as the HUD tile).
+    val fraction = s.meterFraction(app.now)
     SoftCard(Modifier.fillMaxWidth(), tone = Tone.Surface, padding = 12.dp) {
         Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {

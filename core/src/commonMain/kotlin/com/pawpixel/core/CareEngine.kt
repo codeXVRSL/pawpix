@@ -130,6 +130,23 @@ data class TaskStatus(
     /** Health: the due date follows the pet's age (see [HealthPlan]). */
     val scheduled: Boolean = false,
 ) {
+    /**
+     * How full the task's meter is, 0..1: empty when overdue, full when all done this cycle, otherwise the
+     * share of the cycle still ahead (never under a tenth, so the meter reads as alive). The HUD tiles and
+     * the Care panel rows draw the same number.
+     */
+    fun meterFraction(nowMs: Long): Float {
+        val t = task
+        val interval = if (t.everyDays > 1) t.everyDays * DAY_MS else DAY_MS / t.slots.size.coerceAtLeast(1)
+        val next = nextDueMs
+        return when {
+            isOverdue -> 0f
+            allDoneThisCycle -> 1f
+            next != null -> ((next - nowMs).toFloat() / interval).coerceIn(0.1f, 1f)
+            else -> 1f
+        }
+    }
+
     val isOverdue: Boolean get() = overdueSinceMs != null
     /**
      * Nothing left to do this cycle. A cycle with no slots left to count (a pet added after

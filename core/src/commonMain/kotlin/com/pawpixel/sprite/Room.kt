@@ -51,7 +51,7 @@ object Room {
     fun render(width: Int, height: Int, floorY: Int, phase: Sky.Phase, seed: Int = 7, season: Season = Season.NONE): PixelImage {
         val p = if (phase.dark) NIGHT else DAY
         val img = PixelImage(width, height)
-        val floorLine = floorY - 2 // the top edge of the floor (the pet stands two pixels into it)
+        val floorLine = (floorY - 2).coerceIn(10, height) // the top edge of the floor (the pet stands two pixels into it); never above the wainscot's rows
 
         // Wall: paper with a quiet dot pattern, and a wainscot band above the floor.
         for (y in 0 until floorLine) for (x in 0 until width) {

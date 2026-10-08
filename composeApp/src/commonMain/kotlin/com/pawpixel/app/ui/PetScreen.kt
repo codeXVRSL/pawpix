@@ -175,13 +175,11 @@ fun PetScreen(app: AppScope, state: AppState, pet: Pet) {
         // What the pet is thinking: a bubble just over its head.
         if (!celebrating) SpeechBubble(treatBubble ?: weatherBubble ?: occasion?.bubble ?: reading.caption, Modifier.align(Alignment.TopCenter).padding(top = screenHeight * 0.27f))
 
-        // Bottom HUD: Undo (for a few seconds after a tap), the need meters, the five keys.
-        Column(
-            Modifier.align(Alignment.BottomCenter).fillMaxWidth().navigationBarsPadding()
-                .onSizeChanged { hudHeight = with(density) { it.height.toDp() } },
-            horizontalAlignment = Alignment.CenterHorizontally,
-        ) {
+        // Bottom HUD: Undo (for a few seconds after a tap), the need meters, the five keys. The floor follows the
+        // meters and keys only: the passing Undo strip overlays the room instead of pushing it up and down.
+        Column(Modifier.align(Alignment.BottomCenter).fillMaxWidth().navigationBarsPadding(), horizontalAlignment = Alignment.CenterHorizontally) {
             UndoStrip(app, pet, lastDone) { lastDone = null }
+            Column(Modifier.fillMaxWidth().onSizeChanged { hudHeight = with(density) { it.height.toDp() } }, horizontalAlignment = Alignment.CenterHorizontally) {
             if (lostAlertFor(app, pet.id) != null) LostStrip(app, pet)
             if (pet.remembered) {
                 MemoryStrip(app, state, pet)
@@ -213,6 +211,7 @@ fun PetScreen(app: AppScope, state: AppState, pet: Pet) {
             Box(Modifier.padding(horizontal = 12.dp).padding(top = 4.dp, bottom = 10.dp)) { FloatingDock(keys, compact = true, onRoom = true) }
         }
     }
+        }
 }
 
 /** The pet's name on a sticker, its hearts, and its age: the game's character plate. */
@@ -276,23 +275,18 @@ private fun NeedTile(app: AppScope, state: AppState, pet: Pet, s: TaskStatus, bi
     val name = trName(t.title)
     val toy = Candy.forKind(t.kind)
     val done = s.allDoneThisCycle
-    val interval = if (t.everyDays > 1) t.everyDays * com.pawpixel.core.DAY_MS else com.pawpixel.core.DAY_MS / t.slots.size.coerceAtLeast(1)
-    val nextDue = s.nextDueMs
-    val fraction = when {
-        s.isOverdue -> 0f
-        done -> 1f
-        nextDue != null -> ((nextDue - app.now).toFloat() / interval).coerceIn(0.1f, 1f)
-        else -> 1f
-    }
+    val fraction = s.meterFraction(app.now)
     val label = when {
         done -> tr("{0}: all done today", name)
         else -> tr("Mark {0} done for {1}", name, pet.name)
     }
-    // Overdue: a slow bob, like a pet pawing at its bowl.
-    val bob = rememberInfiniteTransition(label = "bob")
-    val lift by bob.animateFloat(0f, if (s.isOverdue && !state.isAway(app.now)) -4f else 0f, infiniteRepeatable(tween(520), RepeatMode.Reverse), label = "lift")
+    // Overdue: a slow bob, like a pet pawing at its bowl. Only an overdue tile runs the animation, and the
+    // offset is read in the layout lambda, so the rest of the room doesn't recompose on every frame.
+    val lift: androidx.compose.runtime.State<Float> =
+        if (s.isOverdue && !state.isAway(app.now)) rememberInfiniteTransition(label = "bob").animateFloat(0f, -4f, infiniteRepeatable(tween(520), RepeatMode.Reverse), label = "lift")
+        else remember { mutableStateOf(0f) }
     Pressable(
-        Modifier.offset(y = lift.dp).semantics { contentDescription = label },
+        Modifier.offset { androidx.compose.ui.unit.IntOffset(0, lift.value.dp.roundToPx()) }.semantics { contentDescription = label },
         face = Color.White, lip = Color(0xFFE6D5C3), outline = if (s.isOverdue) toy.lip else Color(0xFFE6D5C3),
         shape = RoundedCornerShape(16.dp), role = Role.Button, enabled = !done, onClickLabel = label,
         onClick = if (done) null else onDone, contentPadding = PaddingValues(horizontal = 8.dp, vertical = 8.dp),
@@ -314,8 +308,11 @@ private fun NeedTile(app: AppScope, state: AppState, pet: Pet, s: TaskStatus, bi
 @Composable
 private fun UndoStrip(app: AppScope, pet: Pet, last: TaskStatus?, onGone: () -> Unit) {
     LaunchedEffect(last) { if (last != null) { delay(8_000); onGone() } }
+    // The last task stays for the exit slide, after `last` has already gone back to null.
+    var shown by remember { mutableStateOf(last) }
+    if (last != null) shown = last
     AnimatedVisibility(last != null, enter = slideInVertically { it / 2 } + fadeIn(), exit = slideOutVertically { it / 2 } + fadeOut()) {
-        val t = last?.task ?: return@AnimatedVisibility
+        val t = shown?.task ?: return@AnimatedVisibility
         val name = trName(t.title)
         val undoLabel = tr("Undo {0} for {1}", name, pet.name)
         ToyPanel(Modifier.padding(bottom = 6.dp), face = Color.White, lip = Color(0xFFE6D5C3), shape = Pill, padding = 0.dp) {

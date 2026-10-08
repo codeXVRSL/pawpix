@@ -60,7 +60,7 @@ import kotlinx.coroutines.withContext
 @Composable
 fun HomeScreen(app: AppScope, state: AppState) {
     val pet = state.pet(app.shownPetId ?: "") ?: state.pets.firstOrNull()
-    if (pet != null) PetScreen(app, state, pet) else EmptyHome(app, state)
+    if (pet != null) androidx.compose.runtime.key(pet.id) { PetScreen(app, state, pet) } else EmptyHome(app, state)
 }
 
 /** No pets yet: an empty room, what PawPixel does, and the one key that matters. */

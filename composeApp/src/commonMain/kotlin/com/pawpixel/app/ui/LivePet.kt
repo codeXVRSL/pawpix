@@ -149,7 +149,7 @@ fun LivePet(
                 if (description != null) contentDescription = description
                 onClick(label = petLabel) { brain.react(PetEvent.Petted, clock[1]); petted(); true }
             }
-            .pointerInput(brain) {
+            .pointerInput(brain, floorDepthPx, px, stageCols) { // the hit-test reads these: restart when they change
                 detectTapGestures { tap ->
                     val pose = shown ?: return@detectTapGestures
                     val left = (size.width - px * stageCols) / 2
