@@ -74,11 +74,7 @@ object MoodEngine {
         return weight(kind) * (minutes / graceMinutes(kind)).coerceIn(0.0, 1.0)
     }
 
-    fun isNight(minute: Int, settings: Settings): Boolean {
-        val s = settings.nightStart
-        val e = settings.nightEnd
-        return if (s <= e) minute in s until e else minute >= s || minute < e
-    }
+    fun isNight(minute: Int, settings: Settings): Boolean = Sky.isNight(minute, settings.nightStart, settings.nightEnd)
 
     /** Where each of the pet's tasks stands at [nowMs] (with learned times), as [read] sees them. */
     fun statuses(state: AppState, petId: String, nowMs: Long, clock: LocalClock): List<TaskStatus> {

@@ -53,15 +53,14 @@ object WeightTrend {
     const val STEP_G = 100
     const val MAX_G = 200_000
 
-    /** Parses what an owner types ("4.2", "4,2", "4.2 kg") to grams, in 0.1 kg steps. Null if it isn't a sensible pet weight. */
+    /** Parses kilograms as typed ("4.2", "4,2", "4.2 kg") to grams in 0.1 kg steps, whatever unit the owner has chosen (backups, tests). */
     fun parseKg(text: String): Int? {
-        val t = text.trim().lowercase().removeSuffix("kg").trim().replace(',', '.')
-        val v = t.toDoubleOrNull()?.takeIf { it.isFinite() && it > 0 && it <= MAX_G / 1000.0 } ?: return null
-        val g = kotlin.math.floor(v * 10 + 0.5).toInt() * STEP_G
-        return g.takeIf { it in STEP_G..MAX_G }
+        val t = text.trim().lowercase().removeSuffix("kg").trim()
+        if (t.toDoubleOrNull() == null && t.replace(',', '.').toDoubleOrNull() == null) return null
+        return Units.parseWeight("$t kg")?.takeIf { it >= STEP_G }
     }
 
-    /** The weight as the owner would type it: "4.2". */
+    /** The weight in kilograms as the owner would type it: "4.2". */
     fun kgInput(grams: Int): String = kg(grams).removeSuffix(" kg")
 
     /** A chart's weight axis: (bottom, top, step) in grams, on round steps, at least two, with room around the values. */

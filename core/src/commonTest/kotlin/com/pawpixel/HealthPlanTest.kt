@@ -248,7 +248,7 @@ class RegionalHealthPlanTest {
         val us = HealthPlan.addTo(AppState(pets = listOf(pup)), pup, now, clock, ids(), country = "US")
         val lepto = us.tasks.single { it.title == "Leptospirosis vaccine" }
         val leptoDue = HealthPlan.due(HealthPlan.scheduleFor(pup, lepto)!!, pup.birthDay!!, emptyList(), lepto.everyDays, today)
-        assertEquals(pup.birthDay!! + 12 * 7, leptoDue.day); assertEquals(1, leptoDue.dose); assertEquals(2, leptoDue.doses)
+        assertEquals(today, leptoDue.day); assertEquals(1, leptoDue.dose); assertEquals(2, leptoDue.doses) // 9 weeks passed at 10 weeks old: due now, then at 12
         val rabies = us.tasks.single { it.title == "Rabies vaccine" }
         assertEquals(pup.birthDay!! + 12 * 7, HealthPlan.due(HealthPlan.scheduleFor(pup, rabies)!!, pup.birthDay!!, emptyList(), 365, today).day)
         val uk = HealthPlan.addTo(AppState(pets = listOf(pup)), pup, now, clock, ids(), country = "GB")
@@ -269,17 +269,17 @@ class RegionalHealthPlanTest {
         assertEquals(HealthPlan.KEY_RABIES, HealthPlan.keyOf(Species.CAT, us.tasks.single { it.title == "Rabies vaccine" }))
     }
 
-    @Test fun aSharedTitleFollowsThePhonesOwnRegion() {
+    @Test fun aTitleMeansOneScheduleInEveryRegion() {
+        // Household phones in different countries must agree on a task's due dates, so a name maps to one schedule everywhere.
+        for (sp in listOf(Species.DOG, Species.CAT)) {
+            val byTitle = HealthPlan.Region.entries.flatMap { HealthPlan.itemsIn(sp, it) }.groupBy { it.kind to it.title.lowercase() }
+            for ((key, items) in byTitle) assertEquals(1, items.map { it.schedule }.distinct().size, "schedules for $key differ across regions")
+        }
         val kitten = Pet("c1", "Tala", Species.CAT, 0, birthDay = today - 9 * 7)
         val fvrcp = CareTask("t", "c1", TaskKind.VACCINE, "FVRCP vaccine", listOf(9 * 60), everyDays = 365)
         val was = HealthPlan.homeCountry
         try {
-            HealthPlan.homeCountry = "GB"
-            assertEquals(HealthPlan.UK_CAT, HealthPlan.scheduleFor(kitten, fvrcp)) // 9 and 12 weeks
-            HealthPlan.homeCountry = "US"
-            assertEquals(HealthPlan.FVRCP, HealthPlan.scheduleFor(kitten, fvrcp)) // 8, 12, 16 weeks
-            HealthPlan.homeCountry = ""
-            assertEquals(HealthPlan.FVRCP, HealthPlan.scheduleFor(kitten, fvrcp))
+            for (c in listOf("GB", "US", "", "DE")) { HealthPlan.homeCountry = c; assertEquals(HealthPlan.FVRCP, HealthPlan.scheduleFor(kitten, fvrcp)) }
         } finally { HealthPlan.homeCountry = was }
     }
 }

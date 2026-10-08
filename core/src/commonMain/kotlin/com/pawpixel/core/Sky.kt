@@ -16,7 +16,10 @@ object Sky {
         val dark: Boolean get() = this == NIGHT
     }
 
-    /** Where the daytime phases change (minutes of the day); the owner's night overrides them. */
+    /**
+     * Where the daytime phases change (minutes of the day). The owner's bedtime decides the night: before
+     * bedtime the sky stays at dusk however late, and after wake-up it is dawn however early.
+     */
     private const val DAWN_START = 5 * 60 + 30
     private const val DAY_START = 8 * 60
     private const val DUSK_START = 16 * 60 + 30
@@ -27,11 +30,11 @@ object Sky {
 
     fun phase(minuteOfDay: Int, nightStart: Int, nightEnd: Int): Phase = when {
         isNight(minuteOfDay, nightStart, nightEnd) -> Phase.NIGHT
-        minuteOfDay < DAWN_START -> Phase.NIGHT
+        minuteOfDay < DAWN_START -> Phase.DAWN // awake before the built-in dawn: an early riser's grey morning, not stars
         minuteOfDay < DAY_START -> Phase.DAWN
         minuteOfDay < DUSK_START -> Phase.DAY
         minuteOfDay < DUSK_END -> Phase.DUSK
-        else -> Phase.NIGHT
+        else -> Phase.DUSK // up past the built-in dusk but before bedtime: still evening
     }
 
     /** Minutes until the sky next changes, so a widget can redraw then (at most a day). */

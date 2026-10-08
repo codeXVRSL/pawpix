@@ -44,6 +44,7 @@ object StateOps {
             completions = state.completions.filterNot { it.taskId in taskIds },
             weights = state.weights.filterNot { it.petId == petId },
             album = state.album.filterNot { it.petId == petId },
+            walks = state.walks.filterNot { it.petId == petId },
         )
     }
 

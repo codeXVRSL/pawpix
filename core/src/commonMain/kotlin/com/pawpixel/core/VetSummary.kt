@@ -52,7 +52,7 @@ object VetSummary {
         val week = CareStats.walkWeek(state, pet.id, nowMs, clock)
         if (week.walks > 0) {
             sb.appendLine(); sb.appendLine(tr("WALKS THIS WEEK"))
-            sb.appendLine(if (week.km != null) tr("{0} walks, {1} min, about {2} km", week.walks, week.minutes, ((week.km * 10).toInt() / 10.0).toString()) else tr("{0} walks, {1} min", week.walks, week.minutes))
+            sb.appendLine(if (week.km != null) tr("{0} walks, {1} min, about {2}", week.walks, week.minutes, Units.distance(week.km)) else tr("{0} walks, {1} min", week.walks, week.minutes))
         }
         sb.appendLine(); sb.appendLine(tr("Care logged on {0} different days.", pet.careDays.size))
         return sb.toString().trimEnd()

@@ -77,8 +77,9 @@ object HealthPlan {
      *   from 12 weeks (state law; many states then allow 3-year boosters), leptospirosis for dogs (two doses
      *   from 12 weeks), FeLV for kittens (two doses from 8 weeks), heartworm prevention monthly.
      *   https://www.aaha.org/resources/2022-aaha-canine-vaccination-guidelines/ , https://catvets.com/guidelines/practice-guidelines/feline-vaccination-guidelines
-     * - [UK] (GB, IE): BSAVA practice. Puppies DHP and leptospirosis at 8 and 12 weeks, kittens FVRCP (and
-     *   FeLV) at 9 and 12 weeks, yearly boosters; no rabies vaccine unless the pet travels.
+     * - [UK] (GB, IE): BSAVA practice. Puppies DHP at 8 and 12 weeks with leptospirosis, kittens FVRCP (and
+     *   FeLV), yearly boosters; no rabies vaccine unless the pet travels. (The kitten and lepto series use the
+     *   shared schedules so a household phone abroad reads the same dates.)
      *   https://www.bsava.com/position-statement/vaccination/
      * - [AUSTRALIA] (AU, NZ): rabies-free. Puppies C5 and kittens F3 at 6–8, 10–12 and 14–16 weeks, then yearly;
      *   heartworm prevention monthly for dogs. https://www.ava.com.au/policy-advocacy/policies/companion-animals-health/vaccination-of-dogs-and-cats/
@@ -101,13 +102,15 @@ object HealthPlan {
     }
 
     val RABIES_12W = HealthSchedule(firstAgeDays = 12 * W)
-    val LEPTO = HealthSchedule(firstAgeDays = 12 * W, step = 3 * W, completeAt = 15 * W)
+    // One schedule per item name, whatever the region: household phones in different countries then compute the same due dates.
+    /** Leptospirosis: two doses from 9 weeks, three weeks apart (AAHA allows 8 to 9 weeks on; BSAVA gives 8 and 12). */
+    val LEPTO = HealthSchedule(firstAgeDays = 9 * W, step = 3 * W, completeAt = 12 * W)
     val FELV = HealthSchedule(firstAgeDays = 8 * W, step = 4 * W, completeAt = 12 * W)
+    /** The UK puppy course: DHP at 8 and 12 weeks. */
     val UK_DOG = HealthSchedule(firstAgeDays = 8 * W, step = 4 * W, completeAt = 12 * W)
-    val UK_CAT = HealthSchedule(firstAgeDays = 9 * W, step = 3 * W, completeAt = 12 * W)
 
     /** The usual items for a pet of [species] on a phone in [country] ("" = the Philippines). */
-    fun items(species: Species, country: String = ""): List<Item> = itemsIn(species, regionOf(country))
+    fun items(species: Species, country: String = homeCountry): List<Item> = itemsIn(species, regionOf(country))
 
     fun itemsIn(species: Species, region: Region): List<Item> {
         if (species == Species.OTHER) return listOf(Item(TaskKind.VET, "Vet check-up", 365, key = KEY_CHECKUP))
@@ -130,11 +133,11 @@ object HealthPlan {
             )
             Region.UK -> if (species == Species.DOG) listOf(
                 Item(TaskKind.VACCINE, "DHP vaccine", 365, UK_DOG, KEY_CORE),
-                Item(TaskKind.VACCINE, "Leptospirosis vaccine", 365, UK_DOG, KEY_LEPTO),
+                Item(TaskKind.VACCINE, "Leptospirosis vaccine", 365, LEPTO, KEY_LEPTO),
                 deworm, fleaTick, checkup,
             ) else listOf(
-                Item(TaskKind.VACCINE, "FVRCP vaccine", 365, UK_CAT, KEY_CORE),
-                Item(TaskKind.VACCINE, "FeLV vaccine", 365, UK_CAT, KEY_FELV),
+                Item(TaskKind.VACCINE, "FVRCP vaccine", 365, FVRCP, KEY_CORE),
+                Item(TaskKind.VACCINE, "FeLV vaccine", 365, FELV, KEY_FELV),
                 deworm, fleaTick, checkup,
             )
             Region.AUSTRALIA -> if (species == Species.DOG) listOf(
@@ -255,7 +258,7 @@ object HealthPlan {
      * puppy or kitten on its first dose's day; PawPixel doesn't know when anything was last done,
      * so the owner records it with "When was it done?".
      */
-    fun addTo(state: AppState, pet: Pet, nowMs: Long, clock: LocalClock, newId: () -> String = { Ids.newId() }, country: String = ""): AppState {
+    fun addTo(state: AppState, pet: Pet, nowMs: Long, clock: LocalClock, newId: () -> String = { Ids.newId() }, country: String = homeCountry): AppState {
         val today = clock.dayIndex(nowMs)
         // Matched by what the item is for, not its name: a household phone abroad doesn't add "Rabies vaccine" next to "Anti-rabies shot".
         val have = state.tasksFor(pet.id).map { keyOf(pet.species, it) }.toSet()

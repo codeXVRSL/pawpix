@@ -60,7 +60,7 @@ object ReminderPlanner {
     /** Of [MAX_HEALTH], at most this many are notes rather than tasks (Rabies Month, noise nights, birthdays). */
     const val MAX_NOTES = 6
 
-    fun plan(state: AppState, nowMs: Long, clock: LocalClock, horizonMs: Long = HORIZON_MS, country: String = ""): List<Reminder> {
+    fun plan(state: AppState, nowMs: Long, clock: LocalClock, horizonMs: Long = HORIZON_MS, country: String = HealthPlan.homeCountry): List<Reminder> {
         if (!state.settings.remindersEnabled) return emptyList()
         val out = ArrayList<Reminder>()
         val health = ArrayList<Reminder>()
@@ -142,7 +142,7 @@ object ReminderPlanner {
      * March 1. It isn't about a task, so it has no Done button ([Reminder.taskIds] is empty). Like
      * the other reminders it's planned again whenever PawPixel runs, so only within [RABIES_MONTH_LEAD_MS].
      */
-    fun rabiesMonth(state: AppState, nowMs: Long, clock: LocalClock, country: String = ""): Reminder? {
+    fun rabiesMonth(state: AppState, nowMs: Long, clock: LocalClock, country: String = HealthPlan.homeCountry): Reminder? {
         if (!HealthPlan.isPhilippines(country)) return null // a Philippine month
         val pet = state.pets.firstOrNull { it.species != Species.OTHER && !it.remembered } ?: return null
         val (year, _, _) = LocalClock.civil(clock.dayIndex(nowMs))
@@ -166,7 +166,7 @@ object ReminderPlanner {
      * the collar and tag, plan a quiet spot) and the evening itself at 17:00 (keep them inside).
      * New Year's Eve is everyone's; the others follow the phone's country. No Done button.
      */
-    fun noiseNights(state: AppState, nowMs: Long, clock: LocalClock, country: String = ""): List<Reminder> {
+    fun noiseNights(state: AppState, nowMs: Long, clock: LocalClock, country: String = HealthPlan.homeCountry): List<Reminder> {
         val pet = state.pets.firstOrNull { !it.remembered } ?: return emptyList()
         val (year, _, _) = LocalClock.civil(clock.dayIndex(nowMs))
         val out = ArrayList<Reminder>()

@@ -92,7 +92,7 @@ object HouseholdSync {
     }
 
     /** The fields everyone shares; the rest (sprite settings, reminder switches) is this phone's own. */
-    fun view(p: Pet) = p.copy(sprite = SpriteSettings(), spriteVersion = 0, shared = true, careDays = emptyList(), milestoneSeen = 0, editedAtMs = 0)
+    fun view(p: Pet) = p.copy(sprite = SpriteSettings(), spriteVersion = 0, shared = true, careDays = emptyList(), milestoneSeen = 0, editedAtMs = 0, style = null)
     fun view(t: CareTask) = t.copy(remindersOn = true, exactAlarm = false, editedAtMs = 0)
 
     /**
@@ -242,10 +242,9 @@ object HouseholdSync {
         val lookChanged = local.lookCode != remote.lookCode || local.species != remote.species || local.ears != remote.ears ||
             local.accessory != remote.accessory
         return remote.copy(
-            sprite = local.sprite, shared = true, careDays = local.careDays, milestoneSeen = local.milestoneSeen,
+            // Per phone: the sprite, the Studio style, the care calendar and milestones. Shared, from the later edit: the rest (in loving memory included).
+            sprite = local.sprite, style = local.style, shared = true, careDays = local.careDays, milestoneSeen = local.milestoneSeen,
             spriteVersion = if (lookChanged) local.spriteVersion + 1 else local.spriteVersion,
-            // In loving memory is never undone by a partner's edit (the remote carries it once every phone has synced).
-            rememberedDay = local.rememberedDay ?: remote.rememberedDay,
         )
     }
 

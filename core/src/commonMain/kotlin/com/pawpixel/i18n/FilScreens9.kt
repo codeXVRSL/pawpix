@@ -26,6 +26,7 @@ internal object FilScreens9 {
         "Add 0.1 {0}" to "Dagdagan ng 0.1 {0}",
         "Add 1 {0}" to "Dagdagan ng 1 {0}",
         "{0} steps · about {1}" to "{0} hakbang · mga {1}",
+        "{0} walks, {1} min, about {2}" to "{0} pasyal, {1} min, mga {2}",
         "1 walk · {0} min · about {1}" to "1 lakad · {0} min · mga {1}",
         "{0} walks · {1} min · about {2}" to "{0} lakad · {1} min · mga {2}",
         "• Your area shows as a square about {0} wide. Your exact location never leaves your phone." to

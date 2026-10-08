@@ -64,10 +64,8 @@ object Challenges {
         val next = LocalClock.plusMonths(first, 1)
         fun inMonth(day: Long) = day in first until next
         return when (challenge.kind) {
-            Challenge.Kind.CARE_DAYS -> {
-                val taskIds = state.tasksFor(petId).map { it.id }.toSet()
-                state.completions.asSequence().filter { it.taskId in taskIds && inMonth(it.localDay) }.map { it.localDay }.distinct().count()
-            }
+            // The pet's care calendar is the one source of truth for "a day of care" (family care included, back-dated records not).
+            Challenge.Kind.CARE_DAYS -> state.pet(petId)?.careDays?.count { inMonth(it) } ?: 0
             Challenge.Kind.WALKS -> state.walksFor(petId).count { inMonth(clock.dayIndex(it.startMs)) }
             Challenge.Kind.WALK_KM -> state.walksFor(petId).filter { inMonth(clock.dayIndex(it.startMs)) }.sumOf { ((it.km ?: 0.0) * 1000).toInt() }
             Challenge.Kind.PHOTOS -> state.albumFor(petId).count { inMonth(clock.dayIndex(it.atMs)) }

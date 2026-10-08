@@ -178,13 +178,13 @@ object StateCodec {
             val id = a["id"].str?.takeIf { ID.matches(it) } ?: return@mapNotNull null
             val petId = a["petId"].str?.takeIf { it in petIds } ?: return@mapNotNull null
             AlbumPhoto(id, petId, a["at"].long ?: 0L, (a["caption"].str ?: "").take(AppState.MAX_CAPTION))
-        }.distinctBy { it.id }
+        }.distinctBy { it.id }.newestPerPet(AppState.MAX_ALBUM_PHOTOS_PER_PET, { it.petId }, { it.atMs })
         val walks = root["walks"].list.mapNotNull { w ->
             val id = w["id"].str?.takeIf { ID.matches(it) } ?: return@mapNotNull null
             val petId = w["petId"].str?.takeIf { it in petIds } ?: return@mapNotNull null
             val start = w["s"].long ?: return@mapNotNull null
             Walk(id, petId, start, (w["e"].long ?: start).coerceAtLeast(start), w["steps"].int?.takeIf { it in 0..1_000_000 })
-        }.distinctBy { it.id }
+        }.distinctBy { it.id }.newestPerPet(AppState.MAX_WALKS_PER_PET, { it.petId }, { it.startMs })
         // Older saves have no care calendar: start it from the records they do have.
         val withDays = pets.map { p ->
             if (p.careDays.isNotEmpty()) p else {
@@ -199,4 +199,13 @@ object StateCodec {
 
     private inline fun <reified E : Enum<E>> enumOr(name: String?, fallback: E): E =
         enumValues<E>().firstOrNull { it.name == name } ?: fallback
+}
+
+/** At most [max] entries per pet, keeping the newest (a crafted or stale file can't bypass the per-pet caps). */
+private fun <T> List<T>.newestPerPet(max: Int, petOf: (T) -> String, timeOf: (T) -> Long): List<T> {
+    val over = groupBy(petOf).filterValues { it.size > max }
+    if (over.isEmpty()) return this
+    val keep = HashSet<T>()
+    for ((_, items) in over) keep += items.sortedByDescending(timeOf).take(max)
+    return filter { petOf(it) !in over || it in keep }
 }
