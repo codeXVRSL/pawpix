@@ -62,23 +62,26 @@ class PetMapModel(
     var sharedPetIds: Set<String>? = files.readText(SHARED)?.let { runCatching { Json.parse(it).list.mapNotNull { p -> p.str }.toSet() }.getOrNull() }
         private set
 
-    /** Open lost-pet alerts raised from this phone: local pet id -> alert id. */
-    var lostAlerts: Map<String, String> by mutableStateOf(files.readText(LOST)?.let { runCatching {
+    /** A local pet id -> server id map on disk (lost alerts, ID cards). */
+    private fun loadPetMap(file: String): Map<String, String> = files.readText(file)?.let { runCatching {
         Json.parse(it).list.mapNotNull { e -> val pet = e["pet"].str ?: return@mapNotNull null; val id = e["id"].str ?: return@mapNotNull null; pet to id }.toMap()
-    }.getOrNull() } ?: emptyMap())
+    }.getOrNull() } ?: emptyMap()
+    private fun savePetMap(file: String, map: Map<String, String>) =
+        files.writeText(file, Json.arr(map.map { (pet, id) -> Json.obj("pet" to pet, "id" to id) }).stringify())
+
+    /** Open lost-pet alerts raised from this phone: local pet id -> alert id. */
+    var lostAlerts: Map<String, String> by mutableStateOf(loadPetMap(LOST))
         private set
 
     /** Pet ID cards made from this phone: local pet id -> card id. */
-    var cards: Map<String, String> by mutableStateOf(files.readText(CARDS)?.let { runCatching {
-        Json.parse(it).list.mapNotNull { e -> val pet = e["pet"].str ?: return@mapNotNull null; val id = e["id"].str ?: return@mapNotNull null; pet to id }.toMap()
-    }.getOrNull() } ?: emptyMap())
+    var cards: Map<String, String> by mutableStateOf(loadPetMap(CARDS))
         private set
 
     fun cardFor(petId: String): String? = cards[petId]
 
     fun recordCard(petId: String, cardId: String?) {
         cards = if (cardId == null) cards - petId else cards + (petId to cardId)
-        files.writeText(CARDS, Json.arr(cards.map { (pet, id) -> Json.obj("pet" to pet, "id" to id) }).stringify())
+        savePetMap(CARDS, cards)
     }
 
     // ---------- Pals ----------
@@ -137,7 +140,7 @@ class PetMapModel(
 
     fun recordAlert(petId: String, lostId: String?) {
         lostAlerts = if (lostId == null) lostAlerts - petId else lostAlerts + (petId to lostId)
-        files.writeText(LOST, Json.arr(lostAlerts.map { (pet, id) -> Json.obj("pet" to pet, "id" to id) }).stringify())
+        savePetMap(LOST, lostAlerts)
     }
 
     /** Signs in with Google/Apple (or the test account). False if the owner cancelled. */
@@ -196,6 +199,7 @@ class PetMapModel(
         lostAlerts = emptyMap()
         cards = emptyMap()
         pals = emptyList()
+        treatsSeen = emptySet()
     }
 
     private fun forgetChoices() {

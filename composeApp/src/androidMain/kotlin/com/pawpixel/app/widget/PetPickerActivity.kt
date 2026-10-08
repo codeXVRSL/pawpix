@@ -95,7 +95,9 @@ class PetPickerActivity : ComponentActivity() {
     @Composable
     private fun Settings(pets: List<Pet>, prefs: Preferences?, save: (String?, PetWidget.Theme, Boolean, Boolean) -> Unit) {
         val repo = PawPixelApplication.repo(this)
-        var choice by remember { mutableStateOf(prefs?.get(PetWidget.PET) ?: pets.firstOrNull()?.id) }
+        // Unset means "the first pet" (which follows deletions and reordering): only a tap on a pet pins an id.
+        var choice by remember { mutableStateOf(prefs?.get(PetWidget.PET)) }
+        val selected = choice ?: pets.firstOrNull()?.id
         var theme by remember { mutableStateOf(PetWidget.Theme.of(prefs?.get(PetWidget.THEME))) }
         var showName by remember { mutableStateOf(prefs?.get(PetWidget.SHOW_NAME) ?: true) }
         Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
@@ -116,7 +118,7 @@ class PetPickerActivity : ComponentActivity() {
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(12.dp),
                         ) {
-                            RadioButton(selected = id == choice, onClick = null)
+                            RadioButton(selected = id == selected, onClick = null)
                             if (pet != null) SpriteView(repo.pose(pet, Mood.HAPPY), Modifier.size(48.dp), animate = false)
                             Column {
                                 Text(label, style = MaterialTheme.typography.titleMedium)

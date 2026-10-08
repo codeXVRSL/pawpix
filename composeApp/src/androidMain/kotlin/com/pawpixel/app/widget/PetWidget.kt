@@ -98,15 +98,17 @@ class PetWidget : GlanceAppWidget() {
         val repo = PawPixelApplication.repo(context)
         // Read before the first frame, so the widget never flashes the "make your pet" state.
         val prefs = runCatching { getAppWidgetState(context, PreferencesGlanceStateDefinition, id) }.getOrNull()
-        val first = withContext(Dispatchers.IO) { Shown.load(context, prefs?.get(PET), System.currentTimeMillis()) }
+        val firstChoice = prefs?.get(PET)
+        val firstRevision = repo.widgetRevision.value
+        val first = withContext(Dispatchers.IO) { Shown.load(context, firstChoice, System.currentTimeMillis()) }
         provideContent {
             val choice = currentState(PET)
             val theme = Theme.of(currentState(THEME))
             val showName = currentState(SHOW_NAME) ?: true
-            // Re-read widget.json whenever the app publishes (e.g. after a Done tap on this widget).
+            // Re-read widget.json whenever the app publishes (e.g. after a Done tap on this widget); the first read is already done.
             val revision by repo.widgetRevision.collectAsState()
             val shown by produceState(first, revision, choice) {
-                value = withContext(Dispatchers.IO) { Shown.load(context, choice, System.currentTimeMillis()) }
+                if (revision != firstRevision || choice != firstChoice) value = withContext(Dispatchers.IO) { Shown.load(context, choice, System.currentTimeMillis()) }
             }
             WidgetTheme { Content(shown ?: Shown.EMPTY, theme, showName) }
         }

@@ -122,7 +122,10 @@ class AndroidPlatform(private val context: Context) : Platform {
      */
     override suspend fun classifyPet(photo: PixelImage): Species? {
         val bitmap = Bitmap.createBitmap(photo.pixels, photo.width, photo.height, Bitmap.Config.ARGB_8888)
-        val labeler = com.google.mlkit.vision.label.ImageLabeling.getClient(com.google.mlkit.vision.label.defaults.ImageLabelerOptions.DEFAULT_OPTIONS)
+        // The default options drop labels under 0.5; the cat/dog decision below is made at 0.4.
+        val labeler = com.google.mlkit.vision.label.ImageLabeling.getClient(
+            com.google.mlkit.vision.label.defaults.ImageLabelerOptions.Builder().setConfidenceThreshold(0.4f).build(),
+        )
         return try {
             suspendCancellableCoroutine { cont ->
                 labeler.process(InputImage.fromBitmap(bitmap, 0))

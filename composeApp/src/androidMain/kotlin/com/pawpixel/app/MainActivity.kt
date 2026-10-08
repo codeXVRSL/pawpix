@@ -85,6 +85,7 @@ class MainActivity : ComponentActivity() {
     override fun onDestroy() {
         app.platform.permissionRequester = null
         app.platform.locationPermission = null
+        app.platform.activityPermission = null
         app.platform.activity = null
         super.onDestroy()
     }

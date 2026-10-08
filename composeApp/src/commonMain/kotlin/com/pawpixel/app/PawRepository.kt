@@ -80,7 +80,10 @@ class PawRepository(val platform: Platform) {
     /** The weather outside, for the room's bubble (only once the owner has an area on the map). */
     val weather: WeatherModel by lazy { WeatherModel(platform, files) }
     /** The in-app demo map (debug builds, when the real one isn't set up): one pretend server for the whole app. */
-    val demoMap: PetMapModel by lazy { PetMapModel.demo(platform, files) }
+    private var demoMapCreated = false
+    val demoMap: PetMapModel by lazy { demoMapCreated = true; PetMapModel.demo(platform, files) }
+    /** Pets whose widget poses were drawn (or found undrawable) this run: no retrying every publish. */
+    private val posesTried = HashSet<String>()
 
     /** Family sharing (same sign-in as the map). */
     val family: FamilyModel by lazy { FamilyModel(this, map) }
@@ -130,7 +133,6 @@ class PawRepository(val platform: Platform) {
             val n = change(_state.value).let { if (stamp) HouseholdSync.stamp(_state.value, it, now()) else it }
             if (n != _state.value) {
                 if (!files.writeText(STATE_FILE, StateCodec.encode(n))) platform.log("Couldn't save state.json (phone full?)")
-                if (n.settings.language != _state.value.settings.language || n.settings.units != _state.value.settings.units) applyLanguage(n)
                 _state.value = n
             }
             // Inside the lock, so concurrent updates (UI, widget, notification) publish in order.
@@ -148,7 +150,7 @@ class PawRepository(val platform: Platform) {
         // Two days of widget timelines is real work: off the main thread (update() and publish() already are).
         val (snapshot, reminders) = withContext(Dispatchers.Default) {
             // Pets made before the widgets animated get their idle frames drawn once.
-            for (pet in state.pets) if (!files.exists(WidgetSnapshot.framePath(pet.id, Mood.CONTENT, 0))) writeWidgetPoses(pet)
+            for (pet in state.pets) if (pet.id !in posesTried && !files.exists(WidgetSnapshot.framePath(pet.id, Mood.CONTENT, 0))) { posesTried += pet.id; writeWidgetPoses(pet) }
             WidgetSnapshot.build(state, now, clock) to ReminderPlanner.plan(state, now, clock, country = platform.systemCountry())
         }
         files.writeText(WidgetSnapshot.FILE_NAME, snapshot.stringify())
@@ -364,7 +366,8 @@ class PawRepository(val platform: Platform) {
         // If you joined the pet map, delete that account too (best effort: offline still wipes the phone).
         if (map.client.isSignedIn) runCatching { map.deleteAccount() }
         map.forgetLocally()
-        files.delete("map-demo")
+        if (demoMapCreated) demoMap.forgetLocally() else files.delete("map-demo")
+        weather.forget()
         family.clearLocal()
         mutex.withLock {
             files.delete("sprites")
@@ -422,9 +425,10 @@ class PawRepository(val platform: Platform) {
             // Widget poses for each pet, drawn from its restored face.
             for (pet in contents.state.pets) {
                 val outfit = com.pawpixel.sprite.Accessory.of(pet.accessory)
+                val style = pet.style?.let { PetStyle.decode(it) } // the Studio look travels in the backup too
                 val art = contents.files["sprites/${pet.id}/head.bin"]?.let { runCatching { RawImage.decode(it) }.getOrNull() }
-                    ?.let { PetArt(it, pet.species, Ears.of(pet.ears), outfit) }
-                    ?: pet.lookCode?.let(PetLook::decode)?.let { PetArt(it, pet.species, Ears.of(pet.ears), outfit) }
+                    ?.let { PetArt(it, pet.species, Ears.of(pet.ears), outfit, style) }
+                    ?: pet.lookCode?.let(PetLook::decode)?.let { PetArt(it, pet.species, Ears.of(pet.ears), outfit, style) }
                     ?: continue
                 writeWidgetPoses(pet, art, "$STAGING/")
             }
@@ -511,14 +515,13 @@ class PawRepository(val platform: Platform) {
         val updated = withContext(Dispatchers.Default) {
             draft.copy(lookCode = art(draft)?.look?.encode() ?: pet.lookCode).also { writeWidgetPoses(it) }
         }
-        update { StateOps.updatePet(it, updated) }
-        platform.refreshWidgets(null)
+        update { StateOps.updatePet(it, updated) } // publishes, and so refreshes the widgets with the right next-change alarm
     }
 
     /** Puts on (or takes off) an outfit the pet has earned, and redraws the widget poses. */
     suspend fun wear(pet: Pet, outfit: com.pawpixel.sprite.Accessory?) {
         val s = update { com.pawpixel.core.Milestones.wear(it, pet.id, outfit) }
-        s.pet(pet.id)?.let { withContext(Dispatchers.Default) { writeWidgetPoses(it) }; platform.refreshWidgets(null) }
+        s.pet(pet.id)?.let { withContext(Dispatchers.Default) { writeWidgetPoses(it) }; publish() }
     }
 
     /** Widget poses for pets whose look arrived or changed through family sharing. */
