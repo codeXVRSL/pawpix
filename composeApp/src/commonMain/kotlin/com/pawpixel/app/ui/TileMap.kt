@@ -88,6 +88,13 @@ private val Leaf = Color(0xFF5EA64C)
 /** A walk on the map: its ~1 km area (never the venue) and its title. */
 data class MapFlag(val lat: Double, val lng: Double, val title: String, val id: String = "")
 
+/** Parsed zoom-14 vector tiles and the tile address, kept for the session so switching tabs doesn't fetch them again. */
+object VectorTileCache {
+    var template: String? = null
+    val tiles = HashMap<String, VectorTile>()
+    val order = ArrayDeque<String>()
+}
+
 /**
  * A street map drawn the pixel way: 256 px tiles scaled by a whole number with no smoothing, so
  * streets stay crisp and chunky. Areas with 3+ owners get a pixel paw pin with their pet count;
@@ -143,9 +150,9 @@ fun TileMap(
         cy = WebMercator.y(myArea?.centerLat ?: centerLat, zoom)
     }
     // Vector tiles: the current tile URL from OpenFreeMap's TileJSON, and the parsed zoom-14 tiles.
-    var vectorTemplate by remember { mutableStateOf<String?>(null) }
-    val vectorTiles = remember { HashMap<String, VectorTile>() }
-    val vectorOrder = remember { ArrayDeque<String>() }
+    var vectorTemplate by remember { mutableStateOf(VectorTileCache.template) }
+    val vectorTiles = VectorTileCache.tiles
+    val vectorOrder = VectorTileCache.order
     val vectorPending = remember { HashMap<String, kotlinx.coroutines.Deferred<VectorTile?>>() }
 
     fun toScreen(lat: Double, lng: Double) = Offset(
@@ -154,11 +161,12 @@ fun TileMap(
     )
 
     LaunchedEffect(settings.usesVectorTiles) {
-        if (!settings.usesVectorTiles) return@LaunchedEffect
-        // One small request names the tiles' current address ("tiles": ["https://.../{z}/{x}/{y}.pbf"]).
+        if (!settings.usesVectorTiles || vectorTemplate != null) return@LaunchedEffect
+        // One small request, once a session, names the tiles' current address ("tiles": ["https://.../{z}/{x}/{y}.pbf"]).
         vectorTemplate = platform.fetchBytes(MapSettings.VECTOR_TILEJSON)?.let { bytes ->
             runCatching { Json.parse(bytes.decodeToString())["tiles"].list.firstOrNull()?.str }.getOrNull()
         }?.takeIf { it.contains("{z}") }
+        VectorTileCache.template = vectorTemplate
         if (vectorTemplate == null) platform.log("Map: couldn't read the vector tile address")
     }
 
@@ -257,7 +265,7 @@ fun TileMap(
         ) {
             drawRect(Color(MapStyle.LAND))
             if (tiles.isEmpty()) drawPixelGrid(cx, cy, scale)
-            drawTiles(tiles, zoom, cx, cy, scale, crisp = true)
+            drawTiles(tiles, zoom, cx, cy, scale)
             drawLabels(tileLabels, zoom, cx, cy, scale, density, text)
             myArea?.let { drawMyArea(it, ::toScreen, density) }
             // Walks sit a little to the right of the area pin, so both stay tappable in a shared area.
@@ -339,8 +347,8 @@ private fun MapButton(label: String, description: String, onClick: () -> Unit) {
     }
 }
 
-/** [crisp]: whole pixels with no smoothing (the cartoon streets); otherwise smooth (the names). */
-private fun DrawScope.drawTiles(tiles: Map<String, ImageBitmap>, zoom: Int, cx: Double, cy: Double, scale: Int, crisp: Boolean) {
+/** The cartoon tiles, whole pixels with no smoothing. */
+private fun DrawScope.drawTiles(tiles: Map<String, ImageBitmap>, zoom: Int, cx: Double, cy: Double, scale: Int) {
     val n = 1 shl zoom
     val halfW = size.width / 2.0 / scale; val halfH = size.height / 2.0 / scale
     val tx0 = floor((cx - halfW) / 256).toInt(); val tx1 = floor((cx + halfW) / 256).toInt()
@@ -351,7 +359,7 @@ private fun DrawScope.drawTiles(tiles: Map<String, ImageBitmap>, zoom: Int, cx: 
         val left = ((tx * 256.0 - cx) * scale + size.width / 2).roundToInt()
         val top = ((ty * 256.0 - cy) * scale + size.height / 2).roundToInt()
         drawImage(img, IntOffset.Zero, IntSize(img.width, img.height), IntOffset(left, top), IntSize(tilePx, tilePx),
-            filterQuality = if (crisp) FilterQuality.None else FilterQuality.High)
+            filterQuality = FilterQuality.None)
     }
 }
 

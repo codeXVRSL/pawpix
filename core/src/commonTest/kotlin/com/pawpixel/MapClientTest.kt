@@ -256,6 +256,18 @@ class MvtTest {
         val tile = com.pawpixel.map.Mvt.decode(byteArrayOf(0x1a, 0x7f, 0x01, 0x02))
         assertTrue(tile.layers.isEmpty() || tile.layers.values.all { it.features.isEmpty() })
         assertTrue(com.pawpixel.map.Mvt.decode(ByteArray(0)).layers.isEmpty())
+        // A hostile tile: a MoveTo whose count claims 2^29 points with no bytes behind it, and a length prefix of -1.
+        val hostileGeometry = com.pawpixel.map.MvtWriter().layer("water") { }.bytes() + byteArrayOf(
+            0x1a, 0x0c, // layer, 12 bytes
+            0x0a, 0x01, 'w'.code.toByte(), // name "w"
+            0x12, 0x07, // feature, 7 bytes
+            0x18, 0x03, // type polygon
+            0x22, 0x03, 0xf9.toByte(), 0xff.toByte(), 0x7f.toByte(), // geometry: 3 bytes, MoveTo with a huge count (0x7ffff9 = count 2^20-1, id 1)
+        )
+        val t = com.pawpixel.map.Mvt.decode(hostileGeometry)
+        assertTrue(t.layers.values.all { l -> l.features.all { it.geometry.isEmpty() || it.geometry.all { g -> g.size <= 2 } } })
+        val negativeLength = byteArrayOf(0x1a, 0xff.toByte(), 0xff.toByte(), 0xff.toByte(), 0xff.toByte(), 0x0f, 0x01)
+        assertTrue(com.pawpixel.map.Mvt.decode(negativeLength).layers.size <= 1) // returns instead of looping
     }
 }
 

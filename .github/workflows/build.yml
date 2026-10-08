@@ -97,9 +97,8 @@ jobs:
           PAWPIXEL_TILE_URL: ${{ secrets.PAWPIXEL_TILE_URL }}
           PAWPIXEL_TILE_ATTRIBUTION: ${{ secrets.PAWPIXEL_TILE_ATTRIBUTION }}
           PAWPIXEL_TILE_KEY: ${{ secrets.PAWPIXEL_TILE_KEY }}
-          # Test-account sign-in for the debug APK only (never set these for the release job).
-          PAWPIXEL_TEST_EMAIL: ${{ secrets.PAWPIXEL_TEST_EMAIL }}
-          PAWPIXEL_TEST_PASSWORD: ${{ secrets.PAWPIXEL_TEST_PASSWORD }}
+          # No test-account sign-in here: this APK is published on a branch of a public repository, so it
+          # signs in with Google like a release build. The end-to-end job bakes a throwaway account into its own build.
       - uses: actions/upload-artifact@v4
         with: { name: pawpixel-debug-apk, path: composeApp/build/outputs/apk/debug/*.apk }
       # Also on the ci-results/<branch>-apk branch (one commit, force-pushed), so the APK can be

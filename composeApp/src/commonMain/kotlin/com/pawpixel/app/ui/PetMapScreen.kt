@@ -486,7 +486,7 @@ private fun Gatherings(
     val venues = remember { mutableStateOf(mapOf<String, Venue>()) }
     LaunchedEffect(walks) {
         act {
-            val g = map.client.gatherings()
+            val g = walks // the map fetched these already; only what's ours comes from the server here
             list = g
             mine = map.client.myWalks()
             venues.value = g.filter { it.iAmGoing || it.iAmHost }.mapNotNull { x -> map.client.venue(x.id)?.let { x.id to it } }.toMap()

@@ -32,7 +32,7 @@ object Mvt {
         while (r.hasMore()) {
             val tag = r.varint().toInt()
             if (tag shr 3 == 3 && tag and 7 == 2) {
-                val len = r.varint().toInt()
+                val len = r.len()
                 val layer = readLayer(r.sub(len))
                 layers[layer.name] = layer
                 r.pos += len
@@ -51,9 +51,9 @@ object Mvt {
             val tag = r.varint().toInt()
             when (tag shr 3) {
                 1 -> name = r.string()
-                2 -> { val len = r.varint().toInt(); rawFeatures += r.sub(len); r.pos += len }
+                2 -> { val len = r.len(); rawFeatures += r.sub(len); r.pos += len }
                 3 -> keys += r.string()
-                4 -> { val len = r.varint().toInt(); values += readValue(r.sub(len)); r.pos += len }
+                4 -> { val len = r.len(); values += readValue(r.sub(len)); r.pos += len }
                 5 -> extent = r.varint().toInt()
                 else -> r.skip(tag and 7)
             }
@@ -81,23 +81,23 @@ object Mvt {
     private fun readFeature(r: Reader, keys: List<String>, values: List<Any>): VectorFeature {
         var type = 0
         val tags = LinkedHashMap<String, Any>()
-        var geometry: List<IntArray> = emptyList()
+        var rawGeometry: Reader? = null // decoded last: protobuf fields come in any order, and the type decides how
         while (r.hasMore()) {
             val tag = r.varint().toInt()
             when (tag shr 3) {
                 2 -> { // packed key/value index pairs
-                    val len = r.varint().toInt(); val end = minOf(r.end, r.pos + len)
+                    val len = r.len(); val end = minOf(r.end, r.pos + len)
                     while (r.pos < end) {
                         val k = r.varint().toInt(); val v = r.varint().toInt()
-                        if (k < keys.size && v < values.size) tags[keys[k]] = values[v]
+                        if (k >= 0 && k < keys.size && v >= 0 && v < values.size) tags[keys[k]] = values[v]
                     }
                 }
                 3 -> type = r.varint().toInt()
-                4 -> { val len = r.varint().toInt(); geometry = readGeometry(r.sub(len), type); r.pos += len }
+                4 -> { val len = r.len(); rawGeometry = r.sub(len); r.pos += len }
                 else -> r.skip(tag and 7)
             }
         }
-        return VectorFeature(type, tags, geometry)
+        return VectorFeature(type, tags, rawGeometry?.let { readGeometry(it, type) } ?: emptyList())
     }
 
     /** Command stream: MoveTo(1) / LineTo(2) with zigzag deltas, ClosePath(7). */
@@ -109,14 +109,16 @@ object Mvt {
         while (r.hasMore()) {
             val cmd = r.varint().toInt()
             val id = cmd and 7; val count = cmd ushr 3
+            // A count beyond the bytes left is a damaged tile: stop at the data, never spin on it.
             when (id) {
-                1 -> repeat(count) { // MoveTo starts a new point / line / ring
+                1 -> for (i in 0 until count) { // MoveTo starts a new point / line / ring
+                    if (!r.hasMore()) break
                     x += zigzag(r.varint()).toInt(); y += zigzag(r.varint()).toInt()
                     if (type != VectorFeature.POINT) flush()
                     cur.add(x); cur.add(y)
                     if (type == VectorFeature.POINT) { parts += cur.toArray(); cur = IntArrayList() }
                 }
-                2 -> repeat(count) { x += zigzag(r.varint()).toInt(); y += zigzag(r.varint()).toInt(); cur.add(x); cur.add(y) }
+                2 -> for (i in 0 until count) { if (!r.hasMore()) break; x += zigzag(r.varint()).toInt(); y += zigzag(r.varint()).toInt(); cur.add(x); cur.add(y) }
                 7 -> flush()
                 else -> return parts
             }
@@ -136,6 +138,8 @@ object Mvt {
     /** Reads within [pos, end); a damaged tile runs out of bytes instead of out of bounds. */
     private class Reader(val bytes: ByteArray, var pos: Int, val end: Int) {
         fun hasMore() = pos < end
+        /** A length prefix, clamped to the bytes left (a huge or negative one can't move the cursor backwards). */
+        fun len(): Int = varint().coerceIn(0, (end - pos).toLong()).toInt()
         fun sub(len: Int) = Reader(bytes, pos, minOf(end, pos + maxOf(0, len)))
         fun varint(): Long {
             var shift = 0; var result = 0L

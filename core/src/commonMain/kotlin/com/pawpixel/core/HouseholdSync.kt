@@ -244,6 +244,8 @@ object HouseholdSync {
         return remote.copy(
             sprite = local.sprite, shared = true, careDays = local.careDays, milestoneSeen = local.milestoneSeen,
             spriteVersion = if (lookChanged) local.spriteVersion + 1 else local.spriteVersion,
+            // In loving memory is never undone by a partner's edit (the remote carries it once every phone has synced).
+            rememberedDay = local.rememberedDay ?: remote.rememberedDay,
         )
     }
 

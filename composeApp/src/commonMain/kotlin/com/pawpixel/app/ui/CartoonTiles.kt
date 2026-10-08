@@ -45,16 +45,14 @@ object CartoonTiles {
         val fill = Paint().apply { isAntiAlias = false; style = PaintingStyle.Fill }
         val stroke = Paint().apply { isAntiAlias = false; style = PaintingStyle.Stroke; strokeCap = StrokeCap.Round; strokeJoin = StrokeJoin.Round }
         val factor = 1 shl subLevels
-        // Everything the camera sees: more detail the closer the zoom.
-        val detail = zoom + 0
 
         fun layer(name: String) = tile.layers[name]
         fun scale(extent: Int) = SIDE.toFloat() * factor / extent
-        fun ox(extent: Int) = -subX * SIDE.toFloat()
-        fun oy(extent: Int) = -subY * SIDE.toFloat()
+        fun ox() = -subX * SIDE.toFloat()
+        fun oy() = -subY * SIDE.toFloat()
 
         fun path(feature: VectorFeature, extent: Int): Path {
-            val s = scale(extent); val dx = ox(extent); val dy = oy(extent)
+            val s = scale(extent); val dx = ox(); val dy = oy()
             val p = Path().apply { fillType = PathFillType.EvenOdd }
             for (part in feature.geometry) {
                 if (part.size < 4) continue
@@ -102,7 +100,7 @@ object CartoonTiles {
         strokeLayer("waterway") { f -> when (f.str("class")) { "river", "canal" -> MapStyle.WATER to 3f * factor.coerceAtMost(2); "stream" -> MapStyle.WATER to 1.5f; else -> null } }
 
         // Buildings, from zoom 14 up.
-        if (detail >= 14) fillLayer("building") { MapStyle.BUILDING }
+        if (zoom >= 14) fillLayer("building") { MapStyle.BUILDING }
 
         // Roads: casing first, then the road on top, widest classes last so they sit over the small ones.
         fun roadWidth(cls: String?): Float = when (cls) {
@@ -114,12 +112,12 @@ object CartoonTiles {
             "path", "track", "pedestrian", "footway", "cycleway" -> 1f
             "rail", "transit" -> 1.5f
             else -> 0f
-        } * (if (detail >= 16) 1.6f else if (detail >= 15) 1.3f else 1f)
+        } * (if (zoom >= 16) 1.6f else if (zoom >= 15) 1.3f else 1f)
         fun roadColors(cls: String?): Pair<Int, Int>? = when (cls) {
             "motorway", "trunk" -> MapStyle.HIGHWAY to MapStyle.HIGHWAY_EDGE
             "primary", "secondary" -> MapStyle.MAIN_ROAD to MapStyle.MAIN_ROAD_EDGE
             "tertiary", "minor", "service", "raceway" -> MapStyle.ROAD to MapStyle.ROAD_EDGE
-            "path", "track", "pedestrian", "footway", "cycleway" -> if (detail >= 15) MapStyle.ROAD_EDGE to MapStyle.ROAD_EDGE else null
+            "path", "track", "pedestrian", "footway", "cycleway" -> if (zoom >= 15) MapStyle.ROAD_EDGE to MapStyle.ROAD_EDGE else null
             "rail", "transit" -> MapStyle.RAIL to MapStyle.RAIL
             else -> null
         }
@@ -139,13 +137,13 @@ object CartoonTiles {
 
         // Names: streets along their longest stretch (zoomed in), places at their point.
         val names = layer("transportation_name")
-        if (names != null && detail >= 15) {
-            val s = scale(names.extent); val dx = ox(names.extent); val dy = oy(names.extent)
+        if (names != null && zoom >= 15) {
+            val s = scale(names.extent); val dx = ox(); val dy = oy()
             for (f in names.features) {
                 val text = f.str("name") ?: continue
                 if (!f.isLine) continue
                 val cls = f.str("class")
-                if (detail < 16 && cls !in setOf("motorway", "trunk", "primary", "secondary", "tertiary")) continue
+                if (zoom < 16 && cls !in setOf("motorway", "trunk", "primary", "secondary", "tertiary")) continue
                 // The longest segment on this tile carries the name.
                 var best = 0f; var bx = 0f; var by = 0f; var angle = 0f
                 for (part in f.geometry) {
@@ -167,14 +165,14 @@ object CartoonTiles {
         }
         val places = layer("place")
         if (places != null) {
-            val s = scale(places.extent); val dx = ox(places.extent); val dy = oy(places.extent)
+            val s = scale(places.extent); val dx = ox(); val dy = oy()
             for (f in places.features) {
                 val text = f.str("name") ?: continue
                 val cls = f.str("class")
                 val show = when (cls) {
                     "city", "town" -> true
-                    "village", "suburb", "quarter" -> detail >= 13
-                    "neighbourhood", "hamlet" -> detail >= 15
+                    "village", "suburb", "quarter" -> zoom >= 13
+                    "neighbourhood", "hamlet" -> zoom >= 15
                     else -> false
                 }
                 if (!show || !f.isPoint) continue
@@ -189,5 +187,4 @@ object CartoonTiles {
     private const val BLOCK = 0xFFF9E6CC.toInt()
     private const val CAMPUS = 0xFFEFE3F4.toInt()
 
-    @Suppress("unused") private fun clamp(v: Float, lo: Float, hi: Float) = max(lo, min(hi, v))
 }

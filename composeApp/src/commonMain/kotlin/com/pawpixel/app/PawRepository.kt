@@ -288,7 +288,7 @@ class PawRepository(val platform: Platform) {
      */
     suspend fun addAlbumPhoto(petId: String, photo: ByteArray, caption: String = ""): AlbumPhoto? {
         val img = platform.decodePhoto(photo, ALBUM_MAX_SIDE) ?: return null
-        val bytes = platform.encodeJpeg(img, 86) ?: withContext(Dispatchers.Default) { Png.encode(img) }
+        val bytes = platform.encodeJpeg(img, ALBUM_QUALITY) ?: withContext(Dispatchers.Default) { Png.encode(img) }
         val entry = AlbumPhoto(Ids.newId(), petId, now(), caption)
         if (!files.writeBytes(Backup.albumPhotoPath(petId, entry.id), bytes)) return null
         val before = _state.value.albumFor(petId)
@@ -587,7 +587,9 @@ class PawRepository(val platform: Platform) {
         /** Health photos: big enough to read a vaccination card, small enough for backups (~250 KB). */
         const val CARD_MAX_SIDE = 1280
         /** Album photos: a phone screen's worth of detail, ~300 KB each. */
-        const val ALBUM_MAX_SIDE = 1600
+        /** 1280 px at quality 82 is about 150 to 250 KB a photo: a full album of [AppState.MAX_ALBUM_PHOTOS_PER_PET] still fits one backup file. */
+        const val ALBUM_MAX_SIDE = 1280
+        const val ALBUM_QUALITY = 82
         private const val STAGING = "restore"
         private const val OLD_SPRITES = "sprites.old"
     }

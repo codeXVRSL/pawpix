@@ -283,7 +283,7 @@ fun SpriteMakerScreen(app: AppScope, state: AppState, existingPetId: String?) {
                     )
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         listOf(Species.CAT to "Cat body", Species.DOG to "Dog body").forEach { (sp, label) ->
-                            ChoiceChip(species == sp, { species = sp; if (ears == null) ears = null }, tr(label))
+                            ChoiceChip(species == sp, { species = sp }, tr(label))
                         }
                     }
                 }

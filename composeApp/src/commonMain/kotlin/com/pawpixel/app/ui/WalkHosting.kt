@@ -100,7 +100,7 @@ fun HostWalkDialog(
             }
         },
         confirmButton = {
-            val ready = form.draft(clock) != null && form.title.isNotBlank()
+            val ready = form.draft(clock) != null && form.title.trim().length >= 3 // the server asks for 3 to 80 characters
             TextButton(onClick = onSubmit, enabled = ready && !busy) { Text(if (busy) tr("Sending…") else tr("Send for approval")) }
         },
         dismissButton = { TextButton(onClick = onClose, enabled = !busy) { Text(tr("Cancel")) } },

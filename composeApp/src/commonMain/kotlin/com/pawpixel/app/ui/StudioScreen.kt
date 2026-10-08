@@ -286,11 +286,15 @@ private fun ColourPanel(style: PetStyle, slot: ColourSlot, onSlot: (ColourSlot) 
 /** Three sliders that reach every colour; the swatch beside them shows the mix. */
 @Composable
 private fun ColourMixer(argb: Int, onChange: (Int) -> Unit) {
-    val (h0, s0, l0) = remember(argb) { toHsl(argb) }
-    var h by remember(argb) { mutableStateOf(h0) }
-    var sat by remember(argb) { mutableStateOf(s0) }
-    var l by remember(argb) { mutableStateOf(l0) }
-    fun push() = onChange(fromHsl(h, sat, l))
+    // The sliders keep their own values: a colour pushed from here comes straight back (quantised to 8 bits, and
+    // white or black loses its hue), so only a colour chosen elsewhere resets them.
+    val (h0, s0, l0) = remember { toHsl(argb) }
+    var h by remember { mutableStateOf(h0) }
+    var sat by remember { mutableStateOf(s0) }
+    var l by remember { mutableStateOf(l0) }
+    var pushed by remember { mutableStateOf(argb) }
+    if (argb != pushed) { val (nh, ns, nl) = toHsl(argb); h = nh; sat = ns; l = nl; pushed = argb }
+    fun push() { val c = fromHsl(h, sat, l); pushed = c; onChange(c) }
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
         Box(Modifier.size(52.dp).clip(Pill).background(Color(fromHsl(h, sat, l))).border(1.dp, Paw.palette.hairline, Pill))
         Column(Modifier.weight(1f)) {
