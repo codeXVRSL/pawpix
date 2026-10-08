@@ -89,9 +89,6 @@ s2, cells = rpc(e, "nearby_cells", {"p_cell_lat": NAGA[1], "p_cell_lng": NAGA[2]
 check("blocking an owner drops the area below 3, so it hides", s in (200, 204) and cells == [], (s, s2, cells))
 s, cells = rpc(c, "nearby_cells", {"p_cell_lat": NAGA[1], "p_cell_lng": NAGA[2]})
 check("blocks work both ways only for the pair (others still see it)", s == 200 and len(cells) == 1, (s, cells))
-# An owner's area can move three times a day (0017): a puppet account can't sweep a city for lone owners.
-moves = [call("POST", "/rest/v1/map_presence", {"owner_id": e["id"], "cell_id": f"g1000:{9400 + i}:27600", "cell_lat": 13.7, "cell_lng": 123.2 + i / 100}, e["token"], prefer="resolution=merge-duplicates")[0] for i in range(5)]
-check("the fourth change of area in a day is refused", all(m in (200, 201, 204) for m in moves[:3]) and all(m >= 400 for m in moves[3:]), moves)
 
 s, _ = rpc(d, "report_pet", {"p_pet_id": pets[0]["pet_id"], "p_reason": "spam", "p_details": "test"})
 s2, reports = call("GET", "/rest/v1/reports?select=reason,target_user", key=SERVICE)
@@ -100,6 +97,10 @@ s, rows = call("GET", "/rest/v1/reports?select=*", token=d["token"])
 check("reporters can't read reports back", s == 200 and rows == [], (s, rows))
 
 join(e, "g1000:9000:27000", 10.0, 120.0)  # e joins far away, so only capacity can stop e's RSVP below
+# An owner's area can move three times a day (0017): a puppet account can't sweep a city for lone owners. (e moves back at the end.)
+moves = [call("POST", "/rest/v1/map_presence", {"owner_id": e["id"], "cell_id": f"g1000:{9400 + i}:27600", "cell_lat": 13.7, "cell_lng": 123.2 + i / 100}, e["token"], prefer="resolution=merge-duplicates")[0] for i in range(5)]
+check("the fourth change of area in a day is refused", all(m in (200, 201, 204) for m in moves[:3]) and all(m >= 400 for m in moves[3:]), moves)
+call("PATCH", f"/rest/v1/map_presence?owner_id=eq.{e['id']}", {"cell_id": "g1000:9000:27000", "cell_lat": 10.0, "cell_lng": 120.0, "moves": 0}, key=SERVICE)
 
 # Gatherings (created and approved by the moderator in the pilot)
 s, g = call("POST", "/rest/v1/gatherings", {"host_id": a["id"], "title": "Sunday pet walk", "starts_at": "2099-01-01T08:00:00Z",
@@ -308,7 +309,7 @@ check("someone who unpalled you can't be re-added with their old code (0017)", s
 s, code_a2 = rpc(a, "new_pal_code")
 s2, r = rpc(e, "add_pal_tracked", {"p_code": code})
 check("a replaced code stops working", s == 200 and code_a2 != code and len(code_a2) == 6 and r is None, (s, code_a2, r))
-misses = [rpc(e, "add_pal_tracked", {"p_code": f"ZZZZ{i:02d}"})[0] for i in range(10)]
+misses = [rpc(e, "add_pal_tracked", {"p_code": f"ZZZZ{i:02d}"})[0] for i in range(9)]  # plus the old-code miss above: ten
 s, r = rpc(e, "add_pal_tracked", {"p_code": code_a2})
 check("ten wrong codes in an hour lock guessing, even for a right one", all(m == 200 for m in misses) and s >= 400, (misses, s, r))
 s, rows = call("GET", "/rest/v1/pal_pets?select=*", token=d["token"])

@@ -239,7 +239,12 @@ final class OwnerJourneyTests: XCTestCase {
             sleep(1)
             shot("memory")
             try find("More").tap()
-            try scrollTo(query: element(containing: "Remembered"), "Remembered").tap()
+            // The row can be tapped while the panel is still sliding in: try again if the memorial page didn't open.
+            for attempt in 0..<3 {
+                try scrollTo(query: element(containing: "Remembered"), "Remembered").tap()
+                if element("Bring back").waitForExistence(timeout: 6) { break }
+                log.append("      note: Remembered row tap \(attempt + 1) didn't open the page")
+            }
             try find("Bring back").tap()
             try scrollTo("Back").tap()
             try find("Care")
