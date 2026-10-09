@@ -177,10 +177,9 @@ fun SpriteMakerScreen(app: AppScope, state: AppState, existingPetId: String?) {
                 } else if (StateOps.canAddPet(app.repo.state.value)) {
                     // Notifications are offered on the pet's page, next to the care they're for.
                     val pet = app.repo.addPet(name, species ?: Species.CAT, settings, made, ears, birthDay)
-                    app.back()
-                    app.showPet(pet.id) // home, showing the new pet's room
+                    app.showPet(pet.id) // home, showing the new pet's room (from wherever "add a pet" was tapped)
                 } else {
-                    error = tr("Your first pet is free. More pets come with PawPixel Pro (coming soon).")
+                    error = tr("Your first pet is free forever. Extra pets are part of PawPixel Pro, which is coming soon.")
                 }
             } finally {
                 saving = false
@@ -209,7 +208,7 @@ fun SpriteMakerScreen(app: AppScope, state: AppState, existingPetId: String?) {
                     // The photo goes here: an empty room, waiting for a pet.
                     RoomBackdrop(phase, Modifier.fillMaxWidth().height(160.dp).clip(MaterialTheme.shapes.medium)) { floor ->
                         if (loading) CircularProgressIndicator(Modifier.align(Alignment.Center), color = MaterialTheme.colorScheme.primary)
-                        else PixelIcon(PixelIcons.CAMERA, tint = Color(0x662B2135), size = 40.dp, modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = floor + 8.dp))
+                        else PixelIcon(PixelIcons.CAMERA, tint = PawColors.Ink.copy(alpha = 0.4f), size = 40.dp, modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = floor + 8.dp))
                     }
                     Text(tr("Pick a photo of your pet"), style = MaterialTheme.typography.titleLarge, textAlign = TextAlign.Center)
                     Text(

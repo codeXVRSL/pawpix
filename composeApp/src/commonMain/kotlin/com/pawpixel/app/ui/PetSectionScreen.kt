@@ -87,7 +87,6 @@ fun Panel(app: AppScope, state: AppState, pet: Pet?, title: String, content: @Co
     val pose = remember(pet?.lookKey, reading?.mood) { if (pet != null && reading != null) app.repo.pose(pet, reading.mood) else null }
     val cs = MaterialTheme.colorScheme
     val p = Paw.palette
-    val edge = p.edge
     val shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp)
     val closeLabel = tr("Back")
     Box(Modifier.fillMaxSize()) {
@@ -101,10 +100,10 @@ fun Panel(app: AppScope, state: AppState, pet: Pet?, title: String, content: @Co
         )
         Column(
             Modifier.align(Alignment.BottomCenter).fillMaxWidth().fillMaxHeight(0.86f)
-                .background(cs.background, shape).border(2.dp, edge, shape)
+                .background(cs.background, shape).border(2.dp, p.edge, shape)
                 .padding(top = 8.dp),
         ) {
-            Box(Modifier.align(Alignment.CenterHorizontally).width(40.dp).height(5.dp).clip(Pill).background(edge))
+            Box(Modifier.align(Alignment.CenterHorizontally).width(40.dp).height(5.dp).clip(Pill).background(p.edge))
             Column(
                 Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 16.dp).navigationBarsPadding(),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
@@ -144,7 +143,7 @@ private fun MenuRow(icon: PixelIcon, title: String, detail: String?, toy: Toy, o
 @Composable
 private fun MorePanel(app: AppScope, state: AppState, pet: Pet) {
     var renaming by remember { mutableStateOf(false) }
-    var showProDialog by remember { mutableStateOf(false) }
+    val addPet = rememberAddPet(app, state)
     var remembering by remember { mutableStateOf(false) }
     val photos = state.albumFor(pet.id).size
     MenuRow(
@@ -157,7 +156,7 @@ private fun MorePanel(app: AppScope, state: AppState, pet: Pet) {
     ) { app.navigate(Screen.PetSection(pet.id, "lost")) }
     MenuRow(PixelIcons.PENCIL, tr("Edit {0}", pet.name), tr("Name, type and birthday"), Candy.Peach) { renaming = true }
     MenuRow(PixelIcons.PLUS, tr("Add another pet"), tr("From a photo"), Candy.Butter) {
-        if (StateOps.canAddPet(state)) app.navigate(Screen.CreatePet) else showProDialog = true
+        addPet()
     }
     MenuRow(PixelIcons.PIN, tr("Pet map"), tr("Pet owners and walks near you"), Candy.Leaf) { app.navigate(Screen.PetMap) }
     val palCount = lostModel(app)?.pals?.size ?: 0
@@ -173,13 +172,12 @@ private fun MorePanel(app: AppScope, state: AppState, pet: Pet) {
     ) { remembering = true }
     if (renaming) RenameDialog(app, pet) { renaming = false }
     if (remembering) RememberDialog(app, pet) { remembering = false }
-    if (showProDialog) ProDialog { showProDialog = false }
 }
 
 /** Switch pets: each pet's sprite and mood; the chosen one's room is home. */
 @Composable
 private fun PetsPanel(app: AppScope, state: AppState, current: Pet) {
-    var showProDialog by remember { mutableStateOf(false) }
+    val addPet = rememberAddPet(app, state)
     state.pets.forEach { pet ->
         val reading = MoodEngine.read(state, pet.id, app.now, app.repo.clock)
         val pose = remember(pet.lookKey, reading.mood) { app.repo.pose(pet, reading.mood) }
@@ -198,8 +196,7 @@ private fun PetsPanel(app: AppScope, state: AppState, current: Pet) {
             }
         }
     }
-    GhostPill(tr("+ Add another pet")) { if (StateOps.canAddPet(state)) app.navigate(Screen.CreatePet) else showProDialog = true }
-    if (showProDialog) ProDialog { showProDialog = false }
+    GhostPill(tr("+ Add another pet")) { addPet() }
 }
 
 @Composable
@@ -271,6 +268,14 @@ private fun ShareSection(app: AppScope, pet: Pet) {
         Hint(tr("Care for {0} together with a partner or family: every Done shows on everyone's phone.", pet.name))
         TonalPill(tr("Share with your household"), icon = PixelIcons.PEOPLE) { app.navigate(Screen.Family(sharePetId = pet.id)) }
     }
+}
+
+/** Every "add a pet" in the app: the maker when the plan allows another pet, otherwise the Pro dialog. */
+@Composable
+fun rememberAddPet(app: AppScope, state: AppState): () -> Unit {
+    var showPro by remember { mutableStateOf(false) }
+    if (showPro) ProDialog { showPro = false }
+    return { if (StateOps.canAddPet(state)) app.navigate(Screen.CreatePet) else showPro = true }
 }
 
 /** "More pets with Pro": the free plan's one pet, said once for every place that adds a pet. */

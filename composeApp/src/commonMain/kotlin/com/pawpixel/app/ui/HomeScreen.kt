@@ -69,7 +69,7 @@ private fun EmptyHome(app: AppScope, state: AppState) {
     val phase = phaseFor(app, state)
     Box(Modifier.fillMaxSize()) {
         RoomBackdrop(phase, Modifier.fillMaxSize(), pixel = 4.dp, floorDepth = 150.dp, season = seasonFor(app)) { floor ->
-            PixelIcon(PixelIcons.PAW, tint = Color(0x662B2135), size = 48.dp, modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = floor + 8.dp))
+            PixelIcon(PixelIcons.PAW, tint = PawColors.Ink.copy(alpha = 0.4f), size = 48.dp, modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = floor + 8.dp))
         }
         Row(Modifier.fillMaxWidth().statusBarsPadding().padding(12.dp)) {
             Spacer(Modifier.weight(1f))

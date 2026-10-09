@@ -83,7 +83,7 @@ internal fun screenOf(code: String): Screen? {
     return when (p[0]) {
         "home" -> Screen.Home
         "create" -> Screen.CreatePet
-        "pet" -> Screen.Home // older saved stacks: a pet's page is now the home screen showing it
+        "pet" -> null // older saved stacks: a pet's page is now the home screen showing it (dropped; Home is under it)
         "remake" -> id(1)?.let { Screen.RemakeSprite(it) }
         "studio" -> id(1)?.let { Screen.Studio(it) }
         "section" -> id(1)?.let { pet -> id(2)?.let { Screen.PetSection(pet, it) } }
@@ -195,7 +195,8 @@ fun App(repo: PawRepository, registerBack: ((() -> Boolean) -> (() -> Unit))? = 
             // Only from the screen on top: a double tap on Back or Save doesn't also close the screen below.
             back = { if (stack.last() == current) back() },
             shownPetId = shownPetId,
-            showPet = { shownPetId = it },
+            // A pet's room is the home screen showing that pet: whatever was open, back to Home.
+            showPet = { shownPetId = it; stack = listOf(Screen.Home) },
             onError = { failed = true },
         )
 
