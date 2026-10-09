@@ -50,7 +50,7 @@ fun QrView(text: String, modifier: Modifier = Modifier, size: Dp = 160.dp, descr
             val cell = floor(this.size.width / n)
             val off = (this.size.width - cell * n) / 2 + cell * 4
             for (r in 0 until code.size) for (c in 0 until code.size) {
-                if (code.isDark(r, c)) drawRect(Color(0xFF2B2135), Offset(off + c * cell, off + r * cell), Size(cell, cell))
+                if (code.isDark(r, c)) drawRect(PawColors.Ink, Offset(off + c * cell, off + r * cell), Size(cell, cell))
             }
         }
     }

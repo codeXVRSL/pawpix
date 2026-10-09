@@ -42,6 +42,8 @@ object PawColors {
     val Cream = Color(0xFFFFF7EC)
     val Sand = Color(0xFFFFE9CF)
     val Ink = Color(0xFF2B2135)
+    /** A white sticker's sand edge: keys and plates over the room, which stay light in dark mode too. */
+    val StickerEdge = Color(0xFFE6D5C3)
     val Coral = Color(0xFFD9364F)
     val CoralSoft = Color(0xFFFFDCE1)
     val Leaf = Color(0xFF2E8B5A)
@@ -69,6 +71,8 @@ data class PawPalette(
     val calmSoft: Color,
     /** The strongest border a card ever gets. */
     val hairline: Color,
+    /** A sticker panel's or key's edge and lip (sand by day, plum in dark mode). */
+    val edge: Color,
 )
 
 val LightPalette = PawPalette(
@@ -78,6 +82,7 @@ val LightPalette = PawPalette(
     good = PawColors.Leaf, goodSoft = PawColors.LeafSoft,
     calm = PawColors.Lavender, calmSoft = PawColors.LavenderSoft,
     hairline = Color(0x1F2B2135),
+    edge = PawColors.StickerEdge,
 )
 
 val DarkPalette = PawPalette(
@@ -87,6 +92,7 @@ val DarkPalette = PawPalette(
     good = Color(0xFF7BD6A3), goodSoft = Color(0xFF1F3A2C),
     calm = Color(0xFFB9ADF2), calmSoft = Color(0xFF2E2748),
     hairline = Color(0x33FFFFFF),
+    edge = Color(0xFF3B3150),
 )
 
 val LocalPawPalette = staticCompositionLocalOf { LightPalette }

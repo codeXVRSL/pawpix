@@ -39,7 +39,6 @@ import kotlinx.coroutines.launch
 sealed interface Screen {
     data object Home : Screen
     data object CreatePet : Screen
-    data class PetDetail(val petId: String) : Screen
     data class RemakeSprite(val petId: String) : Screen
     /** The Pet Studio: how the pixel pet is drawn (eyes, ears, coat, colours...). */
     data class Studio(val petId: String) : Screen
@@ -67,7 +66,6 @@ sealed interface Screen {
 internal fun Screen.code(): String = when (this) {
     Screen.Home -> "home"
     Screen.CreatePet -> "create"
-    is Screen.PetDetail -> "pet:$petId"
     is Screen.RemakeSprite -> "remake:$petId"
     is Screen.Studio -> "studio:$petId"
     is Screen.PetSection -> "section:$petId:$section"
@@ -85,7 +83,7 @@ internal fun screenOf(code: String): Screen? {
     return when (p[0]) {
         "home" -> Screen.Home
         "create" -> Screen.CreatePet
-        "pet" -> id(1)?.let { Screen.PetDetail(it) }
+        "pet" -> Screen.Home // older saved stacks: a pet's page is now the home screen showing it
         "remake" -> id(1)?.let { Screen.RemakeSprite(it) }
         "studio" -> id(1)?.let { Screen.Studio(it) }
         "section" -> id(1)?.let { pet -> id(2)?.let { Screen.PetSection(pet, it) } }
@@ -192,11 +190,8 @@ fun App(repo: PawRepository, registerBack: ((() -> Boolean) -> (() -> Unit))? = 
         val current = stack.last()
         val app = AppScope(
             repo = repo, scope = scope, now = now,
-            // A double tap opens a screen once. A pet's page is the home screen showing that pet.
-            navigate = {
-                if (it is Screen.PetDetail) { shownPetId = it.petId; stack = listOf(Screen.Home) }
-                else if (stack.last() != it) stack = stack + it
-            },
+            // A double tap opens a screen once. (A pet's page is the home screen showing that pet: see showPet.)
+            navigate = { if (stack.last() != it) stack = stack + it },
             // Only from the screen on top: a double tap on Back or Save doesn't also close the screen below.
             back = { if (stack.last() == current) back() },
             shownPetId = shownPetId,
@@ -241,10 +236,6 @@ fun App(repo: PawRepository, registerBack: ((() -> Boolean) -> (() -> Unit))? = 
                 is Screen.Studio -> {
                     val pet = state.pet(screen.petId)
                     if (pet == null) LaunchedEffect(screen) { back() } else StudioScreen(app, state, pet)
-                }
-                is Screen.PetDetail -> {
-                    val pet = state.pet(screen.petId)
-                    if (pet == null) LaunchedEffect(screen) { back() } else PetScreen(app, state, pet)
                 }
                 is Screen.PetSection -> {
                     val pet = state.pet(screen.petId)

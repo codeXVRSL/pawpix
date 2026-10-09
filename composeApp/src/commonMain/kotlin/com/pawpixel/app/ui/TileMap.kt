@@ -73,7 +73,7 @@ import kotlin.math.roundToInt
 
 private const val MIN_ZOOM = 11
 private const val MAX_ZOOM = 17
-private val Ink = Color(0xFF2B2135)
+private val Ink = PawColors.Ink
 private val Berry = Color(0xFFE8374E)
 private val LostRed = Color(0xFFD9574A)
 private val Cream = Color(0xFFFFF4E0)

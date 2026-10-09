@@ -56,7 +56,7 @@ fun FloatingDock(items: List<DockItem>, modifier: Modifier = Modifier, compact: 
     // Over the room the dock is a white sticker whatever the phone's theme, like the rest of the HUD.
     val dark = p.dark && !onRoom
     val face = if (dark) cs.surfaceContainerHigh else Color.White
-    val lip = if (dark) Color(0xFF3B3150) else Color(0xFFE6D5C3)
+    val lip = (if (dark) DarkPalette.edge else PawColors.StickerEdge)
     val ink = if (dark) cs.onSurfaceVariant else Color(0xFF6E6287)
     ToyPanel(modifier, face = face, lip = lip, outline = lip, shape = Pill, padding = 5.dp) {
         Row(horizontalArrangement = Arrangement.spacedBy(if (compact) 2.dp else 4.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -87,7 +87,7 @@ fun FloatingDock(items: List<DockItem>, modifier: Modifier = Modifier, compact: 
 @Composable
 fun GlassButton(icon: PixelIcon, label: String, modifier: Modifier = Modifier, night: Boolean = false, onClick: () -> Unit) {
     Pressable(
-        modifier.semantics { contentDescription = label }, face = Color.White, lip = Color(0xFFE6D5C3), outline = Color(0xFFE6D5C3),
+        modifier.semantics { contentDescription = label }, face = Color.White, lip = PawColors.StickerEdge, outline = PawColors.StickerEdge,
         shape = Pill, onClickLabel = label, onClick = onClick,
-    ) { Box(Modifier.size(38.dp), contentAlignment = Alignment.Center) { PixelIcon(icon, tint = Color(0xFF2B2135), size = 18.dp) } }
+    ) { Box(Modifier.size(38.dp), contentAlignment = Alignment.Center) { PixelIcon(icon, tint = PawColors.Ink, size = 18.dp) } }
 }

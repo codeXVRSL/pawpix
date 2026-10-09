@@ -87,7 +87,7 @@ fun Panel(app: AppScope, state: AppState, pet: Pet?, title: String, content: @Co
     val pose = remember(pet?.lookKey, reading?.mood) { if (pet != null && reading != null) app.repo.pose(pet, reading.mood) else null }
     val cs = MaterialTheme.colorScheme
     val p = Paw.palette
-    val edge = if (p.dark) Color(0xFF3B3150) else Color(0xFFE6D5C3)
+    val edge = p.edge
     val shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp)
     val closeLabel = tr("Back")
     Box(Modifier.fillMaxSize()) {
@@ -173,14 +173,7 @@ private fun MorePanel(app: AppScope, state: AppState, pet: Pet) {
     ) { remembering = true }
     if (renaming) RenameDialog(app, pet) { renaming = false }
     if (remembering) RememberDialog(app, pet) { remembering = false }
-    if (showProDialog) {
-        AlertDialog(
-            onDismissRequest = { showProDialog = false },
-            title = { Text(tr("More pets with Pro")) },
-            text = { Text(tr("Your first pet is free forever. Extra pets are part of PawPixel Pro, which is coming soon.")) },
-            confirmButton = { TextButton(onClick = { showProDialog = false }) { Text(tr("OK")) } },
-        )
-    }
+    if (showProDialog) ProDialog { showProDialog = false }
 }
 
 /** Switch pets: each pet's sprite and mood; the chosen one's room is home. */
@@ -206,14 +199,7 @@ private fun PetsPanel(app: AppScope, state: AppState, current: Pet) {
         }
     }
     GhostPill(tr("+ Add another pet")) { if (StateOps.canAddPet(state)) app.navigate(Screen.CreatePet) else showProDialog = true }
-    if (showProDialog) {
-        AlertDialog(
-            onDismissRequest = { showProDialog = false },
-            title = { Text(tr("More pets with Pro")) },
-            text = { Text(tr("Your first pet is free forever. Extra pets are part of PawPixel Pro, which is coming soon.")) },
-            confirmButton = { TextButton(onClick = { showProDialog = false }) { Text(tr("OK")) } },
-        )
-    }
+    if (showProDialog) ProDialog { showProDialog = false }
 }
 
 @Composable
@@ -285,4 +271,15 @@ private fun ShareSection(app: AppScope, pet: Pet) {
         Hint(tr("Care for {0} together with a partner or family: every Done shows on everyone's phone.", pet.name))
         TonalPill(tr("Share with your household"), icon = PixelIcons.PEOPLE) { app.navigate(Screen.Family(sharePetId = pet.id)) }
     }
+}
+
+/** "More pets with Pro": the free plan's one pet, said once for every place that adds a pet. */
+@Composable
+private fun ProDialog(onClose: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onClose,
+        title = { Text(tr("More pets with Pro")) },
+        text = { Text(tr("Your first pet is free forever. Extra pets are part of PawPixel Pro, which is coming soon.")) },
+        confirmButton = { TextButton(onClick = onClose) { Text(tr("OK")) } },
+    )
 }

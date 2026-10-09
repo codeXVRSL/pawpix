@@ -53,7 +53,7 @@ import com.pawpixel.sprite.PixelIcon
 
 /** A face colour and the lip under it (a darker shade of the same hue). */
 @androidx.compose.runtime.Immutable
-data class Toy(val face: Color, val lip: Color, val ink: Color = Color(0xFF2B2135))
+data class Toy(val face: Color, val lip: Color, val ink: Color = PawColors.Ink)
 
 /** A darker shade for a lip: towards the ink, keeping the hue. */
 fun Color.lip(amount: Float = 0.22f): Color = Color(
@@ -151,21 +151,22 @@ fun ToyButton(
 ) {
     val cs = MaterialTheme.colorScheme
     val p = Paw.palette
-    val (face, lip, fg, outline) = when (style) {
-        ToyStyle.Primary -> listOf(cs.primary, cs.primary.lip(0.3f), cs.onPrimary, null)
-        ToyStyle.Secondary -> listOf(if (p.dark) cs.surfaceContainerHigh else Color.White, if (p.dark) Color(0xFF3B3150) else Color(0xFFE6D5C3), cs.onSurface, if (p.dark) Color(0xFF3B3150) else Color(0xFFE6D5C3))
-        ToyStyle.Quiet -> listOf(if (p.dark) cs.surfaceContainerHigh else PawColors.Sand, if (p.dark) Color(0xFF3B3150) else Color(0xFFE9C9A6), cs.onSurface, null)
-        is ToyStyle.Colored -> listOf(style.toy.face, style.toy.lip, style.toy.ink, null)
+    val (toy, outline) = when (style) {
+        ToyStyle.Primary -> Toy(cs.primary, cs.primary.lip(0.3f), cs.onPrimary) to null
+        ToyStyle.Secondary -> Toy(if (p.dark) cs.surfaceContainerHigh else Color.White, p.edge, cs.onSurface) to p.edge
+        ToyStyle.Quiet -> Toy(if (p.dark) cs.surfaceContainerHigh else PawColors.Sand, if (p.dark) p.edge else Color(0xFFE9C9A6), cs.onSurface) to null
+        is ToyStyle.Colored -> style.toy to null
     }
     val alpha = if (enabled) 1f else 0.45f
+    val fg = toy.ink
     Pressable(
-        modifier, face = (face as Color).copy(alpha = alpha), lip = (lip as Color).copy(alpha = alpha), outline = outline as Color?,
+        modifier, face = toy.face.copy(alpha = alpha), lip = toy.lip.copy(alpha = alpha), outline = outline,
         shape = Pill, enabled = enabled, onClickLabel = onClickLabel, onClick = onClick,
         contentPadding = PaddingValues(horizontal = if (big) 26.dp else 18.dp),
     ) {
         Row(Modifier.heightIn(min = if (big) 50.dp else 42.dp), verticalAlignment = Alignment.CenterVertically) {
-            if (icon != null) { PixelIcon(icon, tint = (fg as Color).copy(alpha = alpha), size = 16.dp); Spacer(Modifier.width(8.dp)) }
-            Text(text, style = if (big) MaterialTheme.typography.titleMedium else MaterialTheme.typography.labelLarge, color = (fg as Color).copy(alpha = alpha), maxLines = 1)
+            if (icon != null) { PixelIcon(icon, tint = fg.copy(alpha = alpha), size = 16.dp); Spacer(Modifier.width(8.dp)) }
+            Text(text, style = if (big) MaterialTheme.typography.titleMedium else MaterialTheme.typography.labelLarge, color = fg.copy(alpha = alpha), maxLines = 1)
         }
     }
 }
@@ -224,7 +225,7 @@ fun ToyChip(
     val p = Paw.palette
     val chosen = toy ?: Toy(cs.primary, cs.primary.lip(0.3f), cs.onPrimary)
     val face = if (selected) chosen.face else if (p.dark) cs.surfaceContainerHigh else Color.White
-    val lip = if (selected) chosen.lip else if (p.dark) Color(0xFF3B3150) else Color(0xFFE6D5C3)
+    val lip = if (selected) chosen.lip else p.edge
     val fg = if (selected) chosen.ink else cs.onSurface
     val alpha = if (enabled) 1f else 0.5f
     Pressable(

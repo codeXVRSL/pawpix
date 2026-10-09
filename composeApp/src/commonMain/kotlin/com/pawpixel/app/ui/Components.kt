@@ -215,7 +215,7 @@ fun RoundIconButton(icon: PixelIcon, label: String, modifier: Modifier = Modifie
     val p = Paw.palette
     Pressable(
         modifier.semantics { contentDescription = label }, face = if (p.dark) MaterialTheme.colorScheme.surfaceContainerHigh else Color.White,
-        lip = if (p.dark) Color(0xFF3B3150) else Color(0xFFE6D5C3), outline = if (p.dark) Color(0xFF3B3150) else Color(0xFFE6D5C3),
+        lip = p.edge, outline = p.edge,
         shape = Pill, onClickLabel = label, onClick = onClick,
     ) { Box(Modifier.size(36.dp), contentAlignment = Alignment.Center) { PixelIcon(icon, tint = MaterialTheme.colorScheme.onSurface, size = 18.dp) } }
 }
@@ -226,7 +226,7 @@ fun RoundIconButton(glyph: String, label: String, modifier: Modifier = Modifier,
     val p = Paw.palette
     Pressable(
         modifier.semantics { contentDescription = label }, face = if (p.dark) MaterialTheme.colorScheme.surfaceContainerHigh else Color.White,
-        lip = if (p.dark) Color(0xFF3B3150) else Color(0xFFE6D5C3), outline = if (p.dark) Color(0xFF3B3150) else Color(0xFFE6D5C3),
+        lip = p.edge, outline = p.edge,
         shape = Pill, onClickLabel = label, onClick = onClick,
     ) {
         Box(Modifier.size(36.dp), contentAlignment = Alignment.Center) {
@@ -308,7 +308,7 @@ fun SoftCard(
     val p = Paw.palette
     // A sticker: a face, a 2dp edge and a 4dp lip in a darker shade of the same hue.
     val (face, lip, fg) = when (tone) {
-        Tone.Surface -> Triple(if (p.dark) cs.surfaceContainerHigh else Color.White, if (p.dark) Color(0xFF3B3150) else Color(0xFFE6D5C3), cs.onSurface)
+        Tone.Surface -> Triple(if (p.dark) cs.surfaceContainerHigh else Color.White, p.edge, cs.onSurface)
         Tone.Tonal -> Triple(if (p.dark) cs.surfaceContainerHighest else PawColors.Sand, if (p.dark) Color(0xFF4A3F63) else Color(0xFFE2C39E), cs.onSurface)
         Tone.Accent -> Triple(cs.primaryContainer, if (p.dark) Color(0xFF8A2F42) else Color(0xFFF2A9B6), cs.onPrimaryContainer)
         Tone.Good -> Triple(cs.secondaryContainer, if (p.dark) Color(0xFF2E6A48) else Color(0xFF9FD9B8), cs.onSecondaryContainer)
@@ -349,7 +349,7 @@ fun StatusPill(text: String, dot: Color, modifier: Modifier = Modifier, tone: To
     }
     val p = Paw.palette
     Row(
-        modifier.clip(Pill).background(bg).border(2.dp, if (p.dark) Color(0xFF4A3F63) else Color(0xFFE6D5C3), Pill).padding(start = 10.dp, end = 12.dp, top = 5.dp, bottom = 5.dp),
+        modifier.clip(Pill).background(bg).border(2.dp, if (p.dark) Color(0xFF4A3F63) else PawColors.StickerEdge, Pill).padding(start = 10.dp, end = 12.dp, top = 5.dp, bottom = 5.dp),
         verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp),
     ) {
         Box(Modifier.size(7.dp).clip(Pill).background(dot))

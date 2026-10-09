@@ -227,8 +227,8 @@ private fun OptionTile(label: String, selected: Boolean, onClick: () -> Unit, co
     Pressable(
         Modifier.semantics { this.selected = selected },
         face = if (selected) toy.face else if (p.dark) cs.surfaceContainerHigh else Color.White,
-        lip = if (selected) toy.lip else if (p.dark) Color(0xFF3B3150) else Color(0xFFE6D5C3),
-        outline = if (selected) toy.lip else if (p.dark) Color(0xFF3B3150) else Color(0xFFE6D5C3),
+        lip = if (selected) toy.lip else p.edge,
+        outline = if (selected) toy.lip else p.edge,
         shape = MaterialTheme.shapes.medium, role = Role.RadioButton, onClick = onClick,
         contentPadding = PaddingValues(vertical = 8.dp, horizontal = 4.dp),
     ) {

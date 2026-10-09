@@ -178,7 +178,7 @@ fun SpriteMakerScreen(app: AppScope, state: AppState, existingPetId: String?) {
                     // Notifications are offered on the pet's page, next to the care they're for.
                     val pet = app.repo.addPet(name, species ?: Species.CAT, settings, made, ears, birthDay)
                     app.back()
-                    app.navigate(Screen.PetDetail(pet.id))
+                    app.showPet(pet.id) // home, showing the new pet's room
                 } else {
                     error = tr("Your first pet is free. More pets come with PawPixel Pro (coming soon).")
                 }

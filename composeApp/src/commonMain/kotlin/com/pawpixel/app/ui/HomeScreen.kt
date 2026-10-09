@@ -76,12 +76,12 @@ private fun EmptyHome(app: AppScope, state: AppState) {
             GlassButton(PixelIcons.GEAR, tr("Settings")) { app.navigate(Screen.Settings) }
         }
         Column(Modifier.align(Alignment.BottomCenter).fillMaxWidth().navigationBarsPadding().padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            ToyPanel(Modifier.fillMaxWidth(), face = Color.White, lip = Color(0xFFE6D5C3), padding = 20.dp) {
+            ToyPanel(Modifier.fillMaxWidth(), face = Color.White, lip = PawColors.StickerEdge, padding = 20.dp) {
                 Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(12.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text(tr("Turn your pet into pixel art"), style = MaterialTheme.typography.headlineSmall, textAlign = TextAlign.Center, color = Color(0xFF2B2135), modifier = Modifier.semantics { heading() })
+                    Text(tr("Turn your pet into pixel art"), style = MaterialTheme.typography.headlineSmall, textAlign = TextAlign.Center, color = PawColors.Ink, modifier = Modifier.semantics { heading() })
                     Text(
                         tr("Your pixel pet lives on your home screen and gets hungry, restless or sleepy based on the real care you give. Done a task? Tap it and watch them cheer up."),
-                        textAlign = TextAlign.Center, style = MaterialTheme.typography.bodyMedium, color = Color(0xFF2B2135),
+                        textAlign = TextAlign.Center, style = MaterialTheme.typography.bodyMedium, color = PawColors.Ink,
                     )
                     PrimaryPill(tr("Choose a photo"), big = true) { app.navigate(Screen.CreatePet) }
                     JoinHouseholdLink(app)

@@ -151,8 +151,8 @@ fun PetScreen(app: AppScope, state: AppState, pet: Pet) {
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
                 SpriteView(img, Modifier.size(64.dp), animate = false, description = tr("{0}, a pal's pet, is visiting", v.name))
-                Box(Modifier.background(Color.White, RoundedCornerShape(8.dp)).border(1.dp, Color(0xFFE6D5C3), RoundedCornerShape(8.dp)).padding(horizontal = 6.dp, vertical = 2.dp)) {
-                    Text(tr("{0} is visiting", v.name), style = MaterialTheme.typography.labelSmall, color = Color(0xFF2B2135))
+                Box(Modifier.background(Color.White, RoundedCornerShape(8.dp)).border(1.dp, PawColors.StickerEdge, RoundedCornerShape(8.dp)).padding(horizontal = 6.dp, vertical = 2.dp)) {
+                    Text(tr("{0} is visiting", v.name), style = MaterialTheme.typography.labelSmall, color = PawColors.Ink)
                 }
             }
         }
@@ -229,13 +229,13 @@ private fun NamePlate(app: AppScope, state: AppState, pet: Pet, score: Int) {
         else -> null
     }
     ToyPanel(
-        Modifier.widthIn(max = 230.dp), face = Color.White, lip = Color(0xFFE6D5C3), shape = RoundedCornerShape(16.dp), padding = 0.dp,
+        Modifier.widthIn(max = 230.dp), face = Color.White, lip = PawColors.StickerEdge, shape = RoundedCornerShape(16.dp), padding = 0.dp,
         onClick = if (many) ({ app.navigate(Screen.PetSection(pet.id, "pets")) }) else null, onClickLabel = label,
     ) {
         Column(Modifier.padding(horizontal = 14.dp, vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 Text(
-                    pet.name, style = MaterialTheme.typography.headlineSmall, color = Color(0xFF2B2135), maxLines = 1, overflow = TextOverflow.Ellipsis,
+                    pet.name, style = MaterialTheme.typography.headlineSmall, color = PawColors.Ink, maxLines = 1, overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.semantics { heading() },
                 )
                 if (many) PixelIcon(PixelIcons.CHEVRON_RIGHT, tint = Color(0xFF8C7BA8), size = 12.dp)
@@ -249,8 +249,8 @@ private fun NamePlate(app: AppScope, state: AppState, pet: Pet, score: Int) {
 /** A pixel speech bubble: a white sticker with a little tail underneath. */
 @Composable
 fun SpeechBubble(text: String, modifier: Modifier = Modifier) {
-    val ink = Color(0xFF2B2135)
-    val edge = Color(0xFFE6D5C3)
+    val ink = PawColors.Ink
+    val edge = PawColors.StickerEdge
     Column(modifier, horizontalAlignment = Alignment.CenterHorizontally) {
         Box(Modifier.background(Color.White, RoundedCornerShape(14.dp)).border(2.dp, edge, RoundedCornerShape(14.dp)).padding(horizontal = 12.dp, vertical = 7.dp)) {
             Text(text, style = MaterialTheme.typography.labelMedium, color = ink, textAlign = TextAlign.Center)
@@ -287,7 +287,7 @@ private fun NeedTile(app: AppScope, state: AppState, pet: Pet, s: TaskStatus, bi
         else remember { mutableStateOf(0f) }
     Pressable(
         Modifier.offset { androidx.compose.ui.unit.IntOffset(0, lift.value.dp.roundToPx()) }.semantics { contentDescription = label },
-        face = Color.White, lip = Color(0xFFE6D5C3), outline = if (s.isOverdue) toy.lip else Color(0xFFE6D5C3),
+        face = Color.White, lip = PawColors.StickerEdge, outline = if (s.isOverdue) toy.lip else PawColors.StickerEdge,
         shape = RoundedCornerShape(16.dp), role = Role.Button, enabled = !done, onClickLabel = label,
         onClick = if (done) null else onDone, contentPadding = PaddingValues(horizontal = 8.dp, vertical = 8.dp),
     ) {
@@ -315,10 +315,10 @@ private fun UndoStrip(app: AppScope, pet: Pet, last: TaskStatus?, onGone: () -> 
         val t = shown?.task ?: return@AnimatedVisibility
         val name = trName(t.title)
         val undoLabel = tr("Undo {0} for {1}", name, pet.name)
-        ToyPanel(Modifier.padding(bottom = 6.dp), face = Color.White, lip = Color(0xFFE6D5C3), shape = Pill, padding = 0.dp) {
+        ToyPanel(Modifier.padding(bottom = 6.dp), face = Color.White, lip = PawColors.StickerEdge, shape = Pill, padding = 0.dp) {
             Row(Modifier.padding(start = 14.dp, end = 6.dp, top = 2.dp, bottom = 2.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 PixelIcon(PixelIcons.CHECK, tint = Paw.palette.good, size = 14.dp)
-                Text(tr("{0} done", name), style = MaterialTheme.typography.labelMedium, color = Color(0xFF2B2135))
+                Text(tr("{0} done", name), style = MaterialTheme.typography.labelMedium, color = PawColors.Ink)
                 LinkButton(tr("Undo"), modifier = Modifier.semantics { contentDescription = undoLabel }) { onGone(); app.launch { app.repo.undo(t.id) } }
             }
         }
@@ -330,11 +330,11 @@ private fun UndoStrip(app: AppScope, pet: Pet, last: TaskStatus?, onGone: () -> 
 private fun MemoryStrip(app: AppScope, state: AppState, pet: Pet) {
     val photos = state.albumFor(pet.id).size
     val since = LocalClock.shortDate(pet.rememberedDay ?: 0)
-    ToyPanel(Modifier.padding(horizontal = 16.dp, vertical = 6.dp), face = Color.White, lip = Color(0xFFE6D5C3), padding = 12.dp) {
+    ToyPanel(Modifier.padding(horizontal = 16.dp, vertical = 6.dp), face = Color.White, lip = PawColors.StickerEdge, padding = 12.dp) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             CandyTile(PixelIcons.STAR, Candy.Lavender, size = 40.dp)
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                Text(tr("In loving memory"), style = MaterialTheme.typography.titleSmall, color = Color(0xFF2B2135))
+                Text(tr("In loving memory"), style = MaterialTheme.typography.titleSmall, color = PawColors.Ink)
                 Text(
                     if (photos == 0) since else tr("{0} · {1} photos", since, photos),
                     style = MaterialTheme.typography.labelSmall, color = Color(0xFF6E6287),
@@ -374,12 +374,12 @@ private fun OccasionBanner(occasion: com.pawpixel.core.Occasion, pet: Pet) {
 private fun WeatherChip(w: com.pawpixel.core.Weather) {
     val label = tr("Weather outside: {0}", WeatherAdvice.chip(w))
     Box(
-        Modifier.background(Color.White, RoundedCornerShape(10.dp)).border(1.dp, Color(0xFFE6D5C3), RoundedCornerShape(10.dp))
+        Modifier.background(Color.White, RoundedCornerShape(10.dp)).border(1.dp, PawColors.StickerEdge, RoundedCornerShape(10.dp))
             .padding(horizontal = 8.dp, vertical = 3.dp).semantics { contentDescription = label },
     ) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
             PixelIcon(if (w.rain || w.storm) PixelIcons.DROP else if (w.isDay) PixelIcons.SPARKLE else PixelIcons.MOON, tint = Color(0xFF6E6287), size = 12.dp)
-            Text(WeatherAdvice.chip(w), style = MaterialTheme.typography.labelSmall, color = Color(0xFF2B2135))
+            Text(WeatherAdvice.chip(w), style = MaterialTheme.typography.labelSmall, color = PawColors.Ink)
         }
     }
 }
@@ -391,7 +391,7 @@ private fun LostStrip(app: AppScope, pet: Pet) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             CandyTile(PixelIcons.BELL, Candy.Coral, size = 40.dp)
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                Text(tr("Reported lost"), style = MaterialTheme.typography.titleSmall, color = Color(0xFF2B2135))
+                Text(tr("Reported lost"), style = MaterialTheme.typography.titleSmall, color = PawColors.Ink)
                 Text(tr("Owners nearby are looking. Sightings show in the alert."), style = MaterialTheme.typography.labelSmall, color = Color(0xFF6E6287))
             }
             PrimaryPill(tr("Alert"), icon = PixelIcons.BELL) { app.navigate(Screen.PetSection(pet.id, "lost")) }
@@ -402,9 +402,9 @@ private fun LostStrip(app: AppScope, pet: Pet) {
 /** No care tasks yet: one sticker that says what to do. */
 @Composable
 private fun EmptyNeeds(app: AppScope, pet: Pet) {
-    ToyPanel(Modifier.padding(horizontal = 16.dp, vertical = 6.dp), face = Color.White, lip = Color(0xFFE6D5C3), padding = 12.dp) {
+    ToyPanel(Modifier.padding(horizontal = 16.dp, vertical = 6.dp), face = Color.White, lip = PawColors.StickerEdge, padding = 12.dp) {
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text(tr("No care tasks yet. Add feeding, walks or medicine so {0}'s mood can follow real care.", pet.name), style = MaterialTheme.typography.bodySmall, color = Color(0xFF2B2135))
+            Text(tr("No care tasks yet. Add feeding, walks or medicine so {0}'s mood can follow real care.", pet.name), style = MaterialTheme.typography.bodySmall, color = PawColors.Ink)
             PrimaryPill(tr("+ Add care task")) { app.navigate(Screen.EditTask(pet.id, null)) }
         }
     }
