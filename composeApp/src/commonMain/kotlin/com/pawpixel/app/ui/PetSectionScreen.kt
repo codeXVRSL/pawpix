@@ -6,6 +6,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
@@ -99,7 +100,8 @@ fun Panel(app: AppScope, state: AppState, pet: Pet?, title: String, content: @Co
                 .clickable(remember { MutableInteractionSource() }, indication = null, onClickLabel = closeLabel, onClick = app.back),
         )
         Column(
-            Modifier.align(Alignment.BottomCenter).fillMaxWidth().fillMaxHeight(0.86f)
+            // On a tablet the panel keeps a readable width, the room showing on both sides.
+            Modifier.align(Alignment.BottomCenter).widthIn(max = READABLE_WIDTH).fillMaxWidth().fillMaxHeight(0.86f)
                 .background(cs.background, shape).border(2.dp, p.edge, shape)
                 .padding(top = 8.dp),
         ) {

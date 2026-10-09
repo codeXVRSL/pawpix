@@ -232,11 +232,12 @@ fun App(repo: PawRepository, registerBack: ((() -> Boolean) -> (() -> Unit))? = 
             key(shown.size, screen) {
             when (screen) {
                 Screen.Home -> HomeScreen(app, state)
-                Screen.CreatePet -> SpriteMakerScreen(app, state, existingPetId = null)
-                is Screen.RemakeSprite -> SpriteMakerScreen(app, state, existingPetId = screen.petId)
+                // Pages of text and buttons keep a readable width on tablets; the room and the map use the whole screen.
+                Screen.CreatePet -> Readable { SpriteMakerScreen(app, state, existingPetId = null) }
+                is Screen.RemakeSprite -> Readable { SpriteMakerScreen(app, state, existingPetId = screen.petId) }
                 is Screen.Studio -> {
                     val pet = state.pet(screen.petId)
-                    if (pet == null) LaunchedEffect(screen) { back() } else StudioScreen(app, state, pet)
+                    if (pet == null) LaunchedEffect(screen) { back() } else Readable { StudioScreen(app, state, pet) }
                 }
                 is Screen.PetSection -> {
                     val pet = state.pet(screen.petId)
@@ -244,16 +245,16 @@ fun App(repo: PawRepository, registerBack: ((() -> Boolean) -> (() -> Unit))? = 
                 }
                 is Screen.EditTask -> {
                     val pet = state.pet(screen.petId)
-                    if (pet == null) LaunchedEffect(screen) { back() } else TaskEditorScreen(app, state, pet, screen.taskId, screen.health)
+                    if (pet == null) LaunchedEffect(screen) { back() } else Readable { TaskEditorScreen(app, state, pet, screen.taskId, screen.health) }
                 }
-                Screen.Settings -> SettingsScreen(app, state)
+                Screen.Settings -> Readable { SettingsScreen(app, state) }
                 Screen.PetMap -> PetMapScreen(app, state)
-                Screen.Pals -> PalsScreen(app, state)
+                Screen.Pals -> Readable { PalsScreen(app, state) }
                 is Screen.Walk -> {
                     val pet = state.pet(screen.petId)
-                    if (pet == null) LaunchedEffect(screen) { back() } else WalkScreen(app, state, pet)
+                    if (pet == null) LaunchedEffect(screen) { back() } else Readable { WalkScreen(app, state, pet) }
                 }
-                is Screen.Family -> FamilyScreen(app, state, screen.sharePetId, screen.join)
+                is Screen.Family -> Readable { FamilyScreen(app, state, screen.sharePetId, screen.join) }
             }
             }
             }

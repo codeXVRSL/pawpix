@@ -18,6 +18,7 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -511,3 +512,14 @@ fun greeting(minuteOfDay: Int): String = when (minuteOfDay / 60) {
 }
 
 internal fun Float.px(): Int = roundToInt()
+
+/** The widest a page of text and buttons gets: on a tablet, pages and panels sit centred at this width. */
+val READABLE_WIDTH = 640.dp
+
+/** A page at [READABLE_WIDTH] at most, centred: full width on a phone, a comfortable column on a tablet. */
+@Composable
+fun Readable(content: @Composable () -> Unit) {
+    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.TopCenter) {
+        Box(Modifier.widthIn(max = READABLE_WIDTH).fillMaxSize()) { content() }
+    }
+}
