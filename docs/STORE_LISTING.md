@@ -19,7 +19,7 @@ Tu mascota real, en píxeles, en tu pantalla de inicio. Su ánimo sigue tu cari�
 **Short description, Brazilian Portuguese** (77/80)
 Seu pet de verdade, em pixels, na tela inicial. O humor dele segue os cuidados.
 
-Google Play takes one listing per language: add Spanish (es-419 and es-ES) and Portuguese (pt-BR) with the short descriptions above and a translation of the full description, since the app now speaks both. Filipino (fil) for the Philippines.
+Google Play takes one listing per language: add Spanish (es-419 and es-ES) and Portuguese (pt-BR) with the short descriptions above and the full descriptions below, since the app speaks both in full. Filipino (fil) for the Philippines.
 
 **Full description**
 
@@ -63,6 +63,92 @@ PRIVATE BY DESIGN
 Your first pet is free. PawPixel Pro (coming soon) adds more pets and hand-finished sprites by a pixel artist.
 
 Made in Naga City, Philippines, for pet owners everywhere. In English, Filipino, Spanish and Portuguese.
+
+**Full description, Spanish (es-419)**
+
+Conoce al gemelo pixel de tu mascota.
+
+Toma una foto de tu perro, gato o cualquier mascota, y PawPixel la convierte en un sprite de pixel art que se parece a *tu* mascota: los colores de su pelaje y las marcas de su cara en un tierno perro, gato o conejo pixel, con orejas puntiagudas, caídas o de conejo belier. Luego se muda contigo. Tu mascota pixel vive en tu pantalla de inicio, respira, parpadea, pasea y reacciona a los cuidados reales que le das.
+
+CÓMO FUNCIONA
+• Toma o elige una foto. PawPixel recorta a tu mascota y la dibuja en pixeles, en tu propio teléfono.
+• Agrega tareas de cuidado: comida, paseos, agua fresca, medicinas, cepillado, arenero.
+• El ánimo de tu mascota pixel sigue la vida real. Si se salta la cena, tiene hambre. Si falta el paseo, da vueltas. Si cumples con todo, está feliz.
+• Toca Hecho en el widget o en el recordatorio y mírala comer, correr como loca o sacudirse después del baño.
+
+HECHO PARA RUTINAS REALES
+• Los recordatorios aprenden tu rutina y se acercan a la hora en que de verdad das de comer o sales a pasear (hasta 2 horas).
+• Si se olvida una medicina, llega un segundo aviso.
+• Tareas semanales como el cepillado, y hasta cuatro comidas al día.
+
+COMPÁRTELA
+• Haz un GIF en bucle de tu mascota siendo ella misma.
+• Comparte una tarjeta de antes y después: la foto real junto a la versión pixel.
+• Amigos: un círculo de hasta 20 amigos cuyas mascotas pixel visitan el cuarto de la tuya y le mandan premios. Sin feed, sin seguidores.
+• Momentos: una foto del día solo para tus amigos, que desaparece en dos días. Sin likes, sin comentarios.
+
+SI ALGUNA VEZ SE PIERDE
+• Con un toque lanzas una alerta: los dueños a menos de 15 km ven las fotos y pueden avisar si la vieron; la cierras cuando vuelve a casa.
+• Una placa de identificación para el collar: escanean el QR y te contactan sin que pongas tu número en la placa.
+• Avisos de noches ruidosas antes de Año Nuevo, la noche en que más mascotas se escapan.
+
+PEQUEÑOS DETALLES, CADA DÍA
+• El clima de afuera en el cuarto: pavimento caliente, lluvia y truenos, en palabras de tu mascota.
+• Cronometra un paseo y tu mascota pixel trota contigo mientras el teléfono cuenta los pasos.
+• Cumpleaños, días de adopción y temporadas decoran el cuarto.
+• Un pequeño reto cada mes, contado con lo que ya registras: días de cuidado, paseos, fotos.
+• Calendarios de vacunas según tu país, y km o millas, kg o libras, como tú midas.
+
+PRIVADA DESDE EL DISEÑO
+• Sin cuenta. Sin anuncios. Sin rastreo.
+• Tu foto nunca sale de tu teléfono. El sprite se hace en el dispositivo.
+
+Tu primera mascota es gratis. PawPixel Pro (muy pronto) suma más mascotas y sprites terminados a mano por un artista pixel.
+
+Hecho en Naga City, Filipinas, para dueños de mascotas de todo el mundo. En español, inglés, filipino y portugués.
+
+**Full description, Brazilian Portuguese (pt-BR)**
+
+Conheça o gêmeo pixel do seu pet.
+
+Tire uma foto do seu cachorro, gato ou qualquer pet, e o PawPixel transforma em um sprite de pixel art que se parece com o *seu* pet: as cores da pelagem e as marcas do rosto num cachorro, gato ou coelho pixel fofo, com orelhas pontudas, caídas ou de coelho lop. Depois ele se muda para o seu celular. Seu pet pixel vive na tela inicial, respira, pisca, passeia e reage aos cuidados de verdade que você dá.
+
+COMO FUNCIONA
+• Tire ou escolha uma foto. O PawPixel recorta seu pet e desenha em pixels, no próprio celular.
+• Adicione tarefas de cuidado: comida, passeios, água fresca, remédios, escovação, caixa de areia.
+• O humor do seu pet pixel acompanha a vida real. Pulou o jantar, fica com fome. Faltou o passeio, fica inquieto. Fez tudo, fica feliz.
+• Toque em Feito no widget ou no lembrete e veja ele comer, correr feito doido ou se sacudir depois do banho.
+
+FEITO PARA ROTINAS DE VERDADE
+• Os lembretes aprendem sua rotina e se ajustam para a hora em que você realmente alimenta ou passeia (até 2 horas).
+• Se um remédio for esquecido, chega um segundo aviso.
+• Tarefas semanais como escovação, e até quatro refeições por dia.
+
+COMPARTILHE
+• Faça um GIF em loop do seu pet sendo ele mesmo.
+• Compartilhe um cartão de antes e depois: a foto real ao lado da versão pixel.
+• Amigos: um círculo de até 20 amigos cujos pets pixel visitam o quarto do seu e mandam petiscos. Sem feed, sem seguidores.
+• Momentos: uma foto do dia só para seus amigos, que some em dois dias. Sem curtidas, sem comentários.
+
+SE ELE SE PERDER
+• Um toque cria um alerta: donos a até 15 km veem as fotos e podem avisar se viram; você encerra quando ele volta para casa.
+• Uma plaquinha de identificação para a coleira: escaneiam o QR e falam com você sem que seu telefone fique na plaquinha.
+• Avisos de noites barulhentas antes do Ano Novo, a noite em que mais pets fogem.
+
+PEQUENAS COISAS, TODO DIA
+• O tempo lá fora no quarto: asfalto quente, chuva e trovões, nas palavras do seu pet.
+• Cronometre um passeio e seu pet pixel trota junto enquanto o celular conta os passos.
+• Aniversários, dias de adoção e estações decoram o quarto.
+• Um pequeno desafio por mês, contado com o que você já registra: dias de cuidado, passeios, fotos.
+• Calendários de vacinas que seguem seu país, e km ou milhas, kg ou libras, do jeito que você mede.
+
+PRIVADO POR DESIGN
+• Sem conta. Sem anúncios. Sem rastreamento.
+• Sua foto nunca sai do seu celular. O sprite é feito no aparelho.
+
+Seu primeiro pet é grátis. O PawPixel Pro (em breve) traz mais pets e sprites finalizados à mão por um artista de pixel art.
+
+Feito em Naga City, Filipinas, para donos de pets do mundo todo. Em português, inglês, filipino e espanhol.
 
 **Category:** Lifestyle · **Tags:** Pets, Widgets
 **Content rating:** Everyone, with **user interaction** (the optional pet map lets users see other users' pet names and meet at events; there's reporting and blocking). The map is 18+ inside the app.
