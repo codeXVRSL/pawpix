@@ -32,6 +32,8 @@ declare n int;
 begin
   if coalesce(current_setting('request.jwt.claims', true)::json ->> 'role', '') <> 'authenticated' then return new; end if;
   if tg_op = 'UPDATE' and new.cell_id is not distinct from old.cell_id then return new; end if;
+  -- An upsert fires the insert trigger and then the update trigger: count it once, in the update.
+  if tg_op = 'INSERT' and exists (select 1 from map_presence where owner_id = new.owner_id) then return new; end if;
   insert into presence_moves (owner_id, day, moves) values (new.owner_id, current_date, 0)
   on conflict (owner_id) do update set moves = case when presence_moves.day = current_date then presence_moves.moves else 0 end, day = current_date;
   select moves into n from presence_moves where owner_id = new.owner_id;
