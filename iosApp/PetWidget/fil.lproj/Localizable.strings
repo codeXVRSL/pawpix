@@ -1,0 +1,14 @@
+/* The widget's settings and gallery text, in the phone's language (its pet lines come from the app). */
+"Whoever needs you most" = "Kung sino ang pinakanangangailangan sa iyo";
+"Sky" = "Langit";
+"Follows the time of day" = "Sumusunod sa oras ng araw";
+"Always day" = "Laging araw";
+"Always night" = "Laging gabi";
+"Plain" = "Payak";
+"Widget settings" = "Settings ng widget";
+"Which pet this widget shows, the sky behind it, and whether its name is written." = "Aling alaga ang ipinapakita ng widget na ito, ang langit sa likod niya, at kung nakasulat ang pangalan niya.";
+"Pet" = "Alaga";
+"Show the name" = "Ipakita ang pangalan";
+"Your pixel pet, how they feel right now, and a Done button when care is due." = "Ang pixel pet mo, ang nararamdaman niya ngayon, at Done button kapag oras na ng alaga.";
+"Mark care task done" = "Markahang tapos ang alaga";
+"Task" = "Gawain";

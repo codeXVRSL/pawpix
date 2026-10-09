@@ -205,11 +205,11 @@ final class SwiftHost: NSObject, IosHost {
         WidgetCenter.shared.reloadAllTimelines()
     }
 
-    func shareFile(data: Data, fileName: String) {
+    func shareFile(data: Data, fileName: String, caption: String?) {
         let url = FileManager.default.temporaryDirectory.appendingPathComponent(fileName)
         try? data.write(to: url)
-        // Pictures get a friendly caption; a backup file travels on its own.
-        let items: [Any] = fileName.hasSuffix(".json") ? [url] : [url, "Meet my pet in pixels! Made with PawPixel"]
+        // Pictures get a friendly caption in the owner's language; a backup file travels on its own.
+        let items: [Any] = caption.map { [url, $0] } ?? [url]
         let sheet = UIActivityViewController(activityItems: items, applicationActivities: nil)
         guard let top = Self.topViewController() else { NSLog("PawPixel: share failed, no view controller to present from"); return }
         NSLog("PawPixel: sharing %@ (%d bytes) from %@", fileName, data.count, String(describing: type(of: top)))

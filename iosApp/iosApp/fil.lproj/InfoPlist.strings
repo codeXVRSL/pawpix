@@ -1,0 +1,3 @@
+/* Permission prompts, in the phone's language. */
+NSLocationWhenInUseUsageDescription = "Kung sasali ka sa pet map, ipinapakita ng PawPixel ang mga pixel pet mo sa tinatayang lugar mo (mga 1 km). Hindi kailanman umaalis sa phone mo ang eksaktong lokasyon mo.";
+NSMotionUsageDescription = "Binibilang ang mga hakbang mo habang tinatiyempuhan mo ang lakad kasama ang alaga mo, para maipakita ang layo ng lakad. Walang umaalis sa phone mo.";

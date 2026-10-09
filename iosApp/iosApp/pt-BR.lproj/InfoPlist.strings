@@ -1,0 +1,3 @@
+/* Permission prompts, in the phone's language. */
+NSLocationWhenInUseUsageDescription = "Se você entrar no mapa de pets, o PawPixel mostra seus pets pixel na sua região aproximada (cerca de 1 km). Sua localização exata nunca sai do seu celular.";
+NSMotionUsageDescription = "Conta seus passos enquanto você cronometra um passeio com seu pet, para mostrar a distância do passeio. Nada sai do seu celular.";

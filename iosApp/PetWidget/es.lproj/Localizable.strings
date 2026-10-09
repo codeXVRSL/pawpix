@@ -1,0 +1,14 @@
+/* The widget's settings and gallery text, in the phone's language (its pet lines come from the app). */
+"Whoever needs you most" = "Quien más te necesite";
+"Sky" = "Cielo";
+"Follows the time of day" = "Sigue la hora del día";
+"Always day" = "Siempre de día";
+"Always night" = "Siempre de noche";
+"Plain" = "Liso";
+"Widget settings" = "Ajustes del widget";
+"Which pet this widget shows, the sky behind it, and whether its name is written." = "Qué mascota muestra este widget, el cielo detrás y si aparece su nombre.";
+"Pet" = "Mascota";
+"Show the name" = "Mostrar el nombre";
+"Your pixel pet, how they feel right now, and a Done button when care is due." = "Tu mascota pixel, cómo se siente ahora y un botón de Hecho cuando toca cuidarla.";
+"Mark care task done" = "Marcar cuidado como hecho";
+"Task" = "Tarea";
