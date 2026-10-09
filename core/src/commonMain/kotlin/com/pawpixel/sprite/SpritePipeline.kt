@@ -103,7 +103,7 @@ object SpritePipeline {
         val side = minOf(bw, bh, maxOf(bh * 0.45, rowW * 1.15))
         val cx = if (l < 0) (b[0] + b[2]) / 2.0 else (l + rgt + 1) / 2.0
         val top = b[1] - side * 0.04
-        return FaceBox(cx / w, (top + side / 2) / h, side / minOf(w, h))
+        return FaceBox(cx / w, (top + side / 2) / h, side / minOf(w, h)).fitIn(w, h) // ears at the photo's edge stay on the sprite
     }
 
     private val PHOTO_BACKDROP = 0xFFFFE3B8.toInt()

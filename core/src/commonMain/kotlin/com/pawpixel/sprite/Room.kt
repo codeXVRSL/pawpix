@@ -64,7 +64,7 @@ object Room {
         // Floor: planks seen from the front, a darker top edge.
         for (y in floorLine until height) for (x in 0 until width) {
             val plankEdge = (x + (y - floorLine) * 7) % 23 == 0
-            img[x, y] = if (y == floorLine) p.floorTop else if (plankEdge || (y - floorLine) % 3 == 0 && false) p.plank else p.floor
+            img[x, y] = if (y == floorLine) p.floorTop else if (plankEdge) p.plank else p.floor
         }
 
         // Window onto the sky, left of centre, with curtains.
@@ -112,7 +112,7 @@ object Room {
         // The season's piece on the floor: a jack-o'-lantern or a little tree by the lamp.
         when (season) {
             Season.HALLOWEEN -> pumpkin(img, width - 16, floorLine + 1, phase)
-            Season.CHRISTMAS -> tree(img, width - 19, floorLine + 1, p, phase)
+            Season.CHRISTMAS -> { tree(img, width - 19, floorLine + 1, p, phase); bowl(img, width - 26, floorLine + 1, p) } // the bowl stays in front of the tree
             else -> {}
         }
         return img
@@ -288,7 +288,7 @@ object Room {
     }
 
     private fun cushion(img: PixelImage, x: Int, floorLine: Int, p: Palette) {
-        val rows = listOf(".xxxxxxxxxxxxxxx.", "xoooooooooooooooox".take(17), "xoooooooooooooooox".take(17), ".xxxxxxxxxxxxxxx.")
+        val rows = listOf(".xxxxxxxxxxxxxxx.", "xooooooooooooooox", "xooooooooooooooox", ".xxxxxxxxxxxxxxx.") // 17 wide, outlined both sides
         rows.forEachIndexed { i, row -> row.forEachIndexed { j, c -> if (c != '.') set(img, x + j, floorLine - 1 + i, if (c == 'o') p.cushionLight else p.cushion) } }
         // a dent where the pet sleeps
         for (j in 5..11) set(img, x + j, floorLine, p.cushion)

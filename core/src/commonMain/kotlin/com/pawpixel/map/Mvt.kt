@@ -159,7 +159,7 @@ object Mvt {
             when (wireType) {
                 0 -> varint()
                 1 -> pos += 8
-                2 -> pos = minOf(end, pos + varint().toInt().coerceAtLeast(0))
+                2 -> pos += len() // clamped to the bytes left: never wraps or runs backwards
                 5 -> pos += 4
                 else -> pos = end
             }

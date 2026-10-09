@@ -124,8 +124,8 @@ class PetBrain(
         // Movement
         if (behavior == Behavior.WALK || behavior == Behavior.ZOOMIES) {
             val step = speed * dt
+            if (target != x) facingLeft = target < x // before the step: on the arrival frame it still faces the way it came
             if (abs(target - x) <= step) { x = target; ends = nowMs } else x += if (target > x) step else -step
-            facingLeft = target < x
         }
 
         val t = nowMs - started

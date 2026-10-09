@@ -53,6 +53,7 @@ internal object FilScreens9 {
         "New code" to "Bagong code",
         "Your old code no longer works." to "Hindi na gumagana ang luma mong code.",
         "no pal with that code" to "walang pal na may ganoong code",
+        "No pal with that code." to "Walang pal na may ganoong code.",
         "Shared with your pals for two days." to "Ibinahagi sa mga pal mo sa loob ng dalawang araw.",
         "A photo of the day for your pals and nobody else. It's gone after two days; no likes, no comments." to
             "Isang litrato ng araw para sa mga pal mo at wala nang iba. Nawawala pagkatapos ng dalawang araw; walang like, walang comment.",

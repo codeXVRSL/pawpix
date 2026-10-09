@@ -158,8 +158,14 @@ class SupabaseApi(
         if (s.expiresAtMs - nowMs() > 60_000) return s.accessToken
         val r = send("POST", "/auth/v1/token?grant_type=refresh_token", Json.obj("refresh_token" to s.refreshToken).stringify(), bearer = settings.anonKey)
         if (r.status !in 200..299) {
-            signOutLocally()
-            throw MapException(MapException.Kind.SIGNED_OUT, tr("Please sign in again"))
+            // Another request refreshed while this one waited (the old refresh token is then spent): use theirs.
+            session?.takeIf { it !== s && it.expiresAtMs - nowMs() > 60_000 }?.let { return it.accessToken }
+            // Only a refused refresh token ends the session; a busy or broken server is a retry later.
+            if (r.status == 400 || r.status == 401 || r.status == 403) {
+                signOutLocally()
+                throw MapException(MapException.Kind.SIGNED_OUT, tr("Please sign in again"))
+            }
+            throw MapException(MapException.Kind.SERVER, tr("PawPixel's server had a problem ({0})", r.status))
         }
         acceptSession(Json.parse(r.body))
         return session!!.accessToken
@@ -197,9 +203,14 @@ class SupabaseApi(
         }
         // Only a real reply goes further: a Wi-Fi login page (public hotspots) or a reply cut off
         // mid-way becomes a plain message here, never "JSON: unexpected '<'" on the owner's screen.
-        if (r.status in 200..299 && r.body.isNotBlank() && runCatching { Json.parse(r.body) }.isFailure) {
-            throw if (r.body.trimStart().startsWith("<")) MapException(MapException.Kind.OFFLINE, tr("Can't reach PawPixel's server. Check your connection."))
-            else MapException(MapException.Kind.SERVER, tr("PawPixel's server had a problem ({0})", r.status))
+        // A shape check, not a full parse: callers parse the body anyway (some are half a megabyte of photos).
+        if (r.status in 200..299 && r.body.isNotBlank()) {
+            val first = r.body.first { !it.isWhitespace() }
+            val last = r.body.last { !it.isWhitespace() }
+            if (first == '<') throw MapException(MapException.Kind.OFFLINE, tr("Can't reach PawPixel's server. Check your connection."))
+            // A reply cut off mid-way doesn't close what it opened.
+            val closed = when (first) { '{' -> last == '}'; '[' -> last == ']'; '"' -> last == '"' && r.body.trim().length > 1; else -> first in "-0123456789tfn" }
+            if (!closed) throw MapException(MapException.Kind.SERVER, tr("PawPixel's server had a problem ({0})", r.status))
         }
         return r
     }

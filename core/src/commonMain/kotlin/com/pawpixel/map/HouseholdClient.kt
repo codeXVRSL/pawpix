@@ -78,15 +78,19 @@ class HouseholdClient(private val api: SupabaseApi) {
         val log = ArrayList<LoggedCompletion>()
         var cursor = sinceMs
         suspend fun page(filter: String) {
-            var offset = 0
+            // Keyset paging on (changed_ms, id): a record another phone changes mid-read moves to the end
+            // and is read there, instead of shifting an offset and making a row disappear for good.
+            var after: Pair<Long, String>? = null
             while (true) { // the server returns at most 1000 rows at a time
-                val rows = Json.parse(api.rest("GET", "/rest/v1/household_completions?$h$filter&select=*&order=changed_ms,id&limit=$PAGE&offset=$offset")).list
+                val keyset = after?.let { (ms, id) -> "&or=(changed_ms.gt.$ms,and(changed_ms.eq.$ms,id.gt.$id))" } ?: ""
+                val rows = Json.parse(api.rest("GET", "/rest/v1/household_completions?$h$filter$keyset&select=*&order=changed_ms,id&limit=$PAGE")).list
                 for (r in rows) {
                     completionFrom(r)?.let { log += LoggedCompletion(it, undone = r["undone_at"] != Json.Null) }
                     cursor = maxOf(cursor, r["changed_ms"].long ?: 0)
                 }
                 if (rows.size < PAGE) break
-                offset += PAGE
+                val last = rows.last()
+                after = (last["changed_ms"].long ?: break) to (last["id"].str ?: break)
             }
         }
         if (sinceMs <= 0) {

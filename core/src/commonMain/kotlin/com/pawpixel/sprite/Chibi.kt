@@ -220,7 +220,7 @@ object Chibi {
 
     data class Pose(
         /** Lift per leg in pixels: front-left, front-right, back-left, back-right. */
-        val legs: IntArray = IntArray(4),
+        val legs: List<Int> = listOf(0, 0, 0, 0), // a List, so two equal poses are equal
         val breathe: Int = 0,
         /** Tail swing: -1 (left), 0, 1 (right). */
         val tail: Int = 0,
@@ -531,7 +531,7 @@ object Chibi {
             put(x0 + shineAt.first, eyTop + shineAt.second, WHITE, HEAD)
             when (if (style.eyes == EyeShape.SPARKLE) EyeShine.DOUBLE else style.shine) {
                 EyeShine.SINGLE -> Unit
-                EyeShine.DOUBLE -> put(x0 + 1 - inner + inner, eyTop + 2, Argb.mix(WHITE, iris, 0.35), HEAD)
+                EyeShine.DOUBLE -> put(x0 + 1, eyTop + 2, Argb.mix(WHITE, iris, 0.35), HEAD)
                 EyeShine.STAR -> { put(x0 + 1, eyTop + 2, WHITE, HEAD); put(x0 + 1 - inner, eyTop + 1, Argb.mix(WHITE, iris, 0.5), HEAD) }
             }
             // Brows.
@@ -549,7 +549,7 @@ object Chibi {
             for ((side, x0) in listOf(ex[0] - (if (rosy) 3 else 2), ex[1] + 2).withIndex()) {
                 val y = eyTop + 3
                 for (dx in 0 until (if (rosy) 3 else 2)) {
-                    val x = x0 + dx + (if (rosy && side == 1) 0 else 0)
+                    val x = x0 + dx
                     val i = y * w + x
                     if (i in col.indices && part[i] == HEAD) col[i] = Argb.mix(col[i], PINK, if (rosy) 0.75 else 0.45)
                 }
@@ -708,10 +708,11 @@ object Chibi {
         // Walk: contact (legs apart, body down), passing (legs together, body up), the other contact,
         // passing. The head leans the way the pet is going, so it never has to be mirrored.
         for ((set, lean) in listOf(Frame.WALK to 0, Frame.WALK_L to -1, Frame.WALK_R to 1)) {
-            frames[set[0]] = padded(c(Pose(legs = intArrayOf(1, 0, 0, 1), tail = 1, headDx = lean)))
-            frames[set[1]] = padded(c(Pose(bob = -1, tail = 0, headDx = lean)))
-            frames[set[2]] = padded(c(Pose(legs = intArrayOf(0, 1, 1, 0), tail = -1, headDx = lean)))
-            frames[set[3]] = padded(c(Pose(bob = -1, tail = 0, headDx = lean)))
+            val passing = padded(c(Pose(bob = -1, tail = 0, headDx = lean))) // both passing frames are the same picture
+            frames[set[0]] = padded(c(Pose(legs = listOf(1, 0, 0, 1), tail = 1, headDx = lean)))
+            frames[set[1]] = passing
+            frames[set[2]] = padded(c(Pose(legs = listOf(0, 1, 1, 0), tail = -1, headDx = lean)))
+            frames[set[3]] = passing
         }
         frames[Frame.TAIL_SWING] = padded(c(Pose(tail = -1)))
         frames[Frame.EAR_TWITCH_L] = padded(c(Pose(earTwitch = -1)))

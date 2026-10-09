@@ -29,8 +29,8 @@ class PalClient(private val api: SupabaseApi) {
 
     /** Becomes pals with the code's owner; returns their id. A wrong code counts against ten an hour. */
     suspend fun add(code: String): String =
-        Json.parse(api.rpc("add_pal_tracked", Json.obj("p_code" to code.trim().uppercase()))).str
-            ?: throw MapException(MapException.Kind.SERVER, com.pawpixel.i18n.tr("no pal with that code"))
+        Json.parse(api.rpc("add_pal_tracked", Json.obj("p_code" to normalizeCode(code)))).str
+            ?: throw MapException(MapException.Kind.REFUSED, com.pawpixel.i18n.tr("No pal with that code."))
 
     /** Replaces your code: the old one stops working for anyone who had it. */
     suspend fun newCode(): String = Json.parse(api.rpc("new_pal_code")).str ?: throw MapException(MapException.Kind.SERVER, "No code")
@@ -79,6 +79,8 @@ class PalClient(private val api: SupabaseApi) {
     }
 
     companion object {
+        /** A code as typed or pasted ("abc 123", "ABC-123"): letters and digits only, upper case. */
+        fun normalizeCode(code: String): String = code.uppercase().filter { it in 'A'..'Z' || it in '0'..'9' }
         const val MAX_PALS = 20
         /** 64 KB a moment (90,000 base64 characters on the server). */
         const val MAX_MOMENT_BYTES = 64_000
