@@ -280,12 +280,14 @@ object Chibi {
         // A dark tone for masks, spots and stripes.
         val darkR = ramp(style.furDark ?: baseR.deep)
         val pattern = style.pattern
-        val w = WIDTH; val h = HEIGHT
+        // Rabbits get four rows of headroom above the usual canvas, so long ears never touch the edge (the feet stay at the bottom).
+        val top = if (rabbit) 4 else 0
+        val w = WIDTH; val h = HEIGHT + top
         val col = IntArray(w * h)
         val part = IntArray(w * h)
 
-        fun put(x: Int, y: Int, c: Int, p: Int) { if (x in 0 until w && y in 0 until h) { col[y * w + x] = c; part[y * w + x] = p } }
-        fun partAt(x: Int, y: Int) = if (x in 0 until w && y in 0 until h) part[y * w + x] else NONE
+        // Drawing coordinates are the usual 41 x 34 ones; [top] shifts them down into the canvas.
+        fun put(x: Int, y: Int, c: Int, p: Int) { val yy = y + top; if (x in 0 until w && yy in 0 until h) { col[yy * w + x] = c; part[yy * w + x] = p } }
 
         /** Filled ellipse (superellipse with exponent [e]); [paint] gets normalised coordinates. */
         fun blob(cx: Double, cy: Double, rx: Double, ry: Double, p: Int, e: Double = 2.0, paint: (Int, Int, Double, Double) -> Int) {
@@ -311,7 +313,7 @@ object Chibi {
 
         // ---------- Head geometry (shared by standing and lying) ----------
         val hcx = cx + pose.headDx
-        val hcy = (if (rabbit) 15.4 else 12.6) + oy + pose.headDy + (if (pose.lying) (if (rabbit) 6.0 else 8.0) else 0.0)
+        val hcy = (if (rabbit) 16.2 else 12.6) + oy + pose.headDy + (if (pose.lying) (if (rabbit) 6.0 else 8.0) else 0.0)
         val (hrx0, hry0, headE) = when (style.head) {
             HeadShape.ROUND -> Triple(10.6, 8.4, 2.4)
             HeadShape.WIDE -> Triple(11.6, 8.0, 2.4)
@@ -414,7 +416,7 @@ object Chibi {
                     }
                 }, LEG)
                 // Rounded toes.
-                put(lx + 1, bottom, if (Argb.alpha(col[bottom * w + lx + 1]) > 0) col[bottom * w + lx + 1] else pawR.mid, LEG)
+                put(lx + 1, bottom, if (Argb.alpha(col[(bottom + top) * w + lx + 1]) > 0) col[(bottom + top) * w + lx + 1] else pawR.mid, LEG)
             }
         } else {
             val bcy = 27.8 - pose.breathe * 0.3
@@ -601,7 +603,7 @@ object Chibi {
                 val y = eyTop + 3
                 for (dx in 0 until (if (rosy) 3 else 2)) {
                     val x = x0 + dx
-                    val i = y * w + x
+                    val i = (y + top) * w + x
                     if (i in col.indices && part[i] == HEAD) col[i] = Argb.mix(col[i], PINK, if (rosy) 0.75 else 0.45)
                 }
             }
@@ -647,7 +649,7 @@ object Chibi {
             val cc = style.collarColor ?: 0xFFE8374E.toInt()
             val y = (hcy + hry).toInt()
             for (x in (cx - 5.5).toInt()..(cx + 5.5).toInt()) for (dy in 0..1) {
-                val i = (y + dy) * w + x
+                val i = (y + dy + top) * w + x
                 if (i in col.indices && part[i] != NONE) { col[i] = if (dy == 1) Argb.mix(cc, EYE_DARK, 0.25) else cc }
             }
             when (style.collar) {
@@ -666,7 +668,7 @@ object Chibi {
         for (y in 1 until h) for (x in 0 until w) {
             val i = y * w + x
             if (part[i] == NONE || part[i] == HEAD) continue
-            if (partAt(x, y - 1) == HEAD) out[i] = ramp(col[i]).let { Argb.mix(it.deep, it.shade, 0.3) }
+            if (part[i - w] == HEAD) out[i] = ramp(col[i]).let { Argb.mix(it.deep, it.shade, 0.3) }
         }
 
         // ---------- Outline: a deep version of the fur next to it, never pure black ----------
@@ -684,7 +686,7 @@ object Chibi {
             if (best != null) res[x, y] = outlineOf(best, baseR)
         }
         // An outfit earned with care goes on top, following the head.
-        art.accessory?.drawOn(res, hcx, hcy, eyTop)
+        art.accessory?.drawOn(res, hcx, hcy + top, eyTop + top)
         return res
     }
 

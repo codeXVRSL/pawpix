@@ -100,7 +100,10 @@ class RabbitTest {
         val cat = PetArt(look, Species.CAT).still
         fun topRow(img: PixelImage) = (0 until img.height).first { y -> (0 until img.width).any { x -> (img[x, y] ushr 24) > 0 } }
         assertEquals(Ears.POINTY, PetArt(look, Species.RABBIT).ears) // upright by default
-        assertTrue(topRow(upright) <= 1, "the ears reach the top of the canvas")
+        // Rabbits have headroom: even big ears on a walking (bobbing) rabbit keep their outline inside the canvas.
+        val bigWalking = Chibi.compose(PetArt(look, Species.RABBIT, style = com.pawpixel.sprite.PetStyle(ears = com.pawpixel.sprite.EarStyle.BIG)), Chibi.Pose(bob = -1))
+        assertTrue(topRow(bigWalking) >= 1, "the ear tips aren't cut off")
+        assertEquals(Chibi.HEIGHT, cat.height); assertEquals(cat.width, upright.width)
         assertTrue(topRow(lop) > topRow(upright) + 4, "lop ears hang down instead")
         assertNotEquals(cat.pixels.toList(), upright.pixels.toList())
         // Asleep, the upright ears lie back over the head instead of vanishing behind it.
