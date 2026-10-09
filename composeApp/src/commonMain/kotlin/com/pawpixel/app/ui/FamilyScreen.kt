@@ -72,8 +72,10 @@ fun FamilyScreen(app: AppScope, state: AppState, sharePetId: String?, join: Bool
     var removing by remember { mutableStateOf<Household.Member?>(null) }
     val sharePet = sharePetId?.let { state.pet(it) }
 
+    var running by remember { mutableStateOf(0) }
     fun act(block: suspend () -> Unit) {
-        busy = true; message = null
+        running++; busy = true
+        if (running == 1) message = null // a second action running alongside keeps the first one's error
         app.launch {
             try {
                 block()
@@ -84,7 +86,7 @@ fun FamilyScreen(app: AppScope, state: AppState, sharePetId: String?, join: Bool
                 message = e.message?.let { tr(it) } ?: tr("Something went wrong. Please try again.")
                 app.repo.platform.log("Household error: ${e.stackTraceToString()}")
             } finally {
-                busy = false
+                running--; busy = running > 0
                 signedIn = family.isSignedIn
             }
         }

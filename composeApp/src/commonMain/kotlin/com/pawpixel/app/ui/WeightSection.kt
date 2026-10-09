@@ -207,7 +207,7 @@ private fun WeightDialog(
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 OutlinedTextField(
-                    text, { text = it.take(6) }, label = { Text(if (Units.pounds) tr("Pounds, e.g. 9.3") else tr("Kilograms, e.g. 4.2")) }, singleLine = true,
+                    text, { text = it.take(9) }, label = { Text(if (Units.pounds) tr("Pounds, e.g. 9.3") else tr("Kilograms, e.g. 4.2")) }, singleLine = true,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal), shape = MaterialTheme.shapes.small,
                     isError = text.isNotBlank() && grams == null, modifier = Modifier.fillMaxWidth(),
                 )

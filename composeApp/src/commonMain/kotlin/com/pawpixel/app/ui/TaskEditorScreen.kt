@@ -23,6 +23,7 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -49,7 +50,9 @@ import com.pawpixel.i18n.trName
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun TaskEditorScreen(app: AppScope, state: AppState, pet: Pet, taskId: String?, healthOnly: Boolean = false) {
-    val original = taskId?.let { state.task(it) }
+    // The task as it was when the editor opened: a sync deleting it meanwhile doesn't turn this into "new task".
+    val original = remember(taskId) { taskId?.let { state.task(it) } }
+    if (taskId != null && original != null && state.task(taskId) == null) LaunchedEffect(Unit) { app.back() }
     val today = app.repo.clock.dayIndex(app.now)
     val health = original?.kind?.health ?: healthOnly
     var task by remember {

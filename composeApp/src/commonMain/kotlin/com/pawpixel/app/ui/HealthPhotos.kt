@@ -17,7 +17,10 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -68,11 +71,12 @@ fun PhotoViewer(photo: HealthPhoto, title: String, description: String, onClose:
     val image by produceState<Result<ImageBitmap?>?>(null, photo.key, photo.revision) {
         value = withContext(Dispatchers.Default) { runCatching { photo.read()?.let { decodeImage(it) } } }
     }
+    var confirmDelete by remember { mutableStateOf(false) }
     Dialog(onDismissRequest = onClose, properties = DialogProperties(usePlatformDefaultWidth = false)) {
         Column(Modifier.fillMaxSize().background(Color.Black).systemBarsPadding()) {
             Row(Modifier.fillMaxWidth().padding(start = 16.dp, end = 4.dp, top = 4.dp), verticalAlignment = Alignment.CenterVertically) {
                 Text(title, color = Color.White, fontWeight = FontWeight.Bold, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
-                if (onDelete != null) TextButton(onClick = onDelete) { Text(tr("Delete photo"), color = Color(0xFFFF8A9A)) }
+                if (onDelete != null) TextButton(onClick = { confirmDelete = true }) { Text(tr("Delete photo"), color = Color(0xFFFF8A9A)) }
                 TextButton(onClick = onClose) { Text(tr("Close"), color = Color.White) }
             }
             Box(Modifier.fillMaxWidth().weight(1f).padding(8.dp), contentAlignment = Alignment.Center) {
@@ -89,6 +93,15 @@ fun PhotoViewer(photo: HealthPhoto, title: String, description: String, onClose:
                 style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(16.dp),
             )
         }
+    }
+    if (confirmDelete && onDelete != null) {
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = { confirmDelete = false },
+            title = { Text(tr("Delete this photo?")) },
+            text = { Text(tr("It's removed from this phone. Backups you already saved still have it.")) },
+            confirmButton = { androidx.compose.material3.TextButton(onClick = { confirmDelete = false; onDelete() }) { Text(tr("Delete"), color = MaterialTheme.colorScheme.error) } },
+            dismissButton = { androidx.compose.material3.TextButton(onClick = { confirmDelete = false }) { Text(tr("Cancel")) } },
+        )
     }
 }
 

@@ -362,6 +362,9 @@ class PawRepository(val platform: Platform) {
     }
     suspend fun setSettings(settings: Settings) = update { StateOps.setSettings(it, settings) }
 
+    /** Changes settings from their current value (two quick taps both count; an away mode set meanwhile stays). */
+    suspend fun editSettings(change: (Settings) -> Settings) = update { StateOps.setSettings(it, change(it.settings)) }
+
     suspend fun deleteAllData() {
         // If you joined the pet map, delete that account too (best effort: offline still wipes the phone).
         if (map.client.isSignedIn) runCatching { map.deleteAccount() }

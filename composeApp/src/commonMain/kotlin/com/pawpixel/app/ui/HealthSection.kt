@@ -218,8 +218,12 @@ private fun RecordDialog(app: AppScope, pet: Pet, t: CareTask, h: HealthItem, on
         },
         confirmButton = {
             TextButton(enabled = !saving, onClick = {
+                if (saving) return@TextButton // a double tap records once
                 saving = true
-                app.launch { onClose(app.repo.recordHealth(t, daysAgo, photo)) }
+                app.launch {
+                    val done = try { app.repo.recordHealth(t, daysAgo, photo) } finally { saving = false }
+                    onClose(done)
+                }
             }) { Text(if (saving) tr("Saving…") else tr("Save")) }
         },
         dismissButton = { TextButton(enabled = !saving, onClick = { onClose(null) }) { Text(tr("Cancel")) } },
@@ -337,6 +341,7 @@ fun VetVisitPanel(app: AppScope, state: AppState, pet: Pet) {
     // The microchip number lives on the Pet ID card (server side): fetched once when there is a card.
     var microchip by remember(pet.id) { mutableStateOf<String?>(null) }
     LaunchedEffect(pet.id, map?.cardFor(pet.id)) {
+        microchip = null // the card (or the sign-in) may be gone: never keep an old number in the summary
         val m = map ?: return@LaunchedEffect
         if (m.cardFor(pet.id) == null || !m.client.isSignedIn) return@LaunchedEffect
         microchip = runCatching { m.client.cards.mine().firstOrNull { it.localId == pet.id }?.microchip?.ifBlank { null } }.getOrNull()

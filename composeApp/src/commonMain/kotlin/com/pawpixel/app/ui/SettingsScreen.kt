@@ -64,6 +64,7 @@ fun SettingsScreen(app: AppScope, state: AppState) {
     var confirmWipe by remember { mutableStateOf(false) }
     var pendingRestore by remember { mutableStateOf<Backup.Contents?>(null) }
     var backupMessage by remember { mutableStateOf<String?>(null) }
+    var backupOk by remember { mutableStateOf(true) } // success (green) or a failure (red)
     var busy by remember { mutableStateOf(false) }
     val pickBackup = rememberFilePicker { bytes ->
         if (bytes == null) return@rememberFilePicker
@@ -73,9 +74,9 @@ fun SettingsScreen(app: AppScope, state: AppState) {
             try {
                 pendingRestore = app.repo.readBackup(bytes)
             } catch (e: Backup.NotABackup) {
-                backupMessage = e.message?.let { tr(it) }
+                backupMessage = e.message?.let { tr(it) }; backupOk = false
             } catch (e: Exception) {
-                backupMessage = tr("Couldn't read that file.")
+                backupMessage = tr("Couldn't read that file."); backupOk = false
             } finally {
                 busy = false
             }
@@ -93,7 +94,7 @@ fun SettingsScreen(app: AppScope, state: AppState) {
         Group(PixelIcons.BELL, tr("Reminders")) {
             SwitchRow(tr("Reminders"), tr("Notifications for care tasks."), s.remindersEnabled) { on ->
                 if (on) app.repo.platform.requestNotificationPermission()
-                app.launch { app.repo.setSettings(s.copy(remindersEnabled = on)) }
+                app.launch { app.repo.editSettings { it.copy(remindersEnabled = on) } }
             }
             if (s.remindersEnabled) BackgroundTipCard(app.repo.platform)
         }
@@ -102,7 +103,7 @@ fun SettingsScreen(app: AppScope, state: AppState) {
             FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 // The language names themselves stay as they are, so anyone can find their own.
                 (listOf("" to tr("Phone's language")) + com.pawpixel.i18n.Lang.entries.map { it.code to it.label }).forEach { (code, label) ->
-                    ChoiceChip(s.language == code, { app.launch { app.repo.setSettings(s.copy(language = code)) } }, label)
+                    ChoiceChip(s.language == code, { app.launch { app.repo.editSettings { it.copy(language = code) } } }, label)
                 }
             }
             Hint(tr("Filipino translations are new: tell us if something sounds off."))
@@ -116,7 +117,7 @@ fun SettingsScreen(app: AppScope, state: AppState) {
                     Units.METRIC to Units.label(miles = false, pounds = false),
                     Units.IMPERIAL to Units.label(miles = true, pounds = true),
                 ).forEach { (code, label) ->
-                    ChoiceChip(s.units == code, { app.launch { app.repo.setSettings(s.copy(units = code)) } }, label)
+                    ChoiceChip(s.units == code, { app.launch { app.repo.editSettings { it.copy(units = code) } } }, label)
                 }
             }
             Hint(tr("Walks, distances on the map and weigh-ins. Weights are kept in grams, so switching loses nothing."))
@@ -155,15 +156,16 @@ fun SettingsScreen(app: AppScope, state: AppState) {
 
         Group(PixelIcons.MOON, tr("Bedtime")) {
             Text(tr("Your pixel pet sleeps between these times unless something important is overdue."), style = MaterialTheme.typography.bodyMedium)
-            TimeStepper(tr("Sleeps at"), s.nightStart) { app.launch { app.repo.setSettings(s.copy(nightStart = it)) } }
-            TimeStepper(tr("Wakes at"), s.nightEnd) { app.launch { app.repo.setSettings(s.copy(nightEnd = it)) } }
+            // The step (not the new time) is applied to the current value, so two quick taps move it twice.
+            TimeStepper(tr("Sleeps at"), s.nightStart) { m -> val step = m - s.nightStart; app.launch { app.repo.editSettings { it.copy(nightStart = (it.nightStart + step).mod(24 * 60)) } } }
+            TimeStepper(tr("Wakes at"), s.nightEnd) { m -> val step = m - s.nightEnd; app.launch { app.repo.editSettings { it.copy(nightEnd = (it.nightEnd + step).mod(24 * 60)) } } }
         }
 
         Group(PixelIcons.STAR, tr("PawPixel Pro")) {
             Text(tr("Your first pet is free forever. Pro (coming soon) adds more pets, AI-enhanced sprites and hand-finished sprites by a pixel artist."), style = MaterialTheme.typography.bodyMedium)
             if (app.repo.platform.isDebugBuild) {
                 SwitchRow(tr("Test build: unlock Pro features"), tr("Only in test builds, until in-app purchases are connected."), s.pro) {
-                    app.launch { app.repo.setSettings(s.copy(pro = it)) }
+                    app.launch { app.repo.editSettings { st -> st.copy(pro = it) } }
                 }
             }
         }
@@ -179,11 +181,11 @@ fun SettingsScreen(app: AppScope, state: AppState) {
             FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 TonalPill(tr("Save backup file"), enabled = state.pets.isNotEmpty() && !busy) {
                     busy = true; backupMessage = null
-                    app.launch { try { backupMessage = app.repo.exportBackup()?.let { tr(it) } } finally { busy = false } }
+                    app.launch { try { backupMessage = app.repo.exportBackup()?.let { tr(it) }; backupOk = false } finally { busy = false } }
                 }
                 GhostPill(tr("Restore"), enabled = !busy) { backupMessage = null; pickBackup() }
             }
-            backupMessage?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = Paw.palette.good) }
+            backupMessage?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = if (backupOk) Paw.palette.good else MaterialTheme.colorScheme.error) }
         }
 
         Group(PixelIcons.LOCK, tr("Privacy")) {
@@ -227,8 +229,10 @@ fun SettingsScreen(app: AppScope, state: AppState) {
                     app.launch {
                         backupMessage = try {
                             val n = app.repo.restoreBackup(contents)
+                            backupOk = true
                             if (n == 1) tr("Restored 1 pet.") else tr("Restored {0} pets.", n)
                         } catch (e: Exception) {
+                            backupOk = false
                             e.message?.let { tr(it) } ?: tr("Couldn't restore that backup.")
                         } finally {
                             busy = false

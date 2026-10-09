@@ -127,9 +127,9 @@ private fun RemindersCard(app: AppScope, state: AppState, pet: Pet) {
             FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 PrimaryPill(tr("Turn on reminders")) {
                     app.repo.platform.requestNotificationPermission()
-                    app.launch { app.repo.setSettings(s.copy(remindersAsked = true)) }
+                    app.launch { app.repo.editSettings { it.copy(remindersAsked = true) } }
                 }
-                LinkButton(tr("Not now"), color = MaterialTheme.colorScheme.onTertiaryContainer) { app.launch { app.repo.setSettings(s.copy(remindersAsked = true)) } }
+                LinkButton(tr("Not now"), color = MaterialTheme.colorScheme.onTertiaryContainer) { app.launch { app.repo.editSettings { it.copy(remindersAsked = true) } } }
             }
         }
     }

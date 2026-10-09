@@ -75,6 +75,7 @@ fun AlbumPanel(app: AppScope, state: AppState, pet: Pet) {
     if (pet.remembered) MemoryCard(app, pet)
     Hint(
         if (photos.isEmpty()) tr("Photos of {0} stay on this phone and in your backups. Add the first one.", pet.name)
+        else if (photos.size == 1) tr("1 photo, kept on this phone and in your backups. Nothing is uploaded.")
         else tr("{0} photos, kept on this phone and in your backups. Nothing is uploaded.", photos.size),
     )
     Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -100,7 +101,7 @@ fun AlbumPanel(app: AppScope, state: AppState, pet: Pet) {
                     val date = LocalClock.shortDate(clock.dayIndex(photo.atMs))
                     val description = if (photo.caption.isBlank()) tr("Photo of {0}, {1}", pet.name, date) else tr("Photo of {0}: {1}", pet.name, photo.caption)
                     Column(Modifier.width(side), verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                        PhotoThumb(app, HealthPhoto(photo.id, revision) { app.repo.albumPhoto(photo) }, description, size = side) { open = photo }
+                        PhotoThumb(app, HealthPhoto(photo.id, 0) { app.repo.albumPhoto(photo) }, description, size = side) { open = photo } // album files never change: no revision
                         Text(
                             photo.caption.ifBlank { date }, style = MaterialTheme.typography.labelSmall,
                             color = if (photo.caption.isBlank()) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface,
