@@ -100,6 +100,8 @@ private data class Draft(
     /** 0 just now, 1 earlier today, 2 yesterday, 3 a few days ago. */
     val whenIndex: Int = 0,
     val spot: Pair<Double, Double>? = null,
+    /** No location and no map area: the map is centred somewhere to start, and the owner must tap the real spot. */
+    val spotGuessed: Boolean = false,
     val photos: Set<String> = emptySet(),
 ) {
     fun lastSeenAt(now: Long) = now - listOf(0L, 4L, 24L, 72L)[whenIndex] * 3_600_000L
@@ -121,7 +123,7 @@ private fun LostForm(app: AppScope, state: AppState, pet: Pet, map: PetMapModel?
         if (draft.spot == null) {
             locating = true
             val here = map?.myArea?.let { it.centerLat to it.centerLng } ?: runCatching { platform.approximateLocation() }.getOrNull()
-            draft = draft.copy(spot = here ?: (NAGA_CENTER))
+            draft = if (here != null) draft.copy(spot = here) else draft.copy(spot = NAGA_CENTER, spotGuessed = true)
             locating = false
         }
     }
@@ -161,13 +163,13 @@ private fun LostForm(app: AppScope, state: AppState, pet: Pet, map: PetMapModel?
         if (spot == null) Box(Modifier.fillMaxWidth().height(220.dp), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
         else TileMap(
             (map ?: app.repo.map).settings, platform, spot.first, spot.second, emptyList(), null, onAreaTap = {},
-            marker = spot, onMapTap = { lat, lng -> draft = draft.copy(spot = lat to lng) }, modifier = Modifier.fillMaxWidth().height(220.dp),
+            marker = if (draft.spotGuessed) null else spot, onMapTap = { lat, lng -> draft = draft.copy(spot = lat to lng, spotGuessed = false) }, modifier = Modifier.fillMaxWidth().height(220.dp),
         )
     }
     GhostPill(if (locating) tr("Locating…") else tr("Use my location"), icon = PixelIcons.PIN, enabled = !locating) {
         locating = true
         app.launch {
-            try { platform.approximateLocation()?.let { draft = draft.copy(spot = it) } ?: run { error = tr("Couldn't get your approximate location.") } }
+            try { platform.approximateLocation()?.let { draft = draft.copy(spot = it, spotGuessed = false) } ?: run { error = tr("Couldn't get your approximate location.") } }
             finally { locating = false }
         }
     }
@@ -193,7 +195,8 @@ private fun LostForm(app: AppScope, state: AppState, pet: Pet, map: PetMapModel?
     error?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
     val whenText = listOf(tr("just now"), tr("earlier today"), tr("yesterday"), tr("a few days ago"))[draft.whenIndex]
     FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        if (map != null) PrimaryPill(if (busy) tr("Sending…") else tr("Alert owners nearby"), enabled = !busy && spot != null, big = true, icon = PixelIcons.BELL) {
+        if (draft.spotGuessed) Text(tr("We couldn't find your location: tap the map where {0} was last seen.", pet.name), color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+        if (map != null) PrimaryPill(if (busy) tr("Sending…") else tr("Alert owners nearby"), enabled = !busy && spot != null && !draft.spotGuessed, big = true, icon = PixelIcons.BELL) {
             val at = spot ?: return@PrimaryPill
             busy = true; error = null
             app.launch {
@@ -269,6 +272,7 @@ private fun OpenAlert(app: AppScope, map: PetMapModel, pet: Pet, alertId: String
     val clock = app.repo.clock
     val now = app.repo.now()
     fun act(block: suspend () -> Unit) = app.launch {
+        error = null
         try { block() } catch (e: MapException) { error = e.message } catch (e: Exception) { error = e.message ?: tr("Something went wrong. Please try again.") }
     }
     LaunchedEffect(refresh) {
@@ -386,7 +390,9 @@ fun LostPetSheet(app: AppScope, map: PetMapModel, lost: LostPet, onClose: () -> 
     var sighting by remember { mutableStateOf(false) }
     var thanks by remember { mutableStateOf(false) }
     val now = app.repo.now()
-    LaunchedEffect(lost.id) { runCatching { details = map.client.lost.details(lost.id) } }
+    var loadFailed by remember(lost.id) { mutableStateOf(false) }
+    var reload by remember { mutableStateOf(0) }
+    LaunchedEffect(lost.id, reload) { loadFailed = false; runCatching { details = map.client.lost.details(lost.id) }.onFailure { loadFailed = true } }
     val d = details
     val species = Species.entries.firstOrNull { it.name == lost.species } ?: Species.OTHER
     Dialog(onDismissRequest = onClose, properties = DialogProperties(usePlatformDefaultWidth = false)) {
@@ -406,7 +412,10 @@ fun LostPetSheet(app: AppScope, map: PetMapModel, lost: LostPet, onClose: () -> 
                 }
                 lost.description?.let { Text(it, style = MaterialTheme.typography.bodyMedium) }
                 if (lost.photoCount > 0) {
-                    if (d == null) CircularProgressIndicator(Modifier.padding(8.dp))
+                    if (d == null && loadFailed) Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text(tr("The photos didn't load."), color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+                        LinkButton(tr("Try again")) { reload++ }
+                    } else if (d == null) CircularProgressIndicator(Modifier.padding(8.dp))
                     else LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         items(d.photos.size) { i -> AlertPhoto(d.photos[i], tr("Photo {0} of {1}", i + 1, lost.name), Modifier.size(120.dp)) }
                     }
@@ -439,14 +448,23 @@ private fun SightingDialog(app: AppScope, map: PetMapModel, lost: LostPet, onClo
     var error by remember { mutableStateOf<String?>(null) }
     var where by remember { mutableStateOf<Pair<Double, Double>?>(null) }
     val platform = app.repo.platform
-    LaunchedEffect(Unit) { where = runCatching { platform.approximateLocation() }.getOrNull() ?: (lost.lastSeenLat to lost.lastSeenLng) }
-    val pick = rememberPhotoPicker { bytes -> if (bytes != null) app.launch { photo = shrinkForAlert(platform, bytes) } }
+    var whereGuessed by remember { mutableStateOf(false) }
+    var shrinking by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) {
+        val here = runCatching { platform.approximateLocation() }.getOrNull()
+        where = here ?: (lost.lastSeenLat to lost.lastSeenLng); whereGuessed = here == null
+    }
+    val pick = rememberPhotoPicker { bytes -> if (bytes != null) app.launch { shrinking = true; try { photo = shrinkForAlert(platform, bytes) } finally { shrinking = false } } }
     AlertDialog(
         onDismissRequest = onClose,
         title = { Text(tr("You saw {0}?", lost.name)) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text(tr("Your approximate location is sent as the spot, so the owner knows where to look. Add how to reach you if you'd like a call."), style = MaterialTheme.typography.bodySmall)
+                Text(
+                    if (whereGuessed) tr("Your location isn't available, so the spot sent is where {0} was last seen. Say where you saw them in the note.", lost.name)
+                    else tr("Your approximate location is sent as the spot, so the owner knows where to look. Add how to reach you if you'd like a call."),
+                    style = MaterialTheme.typography.bodySmall,
+                )
                 OutlinedTextField(note, { note = it.take(300) }, label = { Text(tr("What you saw, when, how to reach you (optional)")) }, modifier = Modifier.fillMaxWidth(), minLines = 2, maxLines = 4)
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                     GhostPill(if (photo == null) tr("Add a photo") else tr("Photo added"), icon = PixelIcons.CAMERA) { pick() }
@@ -455,7 +473,7 @@ private fun SightingDialog(app: AppScope, map: PetMapModel, lost: LostPet, onClo
             }
         },
         confirmButton = {
-            TextButton(enabled = !busy && where != null, onClick = {
+            TextButton(enabled = !busy && !shrinking && where != null, onClick = {
                 val at = where ?: return@TextButton
                 busy = true; error = null
                 app.launch {

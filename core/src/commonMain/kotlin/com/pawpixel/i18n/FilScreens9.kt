@@ -42,6 +42,12 @@ internal object FilScreens9 {
         "Up to {0} friends, by code only. Pals see your pixel pets and their names, and only the moments you choose to share: never your place or your care. Their pets drop by your room; send theirs a treat." to
             "Hanggang {0} kaibigan, sa code lang. Nakikita ng mga pal ang mga pixel na alaga mo at ang pangalan nila, at ang mga moment lang na pinili mong ibahagi: hindi kailanman ang lugar mo o ang pag-aalaga mo. Dumadalaw ang mga alaga nila sa kuwarto mo; padalhan ng treat ang kanila.",
         "Moments" to "Mga moment",
+        "The report didn't go through. Check your connection and try again." to "Hindi naipadala ang ulat. Tingnan ang koneksyon mo at subukan ulit.",
+        "We couldn't find your location: tap the map where {0} was last seen." to "Hindi namin makita ang lokasyon mo: i-tap sa mapa kung saan huling nakita si {0}.",
+        "The photos didn't load." to "Hindi lumabas ang mga litrato.",
+        "Try again" to "Subukan ulit",
+        "Your location isn't available, so the spot sent is where {0} was last seen. Say where you saw them in the note." to
+            "Hindi makuha ang lokasyon mo, kaya ang ipapadalang lugar ay kung saan huling nakita si {0}. Isulat sa note kung saan mo siya nakita.",
         "It's removed from this phone. Backups you already saved still have it." to "Matatanggal ito sa teleponong ito. Nasa mga naka-save mong backup pa rin ito.",
         "1 photo, kept on this phone and in your backups. Nothing is uploaded." to "1 litrato, nasa teleponong ito at sa mga backup mo. Walang ina-upload.",
         "New code" to "Bagong code",

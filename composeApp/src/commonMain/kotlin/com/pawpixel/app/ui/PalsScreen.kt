@@ -71,15 +71,16 @@ fun PalsScreen(app: AppScope, state: AppState) {
     var sharing by remember { mutableStateOf(false) }
     var refresh by remember { mutableStateOf(0) }
     val clipboard = LocalClipboardManager.current
-    fun act(block: suspend () -> Unit) {
-        busy = true; message = null; good = false
+    fun act(quiet: Boolean = false, block: suspend () -> Unit) {
+        busy = true
+        if (!quiet) { message = null; good = false } // a background refresh keeps the message the last action left
         app.launch {
             try { block() } catch (e: MapException) { message = e.message } catch (e: Exception) { message = e.message ?: tr("Something went wrong. Please try again.") }
             finally { busy = false }
         }
     }
     if (map != null) LaunchedEffect(refresh) {
-        act {
+        act(quiet = true) {
             pals = map.refreshPals(state.pets) { app.repo.art(it) }
             code = map.client.pals.myCode()
             moments = map.client.pals.moments()
@@ -244,10 +245,10 @@ private fun ShareMomentDialog(app: AppScope, state: AppState, onClose: () -> Uni
                     Text(tr("Or from {0}'s album", petName), style = MaterialTheme.typography.bodySmall)
                     LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                         items(album, key = { it.id }) { a ->
-                            // Read off the main thread: originals can be a few MB each.
-                            val bytes by androidx.compose.runtime.produceState<ByteArray?>(null, a.id) { value = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Default) { app.repo.albumPhoto(a) } }
-                            val b = bytes
-                            if (b != null) Box(Modifier.clickable { shrink(b) }) { AlertPhoto(b, a.caption.ifBlank { tr("Album photo") }, Modifier.size(64.dp)) }
+                            // A small decoded thumbnail; the original is read only when it's chosen (off the main thread).
+                            PhotoThumb(app, HealthPhoto(a.id, 0) { app.repo.albumPhoto(a) }, a.caption.ifBlank { tr("Album photo") }, size = 64.dp) {
+                                app.launch { kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Default) { app.repo.albumPhoto(a) }?.let { shrink(it) } }
+                            }
                         }
                     }
                 }

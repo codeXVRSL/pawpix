@@ -59,6 +59,7 @@ import com.pawpixel.core.Pet
 import com.pawpixel.core.Species
 import com.pawpixel.core.Units
 import com.pawpixel.i18n.tr
+import kotlinx.coroutines.async
 import com.pawpixel.map.Gathering
 import com.pawpixel.sprite.PixelIcons
 import com.pawpixel.map.MyWalk
@@ -293,9 +294,16 @@ private fun ReadyMap(app: AppScope, map: PetMapModel, state: AppState, areas: Li
     var refresh by remember { mutableStateOf(0) }
     LaunchedEffect(refresh) {
         act {
-            walks = map.client.gatherings()
-            stats = map.client.communityStats()
-            map.myArea?.let { lost = map.client.lost.nearby(it.centerLat, it.centerLng) }
+            // Three independent reads at once; one failing (shown by act) doesn't hold up the others.
+            kotlinx.coroutines.coroutineScope {
+                val w = async { runCatching { map.client.gatherings() } }
+                val st = async { runCatching { map.client.communityStats() } }
+                val l = async { map.myArea?.let { a -> runCatching { map.client.lost.nearby(a.centerLat, a.centerLng) } } }
+                w.await().onSuccess { walks = it }
+                st.await().onSuccess { stats = it }
+                l.await()?.onSuccess { lost = it }
+                (w.await().exceptionOrNull() ?: st.await().exceptionOrNull() ?: l.await()?.exceptionOrNull())?.let { throw it }
+            }
         }
     }
     Column(Modifier.fillMaxSize()) {
@@ -343,7 +351,7 @@ private fun ReadyMap(app: AppScope, map: PetMapModel, state: AppState, areas: Li
         } else if (tab == 2) {
             LostList(app, lost, onOpen = { openLost = it })
         } else {
-            Gatherings(app, map, walks, act, onHost = { form = form ?: WalkForm() }, onChanged = { refresh++ })
+            Gatherings(app, map, walks, refresh, act, onHost = { form = form ?: WalkForm() }, onChanged = { refresh++ })
         }
     }
     openLost?.let { LostPetSheet(app, map, it, onClose = { openLost = null; refresh++ }) }
@@ -429,24 +437,30 @@ private fun AreaPets(
             confirmButton = {
                 TextButton(onClick = {
                     blockFor = null
-                    act { map.client.blockOwnerOf(pet.id); pets = pets?.filterNot { it.id == pet.id } }
+                    act { map.client.blockOwnerOf(pet.id); pets = map.client.petsInArea(area.cellId) } // the server hides all their pets now
                 }) { Text(tr("Block"), color = MaterialTheme.colorScheme.error) }
             },
             dismissButton = { TextButton(onClick = { blockFor = null }) { Text(tr("Cancel")) } },
         )
     }
-    reportFor?.let { pet -> ReportDialog(pet, philippines = com.pawpixel.core.HealthPlan.isPhilippines(app.repo.platform.systemCountry()), onDone = { reportFor = null }) { reason, details -> act { map.client.report(pet.id, reason, details) } } }
+    reportFor?.let { pet ->
+        ReportDialog(pet, philippines = com.pawpixel.core.HealthPlan.isPhilippines(app.repo.platform.systemCountry()), onDone = { reportFor = null }) { reason, details, result ->
+            app.launch { result(runCatching { map.client.report(pet.id, reason, details) }.isSuccess) }
+        }
+    }
 }
 
 private fun speciesOf(name: String) = Species.entries.firstOrNull { it.name == name } ?: Species.OTHER
 
 @Composable
-private fun ReportDialog(pet: MapPet, philippines: Boolean, onDone: () -> Unit, send: (String, String?) -> Unit) {
+private fun ReportDialog(pet: MapPet, philippines: Boolean, onDone: () -> Unit, send: (String, String?, (Boolean) -> Unit) -> Unit) {
     val reasons = listOf("spam" to tr("Spam or fake"), "harassment" to tr("Harassment"), "unsafe" to tr("Unsafe behaviour"),
         "child_safety" to tr("Child safety"), "other" to tr("Something else"))
     var reason by remember { mutableStateOf("spam") }
     var details by remember { mutableStateOf("") }
     var sent by remember { mutableStateOf(false) }
+    var sending by remember { mutableStateOf(false) }
+    var failed by remember { mutableStateOf(false) }
     AlertDialog(
         onDismissRequest = onDone,
         title = { Text(if (sent) tr("Thanks for telling us") else tr("Report {0}", pet.name)) },
@@ -464,11 +478,14 @@ private fun ReportDialog(pet: MapPet, philippines: Boolean, onDone: () -> Unit, 
                     }
                 }
                 OutlinedTextField(details, { details = it.take(500) }, label = { Text(tr("Details (optional)")) }, modifier = Modifier.fillMaxWidth())
+                if (failed) Text(tr("The report didn't go through. Check your connection and try again."), color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
             }
         },
         confirmButton = {
-            TextButton(onClick = { if (sent) onDone() else { send(reason, details.ifBlank { null }); sent = true } }) {
-                Text(if (sent) tr("OK") else tr("Send report"))
+            TextButton(enabled = !sending, onClick = {
+                if (sent) onDone() else { sending = true; failed = false; send(reason, details.ifBlank { null }) { ok -> sending = false; sent = ok; failed = !ok } }
+            }) {
+                Text(if (sent) tr("OK") else if (sending) tr("Sending…") else tr("Send report"))
             }
         },
         dismissButton = { if (!sent) TextButton(onClick = onDone) { Text(tr("Cancel")) } },
@@ -478,18 +495,23 @@ private fun ReportDialog(pet: MapPet, philippines: Boolean, onDone: () -> Unit, 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun Gatherings(
-    app: AppScope, map: PetMapModel, walks: List<Gathering>, act: (suspend () -> Unit) -> Unit,
+    app: AppScope, map: PetMapModel, walks: List<Gathering>, refresh: Int, act: (suspend () -> Unit) -> Unit,
     onHost: () -> Unit, onChanged: () -> Unit,
 ) {
     var list by remember { mutableStateOf<List<Gathering>?>(null) }
     var mine by remember { mutableStateOf<List<MyWalk>>(emptyList()) }
     val venues = remember { mutableStateOf(mapOf<String, Venue>()) }
-    LaunchedEffect(walks) {
+    // Keyed on the refresh too: a proposal sent or cancelled changes "Your walks" without changing the public list.
+    LaunchedEffect(walks, refresh) {
         act {
             val g = walks // the map fetched these already; only what's ours comes from the server here
             list = g
-            mine = map.client.myWalks()
-            venues.value = g.filter { it.iAmGoing || it.iAmHost }.mapNotNull { x -> map.client.venue(x.id)?.let { x.id to it } }.toMap()
+            kotlinx.coroutines.coroutineScope {
+                val m = async { map.client.myWalks() }
+                val v = g.filter { it.iAmGoing || it.iAmHost }.map { x -> async { map.client.venue(x.id)?.let { x.id to it } } }
+                mine = m.await()
+                venues.value = v.mapNotNull { it.await() }.toMap()
+            }
         }
     }
     val items = list

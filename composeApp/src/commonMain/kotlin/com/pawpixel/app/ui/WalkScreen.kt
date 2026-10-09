@@ -50,7 +50,7 @@ import kotlinx.coroutines.withContext
 @Composable
 fun WalkScreen(app: AppScope, state: AppState, pet: Pet) {
     val platform = app.repo.platform
-    val startMs = remember { app.repo.now() }
+    val startMs = androidx.compose.runtime.saveable.rememberSaveable { app.repo.now() } // a rotation doesn't restart the walk
     var elapsed by remember { mutableIntStateOf(0) }
     var steps by remember { mutableStateOf<Int?>(null) }
     var counting by remember { mutableStateOf<com.pawpixel.app.StepStart?>(null) }
@@ -108,8 +108,10 @@ fun WalkScreen(app: AppScope, state: AppState, pet: Pet) {
                 PrimaryPill(if (ending) tr("Saving…") else tr("End walk"), enabled = !ending, big = true, icon = PixelIcons.CHECK) {
                     ending = true
                     app.launch {
-                        app.repo.endWalk(pet.id, startMs, if (counting == com.pawpixel.app.StepStart.COUNTING) platform.stepsSoFar() else null)
-                        app.back()
+                        try {
+                            app.repo.endWalk(pet.id, startMs, if (counting == com.pawpixel.app.StepStart.COUNTING) platform.stepsSoFar() else null)
+                            app.back()
+                        } finally { ending = false } // a failed save leaves End walk ready to try again
                     }
                 }
                 GhostPill(tr("Cancel")) { platform.stopSteps(); app.back() }
