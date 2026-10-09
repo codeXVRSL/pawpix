@@ -134,7 +134,9 @@ fun LivePet(
             if (pose != shown) shown = pose
         }
     }
-    LaunchedEffect(reaction, brain) { reaction?.let { brain.react(it.event, clock[1]) } }
+    // Keyed on the reaction alone: a rebuilt brain (a new outfit, a resized stage) doesn't replay the last one.
+    val currentBrain by androidx.compose.runtime.rememberUpdatedState(brain)
+    LaunchedEffect(reaction) { reaction?.let { currentBrain.react(it.event, clock[1]) } }
 
     // The room behind the pet, drawn once per size and time of day (it is tiny: stage pixels).
     val roomCache = remember { HashMap<String, ImageBitmap>() }
@@ -179,7 +181,10 @@ fun LivePet(
         val roomW = kotlin.math.ceil(size.width / px).toInt().coerceAtLeast(stageCols)
         val floorRow = rows - (layout.stageHeight + depthRows) + layout.floorY
         val key = "$roomW:$rows:$floorRow:${phase.key}:${season.name}"
-        val room = roomCache.getOrPut(key) { Room.render(roomW, rows, floorRow, phase, seed, season).toImageBitmap() }
+        val room = roomCache[key] ?: Room.render(roomW, rows, floorRow, phase, seed, season).toImageBitmap().also {
+            if (roomCache.size >= 4) roomCache.clear() // a few sizes at most: a resizing stage doesn't keep a bitmap per frame
+            roomCache[key] = it
+        }
         val roomLeft = ((size.width - px * roomW) / 2).roundToInt()
         val roomTop = (size.height - px * rows).roundToInt()
         drawImage(room, IntOffset.Zero, IntSize(roomW, rows), IntOffset(roomLeft, roomTop), IntSize((roomW * px).roundToInt(), (rows * px).roundToInt()), filterQuality = FilterQuality.None)

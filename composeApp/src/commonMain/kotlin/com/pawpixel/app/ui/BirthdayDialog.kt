@@ -133,7 +133,8 @@ private fun ageText(n: Int, unit: AgeUnit) = when (unit) {
 
 @Composable
 private fun StepperButton(label: String, description: String, enabled: Boolean, onClick: () -> Unit) {
-    RoundIconButton(label, description, modifier = Modifier.alpha(if (enabled) 1f else 0.4f)) { if (enabled) onClick() }
+    // A real disabled state: screen readers say so, and taps do nothing.
+    RoundIconButton(label, description, modifier = Modifier.alpha(if (enabled) 1f else 0.4f), enabled = enabled) { onClick() }
 }
 
 /** The pet's birthday in a form: "4 months old · born May 29, 2026   Change", or an invitation to add it. */

@@ -200,33 +200,33 @@ fun PixelIcon(icon: PixelIcon, modifier: Modifier = Modifier, tint: Color = Loca
     val light = tint.copy(alpha = tint.alpha * 0.55f)
     Canvas(modifier.size(size).clearAndSetSemantics {}) {
         val cell = this.size.width / icon.width
+        // Each cell from its own pixel edge to the next: no gaps and no overlap (overlap doubles a light cell's alpha).
+        fun edge(i: Int) = kotlin.math.floor(i * cell)
         for (y in 0 until icon.height) for (x in 0 until icon.width) {
-            when (icon.cell(x, y)) {
-                1 -> drawRect(tint, Offset(x * cell, y * cell), Size(cell + 0.5f, cell + 0.5f))
-                2 -> drawRect(light, Offset(x * cell, y * cell), Size(cell + 0.5f, cell + 0.5f))
-            }
+            val colour = when (icon.cell(x, y)) { 1 -> tint; 2 -> light; else -> null } ?: continue
+            drawRect(colour, Offset(edge(x), edge(y)), Size(edge(x + 1) - edge(x), edge(y + 1) - edge(y)))
         }
     }
 }
 
 /** A 40dp round tonal button with a pixel icon and a spoken [label]. */
 @Composable
-fun RoundIconButton(icon: PixelIcon, label: String, modifier: Modifier = Modifier, onClick: () -> Unit) {
+fun RoundIconButton(icon: PixelIcon, label: String, modifier: Modifier = Modifier, enabled: Boolean = true, onClick: () -> Unit) {
     val p = Paw.palette
     Pressable(
         modifier.semantics { contentDescription = label }, face = if (p.dark) MaterialTheme.colorScheme.surfaceContainerHigh else Color.White,
-        lip = p.edge, outline = p.edge,
+        lip = p.edge, outline = p.edge, enabled = enabled,
         shape = Pill, onClickLabel = label, onClick = onClick,
     ) { Box(Modifier.size(36.dp), contentAlignment = Alignment.Center) { PixelIcon(icon, tint = MaterialTheme.colorScheme.onSurface, size = 18.dp) } }
 }
 
 /** The same button with a text glyph ("+", "−"): for steppers, where a sign reads better than an icon. */
 @Composable
-fun RoundIconButton(glyph: String, label: String, modifier: Modifier = Modifier, onClick: () -> Unit) {
+fun RoundIconButton(glyph: String, label: String, modifier: Modifier = Modifier, enabled: Boolean = true, onClick: () -> Unit) {
     val p = Paw.palette
     Pressable(
         modifier.semantics { contentDescription = label }, face = if (p.dark) MaterialTheme.colorScheme.surfaceContainerHigh else Color.White,
-        lip = p.edge, outline = p.edge,
+        lip = p.edge, outline = p.edge, enabled = enabled,
         shape = Pill, onClickLabel = label, onClick = onClick,
     ) {
         Box(Modifier.size(36.dp), contentAlignment = Alignment.Center) {

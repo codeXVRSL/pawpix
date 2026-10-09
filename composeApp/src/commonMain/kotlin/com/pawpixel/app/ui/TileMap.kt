@@ -89,6 +89,8 @@ private val Leaf = Color(0xFF5EA64C)
 data class MapFlag(val lat: Double, val lng: Double, val title: String, val id: String = "")
 
 /** Parsed zoom-14 vector tiles and the tile address, kept for the session so switching tabs doesn't fetch them again. */
+private const val RETRY_MS = 30_000L
+
 object VectorTileCache {
     var template: String? = null
     val tiles = HashMap<String, VectorTile>()
@@ -128,12 +130,19 @@ fun TileMap(
     var cx by remember { mutableDoubleStateOf(WebMercator.x(centerLng, 15)) }
     var cy by remember { mutableDoubleStateOf(WebMercator.y(centerLat, 15)) }
     var size by remember { mutableStateOf(IntSize.Zero) }
+    // A new centre from the caller (a location fix, the owner's area arriving) moves the map; the first one is above.
+    var lastCenter by remember { mutableStateOf(centerLat to centerLng) }
+    if (lastCenter != (centerLat to centerLng)) {
+        lastCenter = centerLat to centerLng
+        cx = WebMercator.x(centerLng, zoom); cy = WebMercator.y(centerLat, zoom)
+    }
     val tiles = remember { mutableStateMapOf<String, ImageBitmap>() }
     // Street and place names per screen tile, drawn crisp over the cartoon.
     val tileLabels = remember { mutableStateMapOf<String, List<MapLabel>>() }
     val order = remember { ArrayDeque<String>() }
     val pending = remember { HashSet<String>() }
-    val failed = remember { HashSet<String>() }
+    /** Tiles that failed, with when: retried after [RETRY_MS] (a connection that comes back fills them in). */
+    val failed = remember { HashMap<String, Long>() }
     val scope = rememberCoroutineScope()
     val text = rememberTextMeasurer()
     var pinch by remember { mutableDoubleStateOf(1.0) }
@@ -159,13 +168,19 @@ fun TileMap(
         ((WebMercator.x(lng, zoom) - cx) * scale + size.width / 2.0).toFloat(),
         ((WebMercator.y(lat, zoom) - cy) * scale + size.height / 2.0).toFloat(),
     )
+    /** Where a walk's flag is drawn: a little right of its area's pin, so both stay tappable. */
+    fun walkAt(w: MapFlag) = toScreen(w.lat, w.lng) + Offset(26 * density, 0f)
 
     LaunchedEffect(settings.usesVectorTiles) {
         if (!settings.usesVectorTiles || vectorTemplate != null) return@LaunchedEffect
         // One small request, once a session, names the tiles' current address ("tiles": ["https://.../{z}/{x}/{y}.pbf"]).
-        vectorTemplate = platform.fetchBytes(MapSettings.VECTOR_TILEJSON)?.let { bytes ->
-            runCatching { Json.parse(bytes.decodeToString())["tiles"].list.firstOrNull()?.str }.getOrNull()
-        }?.takeIf { it.contains("{z}") }
+        for (attempt in 0 until 4) {
+            vectorTemplate = platform.fetchBytes(MapSettings.VECTOR_TILEJSON)?.let { bytes ->
+                runCatching { Json.parse(bytes.decodeToString())["tiles"].list.firstOrNull()?.str }.getOrNull()
+            }?.takeIf { it.contains("{z}") }
+            if (vectorTemplate != null) break
+            kotlinx.coroutines.delay(5_000L shl attempt) // 5, 10, 20 s: a connection coming back still gets a map
+        }
         VectorTileCache.template = vectorTemplate
         if (vectorTemplate == null) platform.log("Map: couldn't read the vector tile address")
     }
@@ -183,7 +198,7 @@ fun TileMap(
         }
         val tile = job.await()
         vectorPending.remove(vkey)
-        if (tile != null) {
+        if (tile != null && vkey !in vectorTiles) { // every screen tile waiting on this job lands here: count it once
             vectorTiles[vkey] = tile
             vectorOrder.addLast(vkey)
             while (vectorOrder.size > 40) vectorTiles.remove(vectorOrder.removeFirst())
@@ -202,7 +217,9 @@ fun TileMap(
         for (ty in ty0..ty1) for (tx in tx0..tx1) {
             val x = ((tx % n) + n) % n
             val key = "$zoom/$x/$ty"
-            if (key in tiles || key in pending || key in failed) continue
+            if (key in tiles || key in pending) continue
+            val failedAt = failed[key]
+            if (failedAt != null && platform.nowMs() - failedAt < RETRY_MS) continue
             pending += key
             scope.launch {
                 var found: List<MapLabel> = emptyList()
@@ -219,7 +236,8 @@ fun TileMap(
                     }
                 }
                 pending -= key
-                if (img == null) { failed += key; return@launch }
+                if (img == null) { failed[key] = platform.nowMs(); return@launch }
+                failed.remove(key)
                 tiles[key] = img
                 tileLabels[key] = found
                 order.addLast(key)
@@ -253,12 +271,12 @@ fun TileMap(
                                 onMapTap(WebMercator.lat(wy, zoom).coerceIn(-85.0, 85.0), WebMercator.lng(wx, zoom).coerceIn(-180.0, 180.0))
                                 return@detectTapGestures
                             }
-                            val hit = areas.minByOrNull { (toScreen(it.lat, it.lng) - tap).getDistance() }
-                            if (hit != null && (toScreen(hit.lat, hit.lng) - tap).getDistance() < 28 * density) { onAreaTap(hit); return@detectTapGestures }
-                            val missing = lost.minByOrNull { (toScreen(it.lat, it.lng) - tap).getDistance() }
-                            if (missing != null && (toScreen(missing.lat, missing.lng) - tap).getDistance() < 28 * density) { onLostTap(missing); return@detectTapGestures }
-                            val walk = walks.minByOrNull { (toScreen(it.lat, it.lng) - tap).getDistance() }
-                            if (walk != null && (toScreen(walk.lat, walk.lng) - tap).getDistance() < 28 * density) onWalkTap(walk)
+                            // Every mark where it's drawn (walk flags sit to the right of the area pin); the nearest within reach wins.
+                            val marks = areas.map { a -> toScreen(a.lat, a.lng) to { onAreaTap(a) } } +
+                                lost.map { l -> toScreen(l.lat, l.lng) to { onLostTap(l) } } +
+                                walks.map { w -> walkAt(w) to { onWalkTap(w) } }
+                            val best = marks.minByOrNull { (at, _) -> (at - tap).getDistance() }
+                            if (best != null && (best.first - tap).getDistance() < 28 * density) best.second()
                         },
                     )
                 },
@@ -269,7 +287,7 @@ fun TileMap(
             drawLabels(tileLabels, zoom, cx, cy, scale, density, text)
             myArea?.let { drawMyArea(it, ::toScreen, density) }
             // Walks sit a little to the right of the area pin, so both stay tappable in a shared area.
-            for (w in walks) drawFlag(toScreen(w.lat, w.lng) + Offset(26 * density, 0f), density)
+            for (w in walks) drawFlag(walkAt(w), density)
             for (a in areas) drawPin(toScreen(a.lat, a.lng), a.pets, density, text)
             for (l in lost) drawLostFlag(toScreen(l.lat, l.lng), density)
             marker?.let { (lat, lng) -> drawMarker(toScreen(lat, lng), density) }
@@ -381,11 +399,11 @@ private fun DrawScope.drawLabels(
             if (!seen.add(l.text)) continue
             val px = left + l.x * tilePx / CartoonTiles.SIDE; val py = top + l.y * tilePx / CartoonTiles.SIDE
             val measured = text.measure(l.text, TextStyle(color = Ink, fontSize = if (l.big) 14.sp else 11.sp, fontWeight = FontWeight.Black))
-            val halo = text.measure(l.text, TextStyle(color = Cream, fontSize = if (l.big) 14.sp else 11.sp, fontWeight = FontWeight.Black))
             val at = Offset(px - measured.size.width / 2f, py - measured.size.height / 2f)
             rotate(l.angle, pivot = Offset(px, py)) {
                 val h = density.coerceAtLeast(1f)
-                for ((ox, oy) in listOf(-h to 0f, h to 0f, 0f to -h, 0f to h)) drawText(halo, topLeft = at + Offset(ox, oy))
+                // The halo is the same layout drawn in cream: one measure per label, not two.
+                for ((ox, oy) in listOf(-h to 0f, h to 0f, 0f to -h, 0f to h)) drawText(measured, color = Cream, topLeft = at + Offset(ox, oy))
                 drawText(measured, topLeft = at)
             }
         }

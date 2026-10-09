@@ -74,15 +74,17 @@ class PetPickerActivity : ComponentActivity() {
         val glanceId = runCatching { manager.getGlanceIdBy(widgetId) }.getOrNull() ?: run { finish(); return }
 
         // Every change goes to the widget at once (so the home screen shows it behind this screen); Done closes.
+        val appContext = applicationContext
         fun save(choice: String?, theme: PetWidget.Theme, showName: Boolean, close: Boolean) {
-            lifecycleScope.launch {
-                updateAppWidgetState(this@PetPickerActivity, glanceId) {
+            // In the application's scope: pressing Back right after a change doesn't cut the save or the redraw.
+            PawPixelApplication.scope(this@PetPickerActivity).launch {
+                updateAppWidgetState(appContext, glanceId) {
                     if (choice != null) it[PetWidget.PET] = choice
                     it[PetWidget.THEME] = theme.key
                     it[PetWidget.SHOW_NAME] = showName
                 }
-                PetWidget().update(this@PetPickerActivity, glanceId)
-                if (close) finish()
+                PetWidget().update(appContext, glanceId)
+                if (close) runOnUiThread { finish() }
             }
         }
 
@@ -97,6 +99,7 @@ class PetPickerActivity : ComponentActivity() {
         val repo = PawPixelApplication.repo(this)
         // Unset means "the first pet" (which follows deletions and reordering): only a tap on a pet pins an id.
         var choice by remember { mutableStateOf(prefs?.get(PetWidget.PET)) }
+        val poses = remember(pets) { pets.associate { it.id to repo.pose(it, Mood.HAPPY) } } // drawn once, not on every tap
         val selected = choice ?: pets.firstOrNull()?.id
         var theme by remember { mutableStateOf(PetWidget.Theme.of(prefs?.get(PetWidget.THEME))) }
         var showName by remember { mutableStateOf(prefs?.get(PetWidget.SHOW_NAME) ?: true) }
@@ -119,7 +122,7 @@ class PetPickerActivity : ComponentActivity() {
                             horizontalArrangement = Arrangement.spacedBy(12.dp),
                         ) {
                             RadioButton(selected = id == selected, onClick = null)
-                            if (pet != null) SpriteView(repo.pose(pet, Mood.HAPPY), Modifier.size(48.dp), animate = false)
+                            if (pet != null) SpriteView(poses[pet.id], Modifier.size(48.dp), animate = false)
                             Column {
                                 Text(label, style = MaterialTheme.typography.titleMedium)
                                 if (pet == null) Text(tr("Shows the pet whose care is due"), style = MaterialTheme.typography.bodySmall)

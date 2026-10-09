@@ -107,8 +107,13 @@ class PetWidget : GlanceAppWidget() {
             val showName = currentState(SHOW_NAME) ?: true
             // Re-read widget.json whenever the app publishes (e.g. after a Done tap on this widget); the first read is already done.
             val revision by repo.widgetRevision.collectAsState()
+            // What's on screen now was loaded for (revision, choice): reload only when either moves on from that.
+            val loadedFor = androidx.compose.runtime.remember { mutableListOf(firstRevision to firstChoice) }
             val shown by produceState(first, revision, choice) {
-                if (revision != firstRevision || choice != firstChoice) value = withContext(Dispatchers.IO) { Shown.load(context, choice, System.currentTimeMillis()) }
+                if (loadedFor[0] != (revision to choice)) {
+                    value = withContext(Dispatchers.IO) { Shown.load(context, choice, System.currentTimeMillis()) }
+                    loadedFor[0] = revision to choice
+                }
             }
             WidgetTheme { Content(shown ?: Shown.EMPTY, theme, showName) }
         }
