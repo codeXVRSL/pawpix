@@ -68,7 +68,18 @@ class MoreLanguagesTest {
         assertEquals(com.pawpixel.i18n.Lang.FIL, com.pawpixel.i18n.Lang.resolve("fil", "es"))
         assertEquals("{0} tiene hambre", com.pawpixel.i18n.I18n.lookup("{0} is hungry", com.pawpixel.i18n.Lang.ES))
         assertEquals("{0} está com fome", com.pawpixel.i18n.I18n.lookup("{0} is hungry", com.pawpixel.i18n.Lang.PT))
-        assertEquals("Mix your own", com.pawpixel.i18n.I18n.lookup("Mix your own", com.pawpixel.i18n.Lang.ES), "untranslated strings stay English")
+        assertEquals("Crea tu color", com.pawpixel.i18n.I18n.lookup("Mix your own", com.pawpixel.i18n.Lang.ES))
+        assertEquals("A string nobody wrote", com.pawpixel.i18n.I18n.lookup("A string nobody wrote", com.pawpixel.i18n.Lang.PT), "untranslated strings stay English")
+        // Dates read in each language's own order.
+        val was = com.pawpixel.i18n.I18n.lang
+        try {
+            com.pawpixel.i18n.I18n.lang = com.pawpixel.i18n.Lang.ES
+            assertEquals("29 sep 2026", com.pawpixel.core.LocalClock.shortDate(20725))
+            com.pawpixel.i18n.I18n.lang = com.pawpixel.i18n.Lang.PT
+            assertEquals("29 set 2026", com.pawpixel.core.LocalClock.shortDate(20725))
+            com.pawpixel.i18n.I18n.lang = com.pawpixel.i18n.Lang.EN
+            assertEquals("Sep 29, 2026", com.pawpixel.core.LocalClock.shortDate(20725))
+        } finally { com.pawpixel.i18n.I18n.lang = was }
         // Every Spanish and Portuguese key is a real English string the app uses (it has Filipino).
         for (k in com.pawpixel.i18n.I18n.spanishKeys) assertTrue(com.pawpixel.i18n.I18n.has(k), "no such English string: $k")
     }

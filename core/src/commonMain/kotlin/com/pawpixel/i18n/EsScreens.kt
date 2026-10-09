@@ -172,5 +172,8 @@ internal object EsScreens {
         "Myxo-RHD vaccine" to "Vacuna Myxo-RHD", "RHDV2 vaccine" to "Vacuna RHDV2", "RHD vaccine" to "Vacuna RHD",
         "It feels like {0}° out. Rabbits overheat easily: keep {1} somewhere cool and shady, with fresh water." to
             "Se sienten {0}° afuera. Los conejos sufren mucho el calor: deja a {1} en un lugar fresco y a la sombra, con agua fresca.",
+        // Date order: "30 sep 2026", "lun, 30 sep"
+        "{0} {1}, {2}" to "{1} {0} {2}", "{0}, {1} {2}" to "{0}, {2} {1}",
+        "These translations are new: tell us if something sounds off." to "Estas traducciones son nuevas: avísanos si algo suena raro.",
     )
 }

@@ -51,6 +51,18 @@ class TranslationTest {
         assertTrue(bad.isEmpty(), "Placeholders differ:\n" + bad.entries.joinToString("\n") { "  \"${it.key}\" -> \"${it.value}\"" })
     }
 
+    @Test fun everyStringInTheAppHasSpanishAndPortuguese() {
+        val keys = keysInSources()
+        for ((name, table) in listOf("Spanish" to I18n.spanish, "Portuguese" to I18n.portuguese)) {
+            val missing = keys.filterKeys { it !in table }
+            assertTrue(missing.isEmpty(), "No $name for:\n" + missing.entries.joinToString("\n") { (k, f) -> "  $f: \"$k\"" })
+            val bad = table.filter { (en, t) -> placeholders(en) != placeholders(t) || t.isBlank() }
+            assertTrue(bad.isEmpty(), "$name placeholders differ:\n" + bad.entries.joinToString("\n") { "  \"${it.key}\" -> \"${it.value}\"" })
+        }
+        // Everything Filipino has (month names, widget lines, health items...) is covered too.
+        assertTrue(I18n.filipino.keys.all { it in I18n.spanish && it in I18n.portuguese }, "a Filipino string has no Spanish or Portuguese")
+    }
+
     @Test fun theCareEngineSpeaksFilipino() {
         val clock = LocalClock.MANILA
         val pet = Pet("p1", "Mochi", Species.DOG, 0)

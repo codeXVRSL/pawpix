@@ -4,7 +4,7 @@ package com.pawpixel.i18n
 enum class Lang(val code: String, val label: String) {
     EN("en", "English"),
     FIL("fil", "Filipino"),
-    /** Everyday strings only so far (see EsCore / PtCore); the rest shows English until translated. */
+    /** Latin American Spanish and Brazilian Portuguese, the whole app (TranslationTest keeps them complete). */
     ES("es", "Español"),
     PT("pt", "Português");
 
@@ -46,11 +46,11 @@ object I18n {
 
     fun has(en: String): Boolean = filipino.containsKey(en)
 
-    /** The keys of the partial Spanish and Portuguese tables (tests check they're real strings). */
+    /** The keys of the Spanish and Portuguese tables (tests check they're real strings). */
     val spanishKeys: Set<String> get() = spanish.keys + portuguese.keys
 
-    val spanish: Map<String, String> by lazy { EsCore.map + EsScreens.map }
-    val portuguese: Map<String, String> by lazy { PtCore.map + PtScreens.map }
+    val spanish: Map<String, String> by lazy { EsCore.map + EsScreens.map + EsScreens2.map + EsScreens3.map + EsScreens4.map + EsScreens5.map }
+    val portuguese: Map<String, String> by lazy { PtCore.map + PtScreens.map + PtScreens2.map + PtScreens3.map + PtScreens4.map + PtScreens5.map }
 
     /** Fills {0}, {1}... in one pass, so a pet named "{1}" stays "{1}". */
     fun format(template: String, args: Array<out Any?>): String {

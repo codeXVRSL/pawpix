@@ -618,5 +618,5 @@ fun formatDay(day: Long): String {
     val mp = (5 * doy + 2) / 153
     val d = doy - (153 * mp + 2) / 5 + 1
     val m = if (mp < 10) mp + 3 else mp - 9
-    return "${tr(WEEKDAYS[day.mod(7L).toInt()])}, ${tr(MONTHS[(m - 1).toInt()])} $d"
+    return tr("{0}, {1} {2}", tr(WEEKDAYS[day.mod(7L).toInt()]), tr(MONTHS[(m - 1).toInt()]), d) // "Mon, Sep 30"; "lun 30 sep" in Spanish
 }

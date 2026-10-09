@@ -138,5 +138,8 @@ internal object FilScreens9 {
         "Myxo-RHD vaccine" to "Myxo-RHD na bakuna", "RHDV2 vaccine" to "RHDV2 na bakuna", "RHD vaccine" to "RHD na bakuna",
         "It feels like {0}° out. Rabbits overheat easily: keep {1} somewhere cool and shady, with fresh water." to
             "Parang {0}° sa labas. Madaling mainitan ang mga kuneho: ilagay si {1} sa malamig at malilim na lugar, may sariwang tubig.",
+        // Date order
+        "{0} {1}, {2}" to "{0} {1}, {2}", "{0}, {1} {2}" to "{0}, {1} {2}",
+        "These translations are new: tell us if something sounds off." to "Bago pa ang mga salin na ito: sabihan kami kung may kakaiba.",
     )
 }

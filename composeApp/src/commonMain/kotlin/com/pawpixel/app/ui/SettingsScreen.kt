@@ -106,7 +106,13 @@ fun SettingsScreen(app: AppScope, state: AppState) {
                     ChoiceChip(s.language == code, { app.launch { app.repo.editSettings { it.copy(language = code) } } }, label)
                 }
             }
-            Hint(tr("Filipino translations are new: tell us if something sounds off."))
+            // In the language being read: Filipino readers hear about Filipino, Spanish readers about Spanish.
+            Hint(
+                when (com.pawpixel.i18n.I18n.lang) {
+                    com.pawpixel.i18n.Lang.ES, com.pawpixel.i18n.Lang.PT -> tr("These translations are new: tell us if something sounds off.")
+                    else -> tr("Filipino translations are new: tell us if something sounds off.")
+                },
+            )
         }
 
         Group(PixelIcons.SCALE, tr("Units")) {
