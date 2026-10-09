@@ -22,6 +22,8 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -164,9 +166,13 @@ fun ToyButton(
         shape = Pill, enabled = enabled, onClickLabel = onClickLabel, onClick = onClick,
         contentPadding = PaddingValues(horizontal = if (big) 26.dp else 18.dp),
     ) {
-        Row(Modifier.heightIn(min = if (big) 50.dp else 42.dp), verticalAlignment = Alignment.CenterVertically) {
+        // With large system text a label that doesn't fit wraps to a second line instead of being cut off.
+        Row(Modifier.heightIn(min = if (big) 50.dp else 42.dp).padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
             if (icon != null) { PixelIcon(icon, tint = fg.copy(alpha = alpha), size = 16.dp); Spacer(Modifier.width(8.dp)) }
-            Text(text, style = if (big) MaterialTheme.typography.titleMedium else MaterialTheme.typography.labelLarge, color = fg.copy(alpha = alpha), maxLines = 1)
+            Text(
+                text, style = if (big) MaterialTheme.typography.titleMedium else MaterialTheme.typography.labelLarge, color = fg.copy(alpha = alpha),
+                maxLines = 2, overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center,
+            )
         }
     }
 }

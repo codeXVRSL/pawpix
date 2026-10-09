@@ -27,6 +27,9 @@ import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.foundation.background
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.graphics.FilterQuality
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.PathEffect
@@ -346,8 +349,10 @@ fun TileMap(
         val credit = settings.streetAttribution
         if (credit.isNotBlank()) {
             Text(
-                credit, style = MaterialTheme.typography.labelSmall, color = Ink,
-                modifier = Modifier.align(Alignment.BottomEnd).padding(4.dp),
+                credit, style = MaterialTheme.typography.labelSmall, color = Ink, textAlign = TextAlign.End,
+                // On a pale plate so it stays readable over street names, even when large text wraps it.
+                modifier = Modifier.align(Alignment.BottomEnd).padding(4.dp)
+                    .background(Color.White.copy(alpha = 0.8f), RoundedCornerShape(4.dp)).padding(horizontal = 4.dp, vertical = 1.dp),
             )
         }
     }

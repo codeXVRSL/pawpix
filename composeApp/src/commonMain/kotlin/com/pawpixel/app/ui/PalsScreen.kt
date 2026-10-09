@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
@@ -37,6 +38,7 @@ import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.pawpixel.app.PetMapModel
@@ -170,7 +172,7 @@ private fun MomentsRow(app: AppScope, map: PetMapModel, moments: List<Moment>, p
         )
         LazyRow(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             item(key = "mine") {
-                Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.width(if (mine == null) 190.dp else 132.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = if (mine == null) Modifier.widthIn(min = 132.dp) else Modifier.width(132.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     if (mine != null) {
                         MomentPhoto(mine, pals, tr("Your moment: {0}", mine.caption.ifBlank { mine.petName }))
                         Text(mine.caption.ifBlank { mine.petName }, style = MaterialTheme.typography.bodySmall, maxLines = 2, textAlign = TextAlign.Center)
@@ -276,10 +278,10 @@ private fun PalCard(app: AppScope, map: PetMapModel, pal: Pal, onTreat: (PalPet)
             if (pal.pets.isNotEmpty()) LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 items(pal.pets, key = { it.petId }) { pet ->
                     val species = Species.entries.firstOrNull { it.name == pet.species } ?: Species.OTHER
-                    Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.width(112.dp)) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.widthIn(min = 112.dp, max = 168.dp)) {
                         val img = remember(pet.petId) { pet.look?.let { PetArt(it, species, Ears.of(pet.ears)).still } }
                         SpriteView(img, Modifier.size(72.dp), animate = false, description = tr("Pixel {0}", pet.name))
-                        Text(pet.name, fontWeight = FontWeight.Bold, maxLines = 1)
+                        Text(pet.name, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
                         GhostPill(tr("Treat"), icon = PixelIcons.BOWL) { onTreat(pet) }
                     }
                 }
