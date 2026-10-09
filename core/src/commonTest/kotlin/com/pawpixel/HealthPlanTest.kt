@@ -271,7 +271,7 @@ class RegionalHealthPlanTest {
 
     @Test fun aTitleMeansOneScheduleInEveryRegion() {
         // Household phones in different countries must agree on a task's due dates, so a name maps to one schedule everywhere.
-        for (sp in listOf(Species.DOG, Species.CAT)) {
+        for (sp in listOf(Species.DOG, Species.CAT, Species.RABBIT)) {
             val byTitle = HealthPlan.Region.entries.flatMap { HealthPlan.itemsIn(sp, it) }.groupBy { it.kind to it.title.lowercase() }
             for ((key, items) in byTitle) assertEquals(1, items.map { it.schedule }.distinct().size, "schedules for $key differ across regions")
         }

@@ -25,7 +25,7 @@ Google Play takes one listing per language: add Spanish (es-419 and es-ES) and P
 
 Meet your pet's pixel twin.
 
-Take a photo of your dog, cat or any pet, and PawPixel turns it into a pixel-art sprite that looks like *your* pet: its fur colours and face markings on a cute pixel character, dog or cat, pointy or floppy ears. Then it moves in. Your pixel pet lives on your home screen, breathes, blinks, wanders around, and reacts to the real care you give.
+Take a photo of your dog, cat or any pet, and PawPixel turns it into a pixel-art sprite that looks like *your* pet: its fur colours and face markings on a cute pixel dog, cat or rabbit, with pointy, floppy or lop ears. Then it moves in. Your pixel pet lives on your home screen, breathes, blinks, wanders around, and reacts to the real care you give.
 
 HOW IT WORKS
 • Snap or pick a photo. PawPixel cuts your pet out and draws it in pixels, right on your phone.
@@ -97,7 +97,7 @@ PawPixel: Pixel Pet Widget
 Your real pet, in pixels
 
 **Promotional text** (145/170)
-Snap a photo of your dog or cat and meet their pixel twin. It lives on your home screen, gets hungry at mealtime and cheers up when you tap Done.
+Snap a photo of your dog, cat or rabbit and meet their pixel twin. It lives on your home screen, gets hungry at mealtime and cheers up when you tap Done.
 
 **Keywords** (96/100, no spaces after commas, no trademarks)
 virtual pet,pet care,reminder,feed,walk,pixel art,dog,cat,puppy,kitten,sprite,8bit,cute,lost pet

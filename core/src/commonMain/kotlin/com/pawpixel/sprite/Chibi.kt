@@ -196,7 +196,7 @@ class PetArt(look: PetLook, val species: Species, ears: Ears? = null, val access
     /** The Studio style: given here, or the one that travelled inside the look code. */
     val style: PetStyle = style ?: look.style
     val look: PetLook = look.withStyle(this.style)
-    val ears: Ears = ears ?: if (species == Species.CAT) Ears.POINTY else Ears.FLOPPY
+    val ears: Ears = ears ?: if (species == Species.CAT || species == Species.RABBIT) Ears.POINTY else Ears.FLOPPY
     val fur: FurColors get() {
         val base = style.furBase ?: look.tones[0]
         val light = style.furLight ?: look.light?.let { look.tones[it] } ?: Chibi.ramp(base).hi
@@ -261,6 +261,8 @@ object Chibi {
         val look = art.look
         val style = art.style
         val cat = art.species == Species.CAT
+        // A rabbit: a smaller head sitting lower on a round body, long ears, big back feet and a puff tail.
+        val rabbit = art.species == Species.RABBIT
         // Colours: the photo's tones, with the Studio's fur colours put in their place.
         val tones = look.tones.toMutableList()
         style.furBase?.let { tones[0] = it }
@@ -309,13 +311,15 @@ object Chibi {
 
         // ---------- Head geometry (shared by standing and lying) ----------
         val hcx = cx + pose.headDx
-        val hcy = 12.6 + oy + pose.headDy + (if (pose.lying) 8.0 else 0.0)
-        val (hrx, hry, headE) = when (style.head) {
+        val hcy = (if (rabbit) 15.4 else 12.6) + oy + pose.headDy + (if (pose.lying) (if (rabbit) 6.0 else 8.0) else 0.0)
+        val (hrx0, hry0, headE) = when (style.head) {
             HeadShape.ROUND -> Triple(10.6, 8.4, 2.4)
             HeadShape.WIDE -> Triple(11.6, 8.0, 2.4)
             HeadShape.TALL -> Triple(9.8, 9.4, 2.2)
             HeadShape.CHUBBY -> Triple(11.2, 8.6, 2.9)
         }
+        val hrx = if (rabbit) hrx0 * 0.9 else hrx0
+        val hry = if (rabbit) hry0 * 0.86 else hry0
         fun faceU(x: Int) = (x + 0.5 - (hcx - hrx)) / (2 * hrx)
         fun faceV(y: Int) = (y + 0.5 - (hcy - hry)) / (2 * hry)
         fun faceTone(x: Int, y: Int): Int = look.toneAt(faceU(x), faceV(y))
@@ -359,16 +363,24 @@ object Chibi {
                 BodyShape.SLIM -> Triple(7.0, 5.0, 2.0)
                 BodyShape.FLUFFY -> Triple(9.0, 6.2, 1.7)
             }
-            val bcy = 25.0 + oy - pose.breathe * 0.3
-            val brx = brx0; val bry = bry0 + pose.breathe * 0.4
+            val bcy = (if (rabbit) 25.8 else 25.0) + oy - pose.breathe * 0.3
+            val brx = if (rabbit) brx0 + 0.6 else brx0; val bry = bry0 + (if (rabbit) 0.4 else 0.0) + pose.breathe * 0.4
             val feet = 32
-            // Back legs peeking out at the sides, in shadow.
-            for ((i, lx) in listOf(12, 26).withIndex()) {
-                val bottom = feet - pose.legs[2 + i]
-                rect(lx, 27 + oy, lx + 2, bottom, { _, y -> if (y >= bottom - 1) pawR.shade else baseR.shade }, LEG)
+            if (rabbit) {
+                // Big back feet, flat on the ground at the sides, and a puff of a tail.
+                for ((i, fx) in listOf(12.4, 28.6).withIndex()) {
+                    blob(fx, 31.2 - pose.legs[2 + i], 3.1, 1.5, LEG) { _, _, nx, ny -> if (ny > 0.35 || nx * (if (i == 0) -1 else 1) > 0.6) pawR.shade else pawR.mid }
+                }
+                blob(30.4 + pose.tail * 0.6, bcy + 0.2, 2.6, 2.4, TAIL) { _, _, nx, ny -> if (nx * 0.5 + ny * 0.9 > 0.55) paleR.shade else if (-nx - ny > 0.8) paleR.hi else paleR.mid }
+            } else {
+                // Back legs peeking out at the sides, in shadow.
+                for ((i, lx) in listOf(12, 26).withIndex()) {
+                    val bottom = feet - pose.legs[2 + i]
+                    rect(lx, 27 + oy, lx + 2, bottom, { _, y -> if (y >= bottom - 1) pawR.shade else baseR.shade }, LEG)
+                }
+                // Tail, behind the body on the right.
+                tail(cat, style.tail, pose.tail, 27.5, 25.5 + oy, baseR, lightR, ::put)
             }
-            // Tail, behind the body on the right.
-            tail(cat, style.tail, pose.tail, 27.5, 25.5 + oy, baseR, lightR, ::put)
             blob(cx, bcy, brx, bry, BODY, e = bodyE) { x, y, nx, ny -> shaded(bodyRamp(x, y, nx, ny), nx, ny, hiAt = 0.75, shAt = 0.5) }
             if (style.body == BodyShape.FLUFFY) {
                 // Tufts along the top of the back.
@@ -391,12 +403,13 @@ object Chibi {
                 }
             }
             // Front legs.
-            for ((i, lx) in listOf(15, 23).withIndex()) {
+            for ((i, lx) in (if (rabbit) listOf(16, 23) else listOf(15, 23)).withIndex()) {
                 val bottom = feet - pose.legs[i]
-                rect(lx, 27 + oy, lx + 2, bottom, { x, y ->
+                val right = lx + (if (rabbit) 1 else 2)
+                rect(lx, (if (rabbit) 29 else 27) + oy, right, bottom, { x, y ->
                     when {
-                        y >= bottom - 1 -> if (x == lx + 2) pawR.shade else pawR.mid
-                        x == lx + 2 -> baseR.shade
+                        y >= bottom - 1 -> if (x == right) pawR.shade else pawR.mid
+                        x == right -> baseR.shade
                         else -> baseR.mid
                     }
                 }, LEG)
@@ -406,7 +419,8 @@ object Chibi {
         } else {
             val bcy = 27.8 - pose.breathe * 0.3
             val wide = when (style.body) { BodyShape.CHUBBY -> 12.2; BodyShape.SLIM -> 10.2; else -> 11.2 }
-            tail(cat, style.tail, 0, 29.5, 29.0, baseR, lightR, ::put, lying = true)
+            if (rabbit) blob(31.6, 28.6, 2.5, 2.3, TAIL) { _, _, nx, ny -> if (nx * 0.5 + ny * 0.9 > 0.55) paleR.shade else paleR.mid }
+            else tail(cat, style.tail, 0, 29.5, 29.0, baseR, lightR, ::put, lying = true)
             blob(cx, bcy, wide, 4.8 + pose.breathe * 0.4, BODY, e = 2.3) { x, y, nx, ny -> shaded(bodyRamp(x, y, nx, ny), nx, ny, hiAt = 0.8, shAt = 0.5) }
             for (px in listOf(15.5, 25.5)) blob(px, 31.6, 2.2, 1.3, LEG) { _, _, nx, _ -> if (nx > 0.5) pawR.shade else pawR.mid }
         }
@@ -419,7 +433,35 @@ object Chibi {
             else -> style.ears
         }
         val pointy = earStyle == EarStyle.POINTY || earStyle == EarStyle.BIG || earStyle == EarStyle.TUFTED || earStyle == EarStyle.FOLDED
-        if (pointy) {
+        if (rabbit && earStyle != EarStyle.FLOPPY) {
+            // Long upright ears from the top of the head, pink inside; laid back along the body when asleep.
+            for (side in listOf(-1, 1)) {
+                val r = if (side < 0) earToneL else earToneR
+                val twitch = if (pose.earTwitch == side) 1.0 else 0.0
+                val bx = hcx + side * 3.4; val by = hcy - hry + 2.0
+                val len = when (earStyle) { EarStyle.BIG -> 9.8; EarStyle.ROUND -> 7.0; else -> 8.6 }
+                val tx = if (pose.lying) bx + 8.0 + side * 0.6 else bx + side * (1.4 + twitch * 1.2)
+                val ty = if (pose.lying) by + 1.6 + side * 0.9 else by - len + twitch * 0.8
+                val n = 14
+                for (k in 0..n) {
+                    val t = k.toDouble() / n
+                    val px = bx + (tx - bx) * t; val py = by + (ty - by) * t
+                    val rad = 1.3 + 0.7 * kotlin.math.sin(kotlin.math.PI * (0.25 + 0.6 * t))
+                    for (y in (py - rad - 1).toInt()..(py + rad + 1).toInt()) for (x in (px - rad - 1).toInt()..(px + rad + 1).toInt()) {
+                        val dx = x + 0.5 - px; val dy = y + 0.5 - py
+                        if (dx * dx + dy * dy > rad * rad) continue
+                        val across = if (pose.lying) dy else dx * side // away from the ear's middle line
+                        put(x, y, when {
+                            earStyle == EarStyle.FOLDED && t > 0.78 -> r.deep
+                            earStyle == EarStyle.TUFTED && t > 0.9 -> r.deep
+                            t in 0.18..0.86 && kotlin.math.abs(across) < rad * 0.42 -> Argb.mix(PINK, r.mid, 0.4)
+                            across > rad * 0.45 -> r.shade
+                            else -> r.mid
+                        }, HEAD)
+                    }
+                }
+            }
+        } else if (pointy) {
             val big = earStyle == EarStyle.BIG
             val folded = earStyle == EarStyle.FOLDED
             for (side in listOf(-1, 1)) {
@@ -449,7 +491,7 @@ object Chibi {
                     put((ax - side * 1.2).toInt(), (ay - 1.4).toInt(), r.hi, HEAD)
                 }
             }
-        } else if (earStyle == EarStyle.ROUND) {
+        } else if (earStyle == EarStyle.ROUND && !rabbit) {
             for (side in listOf(-1, 1)) {
                 val r = if (side < 0) earToneL else earToneR
                 val ecx = hcx + side * 8.4; val ecy = hcy - 7.2
@@ -463,7 +505,7 @@ object Chibi {
 
         // Muzzle: a lighter, rounder snout for dogs; a small soft one for cats.
         val mcy = hcy + 3.7
-        val (mrx, mry) = if (cat) 3.0 to 1.9 else 3.9 to 2.5
+        val (mrx, mry) = if (cat || rabbit) 3.0 to 1.9 else 3.9 to 2.5
         blob(hcx, mcy, mrx, mry, HEAD) { x, y, nx, ny ->
             val r = if (pattern == Pattern.TUXEDO) paleR else headRamp(x, y)
             if (ny > 0.55 && nx > -0.2) r.mid else r.hi
@@ -478,8 +520,9 @@ object Chibi {
                 val twitch = if (pose.earTwitch == side) 1.0 else 0.0
                 for (k in 0..n) {
                     val t = k.toDouble() / n
-                    val px = hcx + side * (7.4 + 3.2 * t - 0.8 * t * t + twitch * t)
-                    val py = hcy - 6.9 + 9.2 * t - twitch * (1.0 + t)
+                    // A lop rabbit's ears hang longer, from closer together.
+                    val px = hcx + side * ((if (rabbit) 6.2 else 7.4) + 3.2 * t - 0.8 * t * t + twitch * t)
+                    val py = hcy - (if (rabbit) 5.6 else 6.9) + (if (rabbit) 11.0 else 9.2) * t - twitch * (1.0 + t)
                     val rad = 1.4 + 1.3 * sqrt(t)
                     for (y in (py - rad - 1).toInt()..(py + rad + 1).toInt()) for (x in (px - rad - 1).toInt()..(px + rad + 1).toInt()) {
                         val dx = x + 0.5 - px; val dy = y + 0.5 - py
@@ -559,7 +602,7 @@ object Chibi {
         val nx0 = (hcx - 0.5).toInt(); val ny0 = (mcy - 1.2).toInt()
         val noseC = when {
             style.noseCustom != null -> style.noseCustom
-            style.noseColor == NoseColor.AUTO -> if (cat) Argb.mix(PINK, 0xFFB0506A.toInt(), 0.35) else NOSE_DOG
+            style.noseColor == NoseColor.AUTO -> if (cat || rabbit) Argb.mix(PINK, 0xFFB0506A.toInt(), 0.35) else NOSE_DOG
             else -> style.noseColor.argb
         }
         val noseCells: List<Pair<Int, Int>> = when (style.nose) {
@@ -569,7 +612,7 @@ object Chibi {
             NoseShape.WIDE -> listOf(-2 to 0, -1 to 0, 0 to 0, 1 to 0, 2 to 0, -1 to 1, 0 to 1, 1 to 1)
         }
         for ((dx, dy) in noseCells) put(nx0 + dx, ny0 + dy, noseC, HEAD)
-        if (!cat && style.nose == NoseShape.AUTO && style.noseColor == NoseColor.AUTO) put(nx0 - 1, ny0, 0xFF6A5560.toInt(), HEAD) // tiny shine on the nose
+        if (!cat && !rabbit && style.nose == NoseShape.AUTO && style.noseColor == NoseColor.AUTO) put(nx0 - 1, ny0, 0xFF6A5560.toInt(), HEAD) // tiny shine on the nose
         else if (style.nose != NoseShape.AUTO || style.noseColor != NoseColor.AUTO || style.noseCustom != null) put(nx0 - 1, ny0 + (if (style.nose == NoseShape.HEART) -1 else 0), Argb.mix(noseC, WHITE, 0.3), HEAD)
         val mouthC = headRamp(nx0, ny0 + 2).deep
         val my = ny0 + (if (style.nose == NoseShape.BUTTON || style.nose == NoseShape.WIDE) 3 else 2)

@@ -257,12 +257,15 @@ check("the owner lists their cards with the message count", s == 200 and len(min
 s, _ = rpc(d, "remove_pet_card", {"p_local_id": "pet-1"})
 s2, pub = call("POST", "/rest/v1/rpc/pet_card_public", {"p_id": cid})
 check("removing the card takes the page down", s in (200, 204) and pub == [], (s, pub))
+s, bun = rpc(d, "upsert_pet_card", {"p_local_id": "pet-bun", "p_name": "Bun", "p_species": "RABBIT", "p_ears": "FLOPPY", "p_look": LOOK})
+check("a rabbit gets an ID card too (0019)", s == 200 and isinstance(bun, str), (s, bun))
+rpc(d, "remove_pet_card", {"p_local_id": "pet-bun"})
 
 # Pals (0012): a code, a circle of at most 20, each other's pixel pets, treats.
 s, code = rpc(a, "my_pal_code")
 s2, code2 = rpc(a, "my_pal_code")
 check("an owner gets one six-character pal code", s == 200 and isinstance(code, str) and len(code) == 6 and code2 == code, (s, code, code2))
-s, _ = rpc(a, "set_pal_pets", {"p_pets": [{"local_id": "p1", "name": "Mochi", "species": "CAT", "ears": "POINTY", "look": LOOK}, {"local_id": "p2", "name": "G4g0", "species": "DOG", "ears": "FLOPPY", "look": LOOK}]})
+s, _ = rpc(a, "set_pal_pets", {"p_pets": [{"local_id": "p1", "name": "Mochi", "species": "RABBIT", "ears": "POINTY", "look": LOOK}, {"local_id": "p2", "name": "G4g0", "species": "DOG", "ears": "FLOPPY", "look": LOOK}]})
 check("an owner sets the pets their pals see", s in (200, 204), s)
 s, who = rpc(d, "add_pal_tracked", {"p_code": " " + code.lower() + " "})
 check("a friend adds them by code (any case, spaces ignored)", s == 200 and who == a["id"], (s, who))
@@ -273,6 +276,7 @@ check("an unknown code is refused (no pal, and the miss is counted)", s == 200 a
 s, pals = rpc(d, "pals_list")
 check("pals see each other's pixel pets, names filtered, never a location",
       s == 200 and len(pals) == 2 and {p["name"] for p in pals} == {"Mochi", "A dog"} and all(p["pal_id"] == a["id"] for p in pals) and "cell_id" not in pals[0], (s, pals))
+check("a rabbit stays a rabbit for pals (0019)", any(p["name"] == "Mochi" and p["species"] == "RABBIT" for p in (pals or [])), pals)
 s, pals_a = rpc(a, "pals_list")
 check("the other side sees the pal too (with no pets yet)", s == 200 and len(pals_a) == 1 and pals_a[0]["pal_id"] == d["id"] and pals_a[0]["pet_id"] is None, (s, pals_a))
 s, _ = rpc(d, "send_treat", {"p_to_user": a["id"], "p_to_pet": "p1", "p_from_pet": "Kape", "p_kind": "ball"})

@@ -8,7 +8,7 @@ package com.pawpixel.core
  * is derived with a timezone offset supplied by the platform — see [LocalClock].
  */
 
-enum class Species(val label: String) { DOG("Dog"), CAT("Cat"), OTHER("Other") }
+enum class Species(val label: String) { DOG("Dog"), CAT("Cat"), RABBIT("Rabbit"), OTHER("Other") }
 
 enum class TaskKind(
     val label: String,
@@ -227,7 +227,7 @@ data class AppState(
 /** Suggested defaults when a user adds a task, per kind and species. */
 object TaskDefaults {
     fun slotsFor(kind: TaskKind, species: Species): List<Int> = when (kind) {
-        TaskKind.FEED -> if (species == Species.CAT) listOf(7 * 60, 18 * 60) else listOf(7 * 60, 17 * 60 + 30)
+        TaskKind.FEED -> if (species == Species.CAT || species == Species.RABBIT) listOf(7 * 60, 18 * 60) else listOf(7 * 60, 17 * 60 + 30)
         TaskKind.WATER -> listOf(8 * 60)
         TaskKind.WALK -> listOf(6 * 60 + 30, 17 * 60)
         TaskKind.PLAY -> listOf(19 * 60)
@@ -254,12 +254,15 @@ object TaskDefaults {
     /** The health care suggested for a species, for the "add health reminders" shortcut. */
     fun healthKindsFor(species: Species): List<TaskKind> = when (species) {
         Species.DOG, Species.CAT -> listOf(TaskKind.VACCINE, TaskKind.DEWORM, TaskKind.FLEA_TICK, TaskKind.VET)
+        Species.RABBIT -> listOf(TaskKind.VACCINE, TaskKind.VET)
         Species.OTHER -> listOf(TaskKind.VET)
     }
 
     fun kindsFor(species: Species): List<TaskKind> = when (species) {
         Species.DOG -> listOf(TaskKind.FEED, TaskKind.WALK, TaskKind.WATER)
         Species.CAT -> listOf(TaskKind.FEED, TaskKind.WATER, TaskKind.LITTER)
+        // Hay and greens, water, and the litter tray most house rabbits use.
+        Species.RABBIT -> listOf(TaskKind.FEED, TaskKind.WATER, TaskKind.LITTER)
         Species.OTHER -> listOf(TaskKind.FEED, TaskKind.WATER)
     }
 }

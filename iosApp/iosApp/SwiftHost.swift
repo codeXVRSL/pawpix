@@ -111,7 +111,11 @@ final class SwiftHost: NSObject, IosHost {
                     }
                     let cat = score(["cat", "kitten", "tabby", "domestic_cat"])
                     let dog = score(["dog", "puppy", "domestic_dog"])
-                    if cat >= 0.4 && cat >= dog { answer = "CAT" } else if dog >= 0.4 && dog > cat { answer = "DOG" }
+                    let rabbit = score(["rabbit", "bunny"])
+                    // The most confident of the three, when it's confident enough.
+                    if cat >= 0.4 && cat >= dog && cat >= rabbit { answer = "CAT" }
+                    else if dog >= 0.4 && dog > cat && dog >= rabbit { answer = "DOG" }
+                    else if rabbit >= 0.4 && rabbit > cat && rabbit > dog { answer = "RABBIT" }
                 }
             }
             DispatchQueue.main.async { completion.onResult(token: answer, error: nil) }

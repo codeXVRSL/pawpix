@@ -125,5 +125,17 @@ internal object FilScreens9 {
         "Winter walkies" to "Lakad ng Disyembre",
         "January" to "Enero", "February" to "Pebrero", "March" to "Marso", "April" to "Abril", "May" to "Mayo", "June" to "Hunyo",
         "July" to "Hulyo", "August" to "Agosto", "September" to "Setyembre", "October" to "Oktubre", "November" to "Nobyembre", "December" to "Disyembre",
+        // Rabbits
+        "Rabbit" to "Kuneho", "rabbit" to "kuneho", "Rabbit body" to "Katawang kuneho",
+        "Cat, dog or rabbit? Tap one." to "Pusa, aso, o kuneho? Pumili ng isa.",
+        "Drawn as a rabbit." to "Iginuhit bilang kuneho.",
+        "Looks like a rabbit. Not right? Tap Cat or Dog." to "Mukhang kuneho. Mali? I-tap ang Pusa o Aso.",
+        "the usual rabbit vaccine advice" to "ang karaniwang payo sa bakuna ng kuneho",
+        "Schedules are typical for adult rabbits. Your vet's advice comes first: tap Edit to change them." to
+            "Karaniwang iskedyul ito para sa adult na kuneho. Mas mahalaga ang payo ng vet mo: i-tap ang Edit para baguhin.",
+        "Upright ears" to "Nakatayong tainga", "Lop ears" to "Lawlaw na tainga",
+        "Myxo-RHD vaccine" to "Myxo-RHD na bakuna", "RHDV2 vaccine" to "RHDV2 na bakuna", "RHD vaccine" to "RHD na bakuna",
+        "It feels like {0}° out. Rabbits overheat easily: keep {1} somewhere cool and shady, with fresh water." to
+            "Parang {0}° sa labas. Madaling mainitan ang mga kuneho: ilagay si {1} sa malamig at malilim na lugar, may sariwang tubig.",
     )
 }

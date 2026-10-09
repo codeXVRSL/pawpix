@@ -248,9 +248,9 @@ function chips(el, items, current, onPick) {
   }
 }
 chips($("moods"), MOODS, mood, (m) => { mood = m; pet && pet.setMood(m); updateCaption(); });
-function speciesChips() { chips($("species"), [["DOG","Dog body"],["CAT","Cat body"]], species, (v) => { species = v; ears = ""; rebuild(); }); }
+function speciesChips() { chips($("species"), [["DOG","Dog body"],["CAT","Cat body"],["RABBIT","Rabbit body"]], species, (v) => { species = v; ears = ""; rebuild(); }); }
 speciesChips();
-function earChips() { chips($("ears"), [["POINTY","Pointy ears"],["FLOPPY","Floppy ears"]], pet ? pet.ears : ears, (v) => { ears = v; rebuild(); }); }
+function earChips() { const bun = species === "RABBIT"; chips($("ears"), [["POINTY", bun ? "Upright ears" : "Pointy ears"],["FLOPPY", bun ? "Lop ears" : "Floppy ears"]], pet ? pet.ears : ears, (v) => { ears = v; rebuild(); }); }
 
 function updateCaption() {
   $("petName").textContent = isSample ? petName + " (sample)" : (petName || "Your pet");

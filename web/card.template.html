@@ -69,7 +69,7 @@ async function load() {
   if (!rows.length) { document.getElementById("gone").hidden = false; return; }
   const a = rows[0];
   document.getElementById("name").textContent = a.name;
-  document.getElementById("meta").textContent = a.species === "DOG" ? "Dog" : a.species === "CAT" ? "Cat" : "Pet";
+  document.getElementById("meta").textContent = a.species === "DOG" ? "Dog" : a.species === "CAT" ? "Cat" : a.species === "RABBIT" ? "Rabbit" : "Pet";
   document.getElementById("note").textContent = a.note || "";
   document.getElementById("chip").textContent = a.microchip ? "Microchip " + a.microchip : "";
   drawLook(a.look);

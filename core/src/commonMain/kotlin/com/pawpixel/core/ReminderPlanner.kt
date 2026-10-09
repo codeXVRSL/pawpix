@@ -144,7 +144,7 @@ object ReminderPlanner {
      */
     fun rabiesMonth(state: AppState, nowMs: Long, clock: LocalClock, country: String = HealthPlan.homeCountry): Reminder? {
         if (!HealthPlan.isPhilippines(country)) return null // a Philippine month
-        val pet = state.pets.firstOrNull { it.species != Species.OTHER && !it.remembered } ?: return null
+        val pet = state.pets.firstOrNull { (it.species == Species.DOG || it.species == Species.CAT) && !it.remembered } ?: return null // the shots are for dogs and cats
         val (year, _, _) = LocalClock.civil(clock.dayIndex(nowMs))
         val at = listOf(year, year + 1).map { clock.at(LocalClock.dayOf(it, 3, 1), RABIES_MONTH_MINUTE) }.first { it > nowMs }
         if (at - nowMs > RABIES_MONTH_LEAD_MS) return null

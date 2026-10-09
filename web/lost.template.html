@@ -44,7 +44,7 @@ async function load() {
   document.getElementById("loading").hidden = true;
   if (!rows.length) { document.getElementById("gone").hidden = false; return; }
   const a = rows[0];
-  const kind = a.species === "DOG" ? "dog" : a.species === "CAT" ? "cat" : "pet";
+  const kind = a.species === "DOG" ? "dog" : a.species === "CAT" ? "cat" : a.species === "RABBIT" ? "rabbit" : "pet";
   const t = document.getElementById("title"); t.textContent = (a.found ? "FOUND: " : "LOST " + kind.toUpperCase() + ": ") + a.name; if (a.found) t.className = "found";
   document.getElementById("meta").textContent = "Last seen " + new Date(a.last_seen_at).toLocaleString();
   document.getElementById("description").textContent = a.description || "";

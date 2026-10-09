@@ -112,8 +112,32 @@ object HealthPlan {
     /** The usual items for a pet of [species] on a phone in [country] ("" = the Philippines). */
     fun items(species: Species, country: String = homeCountry): List<Item> = itemsIn(species, regionOf(country))
 
+    /**
+     * Rabbits: rabbit haemorrhagic disease (RHD, and the newer RHDV2) and, in Europe, myxomatosis.
+     * - [UK]: the combined Myxo-RHD vaccine yearly, from 5 weeks (BSAVA, RWAF).
+     * - [NORTH_AMERICA]: RHDV2, two doses three weeks apart from 4 weeks, then yearly.
+     * - [AUSTRALIA] and [WORLD]: an RHD vaccine yearly, from 10 weeks; myxomatosis vaccines aren't sold everywhere.
+     * - [PH]: RHD vaccines are hard to find, so a yearly check-up only.
+     * A first check-up at 8 weeks everywhere. No rabies, deworming or flea items: rabbits need their own products, from the vet.
+     * https://rwaf.org.uk/rabbit-care/health/vaccinations/ , https://www.aphis.usda.gov/livestock-poultry-disease/rabbit/rhdv2
+     */
+    val RHD = HealthSchedule(firstAgeDays = 10 * W)
+    val MYXO_RHD = HealthSchedule(firstAgeDays = 5 * W)
+    val RHDV2 = HealthSchedule(firstAgeDays = 4 * W, step = 3 * W, completeAt = 7 * W)
+
+    private fun rabbitItems(region: Region): List<Item> {
+        val checkup = Item(TaskKind.VET, "Vet check-up", 365, FROM_8_WEEKS, KEY_CHECKUP)
+        return when (region) {
+            Region.PH -> listOf(checkup)
+            Region.UK -> listOf(Item(TaskKind.VACCINE, "Myxo-RHD vaccine", 365, MYXO_RHD, KEY_CORE), checkup)
+            Region.NORTH_AMERICA -> listOf(Item(TaskKind.VACCINE, "RHDV2 vaccine", 365, RHDV2, KEY_CORE), checkup)
+            Region.AUSTRALIA, Region.WORLD -> listOf(Item(TaskKind.VACCINE, "RHD vaccine", 365, RHD, KEY_CORE), checkup)
+        }
+    }
+
     fun itemsIn(species: Species, region: Region): List<Item> {
         if (species == Species.OTHER) return listOf(Item(TaskKind.VET, "Vet check-up", 365, key = KEY_CHECKUP))
+        if (species == Species.RABBIT) return rabbitItems(region)
         val deworm = Item(TaskKind.DEWORM, "Deworming", 90, if (species == Species.DOG) DEWORM_DOG else DEWORM_CAT, KEY_DEWORM)
         val fleaTick = Item(TaskKind.FLEA_TICK, "Flea & tick prevention", 30, FROM_8_WEEKS, KEY_FLEA_TICK)
         val heartworm = Item(TaskKind.FLEA_TICK, "Heartworm prevention", 30, FROM_8_WEEKS, KEY_HEARTWORM)
@@ -189,6 +213,7 @@ object HealthPlan {
             Item(TaskKind.FLEA_TICK, "Tick & flea prevention", 30, FROM_8_WEEKS, KEY_FLEA_TICK),
             Item(TaskKind.VET, "Vet check-up", 365, FROM_8_WEEKS, KEY_CHECKUP),
         )
+        Species.RABBIT -> rabbitItems(Region.PH)
         Species.OTHER -> listOf(Item(TaskKind.VET, "Vet check-up", 365, key = KEY_CHECKUP))
     }
 

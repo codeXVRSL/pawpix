@@ -10,6 +10,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
@@ -89,6 +91,7 @@ private class Source(val photo: PixelImage, val mask: Mask?) {
  * markings go on the pet), chooses dog or cat body and ear shape, and sees the pet come alive.
  * Also used to edit an existing pet's look.
  */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun SpriteMakerScreen(app: AppScope, state: AppState, existingPetId: String?) {
     val existing = existingPetId?.let { state.pet(it) }
@@ -266,22 +269,24 @@ fun SpriteMakerScreen(app: AppScope, state: AppState, existingPetId: String?) {
                 BirthdayRow(birthDay, app.repo.clock.dayIndex(app.now)) { askBirthday = true }
             }
 
-            // Cat or dog, first: a cat drawn as a dog is the one mistake that spoils everything.
+            // Cat, dog or rabbit, first: a cat drawn as a dog is the one mistake that spoils everything.
             SoftCard(Modifier.fillMaxWidth(), tone = if (species == null) Tone.Accent else Tone.Surface) {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text(
                         when {
                             detecting -> tr("Looking at the photo…")
-                            species == null -> tr("Is this a cat or a dog? Tap one.")
+                            species == null -> tr("Cat, dog or rabbit? Tap one.")
                             detected == species && detected == Species.CAT -> tr("Looks like a cat. Not right? Tap Dog.")
                             detected == species && detected == Species.DOG -> tr("Looks like a dog. Not right? Tap Cat.")
+                            detected == species && detected == Species.RABBIT -> tr("Looks like a rabbit. Not right? Tap Cat or Dog.")
                             species == Species.CAT -> tr("Drawn as a cat.")
+                            species == Species.RABBIT -> tr("Drawn as a rabbit.")
                             else -> tr("Drawn as a dog.")
                         },
                         style = MaterialTheme.typography.titleSmall,
                     )
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        listOf(Species.CAT to "Cat body", Species.DOG to "Dog body").forEach { (sp, label) ->
+                    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        listOf(Species.CAT to "Cat body", Species.DOG to "Dog body", Species.RABBIT to "Rabbit body").forEach { (sp, label) ->
                             ChoiceChip(species == sp, { species = sp }, tr(label))
                         }
                     }
@@ -289,7 +294,11 @@ fun SpriteMakerScreen(app: AppScope, state: AppState, existingPetId: String?) {
             }
             GroupLabel(tr("Ears"))
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Ears.entries.forEach { e -> ChoiceChip(art.ears == e, { ears = e }, tr(e.label)) }
+                // A rabbit's ears stand up or hang down (a lop).
+                Ears.entries.forEach { e ->
+                    val label = if (art.species != Species.RABBIT) e.label else if (e == Ears.POINTY) "Upright ears" else "Lop ears"
+                    ChoiceChip(art.ears == e, { ears = e }, tr(label))
+                }
             }
 
             source?.takeIf { upToDate }?.let { src ->

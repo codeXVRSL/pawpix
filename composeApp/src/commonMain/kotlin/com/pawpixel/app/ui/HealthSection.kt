@@ -78,7 +78,8 @@ fun HealthSection(app: AppScope, state: AppState, pet: Pet) {
     if (health.isNotEmpty()) {
         GhostPill(tr("+ Add health item")) { app.navigate(Screen.EditTask(pet.id, null, health = true)) }
         val region = HealthPlan.regionOf(app.repo.platform.systemCountry())
-        val source = when (region) {
+        val rabbit = pet.species == Species.RABBIT
+        val source = if (rabbit && region != HealthPlan.Region.PH) tr("the usual rabbit vaccine advice") else when (region) {
             HealthPlan.Region.PH -> null
             HealthPlan.Region.NORTH_AMERICA -> tr("the AAHA and AAFP vaccination guidelines")
             HealthPlan.Region.UK -> tr("the BSAVA vaccination guidance")
@@ -92,11 +93,13 @@ fun HealthSection(app: AppScope, state: AppState, pet: Pet) {
                 HealthPlan.isYoung(pet.birthDay, today) ->
                     tr("The first-year plan follows {1}. If {0} missed a dose, ask your vet how to catch up; tap Edit to change anything.", pet.name, source)
                 source == null -> tr("Schedules are typical for adult pets in the Philippines. Your vet's advice comes first: tap Edit to change them.")
+                rabbit -> tr("Schedules are typical for adult rabbits. Your vet's advice comes first: tap Edit to change them.")
                 else -> tr("Schedules are typical for adult dogs and cats. Your vet's advice comes first: tap Edit to change them.")
             },
         )
     }
-    if (pet.species != Species.OTHER && HealthPlan.isPhilippines(app.repo.platform.systemCountry())) PhilippineInfoCard(app)
+    // Anti-rabies rules are for dogs and cats.
+    if ((pet.species == Species.DOG || pet.species == Species.CAT) && HealthPlan.isPhilippines(app.repo.platform.systemCountry())) PhilippineInfoCard(app)
 
     if (askBirthday) {
         BirthdayDialog(

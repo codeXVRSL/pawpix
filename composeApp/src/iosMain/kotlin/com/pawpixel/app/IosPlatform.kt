@@ -184,7 +184,7 @@ class IosPlatform(private val host: IosHost) : Platform {
     override suspend fun classifyPet(photo: PixelImage): Species? = suspendCancellableCoroutine { cont ->
         host.classifyPet(RawImage.encode(photo).toNSData(), object : TokenCallback {
             override fun onResult(token: String?, error: String?) {
-                if (cont.isActive) cont.resume(when (token) { "CAT" -> Species.CAT; "DOG" -> Species.DOG; else -> null })
+                if (cont.isActive) cont.resume(when (token) { "CAT" -> Species.CAT; "DOG" -> Species.DOG; "RABBIT" -> Species.RABBIT; else -> null })
             }
         })
     }

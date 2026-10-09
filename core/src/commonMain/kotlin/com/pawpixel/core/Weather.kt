@@ -42,9 +42,11 @@ object WeatherAdvice {
 
     /** Something worth saying about the weather, or null when it's just a day. */
     fun advice(w: Weather, petName: String, species: Species): String? {
-        val dog = species != Species.CAT
+        val dog = species == Species.DOG
         return when {
             w.storm -> tr("Thunder outside. {0} may want to hide: stay close and keep the doors shut.", petName)
+            // Rabbits can't sweat or pant well: heatstroke is a real risk from the high 20s.
+            species == Species.RABBIT && w.feelsC >= 28 -> tr("It feels like {0}° out. Rabbits overheat easily: keep {1} somewhere cool and shady, with fresh water.", w.feelsC.toInt(), petName)
             w.hotPavement -> if (dog) tr("{0}° out: the pavement burns paws. Walk {1} early or after sunset, and bring water.", w.tempC.toInt(), petName)
                 else tr("{0}° out. Keep {1} in the shade with fresh water.", w.tempC.toInt(), petName)
             w.feelsC >= 35 -> tr("It feels like {0}° today. Water and shade for {1}, and no midday walks.", w.feelsC.toInt(), petName)

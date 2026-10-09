@@ -167,5 +167,10 @@ internal object PtScreens {
         "{0}'s first birthday" to "Primeiro aniversário de {0}", "{0} turns {1}" to "{0} faz {1} anos",
         "One year since {0} came home" to "Um ano desde que {0} chegou em casa", "{0} years since {1} came home" to "{0} anos desde que {1} chegou em casa",
         "{0} years together!" to "{0} anos juntos!", "One year together!" to "Um ano juntos!",
+        // Rabbits
+        "Rabbit" to "Coelho", "rabbit" to "coelho",
+        "Myxo-RHD vaccine" to "Vacina Myxo-RHD", "RHDV2 vaccine" to "Vacina RHDV2", "RHD vaccine" to "Vacina RHD",
+        "It feels like {0}° out. Rabbits overheat easily: keep {1} somewhere cool and shady, with fresh water." to
+            "Sensação de {0}° lá fora. Coelhos sofrem muito com o calor: deixe {1} num lugar fresco e com sombra, com água fresca.",
     )
 }

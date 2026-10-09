@@ -167,5 +167,10 @@ internal object EsScreens {
         "{0}'s first birthday" to "Primer cumpleaños de {0}", "{0} turns {1}" to "{0} cumple {1}",
         "One year since {0} came home" to "Un año desde que {0} llegó a casa", "{0} years since {1} came home" to "{0} años desde que {1} llegó a casa",
         "{0} years together!" to "¡{0} años juntos!", "One year together!" to "¡Un año juntos!",
+        // Rabbits
+        "Rabbit" to "Conejo", "rabbit" to "conejo",
+        "Myxo-RHD vaccine" to "Vacuna Myxo-RHD", "RHDV2 vaccine" to "Vacuna RHDV2", "RHD vaccine" to "Vacuna RHD",
+        "It feels like {0}° out. Rabbits overheat easily: keep {1} somewhere cool and shady, with fresh water." to
+            "Se sienten {0}° afuera. Los conejos sufren mucho el calor: deja a {1} en un lugar fresco y a la sombra, con agua fresca.",
     )
 }

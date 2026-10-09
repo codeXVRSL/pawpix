@@ -5,7 +5,6 @@ internal object FilScreens7 {
     val map: Map<String, String> = mapOf(
         // The maker: cat or dog, read from the photo
         "Looking at the photo…" to "Tinitingnan ang litrato…",
-        "Is this a cat or a dog? Tap one." to "Pusa ba ito o aso? Pumili ng isa.",
         "Looks like a cat. Not right? Tap Dog." to "Mukhang pusa. Mali? I-tap ang Aso.",
         "Looks like a dog. Not right? Tap Cat." to "Mukhang aso. Mali? I-tap ang Pusa.",
         "Drawn as a cat." to "Iginuhit bilang pusa.",

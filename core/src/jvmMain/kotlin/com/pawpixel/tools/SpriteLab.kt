@@ -36,7 +36,7 @@ fun main(args: Array<String>) {
         val kv = it.removePrefix("--").split("=", limit = 2)
         kv[0] to kv.getOrElse(1) { "true" }
     }
-    val species = if (flags["species"] == "cat") Species.CAT else Species.DOG
+    val species = when (flags["species"]) { "cat" -> Species.CAT; "rabbit" -> Species.RABBIT; else -> Species.DOG }
     val settings = SpriteSettings(
         size = flags["size"]?.toInt() ?: 48,
         colors = flags["colors"]?.toInt() ?: 12,

@@ -117,7 +117,7 @@ class AndroidPlatform(private val context: Context) : Platform {
 
     /**
      * ML Kit's image labeler (through Play services; its model downloads once) names what's in the
-     * photo ("Cat", "Dog", ...). The better of the two wins when it's confident enough; otherwise,
+     * photo ("Cat", "Dog", "Rabbit", ...). The best of the three wins when it's confident enough; otherwise,
      * or while the model isn't there yet, the owner is asked.
      */
     override suspend fun classifyPet(photo: PixelImage): Species? {
@@ -132,10 +132,12 @@ class AndroidPlatform(private val context: Context) : Platform {
                     .addOnSuccessListener { labels ->
                         val cat = labels.firstOrNull { it.text.equals("Cat", true) }?.confidence ?: 0f
                         val dog = labels.firstOrNull { it.text.equals("Dog", true) }?.confidence ?: 0f
-                        log("Pet labels: cat $cat, dog $dog, all ${labels.take(5).joinToString { it.text + " " + "%.2f".format(it.confidence) }}")
+                        val rabbit = labels.firstOrNull { it.text.equals("Rabbit", true) || it.text.equals("Bunny", true) }?.confidence ?: 0f
+                        log("Pet labels: cat $cat, dog $dog, rabbit $rabbit, all ${labels.take(5).joinToString { it.text + " " + "%.2f".format(it.confidence) }}")
                         cont.resume(when {
-                            cat >= 0.4f && cat >= dog -> Species.CAT
-                            dog >= 0.4f && dog > cat -> Species.DOG
+                            cat >= 0.4f && cat >= dog && cat >= rabbit -> Species.CAT
+                            dog >= 0.4f && dog > cat && dog >= rabbit -> Species.DOG
+                            rabbit >= 0.4f && rabbit > cat && rabbit > dog -> Species.RABBIT
                             else -> null
                         })
                     }

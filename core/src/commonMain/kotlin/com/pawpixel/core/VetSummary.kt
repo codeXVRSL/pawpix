@@ -12,7 +12,7 @@ object VetSummary {
     fun text(state: AppState, pet: Pet, nowMs: Long, clock: LocalClock, microchip: String? = null): String {
         val today = clock.dayIndex(nowMs)
         val sb = StringBuilder()
-        val kind = when (pet.species) { Species.DOG -> tr("Dog"); Species.CAT -> tr("Cat"); else -> tr("Pet") }
+        val kind = when (pet.species) { Species.DOG -> tr("Dog"); Species.CAT -> tr("Cat"); Species.RABBIT -> tr("Rabbit"); else -> tr("Pet") }
         sb.appendLine(tr("{0} · {1}", pet.name, kind))
         pet.birthDay?.let { sb.appendLine(tr("Born {0} ({1})", LocalClock.shortDate(it), HealthPlan.ageLabel(it, today))) }
         microchip?.takeIf { it.isNotBlank() }?.let { sb.appendLine(tr("Microchip {0}", it)) }

@@ -239,7 +239,7 @@ suspend fun shrinkPhoto(platform: Platform, bytes: ByteArray, maxBytes: Int, lon
 
 /** The alert as text for Messenger, Facebook or a flyer, with a map link to the spot and the share page. */
 fun lostShareText(name: String, species: Species, description: String, whenText: String, spot: Pair<Double, Double>?, alertId: String?): String {
-    val kind = when (species) { Species.DOG -> tr("dog"); Species.CAT -> tr("cat"); else -> tr("pet") }
+    val kind = when (species) { Species.DOG -> tr("dog"); Species.CAT -> tr("cat"); Species.RABBIT -> tr("rabbit"); else -> tr("pet") }
     val sb = StringBuilder(tr("LOST {0}: {1}.", kind.uppercase(), name))
     if (description.isNotBlank()) sb.append(" ").append(description.trim())
     sb.append(" ").append(tr("Last seen {0}.", whenText))

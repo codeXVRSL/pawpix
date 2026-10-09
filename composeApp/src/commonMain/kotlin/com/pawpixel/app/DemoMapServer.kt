@@ -333,7 +333,7 @@ class DemoMapServer(private val nowMs: () -> Long) : Http {
         /** Settings that route the map client to this server; the "test account" sign-in skips Google. */
         val SETTINGS = MapSettings("https://demo.pawpixel.local", "demo", "", "", "", testEmail = "demo@pawpixel.app", testPassword = "demo")
         private val PETS = listOf(
-            Triple("Biscuit", "DOG", "FLOPPY"), Triple("Tala", "CAT", "POINTY"), Triple("Mochi", "CAT", "POINTY"), Triple("Kape", "DOG", "FLOPPY"),
+            Triple("Biscuit", "DOG", "FLOPPY"), Triple("Tala", "CAT", "POINTY"), Triple("Mochi", "RABBIT", "POINTY"), Triple("Kape", "DOG", "FLOPPY"),
             Triple("Luna", "CAT", "POINTY"), Triple("Bantay", "DOG", "FLOPPY"), Triple("Choco", "DOG", "FLOPPY"), Triple("Ube", "CAT", "POINTY"), Triple("Mingming", "CAT", "POINTY"),
         )
         private val LOOKS = listOf(
