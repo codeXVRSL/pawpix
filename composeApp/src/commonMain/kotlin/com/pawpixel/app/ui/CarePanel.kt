@@ -210,6 +210,7 @@ private fun TaskRow(app: AppScope, state: AppState, pet: Pet, s: TaskStatus) {
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun RenameDialog(app: AppScope, pet: Pet, onClose: () -> Unit) {
     var name by remember { mutableStateOf(pet.name) }
@@ -224,7 +225,7 @@ fun RenameDialog(app: AppScope, pet: Pet, onClose: () -> Unit) {
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 OutlinedTextField(name, { name = it.take(24) }, label = { Text(tr("Name")) }, singleLine = true, shape = MaterialTheme.shapes.small)
-                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     Species.entries.forEach { sp -> ChoiceChip(species == sp, { species = sp }, tr(sp.label)) }
                 }
                 BirthdayRow(birthDay, today) { askBirthday = true }

@@ -433,15 +433,17 @@ object Chibi {
             else -> style.ears
         }
         val pointy = earStyle == EarStyle.POINTY || earStyle == EarStyle.BIG || earStyle == EarStyle.TUFTED || earStyle == EarStyle.FOLDED
-        if (rabbit && earStyle != EarStyle.FLOPPY) {
-            // Long upright ears from the top of the head, pink inside; laid back along the body when asleep.
+        val rabbitUpright = rabbit && earStyle != EarStyle.FLOPPY
+        /** A rabbit's long ears: upright behind the head, or laid back over it when asleep (drawn after the head then, or it would hide them). */
+        fun rabbitEars() {
             for (side in listOf(-1, 1)) {
                 val r = if (side < 0) earToneL else earToneR
                 val twitch = if (pose.earTwitch == side) 1.0 else 0.0
-                val bx = hcx + side * 3.4; val by = hcy - hry + 2.0
+                val bx = hcx + side * 3.4; val by = hcy - hry + (if (pose.lying) 1.2 else 2.0)
                 val len = when (earStyle) { EarStyle.BIG -> 9.8; EarStyle.ROUND -> 7.0; else -> 8.6 }
-                val tx = if (pose.lying) bx + 8.0 + side * 0.6 else bx + side * (1.4 + twitch * 1.2)
-                val ty = if (pose.lying) by + 1.6 + side * 0.9 else by - len + twitch * 0.8
+                // Asleep: both ears lie back, sloping down past the right of the head, the far one a little higher.
+                val tx = if (pose.lying) bx + len * (if (side < 0) 0.95 else 0.8) else bx + side * (1.4 + twitch * 1.2)
+                val ty = if (pose.lying) by + (if (side < 0) 1.4 else 4.2) else by - len + twitch * 0.8
                 val n = 14
                 for (k in 0..n) {
                     val t = k.toDouble() / n
@@ -452,6 +454,8 @@ object Chibi {
                         if (dx * dx + dy * dy > rad * rad) continue
                         val across = if (pose.lying) dy else dx * side // away from the ear's middle line
                         put(x, y, when {
+                            // Laid back, the ear shows its outside: a shade darker than the head, with a deep lower edge.
+                            pose.lying -> if (across > rad * 0.35) r.deep else if (side < 0) r.shade else r.mid
                             earStyle == EarStyle.FOLDED && t > 0.78 -> r.deep
                             earStyle == EarStyle.TUFTED && t > 0.9 -> r.deep
                             t in 0.18..0.86 && kotlin.math.abs(across) < rad * 0.42 -> Argb.mix(PINK, r.mid, 0.4)
@@ -461,6 +465,9 @@ object Chibi {
                     }
                 }
             }
+        }
+        if (rabbitUpright) {
+            if (!pose.lying) rabbitEars()
         } else if (pointy) {
             val big = earStyle == EarStyle.BIG
             val folded = earStyle == EarStyle.FOLDED
@@ -502,6 +509,7 @@ object Chibi {
 
         // ---------- Head ----------
         blob(hcx, hcy, hrx, hry, HEAD, e = headE) { x, y, nx, ny -> shaded(headRamp(x, y), nx, ny, hiAt = 0.8, shAt = 0.62, rim = 0.6) }
+        if (rabbitUpright && pose.lying) rabbitEars()
 
         // Muzzle: a lighter, rounder snout for dogs; a small soft one for cats.
         val mcy = hcy + 3.7

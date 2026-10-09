@@ -131,6 +131,7 @@ internal object FilScreens9 {
         "Drawn as a rabbit." to "Iginuhit bilang kuneho.",
         "Looks like a rabbit. Not right? Tap Cat or Dog." to "Mukhang kuneho. Mali? I-tap ang Pusa o Aso.",
         "the usual rabbit vaccine advice" to "ang karaniwang payo sa bakuna ng kuneho",
+        "Keep track of {0}'s vaccines and vet check-ups." to "Subaybayan ang mga bakuna at check-up ni {0} sa vet.",
         "Schedules are typical for adult rabbits. Your vet's advice comes first: tap Edit to change them." to
             "Karaniwang iskedyul ito para sa adult na kuneho. Mas mahalaga ang payo ng vet mo: i-tap ang Edit para baguhin.",
         "Upright ears" to "Nakatayong tainga", "Lop ears" to "Lawlaw na tainga",

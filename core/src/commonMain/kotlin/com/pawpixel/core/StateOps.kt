@@ -24,7 +24,7 @@ object StateOps {
         id = id,
         petId = pet.id,
         kind = kind,
-        title = kind.defaultTitle,
+        title = kind.titleFor(pet.species),
         slots = TaskDefaults.slotsFor(kind, pet.species),
         everyDays = TaskDefaults.everyDaysFor(kind),
         anchorDay = today,

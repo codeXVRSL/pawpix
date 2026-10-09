@@ -32,7 +32,10 @@ enum class TaskKind(
     VACCINE("Vaccine", "💉", "Vaccinated", health = true, defaultTitle = "Anti-rabies shot"),
     DEWORM("Deworming", "🪱", "Dewormed", health = true),
     FLEA_TICK("Tick & flea", "🛡️", "Gave tick & flea care", health = true, defaultTitle = "Tick & flea prevention"),
-    VET("Vet check-up", "🩺", "Saw the vet", health = true),
+    VET("Vet check-up", "🩺", "Saw the vet", health = true);
+
+    /** The suggested name for a [species]: rabbits get no rabies shot, so their new vaccine is just "Vaccine". */
+    fun titleFor(species: Species): String = if (this == VACCINE && species == Species.RABBIT) label else defaultTitle
 }
 
 data class Pet(

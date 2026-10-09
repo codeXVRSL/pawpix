@@ -18,6 +18,8 @@ data class HealthSchedule(
     val completeAt: Int = 0,
     /** How often while young, as (younger than this many days, every N days). Older: the item's own repeat. */
     val byAge: List<Pair<Int, Int>> = emptyList(),
+    /** A series also needs at least this many doses, whatever the age at the first (two leptospirosis or RHDV2 doses even for an adult). */
+    val minDoses: Int = 0,
 ) {
     val isSeries: Boolean get() = step > 0
 
@@ -104,8 +106,8 @@ object HealthPlan {
     val RABIES_12W = HealthSchedule(firstAgeDays = 12 * W)
     // One schedule per item name, whatever the region: household phones in different countries then compute the same due dates.
     /** Leptospirosis: two doses from 9 weeks, three weeks apart (AAHA allows 8 to 9 weeks on; BSAVA gives 8 and 12). */
-    val LEPTO = HealthSchedule(firstAgeDays = 9 * W, step = 3 * W, completeAt = 12 * W)
-    val FELV = HealthSchedule(firstAgeDays = 8 * W, step = 4 * W, completeAt = 12 * W)
+    val LEPTO = HealthSchedule(firstAgeDays = 9 * W, step = 3 * W, completeAt = 12 * W, minDoses = 2)
+    val FELV = HealthSchedule(firstAgeDays = 8 * W, step = 4 * W, completeAt = 12 * W, minDoses = 2)
     /** The UK puppy course: DHP at 8 and 12 weeks. */
     val UK_DOG = HealthSchedule(firstAgeDays = 8 * W, step = 4 * W, completeAt = 12 * W)
 
@@ -123,7 +125,7 @@ object HealthPlan {
      */
     val RHD = HealthSchedule(firstAgeDays = 10 * W)
     val MYXO_RHD = HealthSchedule(firstAgeDays = 5 * W)
-    val RHDV2 = HealthSchedule(firstAgeDays = 4 * W, step = 3 * W, completeAt = 7 * W)
+    val RHDV2 = HealthSchedule(firstAgeDays = 4 * W, step = 3 * W, completeAt = 7 * W, minDoses = 2)
 
     private fun rabbitItems(region: Region): List<Item> {
         val checkup = Item(TaskKind.VET, "Vet check-up", 365, FROM_8_WEEKS, KEY_CHECKUP)
@@ -247,7 +249,7 @@ object HealthPlan {
     fun due(s: HealthSchedule, birthDay: Long, given: List<Long>, everyDays: Int, addedDay: Long): Due {
         val days = given.distinct().sorted()
         val first = s.firstDay(birthDay)
-        val complete = s.isSeries && days.any { it - birthDay >= s.completeAt }
+        val complete = s.isSeries && days.size >= s.minDoses && days.any { it - birthDay >= s.completeAt }
         val every = everyDays.coerceAtLeast(1)
         val day = when {
             days.isEmpty() -> maxOf(first, addedDay)
@@ -259,7 +261,7 @@ object HealthPlan {
         // Doses still to go: this one, and every 'step' after it until one at completeAt or older.
         var left = 1
         var d = day
-        while (d - birthDay < s.completeAt) { d = nextInSeries(s, birthDay, d); left++ }
+        while (d - birthDay < s.completeAt || days.size + left < s.minDoses) { d = nextInSeries(s, birthDay, d); left++ }
         return Due(day, known, days.size + 1, days.size + left)
     }
 
@@ -274,7 +276,7 @@ object HealthPlan {
         if (!s.isSeries) return days.map { null }
         var done = false
         return days.mapIndexed { i, d ->
-            if (done) null else (i + 1).also { if (d - birthDay >= s.completeAt) done = true }
+            if (done) null else (i + 1).also { if (d - birthDay >= s.completeAt && i + 1 >= s.minDoses) done = true }
         }
     }
 

@@ -63,7 +63,8 @@ fun HealthSection(app: AppScope, state: AppState, pet: Pet) {
     TonalPill(tr("Vet visit summary"), icon = PixelIcons.STETHO) { app.navigate(Screen.PetSection(pet.id, "vet")) }
     if (health.isEmpty()) {
         Hint(
-            tr("Keep track of {0}'s anti-rabies shot, other vaccines, deworming, tick & flea care and vet check-ups.", pet.name) + " " +
+            (if (pet.species == Species.RABBIT) tr("Keep track of {0}'s vaccines and vet check-ups.", pet.name)
+            else tr("Keep track of {0}'s anti-rabies shot, other vaccines, deworming, tick & flea care and vet check-ups.", pet.name)) + " " +
                 tr("PawPixel reminds you a few days before each is due."),
         )
         PrimaryPill(tr("+ Add health reminders")) { if (pet.birthDay == null) askBirthday = true else app.launch { app.repo.addHealthCare(pet, null) } }

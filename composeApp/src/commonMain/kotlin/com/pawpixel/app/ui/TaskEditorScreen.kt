@@ -64,10 +64,10 @@ fun TaskEditorScreen(app: AppScope, state: AppState, pet: Pet, taskId: String?, 
     var confirmDelete by remember { mutableStateOf(false) }
 
     fun setKind(kind: TaskKind) {
-        val keepTitle = task.title != task.kind.defaultTitle
+        val keepTitle = task.title != task.kind.titleFor(pet.species)
         task = task.copy(
             kind = kind,
-            title = if (keepTitle) task.title else kind.defaultTitle,
+            title = if (keepTitle) task.title else kind.titleFor(pet.species),
             slots = if (original == null) TaskDefaults.slotsFor(kind, pet.species) else task.slots,
             everyDays = if (original == null) TaskDefaults.everyDaysFor(kind) else task.everyDays,
             adaptive = if (original == null) kind != TaskKind.MEDS else task.adaptive,

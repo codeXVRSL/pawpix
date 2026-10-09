@@ -52,6 +52,25 @@ class RabbitTest {
         assertEquals(s.tasks.size, HealthPlan.addTo(s, kit, now, clock, ids(), country = "GB").tasks.size)
     }
 
+    @Test fun rhdv2IsTwoDosesEvenWhenTheFirstIsLate() {
+        val bun = Pet("r1", "Bun", Species.RABBIT, 0, birthDay = today - 400)
+        val first = today - 2
+        val due = HealthPlan.due(HealthPlan.RHDV2, bun.birthDay!!, listOf(first), 365, today)
+        assertEquals(first + 21, due.day, "the second dose three weeks after the first")
+        assertEquals(2, due.dose); assertEquals(2, due.doses)
+        val after = HealthPlan.due(HealthPlan.RHDV2, bun.birthDay!!, listOf(first, first + 21), 365, today)
+        assertEquals(first + 21 + 365, after.day, "then yearly")
+        assertEquals(listOf(1, 2, null), HealthPlan.doseNumbers(HealthPlan.RHDV2, bun.birthDay!!, listOf(first, first + 21, first + 386)))
+        // An adult dog's first leptospirosis shot needs its booster too.
+        assertEquals(first + 21, HealthPlan.due(HealthPlan.LEPTO, today - 900, listOf(first), 365, today).day)
+    }
+
+    @Test fun aNewVaccineForARabbitIsNotAnAntiRabiesShot() {
+        val bun = Pet("r1", "Bun", Species.RABBIT, 0)
+        assertEquals("Vaccine", StateOps.defaultTask(bun, TaskKind.VACCINE, today, "t", now).title)
+        assertEquals("Anti-rabies shot", StateOps.defaultTask(bun.copy(species = Species.DOG), TaskKind.VACCINE, today, "t", now).title)
+    }
+
     @Test fun rabbitOwnersGetNoRabiesMonthNote() {
         val bun = Pet("r1", "Bun", Species.RABBIT, 0)
         val march = clock.at(LocalClock.dayOf(2027, 2, 20), 12 * 60)
@@ -84,6 +103,8 @@ class RabbitTest {
         assertTrue(topRow(upright) <= 1, "the ears reach the top of the canvas")
         assertTrue(topRow(lop) > topRow(upright) + 4, "lop ears hang down instead")
         assertNotEquals(cat.pixels.toList(), upright.pixels.toList())
+        // Asleep, the upright ears lie back over the head instead of vanishing behind it.
+        assertNotEquals(Chibi.sleeping(PetArt(look, Species.RABBIT)).pixels.toList(), Chibi.sleeping(PetArt(look, Species.RABBIT, Ears.FLOPPY)).pixels.toList())
         // Every frame draws (sleeping included), on the same canvas as cats and dogs.
         val set = Chibi.build(PetArt(look, Species.RABBIT))
         assertEquals(Chibi.build(PetArt(look, Species.CAT)).width, set.width)
