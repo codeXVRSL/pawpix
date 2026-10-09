@@ -72,22 +72,26 @@ TEST_PASSWORD=$(python3 -c "import secrets; print(secrets.token_urlsafe(12))")
 EXISTING=$(curl -sS -H "apikey: $SERVICE" -H "Authorization: Bearer $SERVICE" "$URL/auth/v1/admin/users?per_page=1000" \
   | json "next((u['id'] for u in d.get('users',[]) if u.get('email')=='$TEST_EMAIL'), '')")
 if [ -n "$EXISTING" ]; then
-  curl -sS -o /dev/null -X PUT -H "apikey: $SERVICE" -H "Authorization: Bearer $SERVICE" -H "Content-Type: application/json" \
+  curl -sS --fail -o /dev/null -X PUT -H "apikey: $SERVICE" -H "Authorization: Bearer $SERVICE" -H "Content-Type: application/json" \
     "$URL/auth/v1/admin/users/$EXISTING" -d "{\"password\":\"$TEST_PASSWORD\"}"
 else
-  curl -sS -o /dev/null -X POST -H "apikey: $SERVICE" -H "Authorization: Bearer $SERVICE" -H "Content-Type: application/json" \
+  curl -sS --fail -o /dev/null -X POST -H "apikey: $SERVICE" -H "Authorization: Bearer $SERVICE" -H "Content-Type: application/json" \
     "$URL/auth/v1/admin/users" -d "{\"email\":\"$TEST_EMAIL\",\"password\":\"$TEST_PASSWORD\",\"email_confirm\":true}"
 fi
 echo "   $TEST_EMAIL (password in pawpixel.properties)"
 
 echo "== Local build settings (pawpixel.properties, git-ignored)"
+# A re-run keeps what was added by hand (the Google client id, a tile provider).
+prev() { [ -f pawpixel.properties ] && grep -E "^$1=" pawpixel.properties | head -1 | cut -d= -f2- || true; }
+KEEP_GOOGLE=$(prev PAWPIXEL_GOOGLE_WEB_CLIENT_ID); KEEP_TILE_URL=$(prev PAWPIXEL_TILE_URL)
+KEEP_TILE_ATTR=$(prev PAWPIXEL_TILE_ATTRIBUTION); KEEP_TILE_KEY=$(prev PAWPIXEL_TILE_KEY)
 cat > pawpixel.properties <<EOF
 PAWPIXEL_SUPABASE_URL=$URL
 PAWPIXEL_SUPABASE_ANON_KEY=$ANON
-PAWPIXEL_GOOGLE_WEB_CLIENT_ID=
-PAWPIXEL_TILE_URL=
-PAWPIXEL_TILE_ATTRIBUTION=
-PAWPIXEL_TILE_KEY=${PAWPIXEL_TILE_KEY:-}
+PAWPIXEL_GOOGLE_WEB_CLIENT_ID=$KEEP_GOOGLE
+PAWPIXEL_TILE_URL=$KEEP_TILE_URL
+PAWPIXEL_TILE_ATTRIBUTION=$KEEP_TILE_ATTR
+PAWPIXEL_TILE_KEY=${PAWPIXEL_TILE_KEY:-$KEEP_TILE_KEY}
 PAWPIXEL_TEST_EMAIL=$TEST_EMAIL
 PAWPIXEL_TEST_PASSWORD=$TEST_PASSWORD
 EOF
@@ -97,13 +101,12 @@ if command -v gh >/dev/null && gh auth status >/dev/null 2>&1; then
   R=${REPO:+--repo $REPO}
   gh secret set PAWPIXEL_SUPABASE_URL $R --body "$URL"
   gh secret set PAWPIXEL_SUPABASE_ANON_KEY $R --body "$ANON"
-  gh secret set PAWPIXEL_TEST_EMAIL $R --body "$TEST_EMAIL"
-  gh secret set PAWPIXEL_TEST_PASSWORD $R --body "$TEST_PASSWORD"
   [ -n "${PAWPIXEL_TILE_KEY:-}" ] && gh secret set PAWPIXEL_TILE_KEY $R --body "$PAWPIXEL_TILE_KEY"
-  echo "   set. The next CI run's debug APK has the map on (signed in with the test account)."
+  echo "   set. The next CI run's APKs reach this server. Signing in needs PAWPIXEL_GOOGLE_WEB_CLIENT_ID too"
+  echo "   (docs/MAP_SETUP.md); the test account works in builds made on this computer (pawpixel.properties)."
 else
   echo "== GitHub secrets: gh isn't signed in. Add these in the repo's Settings → Secrets → Actions:"
-  echo "   PAWPIXEL_SUPABASE_URL, PAWPIXEL_SUPABASE_ANON_KEY, PAWPIXEL_TEST_EMAIL, PAWPIXEL_TEST_PASSWORD (values in pawpixel.properties)"
+  echo "   PAWPIXEL_SUPABASE_URL, PAWPIXEL_SUPABASE_ANON_KEY (values in pawpixel.properties), and PAWPIXEL_GOOGLE_WEB_CLIENT_ID for sign-in"
 fi
 
 cat <<EOF

@@ -26,7 +26,7 @@ class PetCardClient(private val api: SupabaseApi) {
         return Json.parse(api.rpc("upsert_pet_card", args)).str ?: throw MapException(MapException.Kind.SERVER, "No id")
     }
 
-    suspend fun remove(localId: String) { api.rpc("remove_pet_card", Json.obj("p_local_id" to localId)) }
+    suspend fun remove(localId: String) { api.rpc("remove_pet_card", Json.obj("p_local_id" to localId.take(40))) }
 
     suspend fun messages(cardId: String): List<CardMessage> =
         Json.parse(api.rpc("pet_card_messages_for", Json.obj("p_id" to cardId))).list.mapNotNull { m ->

@@ -7,13 +7,15 @@ SUPABASE_ACCESS_TOKEN=sbp_...  scripts/setup-map-server.sh --repo codeXVRSL/pawp
 ```
 
 The token comes from [supabase.com/dashboard/account/tokens](https://supabase.com/dashboard/account/tokens).
-The script creates the Supabase project (Singapore), applies every migration, makes a test account
-for debug builds, writes `pawpixel.properties` for local builds, and stores the values as GitHub
-secrets. The next CI run's **debug APK** then has the map switched on: it signs in with the test
-account (no Google needed), so you can join, see the pixel pets around you, RSVP and host walks
-right away. Walks owners propose wait in the dashboard for your approval (section 6).
+The script creates the Supabase project (Singapore), applies every migration, makes a test account,
+writes `pawpixel.properties` for local builds, and stores the server's address and public key as
+GitHub secrets. A debug build made **on your computer** signs in with the test account (no Google
+needed), so you can join, see the pixel pets around you, RSVP and host walks right away. The CI
+debug APK reaches the same server but carries no password (it's published on a public branch), so
+it signs in with Google once section 2 is done. Walks owners propose wait in the dashboard for your
+approval (section 6). Re-running the script keeps values you added to `pawpixel.properties` by hand.
 
-Google sign-in (section 2) is the one thing left by hand for store builds. The street map works
+Google sign-in (section 2) is the one thing left by hand. The street map works
 out of the box (section 4: free OpenFreeMap tiles, drawn as PawPixel's cartoon).
 
 Until a server exists, debug APKs offer **"Try the demo map"** on the map screen: pretend owners,

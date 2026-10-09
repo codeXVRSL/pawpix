@@ -26,7 +26,8 @@ jobs:
           mkdir -p diag
           ./gradlew :core:jvmTest --stacktrace 2>&1 | tee diag/gradle.txt
       - name: Publish the Gradle log (failures only)
-        if: failure()
+        # Pushes only: a pull request's token can't push (forks), and its ref would make stray branches.
+        if: failure() && github.event_name == 'push'
         run: |
           grep -n -E "^e: |error:|What went wrong|Exception|FAILED|\.kts:" diag/gradle.txt | head -n 200 > diag/errors.txt || true
           bash scripts/publish-results.sh diag ci-results/${{ github.ref_name == 'main' && 'core' || format('{0}-core', github.ref_name) }} "${{ github.token }}"
@@ -71,7 +72,7 @@ jobs:
           export SUPABASE_URL="$API_URL" ANON_KEY="${ANON_KEY:-$PUBLISHABLE_KEY}" SERVICE_KEY="${SERVICE_ROLE_KEY:-$SECRET_KEY}"
           ./gradlew :core:mapLive --quiet 2>&1 | tee backend-out/map_client_live.txt
       - name: Publish the log to the ci-results/backend branch
-        if: always()
+        if: always() && github.event_name == 'push'
         run: |
           mkdir -p backend-out
           docker logs supabase_db_pawpixel 2>&1 | tail -n 200 > backend-out/db-log.txt || true
@@ -96,7 +97,7 @@ jobs:
           PAWPIXEL_GOOGLE_WEB_CLIENT_ID: ${{ secrets.PAWPIXEL_GOOGLE_WEB_CLIENT_ID }}
           PAWPIXEL_TILE_URL: ${{ secrets.PAWPIXEL_TILE_URL }}
           PAWPIXEL_TILE_ATTRIBUTION: ${{ secrets.PAWPIXEL_TILE_ATTRIBUTION }}
-          PAWPIXEL_TILE_KEY: ${{ secrets.PAWPIXEL_TILE_KEY }}
+          # No tile key here either (a paid provider's key would ship in a public APK); the store build gets it.
           # No test-account sign-in here: this APK is published on a branch of a public repository, so it
           # signs in with Google like a release build. The end-to-end job bakes a throwaway account into its own build.
       - uses: actions/upload-artifact@v4
@@ -104,6 +105,7 @@ jobs:
       # Also on the ci-results/<branch>-apk branch (one commit, force-pushed), so the APK can be
       # fetched with git where the Actions artifact store can't be reached.
       - name: Publish the APK to the ci-results branch
+        if: github.event_name == 'push'
         run: |
           mkdir -p apk-out
           cp composeApp/build/outputs/apk/debug/*.apk apk-out/
@@ -138,6 +140,7 @@ jobs:
           PAWPIXEL_GOOGLE_WEB_CLIENT_ID: ${{ secrets.PAWPIXEL_GOOGLE_WEB_CLIENT_ID }}
           PAWPIXEL_TILE_URL: ${{ secrets.PAWPIXEL_TILE_URL }}
           PAWPIXEL_TILE_ATTRIBUTION: ${{ secrets.PAWPIXEL_TILE_ATTRIBUTION }}
+          PAWPIXEL_TILE_KEY: ${{ secrets.PAWPIXEL_TILE_KEY }}
         run: ./gradlew :composeApp:bundleRelease :composeApp:assembleRelease --stacktrace
       - name: Check native libraries are 16 KB aligned (Play requirement)
         run: |
@@ -213,7 +216,7 @@ jobs:
           disable-animations: true
           script: bash scripts/android-e2e.sh e2e-out
       - name: Publish screenshots and logs to the ci-results/android branch
-        if: always()
+        if: always() && github.event_name == 'push'
         run: bash scripts/publish-results.sh e2e-out ci-results/${{ github.ref_name == 'main' && 'android' || format('{0}-android', github.ref_name) }} "${{ github.token }}"
       - uses: actions/upload-artifact@v4
         if: always()
@@ -277,5 +280,5 @@ jobs:
           cat ios-out/steps.txt 2>/dev/null; tail -n 30 ios-out/test-summary.txt
           exit $code
       - name: Publish screenshots and logs to the ci-results/ios branch
-        if: always()
+        if: always() && github.event_name == 'push'
         run: bash scripts/publish-results.sh ios-out ci-results/${{ github.ref_name == 'main' && 'ios' || format('{0}-ios', github.ref_name) }} "${{ github.token }}"

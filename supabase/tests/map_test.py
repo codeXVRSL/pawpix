@@ -100,7 +100,11 @@ join(e, "g1000:9000:27000", 10.0, 120.0)  # e joins far away, so only capacity c
 # An owner's area can move three times a day (0017): a puppet account can't sweep a city for lone owners. (e moves back at the end.)
 moves = [call("POST", "/rest/v1/map_presence", {"owner_id": e["id"], "cell_id": f"g1000:{9400 + i}:27600", "cell_lat": 13.7, "cell_lng": 123.2 + i / 100}, e["token"], prefer="resolution=merge-duplicates")[0] for i in range(5)]
 check("the fourth change of area in a day is refused", all(m in (200, 201, 204) for m in moves[:3]) and all(m >= 400 for m in moves[3:]), moves)
-call("PATCH", f"/rest/v1/map_presence?owner_id=eq.{e['id']}", {"cell_id": "g1000:9000:27000", "cell_lat": 10.0, "cell_lng": 120.0, "moves": 0}, key=SERVICE)
+s, _ = call("DELETE", f"/rest/v1/map_presence?owner_id=eq.{e['id']}", token=e["token"])
+s2, r = call("POST", "/rest/v1/map_presence", {"owner_id": e["id"], "cell_id": "g1000:9500:27600", "cell_lat": 13.8, "cell_lng": 123.3}, e["token"])
+check("deleting and re-adding the area doesn't reset the count (0018)", s2 >= 400, (s, s2, r))
+s, _ = call("POST", "/rest/v1/map_presence", {"owner_id": e["id"], "cell_id": "g1000:9000:27000", "cell_lat": 10.0, "cell_lng": 120.0}, key=SERVICE, prefer="resolution=merge-duplicates")
+check("the service role isn't limited (moves e back far away)", s in (200, 201, 204), s)
 
 # Gatherings (created and approved by the moderator in the pilot)
 s, g = call("POST", "/rest/v1/gatherings", {"host_id": a["id"], "title": "Sunday pet walk", "starts_at": "2099-01-01T08:00:00Z",
@@ -309,6 +313,8 @@ check("someone who unpalled you can't be re-added with their old code (0017)", s
 s, code_a2 = rpc(a, "new_pal_code")
 s2, r = rpc(e, "add_pal_tracked", {"p_code": code})
 check("a replaced code stops working", s == 200 and code_a2 != code and len(code_a2) == 6 and r is None, (s, code_a2, r))
+s, r = rpc(e, "add_pal", {"p_code": "ZZZZZZ"})
+check("add_pal can't be called directly, only add_pal_tracked (0018)", s >= 400, (s, r))
 misses = [rpc(e, "add_pal_tracked", {"p_code": f"ZZZZ{i:02d}"})[0] for i in range(9)]  # plus the old-code miss above: ten
 s, r = rpc(e, "add_pal_tracked", {"p_code": code_a2})
 check("ten wrong codes in an hour lock guessing, even for a right one", all(m == 200 for m in misses) and s >= 400, (misses, s, r))
