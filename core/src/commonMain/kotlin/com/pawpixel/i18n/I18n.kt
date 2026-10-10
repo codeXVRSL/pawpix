@@ -1,12 +1,16 @@
 package com.pawpixel.i18n
 
 /** Languages PawPixel speaks. Filipino first (the pilot is in Naga City); Bikol can follow the same way. */
-enum class Lang(val code: String, val label: String) {
+enum class Lang(
+    val code: String, val label: String,
+    /** Dates read day first ("30 sep 2026") rather than month first ("Sep 30, 2026"). */
+    val dayFirst: Boolean = false,
+) {
     EN("en", "English"),
     FIL("fil", "Filipino"),
     /** Latin American Spanish and Brazilian Portuguese, the whole app (TranslationTest keeps them complete). */
-    ES("es", "Español"),
-    PT("pt", "Português");
+    ES("es", "Español", dayFirst = true),
+    PT("pt", "Português", dayFirst = true);
 
     companion object {
         /** [setting] is the owner's choice ("" = follow the phone); [system] is the phone's language code. */
@@ -35,7 +39,7 @@ object I18n {
     @kotlin.concurrent.Volatile
     var lang: Lang = Lang.EN
 
-    val filipino: Map<String, String> by lazy { FilCore.map + FilScreens.map + FilScreens2.map + FilScreens3.map + FilScreens4.map + FilScreens5.map + FilScreens6.map + FilScreens7.map + FilScreens8.map + FilScreens9.map + FilHealth.map + FilWidgets.map + FilAccess.map }
+    val filipino: Map<String, String> by lazy { merged(FilCore.map, FilScreens.map, FilScreens2.map, FilScreens3.map, FilScreens4.map, FilScreens5.map, FilScreens6.map, FilScreens7.map, FilScreens8.map, FilScreens9.map, FilHealth.map, FilWidgets.map, FilAccess.map) }
 
     fun lookup(en: String, l: Lang = lang): String = when (l) {
         Lang.EN -> en
@@ -49,8 +53,12 @@ object I18n {
     /** The keys of the Spanish and Portuguese tables (tests check they're real strings). */
     val spanishKeys: Set<String> get() = spanish.keys + portuguese.keys
 
-    val spanish: Map<String, String> by lazy { EsCore.map + EsScreens.map + EsScreens2.map + EsScreens3.map + EsScreens4.map + EsScreens5.map }
-    val portuguese: Map<String, String> by lazy { PtCore.map + PtScreens.map + PtScreens2.map + PtScreens3.map + PtScreens4.map + PtScreens5.map }
+    val spanish: Map<String, String> by lazy { merged(EsCore.map, EsScreens.map, EsScreens2.map, EsScreens3.map, EsScreens4.map, EsScreens5.map) }
+    val portuguese: Map<String, String> by lazy { merged(PtCore.map, PtScreens.map, PtScreens2.map, PtScreens3.map, PtScreens4.map, PtScreens5.map) }
+
+    /** One map from several tables, built once (later tables win, as with +). */
+    private fun merged(vararg tables: Map<String, String>): Map<String, String> =
+        HashMap<String, String>(tables.sumOf { it.size } * 4 / 3 + 1).apply { tables.forEach { putAll(it) } }
 
     /** Fills {0}, {1}... in one pass, so a pet named "{1}" stays "{1}". */
     fun format(template: String, args: Array<out Any?>): String {

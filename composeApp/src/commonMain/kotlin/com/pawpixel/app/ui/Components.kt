@@ -518,7 +518,8 @@ val READABLE_WIDTH = 640.dp
 
 /** A page at [READABLE_WIDTH] at most, centred: full width on a phone, a comfortable column on a tablet. */
 @Composable
-fun Readable(content: @Composable () -> Unit) {
+fun Readable(enabled: Boolean = true, content: @Composable () -> Unit) {
+    if (!enabled) return content()
     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.TopCenter) {
         Box(Modifier.widthIn(max = READABLE_WIDTH).fillMaxSize()) { content() }
     }

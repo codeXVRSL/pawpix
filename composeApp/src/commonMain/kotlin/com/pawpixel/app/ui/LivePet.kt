@@ -115,15 +115,19 @@ fun LivePet(
     // reading it (taps, reactions) must not redraw anything.
     val clock = remember { longArrayOf(-1L, 0L) } // start, now
     BoxWithConstraints(modifier.let { if (keepAspect) it.aspectRatio(layout.stageWidth.toFloat() / layout.stageHeight) else it }) {
-    val widthPx = with(LocalDensity.current) { maxWidth.toPx() }
+    val density = LocalDensity.current
+    val widthPx = with(density) { maxWidth.toPx() }
+    val floorDepthPx = with(density) { floorDepth.toPx() }
     // The scale of a pet pixel, and how many of them fit across: the pet wanders all of that. On a
     // tablet or a phone on its side the pet keeps a phone's size (capped by a phone's width and by
     // the height), and the room gets wider instead of the pet getting huge.
-    val capPx = with(LocalDensity.current) { MAX_STAGE_WIDTH.toPx() }
+    val byWidth = pixelScale(with(density) { minOf(maxWidth, MAX_STAGE_WIDTH).toPx() } * zoom, layout.stageWidth)
     // The stage sits on top of the floor kept free for the buttons, so only the height above it counts.
     // A stage that keeps its aspect gets its height from the width, so only a free-height stage (the room) is capped by it.
-    val aboveFloorPx = if (!keepAspect && constraints.hasBoundedHeight) constraints.maxHeight - with(LocalDensity.current) { floorDepth.toPx() } else Float.MAX_VALUE
-    val px = minOf(pixelScale(minOf(widthPx, capPx) * zoom, layout.stageWidth), pixelScale(aboveFloorPx.coerceAtLeast(1f) * MAX_STAGE_HEIGHT_SHARE, layout.stageHeight))
+    val byHeight = if (!keepAspect && constraints.hasBoundedHeight) {
+        pixelScale((constraints.maxHeight - floorDepthPx).coerceAtLeast(1f) * MAX_STAGE_HEIGHT_SHARE, layout.stageHeight)
+    } else Float.MAX_VALUE
+    val px = minOf(byWidth, byHeight)
     val stageCols = floor(widthPx / px).toInt().coerceAtLeast(layout.stageWidth / 2)
     val brain = remember(layout, seed, stageCols) { PetBrain(seed, stageCols.toDouble(), layout.set.width, layout.body) }
     /**
@@ -146,7 +150,6 @@ fun LivePet(
 
     // The room behind the pet, drawn once per size and time of day (it is tiny: stage pixels).
     val roomCache = remember { HashMap<String, ImageBitmap>() }
-    val floorDepthPx = with(LocalDensity.current) { floorDepth.toPx() }
     val petLabel = tr("Give pets")
     Canvas(
         Modifier.matchParentSize()

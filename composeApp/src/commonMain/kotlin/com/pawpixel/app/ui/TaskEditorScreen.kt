@@ -58,6 +58,9 @@ fun TaskEditorScreen(app: AppScope, state: AppState, pet: Pet, taskId: String?, 
     var task by remember {
         mutableStateOf(original ?: StateOps.defaultTask(pet, if (health) TaskKind.VACCINE else TaskKind.FEED, today, Ids.newId(), app.now))
     }
+    // The name as the field shows it: the stored title in the owner's language, as everywhere else in the app.
+    // Once they type, the field and the title are their own words, never translated mid-word.
+    var nameText by remember { mutableStateOf(trName(task.title)) }
     /** New health items: when it was last done (days ago), or null for never / don't know. */
     var lastDoneDaysAgo by remember { mutableStateOf<Int?>(null) }
     var saving by remember { mutableStateOf(false) }
@@ -65,6 +68,7 @@ fun TaskEditorScreen(app: AppScope, state: AppState, pet: Pet, taskId: String?, 
 
     fun setKind(kind: TaskKind) {
         val keepTitle = task.title != task.kind.titleFor(pet.species)
+        if (!keepTitle) nameText = trName(kind.titleFor(pet.species))
         task = task.copy(
             kind = kind,
             title = if (keepTitle) task.title else kind.titleFor(pet.species),
@@ -119,10 +123,7 @@ fun TaskEditorScreen(app: AppScope, state: AppState, pet: Pet, taskId: String?, 
                     }
                 }
                 OutlinedTextField(
-                    // The kind's default name ("Feed") shows in the owner's language and stays the shared key until they
-                    // type their own; anything they type is shown exactly as typed.
-                    if (task.title == task.kind.titleFor(pet.species)) trName(task.title) else task.title,
-                    { task = task.copy(title = it.take(40)) }, label = { Text(tr("Name")) }, singleLine = true,
+                    nameText, { nameText = it.take(40); task = task.copy(title = nameText) }, label = { Text(tr("Name")) }, singleLine = true,
                     modifier = Modifier.fillMaxWidth(), shape = MaterialTheme.shapes.small,
                 )
             }

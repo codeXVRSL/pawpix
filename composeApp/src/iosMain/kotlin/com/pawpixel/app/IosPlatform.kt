@@ -1,7 +1,6 @@
 package com.pawpixel.app
 
 import androidx.compose.runtime.Composable
-import com.pawpixel.i18n.tr
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.toComposeImageBitmap
 import androidx.compose.ui.uikit.OnFocusBehavior
@@ -222,7 +221,7 @@ class IosPlatform(private val host: IosHost) : Platform {
     // WidgetKit timelines already contain future mood changes, so only a reload is needed.
     override fun refreshWidgets(nextChangeMs: Long?) = host.reloadWidgets()
     override fun shareFile(bytes: ByteArray, fileName: String, mimeType: String) =
-        host.shareFile(bytes.toNSData(), fileName, if (mimeType.startsWith("image/")) tr("Meet my pet in pixels! Made with PawPixel") else null)
+        host.shareFile(bytes.toNSData(), fileName, shareCaption(mimeType))
     override fun shareText(text: String) = host.shareText(text)
     override fun openUrl(url: String) = host.openUrl(url)
     // Only the format argument is bridged to NSString: passing a Kotlin String through NSLog's

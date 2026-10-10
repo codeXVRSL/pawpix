@@ -602,21 +602,10 @@ private fun GoingPets(map: PetMapModel, g: Gathering) {
     }
 }
 
-private val MONTHS = listOf("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")
 private val WEEKDAYS = listOf("Thu", "Fri", "Sat", "Sun", "Mon", "Tue", "Wed") // 1970-01-01 was a Thursday
 
 /** "Sat, Oct 4 · 8:00 AM" in the phone's time zone. */
 fun formatDateTime(ms: Long, clock: LocalClock): String = formatDay(clock.dayIndex(ms)) + " · " + formatTime(ms, clock)
 
-/** "Sat, Oct 4" for a local day index. */
-fun formatDay(day: Long): String {
-    val z = day + 719468
-    val era = z.floorDiv(146097L)
-    val doe = z - era * 146097
-    val yoe = (doe - doe / 1460 + doe / 36524 - doe / 146096) / 365
-    val doy = doe - (365 * yoe + yoe / 4 - yoe / 100)
-    val mp = (5 * doy + 2) / 153
-    val d = doy - (153 * mp + 2) / 5 + 1
-    val m = if (mp < 10) mp + 3 else mp - 9
-    return tr("{0}, {1} {2}", tr(WEEKDAYS[day.mod(7L).toInt()]), tr(MONTHS[(m - 1).toInt()]), d) // "Mon, Sep 30"; "lun, 30 sep" in Spanish
-}
+/** "Sat, Oct 4" for a local day index ("sáb, 4 oct" in Spanish). */
+fun formatDay(day: Long): String = tr(WEEKDAYS[day.mod(7L).toInt()]) + ", " + LocalClock.dayMonth(day)

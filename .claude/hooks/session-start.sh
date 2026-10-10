@@ -12,6 +12,18 @@ cd "${CLAUDE_PROJECT_DIR:-$(dirname "$0")/../..}"
 
 SDK="${ANDROID_HOME:-$HOME/android-sdk}"
 CMDLINE_TOOLS_ZIP="https://dl.google.com/android/repository/commandlinetools-linux-13114758_latest.zip"
+MARKER="$SDK/.pawpixel-warm"
+
+point_gradle_at_sdk() {
+  echo "sdk.dir=$SDK" > local.properties # git-ignored
+  if [ -n "${CLAUDE_ENV_FILE:-}" ]; then echo "export ANDROID_HOME=\"$SDK\"" >> "$CLAUDE_ENV_FILE"; fi
+}
+
+# A warm container (cached after an earlier run) needs no network at all.
+if [ -d "$SDK/platforms/android-36" ] && [ -f "$MARKER" ]; then
+  point_gradle_at_sdk
+  exit 0
+fi
 
 # The Android Gradle plugin, the SDK and AndroidX all come from Google's Maven (dl.google.com).
 # Without it the build can't even configure; say so plainly and let the session start anyway.
@@ -37,16 +49,12 @@ if [ ! -d "$SDK/platforms/android-36" ]; then
     || { echo "session-start: the Android SDK install failed; skipping the Gradle warm-up." >&2; exit 0; }
 fi
 
-# Point Gradle at the SDK (local.properties is git-ignored) and the session at it too.
-echo "sdk.dir=$SDK" > local.properties
-if [ -n "${CLAUDE_ENV_FILE:-}" ]; then
-  echo "export ANDROID_HOME=\"$SDK\"" >> "$CLAUDE_ENV_FILE"
-fi
+# Point Gradle and the session at the SDK.
+point_gradle_at_sdk
 
 # Download the Gradle distribution, plugins and dependencies, and compile core and its tests once,
 # so the first test run in the session is quick. Once per container (the marker survives in the
 # cached container); a failure here is a warning, never a reason to hold the session up.
-MARKER="$SDK/.pawpixel-warm"
 if [ ! -f "$MARKER" ]; then
   if ANDROID_HOME="$SDK" ./gradlew :core:compileTestKotlinJvm --quiet; then
     touch "$MARKER"

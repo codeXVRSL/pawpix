@@ -37,7 +37,10 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 sealed interface Screen {
-    data object Home : Screen
+    /** Uses the whole screen on a tablet (the room, the map); every other screen keeps a readable width. */
+    val fullBleed: Boolean get() = false
+
+    data object Home : Screen { override val fullBleed get() = true }
     data object CreatePet : Screen
     data class RemakeSprite(val petId: String) : Screen
     /** The Pet Studio: how the pixel pet is drawn (eyes, ears, coat, colours...). */
@@ -46,11 +49,11 @@ sealed interface Screen {
      * A panel over the pet's room: "care", "health", "weight", "wardrobe", "share", "more" (the
      * pet's menu) or "pets" (switch pets). Panels slide up over the room and down again.
      */
-    data class PetSection(val petId: String, val section: String) : Screen
+    data class PetSection(val petId: String, val section: String) : Screen { override val fullBleed get() = true }
     /** [health] picks which kinds a new task offers: daily care, or health care (vaccines, deworming...). */
     data class EditTask(val petId: String, val taskId: String?, val health: Boolean = false) : Screen
     data object Settings : Screen
-    data object PetMap : Screen
+    data object PetMap : Screen { override val fullBleed get() = true }
     /** Pals: a small circle whose pixel pets visit each other. */
     data object Pals : Screen
     /** A walk timed with the app open (steps counted on the phone). */
@@ -230,14 +233,14 @@ fun App(repo: PawRepository, registerBack: ((() -> Boolean) -> (() -> Unit))? = 
             ) { shown ->
             val screen = shown.last()
             key(shown.size, screen) {
+            Readable(enabled = !screen.fullBleed) {
             when (screen) {
                 Screen.Home -> HomeScreen(app, state)
-                // Pages of text and buttons keep a readable width on tablets; the room and the map use the whole screen.
-                Screen.CreatePet -> Readable { SpriteMakerScreen(app, state, existingPetId = null) }
-                is Screen.RemakeSprite -> Readable { SpriteMakerScreen(app, state, existingPetId = screen.petId) }
+                Screen.CreatePet -> SpriteMakerScreen(app, state, existingPetId = null)
+                is Screen.RemakeSprite -> SpriteMakerScreen(app, state, existingPetId = screen.petId)
                 is Screen.Studio -> {
                     val pet = state.pet(screen.petId)
-                    if (pet == null) LaunchedEffect(screen) { back() } else Readable { StudioScreen(app, state, pet) }
+                    if (pet == null) LaunchedEffect(screen) { back() } else StudioScreen(app, state, pet)
                 }
                 is Screen.PetSection -> {
                     val pet = state.pet(screen.petId)
@@ -245,16 +248,17 @@ fun App(repo: PawRepository, registerBack: ((() -> Boolean) -> (() -> Unit))? = 
                 }
                 is Screen.EditTask -> {
                     val pet = state.pet(screen.petId)
-                    if (pet == null) LaunchedEffect(screen) { back() } else Readable { TaskEditorScreen(app, state, pet, screen.taskId, screen.health) }
+                    if (pet == null) LaunchedEffect(screen) { back() } else TaskEditorScreen(app, state, pet, screen.taskId, screen.health)
                 }
-                Screen.Settings -> Readable { SettingsScreen(app, state) }
+                Screen.Settings -> SettingsScreen(app, state)
                 Screen.PetMap -> PetMapScreen(app, state)
-                Screen.Pals -> Readable { PalsScreen(app, state) }
+                Screen.Pals -> PalsScreen(app, state)
                 is Screen.Walk -> {
                     val pet = state.pet(screen.petId)
-                    if (pet == null) LaunchedEffect(screen) { back() } else Readable { WalkScreen(app, state, pet) }
+                    if (pet == null) LaunchedEffect(screen) { back() } else WalkScreen(app, state, pet)
                 }
-                is Screen.Family -> Readable { FamilyScreen(app, state, screen.sharePetId, screen.join) }
+                is Screen.Family -> FamilyScreen(app, state, screen.sharePetId, screen.join)
+            }
             }
             }
             }

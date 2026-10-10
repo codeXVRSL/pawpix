@@ -157,7 +157,7 @@ private fun WeightChart(weights: List<Weight>) {
             drawText(label, topLeft = Offset(left - 6.dp.toPx() - label.size.width, gy - label.size.height / 2f))
         }
         // Dates: the first and the last, and the middle one when there's room.
-        val dates = listOf(first.day, last.day).map { d -> d to measurer.measure(dayMonth(d), small) }
+        val dates = listOf(first.day, last.day).map { d -> d to measurer.measure(LocalClock.dayMonth(d), small) }
         for ((d, label) in dates) {
             val lx = (x(d) - label.size.width / 2f).coerceIn(left, size.width - label.size.width)
             drawText(label, topLeft = Offset(lx, size.height - label.size.height))
@@ -183,8 +183,6 @@ private fun WeightChart(weights: List<Weight>) {
     }
 }
 
-/** "Sep 29" (the chart has no room for the year). */
-private fun dayMonth(day: Long) = LocalClock.dayMonth(day)
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable

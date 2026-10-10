@@ -4,6 +4,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.ImageBitmap
 import com.pawpixel.core.Reminder
 import com.pawpixel.core.Species
+import com.pawpixel.i18n.tr
 import com.pawpixel.map.Http
 import com.pawpixel.sprite.Mask
 import com.pawpixel.sprite.PixelImage
@@ -127,3 +128,6 @@ expect fun rememberFilePicker(onResult: (ByteArray?) -> Unit): () -> Unit
 
 /** How a walk's step counting began: counting, no step sensor on this phone, or the owner refused the permission. */
 enum class StepStart { COUNTING, NO_SENSOR, DENIED }
+
+/** The caption that travels with a shared file: pictures get a friendly line in the owner's language, a backup file goes alone. */
+fun shareCaption(mimeType: String): String? = if (mimeType.startsWith("image/")) tr("Meet my pet in pixels! Made with PawPixel") else null

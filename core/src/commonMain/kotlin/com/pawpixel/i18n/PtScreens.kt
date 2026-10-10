@@ -172,9 +172,6 @@ internal object PtScreens {
         "Myxo-RHD vaccine" to "Vacina Myxo-RHD", "RHDV2 vaccine" to "Vacina RHDV2", "RHD vaccine" to "Vacina RHD",
         "It feels like {0}° out. Rabbits overheat easily: keep {1} somewhere cool and shady, with fresh water." to
             "Sensação de {0}° lá fora. Coelhos sofrem muito com o calor: deixe {1} num lugar fresco e com sombra, com água fresca.",
-        // Date order: "30 set 2026", "seg, 30 set"
-        "{0} {1}, {2}" to "{1} {0} {2}", "{0}, {1} {2}" to "{0}, {2} {1}",
         "These translations are new: tell us if something sounds off." to "Estas traduções são novas: avise a gente se algo soar estranho.",
-        "{0} {1}" to "{1} {0}",
     )
 }

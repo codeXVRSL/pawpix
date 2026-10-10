@@ -36,6 +36,8 @@ import com.pawpixel.core.AppState
 import com.pawpixel.core.Backup
 import com.pawpixel.core.MINUTES_PER_DAY
 import com.pawpixel.core.Units
+import com.pawpixel.i18n.I18n
+import com.pawpixel.i18n.Lang
 import com.pawpixel.i18n.tr
 import com.pawpixel.sprite.PixelIcons
 
@@ -108,8 +110,8 @@ fun SettingsScreen(app: AppScope, state: AppState) {
             }
             // In the language being read: Filipino readers hear about Filipino, Spanish readers about Spanish.
             Hint(
-                when (com.pawpixel.i18n.I18n.lang) {
-                    com.pawpixel.i18n.Lang.ES, com.pawpixel.i18n.Lang.PT -> tr("These translations are new: tell us if something sounds off.")
+                when (I18n.lang) {
+                    Lang.ES, Lang.PT -> tr("These translations are new: tell us if something sounds off.")
                     else -> tr("Filipino translations are new: tell us if something sounds off.")
                 },
             )
