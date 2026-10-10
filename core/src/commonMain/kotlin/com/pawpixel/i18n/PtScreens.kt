@@ -175,5 +175,6 @@ internal object PtScreens {
         // Date order: "30 set 2026", "seg, 30 set"
         "{0} {1}, {2}" to "{1} {0} {2}", "{0}, {1} {2}" to "{0}, {2} {1}",
         "These translations are new: tell us if something sounds off." to "Estas traduções são novas: avise a gente se algo soar estranho.",
+        "{0} {1}" to "{1} {0}",
     )
 }

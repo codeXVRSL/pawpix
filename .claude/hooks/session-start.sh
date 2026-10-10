@@ -26,14 +26,15 @@ if [ ! -d "$SDK/platforms/android-36" ]; then
   mkdir -p "$SDK/cmdline-tools"
   if [ ! -x "$SDK/cmdline-tools/latest/bin/sdkmanager" ]; then
     tmp="$(mktemp -d)"
-    curl -sSfL --retry 3 -o "$tmp/tools.zip" "$CMDLINE_TOOLS_ZIP"
-    unzip -q "$tmp/tools.zip" -d "$tmp"
+    curl -sSfL --retry 3 -o "$tmp/tools.zip" "$CMDLINE_TOOLS_ZIP" && unzip -q "$tmp/tools.zip" -d "$tmp" \
+      || { echo "session-start: couldn't download the Android command-line tools; skipping the SDK." >&2; exit 0; }
     rm -rf "$SDK/cmdline-tools/latest"
     mv "$tmp/cmdline-tools" "$SDK/cmdline-tools/latest"
     rm -rf "$tmp"
   fi
   yes | "$SDK/cmdline-tools/latest/bin/sdkmanager" --sdk_root="$SDK" --licenses > /dev/null || true
-  "$SDK/cmdline-tools/latest/bin/sdkmanager" --sdk_root="$SDK" "platforms;android-36" "build-tools;36.0.0" "platform-tools" > /dev/null
+  "$SDK/cmdline-tools/latest/bin/sdkmanager" --sdk_root="$SDK" "platforms;android-36" "build-tools;36.0.0" "platform-tools" > /dev/null \
+    || { echo "session-start: the Android SDK install failed; skipping the Gradle warm-up." >&2; exit 0; }
 fi
 
 # Point Gradle at the SDK (local.properties is git-ignored) and the session at it too.
@@ -43,5 +44,13 @@ if [ -n "${CLAUDE_ENV_FILE:-}" ]; then
 fi
 
 # Download the Gradle distribution, plugins and dependencies, and compile core and its tests once,
-# so the first test run in the session is quick.
-ANDROID_HOME="$SDK" ./gradlew :core:compileTestKotlinJvm --quiet
+# so the first test run in the session is quick. Once per container (the marker survives in the
+# cached container); a failure here is a warning, never a reason to hold the session up.
+MARKER="$SDK/.pawpixel-warm"
+if [ ! -f "$MARKER" ]; then
+  if ANDROID_HOME="$SDK" ./gradlew :core:compileTestKotlinJvm --quiet; then
+    touch "$MARKER"
+  else
+    echo "session-start: the Gradle warm-up failed (see above); builds in this session may download or fail later." >&2
+  fi
+fi

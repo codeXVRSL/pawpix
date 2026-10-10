@@ -211,7 +211,7 @@ class PetArt(look: PetLook, val species: Species, ears: Ears? = null, val access
  * height), stubby legs, a tail, big glossy eyes. Only the colours and markings come from the photo,
  * so every pet looks like part of the same game while still looking like *your* pet.
  *
- * Fixed 41 x 34 canvas, light from the top-left, three-tone shading per fur colour, a soft
+ * A 41 x 34 canvas (rabbits get four more rows on top for their ears), light from the top-left, three-tone shading per fur colour, a soft
  * coloured outline instead of black.
  */
 object Chibi {
@@ -286,8 +286,11 @@ object Chibi {
         val col = IntArray(w * h)
         val part = IntArray(w * h)
 
-        // Drawing coordinates are the usual 41 x 34 ones; [top] shifts them down into the canvas.
-        fun put(x: Int, y: Int, c: Int, p: Int) { val yy = y + top; if (x in 0 until w && yy in 0 until h) { col[yy * w + x] = c; part[yy * w + x] = p } }
+        // Drawing coordinates are the usual 41 x 34 ones; [top] shifts them down into the canvas. Every
+        // read and write by drawing coordinates goes through [at], so none forgets the shift.
+        /** The canvas index of drawing point (x, y), or -1 off the canvas. */
+        fun at(x: Int, y: Int): Int { val yy = y + top; return if (x in 0 until w && yy in 0 until h) yy * w + x else -1 }
+        fun put(x: Int, y: Int, c: Int, p: Int) { val i = at(x, y); if (i >= 0) { col[i] = c; part[i] = p } }
 
         /** Filled ellipse (superellipse with exponent [e]); [paint] gets normalised coordinates. */
         fun blob(cx: Double, cy: Double, rx: Double, ry: Double, p: Int, e: Double = 2.0, paint: (Int, Int, Double, Double) -> Int) {
@@ -416,7 +419,7 @@ object Chibi {
                     }
                 }, LEG)
                 // Rounded toes.
-                put(lx + 1, bottom, if (Argb.alpha(col[(bottom + top) * w + lx + 1]) > 0) col[(bottom + top) * w + lx + 1] else pawR.mid, LEG)
+                put(lx + 1, bottom, at(lx + 1, bottom).let { i -> if (i >= 0 && Argb.alpha(col[i]) > 0) col[i] else pawR.mid }, LEG)
             }
         } else {
             val bcy = 27.8 - pose.breathe * 0.3
@@ -603,8 +606,8 @@ object Chibi {
                 val y = eyTop + 3
                 for (dx in 0 until (if (rosy) 3 else 2)) {
                     val x = x0 + dx
-                    val i = (y + top) * w + x
-                    if (i in col.indices && part[i] == HEAD) col[i] = Argb.mix(col[i], PINK, if (rosy) 0.75 else 0.45)
+                    val i = at(x, y)
+                    if (i >= 0 && part[i] == HEAD) col[i] = Argb.mix(col[i], PINK, if (rosy) 0.75 else 0.45)
                 }
             }
         }
@@ -649,8 +652,8 @@ object Chibi {
             val cc = style.collarColor ?: 0xFFE8374E.toInt()
             val y = (hcy + hry).toInt()
             for (x in (cx - 5.5).toInt()..(cx + 5.5).toInt()) for (dy in 0..1) {
-                val i = (y + dy + top) * w + x
-                if (i in col.indices && part[i] != NONE) { col[i] = if (dy == 1) Argb.mix(cc, EYE_DARK, 0.25) else cc }
+                val i = at(x, y + dy)
+                if (i >= 0 && part[i] != NONE) { col[i] = if (dy == 1) Argb.mix(cc, EYE_DARK, 0.25) else cc }
             }
             when (style.collar) {
                 Collar.BELL -> { for (dx in 0..1) for (dy in 1..2) put(cx.toInt() + dx - 1, y + dy, if (dy == 1 && dx == 0) 0xFFFFE28A.toInt() else 0xFFF6C744.toInt(), BODY) }

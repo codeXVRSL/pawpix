@@ -175,5 +175,6 @@ internal object EsScreens {
         // Date order: "30 sep 2026", "lun, 30 sep"
         "{0} {1}, {2}" to "{1} {0} {2}", "{0}, {1} {2}" to "{0}, {2} {1}",
         "These translations are new: tell us if something sounds off." to "Estas traducciones son nuevas: avísanos si algo suena raro.",
+        "{0} {1}" to "{1} {0}",
     )
 }

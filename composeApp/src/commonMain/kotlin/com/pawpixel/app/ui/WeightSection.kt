@@ -184,7 +184,7 @@ private fun WeightChart(weights: List<Weight>) {
 }
 
 /** "Sep 29" (the chart has no room for the year). */
-private fun dayMonth(day: Long) = LocalClock.shortDate(day).substringBeforeLast(',')
+private fun dayMonth(day: Long) = LocalClock.dayMonth(day)
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable

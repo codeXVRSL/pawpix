@@ -119,8 +119,10 @@ fun TaskEditorScreen(app: AppScope, state: AppState, pet: Pet, taskId: String?, 
                     }
                 }
                 OutlinedTextField(
-                    // A default name ("Feed") shows in the owner's language and stays the shared key until they type their own.
-                    trName(task.title), { task = task.copy(title = it.take(30)) }, label = { Text(tr("Name")) }, singleLine = true,
+                    // The kind's default name ("Feed") shows in the owner's language and stays the shared key until they
+                    // type their own; anything they type is shown exactly as typed.
+                    if (task.title == task.kind.titleFor(pet.species)) trName(task.title) else task.title,
+                    { task = task.copy(title = it.take(40)) }, label = { Text(tr("Name")) }, singleLine = true,
                     modifier = Modifier.fillMaxWidth(), shape = MaterialTheme.shapes.small,
                 )
             }

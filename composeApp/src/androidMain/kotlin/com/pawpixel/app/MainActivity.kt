@@ -36,7 +36,8 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         // Phones stay upright, as on iPhone: on its side a phone has no room for the pet above the
         // care buttons. Tablets and unfolded foldables turn freely (the room just gets wider).
-        if (resources.configuration.smallestScreenWidthDp < 600) requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
+        // (Set both ways: the request survives a recreation, so a foldable opened folded turns freely once unfolded.)
+        requestedOrientation = if (resources.configuration.smallestScreenWidthDp < 600) ActivityInfo.SCREEN_ORIENTATION_PORTRAIT else ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
         app.platform.permissionRequester = {
             if (Build.VERSION.SDK_INT >= 33) notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
         }

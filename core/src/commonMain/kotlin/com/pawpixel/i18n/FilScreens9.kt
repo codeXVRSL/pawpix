@@ -141,5 +141,6 @@ internal object FilScreens9 {
         // Date order
         "{0} {1}, {2}" to "{0} {1}, {2}", "{0}, {1} {2}" to "{0}, {1} {2}",
         "These translations are new: tell us if something sounds off." to "Bago pa ang mga salin na ito: sabihan kami kung may kakaiba.",
+        "{0} {1}" to "{0} {1}",
     )
 }

@@ -77,8 +77,10 @@ class MoreLanguagesTest {
             assertEquals("29 sep 2026", com.pawpixel.core.LocalClock.shortDate(20725))
             com.pawpixel.i18n.I18n.lang = com.pawpixel.i18n.Lang.PT
             assertEquals("29 set 2026", com.pawpixel.core.LocalClock.shortDate(20725))
+            assertEquals("29 set", com.pawpixel.core.LocalClock.dayMonth(20725))
             com.pawpixel.i18n.I18n.lang = com.pawpixel.i18n.Lang.EN
             assertEquals("Sep 29, 2026", com.pawpixel.core.LocalClock.shortDate(20725))
+            assertEquals("Sep 29", com.pawpixel.core.LocalClock.dayMonth(20725))
         } finally { com.pawpixel.i18n.I18n.lang = was }
         // Every Spanish and Portuguese key is a real English string the app uses (it has Filipino).
         for (k in com.pawpixel.i18n.I18n.spanishKeys) assertTrue(com.pawpixel.i18n.I18n.has(k), "no such English string: $k")

@@ -121,7 +121,8 @@ fun LivePet(
     // the height), and the room gets wider instead of the pet getting huge.
     val capPx = with(LocalDensity.current) { MAX_STAGE_WIDTH.toPx() }
     // The stage sits on top of the floor kept free for the buttons, so only the height above it counts.
-    val aboveFloorPx = if (constraints.hasBoundedHeight) constraints.maxHeight - with(LocalDensity.current) { floorDepth.toPx() } else Float.MAX_VALUE
+    // A stage that keeps its aspect gets its height from the width, so only a free-height stage (the room) is capped by it.
+    val aboveFloorPx = if (!keepAspect && constraints.hasBoundedHeight) constraints.maxHeight - with(LocalDensity.current) { floorDepth.toPx() } else Float.MAX_VALUE
     val px = minOf(pixelScale(minOf(widthPx, capPx) * zoom, layout.stageWidth), pixelScale(aboveFloorPx.coerceAtLeast(1f) * MAX_STAGE_HEIGHT_SHARE, layout.stageHeight))
     val stageCols = floor(widthPx / px).toInt().coerceAtLeast(layout.stageWidth / 2)
     val brain = remember(layout, seed, stageCols) { PetBrain(seed, stageCols.toDouble(), layout.set.width, layout.body) }
@@ -238,12 +239,12 @@ private class MoodFrames(val set: AnimationSet, val frames: Map<Frame, ImageBitm
 /** Width / height of the stage for most looks (between 1.53 and 1.60). */
 private const val PLACEHOLDER_ASPECT = 1.55f
 
-/** Whole-number scale when there's room, so every sprite pixel is the same size on screen. */
 /** The widest a stage draws its pet for (a large phone); wider screens show more room around it. */
 private val MAX_STAGE_WIDTH = 480.dp
 /** The most of the height above the floor the stage's rows may take, so a phone on its side still shows the whole pet. */
 private const val MAX_STAGE_HEIGHT_SHARE = 0.95f
 
+/** Whole-number scale when there's room, so every sprite pixel is the same size on screen. */
 private fun pixelScale(widthPx: Float, stageWidth: Int): Float {
     val s = widthPx / stageWidth
     return if (s >= 1f) floor(s) else s

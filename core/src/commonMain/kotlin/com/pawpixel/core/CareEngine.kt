@@ -91,6 +91,12 @@ class LocalClock(private val offsetAt: (Long) -> Long) {
             return com.pawpixel.i18n.tr("{0} {1}, {2}", com.pawpixel.i18n.tr(MONTHS[m - 1]), d, y)
         }
 
+        /** "Sep 29" ("29 sep" in Spanish and Portuguese): a date with no room for the year. */
+        fun dayMonth(day: Long): String {
+            val (_, m, d) = civil(day)
+            return com.pawpixel.i18n.tr("{0} {1}", com.pawpixel.i18n.tr(MONTHS[m - 1]), d)
+        }
+
         fun fixed(offsetMs: Long) = LocalClock { offsetMs }
 
         /** "7:00 AM" for a minute of the day (the app and the vet summary share it). */
