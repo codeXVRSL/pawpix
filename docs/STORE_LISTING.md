@@ -25,7 +25,7 @@ Google Play takes one listing per language: add Spanish (es-419 and es-ES) and P
 
 Meet your pet's pixel twin.
 
-Take a photo of your dog, cat or any pet, and PawPixel turns it into a pixel-art sprite that looks like *your* pet: its fur colours and face markings on a cute pixel dog, cat or rabbit, with pointy, floppy or lop ears. Then it moves in. Your pixel pet lives on your home screen, breathes, blinks, wanders around, and reacts to the real care you give.
+Take a photo of your dog, cat or any pet, and PawPixel turns it into a pixel-art sprite that looks like *your* pet: its fur colours and face markings, even tabby stripes and white socks, on a cute pixel dog, cat or rabbit, with pointy, floppy or lop ears. Then it moves in. Your pixel pet lives on your home screen, breathes, blinks, wanders around, and reacts to the real care you give.
 
 HOW IT WORKS
 • Snap or pick a photo. PawPixel cuts your pet out and draws it in pixels, right on your phone.
@@ -68,7 +68,7 @@ Made in Naga City, Philippines, for pet owners everywhere. In English, Filipino,
 
 Conoce al gemelo pixel de tu mascota.
 
-Toma una foto de tu perro, gato o cualquier mascota, y PawPixel la convierte en un sprite de pixel art que se parece a *tu* mascota: los colores de su pelaje y las marcas de su cara en un tierno perro, gato o conejo pixel, con orejas puntiagudas, caídas o de conejo belier. Luego se muda contigo. Tu mascota pixel vive en tu pantalla de inicio, respira, parpadea, pasea y reacciona a los cuidados reales que le das.
+Toma una foto de tu perro, gato o cualquier mascota, y PawPixel la convierte en un sprite de pixel art que se parece a *tu* mascota: los colores de su pelaje y las marcas de su cara, hasta las rayas atigradas y los calcetines blancos, en un tierno perro, gato o conejo pixel, con orejas puntiagudas, caídas o de conejo belier. Luego se muda contigo. Tu mascota pixel vive en tu pantalla de inicio, respira, parpadea, pasea y reacciona a los cuidados reales que le das.
 
 CÓMO FUNCIONA
 • Toma o elige una foto. PawPixel recorta a tu mascota y la dibuja en pixeles, en tu propio teléfono.
@@ -111,7 +111,7 @@ Hecho en Naga City, Filipinas, para dueños de mascotas de todo el mundo. En esp
 
 Conheça o gêmeo pixel do seu pet.
 
-Tire uma foto do seu cachorro, gato ou qualquer pet, e o PawPixel transforma em um sprite de pixel art que se parece com o *seu* pet: as cores da pelagem e as marcas do rosto num cachorro, gato ou coelho pixel fofo, com orelhas pontudas, caídas ou de coelho lop. Depois ele se muda para o seu celular. Seu pet pixel vive na tela inicial, respira, pisca, passeia e reage aos cuidados de verdade que você dá.
+Tire uma foto do seu cachorro, gato ou qualquer pet, e o PawPixel transforma em um sprite de pixel art que se parece com o *seu* pet: as cores da pelagem e as marcas do rosto, até as listras de gato tigrado e as patinhas brancas, num cachorro, gato ou coelho pixel fofo, com orelhas pontudas, caídas ou de coelho lop. Depois ele se muda para o seu celular. Seu pet pixel vive na tela inicial, respira, pisca, passeia e reage aos cuidados de verdade que você dá.
 
 COMO FUNCIONA
 • Tire ou escolha uma foto. O PawPixel recorta seu pet e desenha em pixels, no próprio celular.
