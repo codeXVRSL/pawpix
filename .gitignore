@@ -13,7 +13,9 @@ web/dist/
 web/u2netp.onnx
 web/ort-wasm-simd-threaded.wasm
 pawpixel.properties
-.claude/
+.claude/*
+!.claude/settings.json
+!.claude/hooks/
 __pycache__/
 dist/
 
