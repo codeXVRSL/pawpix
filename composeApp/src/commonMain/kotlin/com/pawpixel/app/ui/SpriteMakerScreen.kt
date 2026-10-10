@@ -155,7 +155,7 @@ fun SpriteMakerScreen(app: AppScope, state: AppState, existingPetId: String?) {
 
     val r = result
     val shownSpecies = species ?: detected ?: Species.CAT
-    val art = remember(r, shownSpecies, ears) { r?.let { PetArt(it.head, shownSpecies, ears) } }
+    val art = remember(r, shownSpecies, ears) { r?.let { PetArt(it.look, shownSpecies, ears) } }
     // The reveal: the first time a new pet appears, its stage springs in under a little confetti.
     var revealed by remember { mutableStateOf<Int?>(null) }
     val entrance = remember { Animatable(if (existing != null) 1f else 0.88f) }

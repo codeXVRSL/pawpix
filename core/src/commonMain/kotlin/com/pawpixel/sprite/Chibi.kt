@@ -38,7 +38,7 @@ enum class Ears(val label: String) {
  * What the pet looks like, read from its face in the photo: up to four fur tones and where on
  * the face each tone goes (a [GRID] x [GRID] patch map: a white muzzle, dark ears, a stripe, a patch).
  */
-class PetLook(val tones: List<Int>, private val patches: IntArray, val style: PetStyle = PetStyle.DEFAULT) {
+class PetLook(val tones: List<Int>, private val patches: IntArray, val style: PetStyle = PetStyle.DEFAULT, val coat: Coat = Coat.NONE) {
     /** Index into [tones] of the most common fur colour. Always 0. */
     val base = 0
     /** A clearly lighter tone for chest and paws, if the pet has one. */
@@ -47,16 +47,24 @@ class PetLook(val tones: List<Int>, private val patches: IntArray, val style: Pe
 
     /**
      * A short text form of the look (about 90 characters, 150 with a Studio style): what the pet map
-     * and a household share instead of any photo. Format: `1;<tone>,<tone>,...;<64 patch digits>`,
-     * tones as RGB hex; `2;...;...;<style>` when the owner styled the pet (see [PetStyle.encode]).
+     * and a household share instead of any photo. Format: `3;<tone>,<tone>,...;<100 patch digits>`,
+     * tones as RGB hex; `4;...;...;<style>` when the owner styled the pet (see [PetStyle.encode]);
+     * `5` and `6` are the same with the photo's [Coat] added as a last part.
      */
     fun encode(): String {
         val base = tones.joinToString(",") { (it and 0xFFFFFF).toString(16).padStart(6, '0') } + ";" + patches.joinToString("") { it.toString() }
-        return if (style.isDefault) "3;$base" else "4;$base;${style.encode()}"
+        val styled = if (style.isDefault) base else "$base;${style.encode()}"
+        return when {
+            coat.isNone -> (if (style.isDefault) "3;" else "4;") + styled
+            else -> (if (style.isDefault) "5;" else "6;") + styled + ";" + coat.encode()
+        }
     }
 
     /** The same colours and markings with another Studio style. */
-    fun withStyle(s: PetStyle): PetLook = PetLook(tones, patches, s)
+    fun withStyle(s: PetStyle): PetLook = PetLook(tones, patches, s, coat)
+
+    /** The same look with the photo's body markings (a patch tone the look doesn't have is dropped). */
+    fun withCoat(c: Coat): PetLook = PetLook(tones, patches, style, if (c.patchTone != null && c.patchTone !in tones.indices) c.copy(patchTone = null) else c)
 
     /** Tone at a point of the face, [u] and [v] from 0 to 1. */
     fun toneAt(u: Double, v: Double): Int {
@@ -77,9 +85,12 @@ class PetLook(val tones: List<Int>, private val patches: IntArray, val style: Pe
             val old = parts[0] == "1" || parts[0] == "2"
             val style = when {
                 parts.size == 3 && (parts[0] == "1" || parts[0] == "3") -> PetStyle.DEFAULT
+                parts.size == 4 && parts[0] == "5" -> PetStyle.DEFAULT
                 parts.size == 4 && (parts[0] == "2" || parts[0] == "4") -> PetStyle.decode(parts[3]) ?: return null
+                parts.size == 5 && parts[0] == "6" -> PetStyle.decode(parts[3]) ?: return null
                 else -> return null
             }
+            val coat = if (parts[0] == "5" || parts[0] == "6") Coat.decode(parts.last()) else Coat.NONE
             val tones = parts[1].split(',').map { h ->
                 if (h.length != 6 || !h.all { it in '0'..'9' || it in 'a'..'f' || it in 'A'..'F' }) return null
                 h.toInt(16) or (0xFF shl 24)
@@ -97,7 +108,7 @@ class PetLook(val tones: List<Int>, private val patches: IntArray, val style: Pe
                 val gx = (i % GRID) * OLD_GRID / GRID; val gy = (i / GRID) * OLD_GRID / GRID
                 read[gy * OLD_GRID + gx]
             }
-            return PetLook(tones, patches, style)
+            return PetLook(tones, patches, style).withCoat(coat)
         }
         private val DEFAULT = 0xFFB07A4A.toInt()
 
@@ -190,8 +201,8 @@ class PetLook(val tones: List<Int>, private val patches: IntArray, val style: Pe
 /** Everything needed to draw a pet: its face (a colour source only), species and ear shape. */
 class PetArt(look: PetLook, val species: Species, ears: Ears? = null, val accessory: Accessory? = null, style: PetStyle? = null) {
     /** From the pet's face in the photo (its colours and markings). */
-    constructor(head: PixelImage, species: Species, ears: Ears? = null, accessory: Accessory? = null, style: PetStyle? = null) :
-        this(PetLook.from(head), species, ears, accessory, style)
+    constructor(head: PixelImage, species: Species, ears: Ears? = null, accessory: Accessory? = null, style: PetStyle? = null, coat: Coat = Coat.NONE) :
+        this(PetLook.from(head).withCoat(coat), species, ears, accessory, style)
 
     /** The Studio style: given here, or the one that travelled inside the look code. */
     val style: PetStyle = style ?: look.style
@@ -280,6 +291,16 @@ object Chibi {
         // A dark tone for masks, spots and stripes.
         val darkR = ramp(style.furDark ?: baseR.deep)
         val pattern = style.pattern
+        // The photo's body markings, drawn only when the coat comes "From the photo" (a Studio pattern replaces them).
+        // Stripes only on cats: a dog's fur reads like lines too often in a photo (see [CoatDetector]); on a tabby they win over patches.
+        val coat = (if (pattern == Pattern.AUTO) look.coat else Coat.NONE).let { c ->
+            when {
+                !cat -> c.copy(stripes = false)
+                c.stripes -> c.copy(patchTone = null)
+                else -> c
+            }
+        }
+        val stripeRamps = if (coat.stripes) ramps.map { ramp(it.deep) } else ramps
         // Rabbits get four rows of headroom above the usual canvas, so long ears never touch the edge (the feet stay at the bottom).
         val top = if (rabbit) 4 else 0
         val w = WIDTH; val h = HEIGHT + top
@@ -312,7 +333,10 @@ object Chibi {
         val cx = 20.5
         val oy = pose.bob
         // Paws: light when the pet has a light tone, or always with socks or a tuxedo coat.
-        val pawR = when (pattern) { Pattern.SOCKS, Pattern.TUXEDO -> paleR; else -> lightR ?: baseR }
+        val pawR = when {
+            pattern == Pattern.SOCKS || pattern == Pattern.TUXEDO || coat.socks -> paleR
+            else -> lightR ?: baseR
+        }
 
         // ---------- Head geometry (shared by standing and lying) ----------
         val hcx = cx + pose.headDx
@@ -335,7 +359,14 @@ object Chibi {
         fun headRamp(x: Int, y: Int): Ramp {
             val u = faceU(x) * 2 - 1; val v = faceV(y) * 2 - 1 // -1..1 across the head
             return when (pattern) {
-                Pattern.AUTO -> ramps[faceTone(x, y)]
+                Pattern.AUTO -> {
+                    val t = faceTone(x, y)
+                    // Tabby lines over the photo's colours: the forehead's "M" and a few on the cheeks, in each patch's own darker shade.
+                    val dx = x - hcx.toInt()
+                    val line = coat.stripes && t != look.light && ((v < -0.3 && v > -0.85 && (dx == 0 || abs(dx) == 3)) ||
+                        (abs(u) > 0.72 && v in -0.15..0.45 && (y + (if (u < 0) 0 else 1)) % 3 == 0))
+                    if (line) stripeRamps[t] else ramps[t]
+                }
                 Pattern.SOLID -> baseR
                 Pattern.TUXEDO -> if (v > 0.2 && abs(u) < 0.62 - (v - 0.2) * 0.3) paleR else baseR
                 Pattern.MASK -> if (v > -0.62 && v < 0.28) darkR else baseR
@@ -354,7 +385,12 @@ object Chibi {
             }
         }
         /** The body's fur at a pixel: solid, or with spots and stripes continuing from the head. */
-        fun bodyRamp(x: Int, y: Int, nx: Double, ny: Double): Ramp = when (pattern) {
+        fun bodyRamp(x: Int, y: Int, nx: Double, ny: Double): Ramp = if (pattern == Pattern.AUTO) when {
+            // Tabby: bands down the sides that bend with the body, two pixels apart, the belly left plain.
+            coat.stripes && abs(nx) > 0.28 && ny < 0.45 && (abs(x - cx.toInt()) + ((ny + 1) * 1.6).toInt()) % 3 == 0 -> stripeRamps[0]
+            coat.patchTone != null && listOf(Triple(-0.42, -0.25, 0.42), Triple(0.55, 0.2, 0.34)).any { (su, sv, r) -> (nx - su) * (nx - su) + (ny - sv) * (ny - sv) < r * r } -> ramps[coat.patchTone]
+            else -> baseR
+        } else when (pattern) {
             Pattern.SPOTS -> if (listOf(Triple(-0.45, -0.1, 0.3), Triple(0.5, 0.35, 0.25)).any { (su, sv, r) -> (nx - su) * (nx - su) + (ny - sv) * (ny - sv) < r * r }) darkR else baseR
             Pattern.TABBY -> if (ny < 0.35 && ((x - cx.toInt()) % 4 == 0)) darkR else baseR
             Pattern.PATCH -> if ((nx + 0.45) * (nx + 0.45) + (ny + 0.2) * (ny + 0.2) < 0.12) darkR else baseR
@@ -384,7 +420,7 @@ object Chibi {
                     rect(lx, 27 + oy, lx + 2, bottom, { _, y -> if (y >= bottom - 1) pawR.shade else baseR.shade }, LEG)
                 }
                 // Tail, behind the body on the right.
-                tail(cat, style.tail, pose.tail, 27.5, 25.5 + oy, baseR, lightR, ::put)
+                tail(cat, style.tail, pose.tail, 27.5, 25.5 + oy, baseR, lightR, ::put, ring = if (coat.stripes) stripeRamps[0] else null)
             }
             blob(cx, bcy, brx, bry, BODY, e = bodyE) { x, y, nx, ny -> shaded(bodyRamp(x, y, nx, ny), nx, ny, hiAt = 0.75, shAt = 0.5) }
             if (style.body == BodyShape.FLUFFY) {
@@ -425,7 +461,7 @@ object Chibi {
             val bcy = 27.8 - pose.breathe * 0.3
             val wide = when (style.body) { BodyShape.CHUBBY -> 12.2; BodyShape.SLIM -> 10.2; else -> 11.2 }
             if (rabbit) blob(31.6, 28.6, 2.5, 2.3, TAIL) { _, _, nx, ny -> if (nx * 0.5 + ny * 0.9 > 0.55) paleR.shade else paleR.mid }
-            else tail(cat, style.tail, 0, 29.5, 29.0, baseR, lightR, ::put, lying = true)
+            else tail(cat, style.tail, 0, 29.5, 29.0, baseR, lightR, ::put, lying = true, ring = if (coat.stripes) stripeRamps[0] else null)
             blob(cx, bcy, wide, 4.8 + pose.breathe * 0.4, BODY, e = 2.3) { x, y, nx, ny -> shaded(bodyRamp(x, y, nx, ny), nx, ny, hiAt = 0.8, shAt = 0.5) }
             for (px in listOf(15.5, 25.5)) blob(px, 31.6, 2.2, 1.3, LEG) { _, _, nx, _ -> if (nx > 0.5) pawR.shade else pawR.mid }
         }
@@ -705,7 +741,7 @@ object Chibi {
         return !(neg && pos)
     }
 
-    private fun tail(cat: Boolean, style: TailStyle, swing: Int, bx: Double, by: Double, r: Ramp, light: Ramp?, put: (Int, Int, Int, Int) -> Unit, lying: Boolean = false) {
+    private fun tail(cat: Boolean, style: TailStyle, swing: Int, bx: Double, by: Double, r: Ramp, light: Ramp?, put: (Int, Int, Int, Int) -> Unit, lying: Boolean = false, ring: Ramp? = null) {
         val thick = when (style) { TailStyle.FLUFFY -> 1.6; TailStyle.STUB -> 1.2; else -> 1.0 }
         val span = if (style == TailStyle.STUB) 0.4 else 1.0
         val pts: List<DoubleArray> = if (lying) {
@@ -739,7 +775,11 @@ object Chibi {
             for (y in (py - rad - 1).toInt()..(py + rad + 1).toInt()) for (x in (px - rad - 1).toInt()..(px + rad + 1).toInt()) {
                 val dx = x + 0.5 - px; val dy = y + 0.5 - py
                 if (dx * dx + dy * dy > rad * rad) continue
-                val ramp = if (!cat && t > 0.78 && light != null) light else r
+                val ramp = when {
+                    !cat && t > 0.78 && light != null -> light
+                    ring != null && t > 0.15 && (t * 10).toInt() % 3 == 1 -> ring // tabby rings
+                    else -> r
+                }
                 put(x, y, if (dx > rad * 0.25) ramp.shade else ramp.mid, TAIL)
             }
         }

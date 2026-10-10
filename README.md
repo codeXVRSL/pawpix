@@ -160,8 +160,8 @@ Only the system photo picker is stubbed in these tests; everything else is the r
 
 ## Known limits (by design, for the MVP)
 - The Android widget is alive (its idle animation plays on the home screen through a `ViewFlipper`, the one thing launchers animate on their own); the iOS widget shows the mood's still pose, as iOS doesn't allow animated widgets. Both draw the sky of the hour behind the pet.
-- Body markings (spots, socks) aren't copied yet; the chest and paws use the pet's lighter tone when it has one. A hand-drawn body from the owner's photos is a natural Pro upgrade, and a fit for your pixel art commissions.
-- Likeness comes from colours and markings, not a pixelated copy of the photo. Pasting the real (pixelated) face on a drawn body was tried and dropped: the two styles clashed and the head looked out of proportion. Fine stripes (tabby) are not reproduced yet.
+- Body markings come from the whole photo (`CoatDetector`): tabby stripes (cats only, read from the forehead; a dog's fur reads like lines too often), white socks (when the paws are in the photo) and a patch of a second colour on the body. They are tuned for precision, so a missed marking is more likely than a wrong one; the owner can pick Tabby, Spots or Socks in the Pet Studio. Exact patch shapes aren't copied (two patches in the pet's own tone stand in), and a hand-drawn body from the owner's photos is a natural Pro upgrade, and a fit for your pixel art commissions.
+- Likeness comes from colours and markings, not a pixelated copy of the photo. Pasting the real (pixelated) face on a drawn body was tried and dropped: the two styles clashed and the head looked out of proportion.
 - A widget shows one pet: the one you pick in its settings, or whichever needs attention most.
 - Adaptive timing learns from the last 4 weeks and needs 3 completions near a time before moving it.
 - Daylight-saving shifts may move a reminder by an hour on the change day (not an issue in the Philippines).

@@ -14,8 +14,12 @@ data class SpriteResult(
     val backgroundRemoved: Boolean,
     /** Where the face was taken from (fractions of the photo), so the UI can show and adjust it. */
     val face: FaceBox,
+    /** Body markings seen in the whole photo (stripes, socks, patches). */
+    val coat: Coat = Coat.NONE,
 ) {
-    fun art(species: com.pawpixel.core.Species) = PetArt(head, species)
+    /** The face's colours and markings with the photo's coat: what a new pet's look code holds. */
+    val look: PetLook by lazy { PetLook.from(head).withCoat(coat) }
+    fun art(species: com.pawpixel.core.Species) = PetArt(look, species)
 }
 
 /**
@@ -85,7 +89,8 @@ object SpritePipeline {
         val (quantized, palette) = quantize(enhanced, colors)
         despeckle(quantized)
         removeOrphans(quantized)
-        return SpriteResult(quantized, palette, photoCrop, removed, faceBox)
+        val coat = CoatDetector.detect(work, mask, sq, PetLook.from(quantized), removed)
+        return SpriteResult(quantized, palette, photoCrop, removed, faceBox, coat)
     }
 
     /**

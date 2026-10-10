@@ -45,7 +45,7 @@ class PawWebPet(
         mask?.let { Mask(maskWidth, maskHeight, it) },
         if (faceSide > 0) FaceBox(faceCx, faceCy, faceSide) else null,
     )
-    private val art = PetArt(result.head, Species.entries.firstOrNull { it.name == species } ?: Species.DOG, Ears.of(ears))
+    private val art = PetArt(result.look, Species.entries.firstOrNull { it.name == species } ?: Species.DOG, Ears.of(ears))
     private var set: AnimationSet = Chibi.build(art, emptyList())
     private var moodSet: AnimationSet = set
     private var layout = StageLayout(set)

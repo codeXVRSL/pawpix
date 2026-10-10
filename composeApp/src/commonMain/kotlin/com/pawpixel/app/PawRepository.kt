@@ -25,6 +25,7 @@ import com.pawpixel.sprite.Argb
 import com.pawpixel.sprite.Chibi
 import com.pawpixel.sprite.Ears
 import com.pawpixel.sprite.FaceBox
+import com.pawpixel.sprite.Coat
 import com.pawpixel.sprite.PetArt
 import com.pawpixel.sprite.PetLook
 import com.pawpixel.sprite.PetStyle
@@ -182,7 +183,8 @@ class PawRepository(val platform: Platform) {
         val draft = Pet(Ids.newId(), name.trim().ifEmpty { "My pet" }, species, now(), settings, ears = ears?.name, birthDay = birthDay)
         val pet = withContext(Dispatchers.Default) {
             saveHead(draft.id, result.head, result.photoCrop)
-            draft.copy(lookCode = art(draft)?.look?.encode()).also { writeWidgetPoses(it) }
+            // The photo's coat (stripes, socks, patches) is kept in the look code; art() reads it back.
+            draft.copy(lookCode = result.look.encode()).also { writeWidgetPoses(it) }
         }
         update { StateOps.addPet(it, pet, now(), clock) }
         return pet
@@ -193,7 +195,8 @@ class PawRepository(val platform: Platform) {
         val updated = withContext(Dispatchers.Default) {
             saveHead(pet.id, result.head, result.photoCrop)
             // The look code travels to family phones, so keep it in step with the face.
-            drawn.copy(lookCode = art(drawn)?.look?.encode() ?: pet.lookCode).also { writeWidgetPoses(it) }
+            val coded = drawn.copy(lookCode = result.look.encode())
+            coded.copy(lookCode = art(coded)?.look?.encode() ?: pet.lookCode).also { writeWidgetPoses(it) }
         }
         update { StateOps.updatePet(it, updated) }
     }
@@ -430,7 +433,7 @@ class PawRepository(val platform: Platform) {
                 val outfit = com.pawpixel.sprite.Accessory.of(pet.accessory)
                 val style = pet.style?.let { PetStyle.decode(it) } // the Studio look travels in the backup too
                 val art = contents.files["sprites/${pet.id}/head.bin"]?.let { runCatching { RawImage.decode(it) }.getOrNull() }
-                    ?.let { PetArt(it, pet.species, Ears.of(pet.ears), outfit, style) }
+                    ?.let { PetArt(it, pet.species, Ears.of(pet.ears), outfit, style, coatOf(pet)) }
                     ?: pet.lookCode?.let(PetLook::decode)?.let { PetArt(it, pet.species, Ears.of(pet.ears), outfit, style) }
                     ?: continue
                 writeWidgetPoses(pet, art, "$STAGING/")
@@ -504,9 +507,12 @@ class PawRepository(val platform: Platform) {
         val outfit = com.pawpixel.sprite.Accessory.of(pet.accessory)
         val style = pet.style?.let { PetStyle.decode(it) }
         // A pet from a household phone has no face here; its style travelled inside the look code.
-        return head(pet.id)?.let { PetArt(it, pet.species, Ears.of(pet.ears), outfit, style) }
+        return head(pet.id)?.let { PetArt(it, pet.species, Ears.of(pet.ears), outfit, style, coatOf(pet)) }
             ?: pet.lookCode?.let { PetLook.decode(it) }?.let { PetArt(it, pet.species, Ears.of(pet.ears), outfit, style) }
     }
+
+    /** The body markings the photo showed, which only the look code keeps (the face file has colours only). */
+    private fun coatOf(pet: Pet): Coat = pet.lookCode?.let(PetLook::decode)?.coat ?: Coat.NONE
 
     /**
      * The Pet Studio: saves the owner's choices, puts them in the look code (so the household and
@@ -543,7 +549,8 @@ class PawRepository(val platform: Platform) {
     fun storedResult(pet: Pet): SpriteResult? {
         val head = head(pet.id) ?: return null
         val photo = photoCrop(pet.id) ?: return null
-        return SpriteResult(head, head.pixels.filter { Argb.alpha(it) > 0 }.distinct(), photo, backgroundRemoved = true, face = FaceBox(0.5, 0.5, 1.0))
+        // The coat lives only in the look code; without it, saving an edit made without a new photo would erase it.
+        return SpriteResult(head, head.pixels.filter { Argb.alpha(it) > 0 }.distinct(), photo, backgroundRemoved = true, face = FaceBox(0.5, 0.5, 1.0), coat = coatOf(pet))
     }
 
     /** The before/after card: drawn off the main thread, then the share sheet. */
