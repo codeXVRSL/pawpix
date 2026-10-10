@@ -1,0 +1,40 @@
+PASS  create test owner
+PASS  create test owner
+PASS  create test owner
+PASS  joined
+PASS  create test owner
+PASS  the area with 3 owners shows
+PASS  its pets decode to drawable pixel pets
+PASS  a pet from the map draws
+PASS  blocking one owner hides the area
+PASS  gatherings list reads
+PASS  the host sees the proposal waiting
+PASS  others don't see it yet
+PASS  moderator approves
+PASS  once approved everyone sees it, with its area pin and note
+PASS  the host is marked as host
+PASS  community totals read
+PASS  the host can cancel it
+PASS  leaving the map works
+PASS  deleting the account signs out
+PASS  a deleted account can't read the map
+PASS  create test owner
+PASS  create test owner
+PASS  create test owner
+PASS  invite code looks right
+PASS  a wrong code is refused with a reason
+PASS  after 10 wrong codes, even the right one waits an hour
+PASS  joining with a typed code (dash, lower case)
+PASS  both see the family and its members
+PASS  Jamaica's phone gets Mochi, the tasks and Save's Done
+PASS  Save sees Jamaica's Done, marked as hers
+PASS  Jamaica's undo reaches Save
+PASS  the undo is kept in the log, marked undone
+PASS  a pull only brings what changed since the last one
+PASS  a stranger reads nothing of the family
+PASS  a stranger can't write into the family
+PASS  nobody can log a Done in someone else's name
+PASS  leaving works, and the family stays
+PASS  deleting the last member's account deletes the family
+
+the app's map client works against the real backend

@@ -1,0 +1,50 @@
+PASS  Save starts a household
+PASS  one household per account
+PASS  nobody adds themselves without a code
+PASS  a stranger can't make invite codes
+PASS  the invite code is 8 letters/digits without look-alikes
+PASS  a wrong code is refused (no household)
+PASS  (test) the code expires
+PASS  an expired code is refused
+PASS  a new code works (typed in lower case)
+PASS  joining again is harmless
+PASS  both see both names
+PASS  Save shares Chelsea
+PASS  and her feeding task
+PASS  a clock far ahead can't win every later edit
+PASS  Jamaica sees Chelsea's pixel look
+PASS  an edit claiming no author is still stamped (household_pets)
+PASS  an edit claiming no author is still stamped (household_tasks)
+PASS  Jamaica logs a feed
+PASS  Save sees it, marked as hers (whatever the phone claims)
+PASS  sending the same record twice keeps one
+PASS  a stranger sees no households
+PASS  a stranger sees no household_members
+PASS  a stranger sees no household_pets
+PASS  a stranger sees no household_tasks
+PASS  a stranger sees no household_completions
+PASS  a stranger can't log care
+PASS  a stranger can't rename the pet
+PASS  a stranger can't undo
+PASS  Save can't undo Jamaica's record
+PASS  records can't be deleted (the log is append-only)
+PASS  Jamaica undoes hers
+PASS  the undo is stamped by the server
+PASS  the undo shows in 'changed since my last sync'
+PASS  an undo can't be taken back
+PASS  up to 8 people join
+PASS  the 9th is told it's full
+PASS  only the starter can remove people
+PASS  Save removes someone
+PASS  who then sees nothing
+PASS  someone leaves
+PASS  the household goes on without them
+PASS  deleting an account removes its membership
+PASS  the last member's account deletion removes the household
+PASS  records of a deleted account stay, author unknown
+PASS  only the starter can stop sharing for everyone
+PASS  Save stops sharing
+PASS  the household, its pets and records are gone
+PASS  members see nothing any more
+
+all household checks passed
