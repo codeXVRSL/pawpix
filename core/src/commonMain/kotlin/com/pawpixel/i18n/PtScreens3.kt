@@ -26,6 +26,7 @@ internal object PtScreens3 {
         "Friends' pixel pets visit {0}'s room" to "Os pets pixel dos amigos visitam o quarto de {0}",
         "From a photo" to "De uma foto",
         "From the photo" to "Da foto",
+        "Face markings only" to "Só as marcas do rosto",
         "Fur" to "Pelagem",
         "GIF, before/after, household" to "GIF, antes/depois, casa",
         "Gatherings" to "Encontros",

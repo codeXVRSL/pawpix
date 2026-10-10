@@ -41,6 +41,24 @@ class TranslationTest {
 
     private val tables get() = listOf("Filipino" to I18n.filipino, "Spanish" to I18n.spanish, "Portuguese" to I18n.portuguese)
 
+    /** The Pet Studio shows these enum labels through tr() at run time, so the source scan can't see them. */
+    @Test fun everyStudioChoiceHasEveryLanguage() {
+        val labels = listOf(
+            com.pawpixel.sprite.HeadShape.entries.map { it.label }, com.pawpixel.sprite.EyeShape.entries.map { it.label },
+            com.pawpixel.sprite.EyeColor.entries.map { it.label }, com.pawpixel.sprite.EyeShine.entries.map { it.label },
+            com.pawpixel.sprite.Brows.entries.map { it.label }, com.pawpixel.sprite.NoseShape.entries.map { it.label },
+            com.pawpixel.sprite.NoseColor.entries.map { it.label }, com.pawpixel.sprite.Mouth.entries.map { it.label },
+            com.pawpixel.sprite.EarStyle.entries.map { it.label }, com.pawpixel.sprite.BodyShape.entries.map { it.label },
+            com.pawpixel.sprite.TailStyle.entries.map { it.label }, com.pawpixel.sprite.Pattern.entries.map { it.label },
+            com.pawpixel.sprite.Chest.entries.map { it.label }, com.pawpixel.sprite.Blush.entries.map { it.label },
+            com.pawpixel.sprite.Whiskers.entries.map { it.label }, com.pawpixel.sprite.Collar.entries.map { it.label },
+        ).flatten().toSet()
+        for ((name, table) in tables) {
+            val missing = labels.filter { table[it].isNullOrBlank() }
+            assertTrue(missing.isEmpty(), "No $name for Studio choices: $missing")
+        }
+    }
+
     @Test fun everyStringInTheAppHasEveryLanguage() {
         val keys = keysInSources()
         assertTrue(keys.size > 300, "found ${keys.size} tr() strings: is the scan working?")

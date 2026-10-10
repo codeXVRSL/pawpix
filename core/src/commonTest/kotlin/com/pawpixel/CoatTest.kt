@@ -72,6 +72,16 @@ class CoatTest {
         )
     }
 
+    @Test fun faceMarkingsOnlyKeepsThePhotosFaceButDropsTheBodyMarkings() {
+        val faceOnly = PetStyle.DEFAULT.copy(pattern = Pattern.FACE_ONLY)
+        assertContentEquals(
+            PetArt(look, Species.CAT).still.pixels,
+            PetArt(look.withCoat(Coat(stripes = true, socks = true)), Species.CAT, style = faceOnly).still.pixels,
+        )
+        val back = assertNotNull(PetLook.decode(look.withStyle(faceOnly).encode()))
+        assertEquals(Pattern.FACE_ONLY, back.style.pattern)
+    }
+
     // ---- Detection on drawn photos (384 px, the pipeline's working size) ----
 
     private val size = 384

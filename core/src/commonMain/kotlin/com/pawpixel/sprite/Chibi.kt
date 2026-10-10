@@ -293,6 +293,7 @@ object Chibi {
         val pattern = style.pattern
         // The photo's body markings, drawn only when the coat comes "From the photo" (a Studio pattern replaces them).
         // Stripes only on cats: a dog's fur reads like lines too often in a photo (see [CoatDetector]); on a tabby they win over patches.
+        val fromPhoto = pattern == Pattern.AUTO || pattern == Pattern.FACE_ONLY
         val coat = (if (pattern == Pattern.AUTO) look.coat else Coat.NONE).let { c ->
             when {
                 !cat -> c.copy(stripes = false)
@@ -359,7 +360,7 @@ object Chibi {
         fun headRamp(x: Int, y: Int): Ramp {
             val u = faceU(x) * 2 - 1; val v = faceV(y) * 2 - 1 // -1..1 across the head
             return when (pattern) {
-                Pattern.AUTO -> {
+                Pattern.AUTO, Pattern.FACE_ONLY -> {
                     val t = faceTone(x, y)
                     // Tabby lines over the photo's colours: the forehead's "M" and a few on the cheeks, in each patch's own darker shade.
                     val dx = x - hcx.toInt()
@@ -385,7 +386,7 @@ object Chibi {
             }
         }
         /** The body's fur at a pixel: solid, or with spots and stripes continuing from the head. */
-        fun bodyRamp(x: Int, y: Int, nx: Double, ny: Double): Ramp = if (pattern == Pattern.AUTO) when {
+        fun bodyRamp(x: Int, y: Int, nx: Double, ny: Double): Ramp = if (fromPhoto) when {
             // Tabby: bands down the sides that bend with the body, two pixels apart, the belly left plain.
             coat.stripes && abs(nx) > 0.28 && ny < 0.45 && (abs(x - cx.toInt()) + ((ny + 1) * 1.6).toInt()) % 3 == 0 -> stripeRamps[0]
             coat.patchTone != null && listOf(Triple(-0.42, -0.25, 0.42), Triple(0.55, 0.2, 0.34)).any { (su, sv, r) -> (nx - su) * (nx - su) + (ny - sv) * (ny - sv) < r * r } -> ramps[coat.patchTone]
@@ -467,8 +468,8 @@ object Chibi {
         }
 
         // ---------- Ears behind/around the head ----------
-        val earToneL = if (pattern == Pattern.AUTO) ramps[look.toneAt(0.2, 0.1)] else if (pattern == Pattern.MASK) darkR else baseR
-        val earToneR = if (pattern == Pattern.AUTO) ramps[look.toneAt(0.8, 0.1)] else if (pattern == Pattern.MASK) darkR else baseR
+        val earToneL = if (fromPhoto) ramps[look.toneAt(0.2, 0.1)] else if (pattern == Pattern.MASK) darkR else baseR
+        val earToneR = if (fromPhoto) ramps[look.toneAt(0.8, 0.1)] else if (pattern == Pattern.MASK) darkR else baseR
         val earStyle = when (style.ears) {
             EarStyle.AUTO -> if (art.ears == Ears.POINTY) EarStyle.POINTY else EarStyle.FLOPPY
             else -> style.ears

@@ -26,6 +26,7 @@ internal object EsScreens3 {
         "Friends' pixel pets visit {0}'s room" to "Las mascotas pixel de tus amigos visitan el cuarto de {0}",
         "From a photo" to "De una foto",
         "From the photo" to "De la foto",
+        "Face markings only" to "Solo las marcas de la cara",
         "Fur" to "Pelaje",
         "GIF, before/after, household" to "GIF, antes/después, hogar",
         "Gatherings" to "Encuentros",

@@ -158,6 +158,8 @@ enum class TailStyle(val label: String) { AUTO("Natural"), CURLY("Curly"), STRAI
 
 enum class Pattern(val label: String) {
     AUTO("From the photo"), SOLID("Solid"), TUXEDO("Tuxedo"), MASK("Mask"), SOCKS("Socks"), SPOTS("Spots"), TABBY("Tabby"), PATCH("Eye patch"),
+    /** The photo's face markings without the body markings read from it (for when [CoatDetector] got them wrong). Last, as styles are stored by position. */
+    FACE_ONLY("Face markings only"),
 }
 
 enum class Chest(val label: String) { AUTO("Natural"), LIGHT("Light chest"), HEART("Heart mark"), PLAIN("Plain") }

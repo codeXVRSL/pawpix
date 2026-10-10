@@ -30,7 +30,7 @@ object FilScreens5 {
         // Options
         "Round" to "Bilog", "Wide" to "Malapad", "Tall" to "Matangkad", "Chubby cheeks" to "Mabilog na pisngi",
         "Big" to "Malaki", "Almond" to "Almond", "Sleepy" to "Inaantok", "Sparkly" to "Kumikinang", "Wink" to "Kindat",
-        "From the photo" to "Mula sa litrato", "Dark" to "Maitim", "Amber" to "Amber", "Green" to "Berde", "Blue" to "Asul", "Hazel" to "Hazel", "Odd eyes" to "Magkaibang mata",
+        "From the photo" to "Mula sa litrato", "Face markings only" to "Marka sa mukha lang", "Dark" to "Maitim", "Amber" to "Amber", "Green" to "Berde", "Blue" to "Asul", "Hazel" to "Hazel", "Odd eyes" to "Magkaibang mata",
         "One shine" to "Isang kinang", "Two shines" to "Dalawang kinang", "Starry" to "Mabituin",
         "Soft" to "Malambot", "Worried" to "Nag-aalala", "Fierce" to "Mabangis",
         "Button" to "Button", "Triangle" to "Tatsulok", "Heart" to "Puso",
