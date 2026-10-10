@@ -1,0 +1,28 @@
+PASS  first open goes straight to making a pet  (1454 ms)
+PASS  photo becomes a pixel pet  (8068 ms)
+PASS  cat body and ears  (8464 ms)
+      typed on attempt 1
+      scroll down #0 for Save: exists=true frame=(16.0, 885.6666870117188, 408.0, 50.0) hittable=true
+PASS  name and save  (75536 ms)
+PASS  Done on a care task  (4779 ms)
+PASS  add a medicine task  (14637 ms)
+PASS  health: a kitten's birthday gives her the first-year plan  (15528 ms)
+PASS  weight: two weigh-ins draw the chart  (30166 ms)
+PASS  before/after card opens the share sheet  (15941 ms)
+PASS  share animation opens the share sheet  (12116 ms)
+      scroll down #0 for Away 3 days: exists=true frame=(139.0, 541.6666870117188, 105.0, 48.0) hittable=true
+      scroll down #0 for Save backup file: exists=true frame=(32.0, 791.3333129882812, 149.6666717529297, 48.0) hittable=true
+      scroll down #0 for Back: exists=true frame=(16.0, -1373.3333740234375, 36.0, 36.0) hittable=false
+      scroll down #1 for Back: exists=true frame=(16.0, -1373.3333740234375, 36.0, 36.0) hittable=false
+      scroll down #2 for Back: exists=true frame=(16.0, -1376.0, 36.0, 36.0) hittable=false
+      scroll up #0 for Back: exists=true frame=(16.0, -908.6666870117188, 36.0, 36.0) hittable=false
+      scroll up #1 for Back: exists=true frame=(16.0, -505.0, 36.0, 36.0) hittable=false
+      scroll up #2 for Back: exists=true frame=(16.0, -47.0, 36.0, 36.0) hittable=false
+PASS  home is the pet's room; settings open  (50423 ms)
+PASS  album: a photo with a caption, then the pet remembered and brought back  (32055 ms)
+PASS  pet map opens (this CI build has no map server: it says so)  (9448 ms)
+PASS  demo map (no server): join, the pets nearby, a walk, RSVP, host a walk  (47264 ms)
+      scroll down #0 for Alert owners nearby: exists=true frame=(16.0, 791.6666870117188, 229.0, 50.0) hittable=true
+PASS  lost and found: raise an alert, then safe home  (28020 ms)
+PASS  share with your household (no server in this CI build: says it's not available yet)  (9776 ms)
+PASS  relaunch keeps the pet  (11970 ms)
