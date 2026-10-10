@@ -1,0 +1,64 @@
+PASS  first open goes straight to making a pet  (1119 ms)
+PASS  photo becomes a pixel pet  (3424 ms)
+      note: memory: total PSS 174521 kB, Java heap 40628 kB, native heap 17512 kB, graphics 0 kB
+PASS  memory just after turning the photo into a pet  (177 ms)
+PASS  cat body, floppy ears, then back to pointy  (2377 ms)
+PASS  face square is shown and can be resized  (11091 ms)
+PASS  name and save  (16777 ms)
+PASS  Done on a care task counts and cheers the pet up  (2443 ms)
+PASS  add a medicine task  (4387 ms)
+PASS  health: a kitten's birthday gives her the first-year plan  (4895 ms)
+PASS  health: record a dose with a photo of the vaccination card  (13240 ms)
+      note: anti-rabies after 'a month ago': Due in 11 months
+      note: country US: the Philippine card stays home
+PASS  health: an anti-rabies shot given a month ago is next due in 11 months  (6419 ms)
+PASS  weight: two weigh-ins draw the chart; the list opens  (9980 ms)
+PASS  milestone: 7 days of care is celebrated and shareable  (2718 ms)
+PASS  outfits: a week of care earns a bandana, and it shows on the pet  (4413 ms)
+PASS  share animation and before/after card open the share sheet  (5351 ms)
+PASS  album: a photo with a caption, kept with the pet and in its backup  (9591 ms)
+PASS  in loving memory: the room goes quiet, the album stays, and it can be undone  (7621 ms)
+PASS  lost and found: the alert goes up with the album photo, shows on the map, a sighting comes in, safe home  (22804 ms)
+PASS  pals: your code, add a pal by code, their pixel pets, a treat, the visitor in the room  (2388 ms)
+PASS  walk: timed from the Care panel, the pet trots, ending it logs the walk as care  (5278 ms)
+PASS  home is the pet's room  (1075 ms)
+PASS  settings open and close  (4984 ms)
+PASS  away mode pauses care and comes back  (5364 ms)
+      note: record photo restored for vqr03v20zd68
+PASS  backup: save a file, then restore one  (7878 ms)
+PASS  pet map: join, see the pixel pets nearby, report, RSVP, leave  (53672 ms)
+      note: on Chelsea's page: Litter cleaned by Jamaica · 5:01 PM
+PASS  household: share Chelsea, a partner joins, her Done and her Undo show on this phone  (10094 ms)
+      note: pressed Done on the notification
+PASS  reminder notification with a working Done button  (4162 ms)
+PASS  home-screen widget can be added and draws the pet  (12202 ms)
+      note: home screen pixels that changed within 1.4 s: 1760
+      note: widget animation: 12 steps, 6 distinct frames, every 300 ms
+PASS  widget: the pet is alive on the home screen  (3347 ms)
+      note: widget 2x1: [Chelsea]
+      note: widget 4x1: [Chelsea, Chelsea is happy!]
+      note: widget 2x2: [Chelsea]
+      note: widget 2x3: [Chelsea, Next: 🍖 Feed · 7:00 AM]
+      note: widget 3x2: [Chelsea, Chelsea is happy!, Next: 🍖 Feed · 7:00 AM]
+      note: widget 4x2: [Chelsea, Chelsea is happy!, Next: 🍖 Feed · 7:00 AM]
+      note: widget 4x3: [Chelsea, Chelsea is happy!, Next: 🍖 Feed · 7:00 AM]
+      note: widget 2x2 dark: [Chelsea]
+      note: widget 4x2 dark: [Chelsea, Chelsea is happy!, Next: 🍖 Feed · 7:00 AM]
+PASS  widget: good layouts from a one-row strip to 4x3, light and dark  (2232 ms)
+      note: widget button: 💧 Done for e2ewater
+      note: widget 4x1-due: [Chelsea, Chelsea is happy!, 💧 Done]
+      note: widget 2x3-due: [Chelsea, 💧 Done]
+      note: widget 4x2-due dark: [Chelsea, Chelsea is happy!, 💧 Done]
+      note: widget after Done: Chelsea is happy!, button for null
+PASS  widget: Done on the widget logs care and cheers the pet up  (13875 ms)
+PASS  widget: tapping it opens the pet's page  (8662 ms)
+PASS  widget: each widget can show a different pet  (12274 ms)
+PASS  bundled reminder: one notification, and its Done logs everything in it  (6078 ms)
+PASS  reminders that never arrived: a one-time tip for this phone's background setting  (6240 ms)
+      note: idle 5 s: 15 frames, 15 (100.00%) janky, p50 32ms, p90 32ms, p99 32ms
+      note: scrolling: 21 frames, 19 (90.48%) janky, p50 32ms, p90 32ms, p99 38ms
+      note: memory: total PSS 188481 kB, Java heap 30348 kB, native heap 44176 kB, graphics 0 kB
+PASS  performance: frame times on Chelsea's page (living pet idle, then scrolling)  (11637 ms)
+PASS  large text (200%) on a small phone: the main screens still fit  (31905 ms)
+PASS  dark mode: the main screens  (13853 ms)
+PASS  reopening the app keeps the pet  (47373 ms)
