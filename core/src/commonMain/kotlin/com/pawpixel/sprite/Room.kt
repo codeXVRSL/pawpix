@@ -51,15 +51,15 @@ object Room {
 
         /** The floor tile under a stage pixel, or null when it's not on the grid. */
         fun tileAt(x: Int, y: Int): Pair<Int, Int>? {
-            val col = Math.floorDiv(x - gridLeft, TILE_W); val row = Math.floorDiv(y - floorLine, TILE_D)
+            val col = (x - gridLeft).floorDiv(TILE_W); val row = (y - floorLine).floorDiv(TILE_D)
             return if (col in 0 until RoomLayout.COLS && row in 0 until rows) col to row else null
         }
 
         /** The wall column and slot under a stage pixel, or null when it isn't on the wall. */
         fun wallAt(x: Int, y: Int): Pair<Int, Int>? {
             if (y >= floorLine - 2) return null
-            val col = Math.floorDiv(x - gridLeft, TILE_W)
-            val slot = Math.floorDiv(floorLine - 4 - y + slotStep / 2, slotStep)
+            val col = (x - gridLeft).floorDiv(TILE_W)
+            val slot = (floorLine - 4 - y + slotStep / 2).floorDiv(slotStep)
             return if (col in 0 until RoomLayout.COLS && slot in 0 until RoomLayout.WALL_SLOTS) col to slot else null
         }
     }

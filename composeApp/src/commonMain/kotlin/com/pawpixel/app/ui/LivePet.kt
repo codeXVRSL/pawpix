@@ -280,7 +280,7 @@ private fun placesFor(room: RoomLayout, layout: StageLayout, roomW: Int, depthRo
     }
     val blocked = room.items.filter { !it.item.onWall && !it.item.flat && it.item.use == Furniture.Use.NONE }.flatMap { it.tiles() }.toSet()
     return Places(rows, bed, bowl) { x, row ->
-        val col = Math.floorDiv((x + roomOffset).toInt() - g.gridLeft, Room.TILE_W)
+        val col = ((x + roomOffset).toInt() - g.gridLeft).floorDiv(Room.TILE_W)
         (col to row) !in blocked
     }
 }
