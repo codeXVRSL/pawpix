@@ -118,7 +118,7 @@ fun PetScreen(app: AppScope, state: AppState, pet: Pet) {
             art, pet.eyes, reading.mood, seed = pet.id.hashCode(), modifier = Modifier.fillMaxSize(), reaction = reaction,
             description = MoodEngine.describe(pet.name, reading.mood), phase = phase, keepAspect = false, floorDepth = hudHeight + 64.dp, zoom = 1.25f,
             onPetted = { haptics.performHapticFeedback(HapticFeedbackType.LongPress) },
-            season = seasonFor(app),
+            season = seasonFor(app), room = pet.layout,
         )
         HeartBurst(burst, Modifier.matchParentSize())
 
@@ -165,7 +165,10 @@ fun PetScreen(app: AppScope, state: AppState, pet: Pet) {
                     weather?.let { w -> WeatherChip(w) }
                 }
                 Spacer(Modifier.weight(1f))
-                GlassButton(PixelIcons.GEAR, tr("Settings")) { app.navigate(Screen.Settings) }
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp), horizontalAlignment = Alignment.End) {
+                    GlassButton(PixelIcons.GEAR, tr("Settings")) { app.navigate(Screen.Settings) }
+                    if (!pet.remembered) GlassButton(PixelIcons.HOUSE, tr("Decorate the room")) { app.navigate(Screen.Decorate(pet.id)) }
+                }
             }
             // A milestone pops up here, over the room, with confetti; the bubble moves under it then.
             if (!pet.remembered) Box(Modifier.padding(top = 10.dp)) { MilestoneBanner(app, pet) }

@@ -52,6 +52,7 @@ IF THEY EVER GO MISSING
 LITTLE THINGS, EVERY DAY
 • The weather outside in the room: hot pavement, rain and thunder, in your pet's own words.
 • Time a walk and your pixel pet trots along while your phone counts the steps.
+• Decorate the room: move the bed, the lamp, the pictures; earn new furniture with days of care. Your pixel pet sleeps on the bed you placed.
 • Birthdays, gotcha days and seasons decorate the room.
 • A small challenge each month, counted from what you already log: care days, walks, photos.
 • Vaccine schedules that follow your country, and km or miles, kg or lb, the way you measure.
@@ -95,6 +96,7 @@ SI ALGUNA VEZ SE PIERDE
 PEQUEÑOS DETALLES, CADA DÍA
 • El clima de afuera en el cuarto: pavimento caliente, lluvia y truenos, en palabras de tu mascota.
 • Cronometra un paseo y tu mascota pixel trota contigo mientras el teléfono cuenta los pasos.
+• Decora el cuarto: mueve la cama, la lámpara, los cuadros; gana muebles nuevos con días de cuidado. Tu mascota pixel duerme en la cama que le pusiste.
 • Cumpleaños, días de adopción y temporadas decoran el cuarto.
 • Un pequeño reto cada mes, contado con lo que ya registras: días de cuidado, paseos, fotos.
 • Calendarios de vacunas según tu país, y km o millas, kg o libras, como tú midas.
@@ -138,6 +140,7 @@ SE ELE SE PERDER
 PEQUENAS COISAS, TODO DIA
 • O tempo lá fora no quarto: asfalto quente, chuva e trovões, nas palavras do seu pet.
 • Cronometre um passeio e seu pet pixel trota junto enquanto o celular conta os passos.
+• Decore o quarto: mova a cama, o abajur, os quadros; ganhe móveis novos com dias de cuidado. Seu pet pixel dorme na cama que você colocou.
 • Aniversários, dias de adoção e estações decoram o quarto.
 • Um pequeno desafio por mês, contado com o que você já registra: dias de cuidado, passeios, fotos.
 • Calendários de vacinas que seguem seu país, e km ou milhas, kg ou libras, do jeito que você mede.

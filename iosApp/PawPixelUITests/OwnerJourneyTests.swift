@@ -130,6 +130,14 @@ final class OwnerJourneyTests: XCTestCase {
             try scrollTo("Back").tap() // the panel drops: the room again
         }
 
+        step("decorate: the room's furniture can be moved; Back returns to the room") {
+            try find("Decorate the room").tap() // the house button by the gear
+            try find("Put everything back")
+            shot("decorate")
+            try find("Back").tap()
+            try find("Health")
+        }
+
         step("health: a kitten's birthday gives her the first-year plan") {
             try find("Health").tap() // the Health key under the room
             try scrollTo("+ Add health reminders").tap()

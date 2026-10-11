@@ -22,6 +22,22 @@ object Milestones {
     fun unlocked(pet: Pet): List<com.pawpixel.sprite.Accessory> =
         com.pawpixel.sprite.Accessory.entries.filter { it.unlockDays <= caredDays(pet) }
 
+    /** Furniture this pet has earned so far (the pieces there from the start included). */
+    fun furniture(pet: Pet): List<com.pawpixel.sprite.Furniture> =
+        com.pawpixel.sprite.Furniture.entries.filter { it.unlockDays <= caredDays(pet) }
+
+    /** Arranges the room: only pieces the pet has earned are kept (a layout from elsewhere can't skip ahead). */
+    fun decorate(state: AppState, petId: String, layout: com.pawpixel.sprite.RoomLayout, nowMs: Long): AppState =
+        state.copy(pets = state.pets.map { p ->
+            if (p.id != petId) p
+            else {
+                val earned = furniture(p)
+                val kept = com.pawpixel.sprite.RoomLayout(layout.items.filter { it.item in earned })
+                val code = kept.encode().takeIf { kept != com.pawpixel.sprite.RoomLayout.DEFAULT }
+                if (code == p.room) p else p.copy(room = code, editedAtMs = nowMs)
+            }
+        })
+
     /**
      * Puts on an outfit (null = none). Only one it has earned; the pose images are redrawn, so the
      * sprite version moves on.

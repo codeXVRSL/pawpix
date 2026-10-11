@@ -45,8 +45,11 @@ import com.pawpixel.sprite.PetPose
 import com.pawpixel.sprite.Chibi
 import com.pawpixel.sprite.PetArt
 import com.pawpixel.sprite.PetBrain
+import com.pawpixel.sprite.Furniture
 import com.pawpixel.sprite.StageLayout
 import com.pawpixel.sprite.Room
+import com.pawpixel.sprite.RoomLayout
+import com.pawpixel.sprite.Places
 import com.pawpixel.core.Sky
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Dp
@@ -82,6 +85,8 @@ fun LivePet(
     onPetted: () -> Unit = {},
     /** The calendar's decorations (Halloween, Christmas, Valentine's). */
     season: com.pawpixel.sprite.Season = com.pawpixel.sprite.Season.NONE,
+    /** The room's furniture, as the owner arranged it. */
+    room: RoomLayout = RoomLayout.DEFAULT,
 ) {
     if (art == null) return
     // Drawing every frame of the pet takes a budget phone a noticeable moment: do it off the main
@@ -129,7 +134,12 @@ fun LivePet(
     } else Float.MAX_VALUE
     val px = minOf(byWidth, byHeight)
     val stageCols = floor(widthPx / px).toInt().coerceAtLeast(layout.stageWidth / 2)
-    val brain = remember(layout, seed, stageCols) { PetBrain(seed, stageCols.toDouble(), layout.set.width, layout.body) }
+    // The room's grid for this stage: the floor rows the pet may walk, where its bed and bowl stand, what's in the way.
+    val depthRows = kotlin.math.ceil(floorDepthPx / px).toInt()
+    val roomW = kotlin.math.ceil(widthPx / px).toInt().coerceAtLeast(stageCols)
+    val roomOffset = (roomW - stageCols) / 2 // a stage pixel's x plus this is its x in the room
+    val places = remember(layout, stageCols, roomW, depthRows, room) { placesFor(room, layout, roomW, depthRows, roomOffset) }
+    val brain = remember(layout, seed, stageCols, places) { PetBrain(seed, stageCols.toDouble(), layout.set.width, layout.body, places) }
     /**
      * The pose on screen. The pet thinks every frame, but the stage is redrawn only when what it
      * shows changes by a pet pixel (a few times a second), not 60 times a second: a budget phone
@@ -148,8 +158,9 @@ fun LivePet(
     val currentBrain by androidx.compose.runtime.rememberUpdatedState(brain)
     LaunchedEffect(reaction) { reaction?.let { currentBrain.react(it.event, clock[1]) } }
 
-    // The room behind the pet, drawn once per size and time of day (it is tiny: stage pixels).
-    val roomCache = remember { HashMap<String, ImageBitmap>() }
+    // The room behind the pet, drawn once per size, time of day and arrangement (it is tiny: stage pixels).
+    val roomCache = remember { HashMap<String, DrawnScene>() }
+    val roomCode = remember(room) { room.encode() }
     val petLabel = tr("Give pets")
     Canvas(
         Modifier.matchParentSize()
@@ -169,8 +180,8 @@ fun LivePet(
                     val sy = (tap.y - top) / px
                     val w = layout.set.width
                     val (b0, b2) = if (pose.flip) (w - layout.body[2]) to (w - layout.body[0]) else layout.body[0] to layout.body[2]
-                    val petTopY = layout.petTop + pose.lift + layout.body[1]
-                    if (sx >= pose.x + b0 - 4 && sx <= pose.x + b2 + 4 && sy >= petTopY - 8 && sy <= layout.floorY + 2) {
+                    val petTopY = layout.petTop + pose.lift + pose.dy + layout.body[1]
+                    if (sx >= pose.x + b0 - 4 && sx <= pose.x + b2 + 4 && sy >= petTopY - 8 && sy <= layout.floorY + pose.dy + 2) {
                         brain.react(PetEvent.Petted, clock[1])
                         petted()
                     }
@@ -185,43 +196,54 @@ fun LivePet(
         fun sx(v: Double) = left + (v * px).toFloat()
         fun sy(v: Double) = top + (v * px).toFloat()
 
-        // The room: as many rows as the stage is tall, the floor where the pet's feet are.
+        // The room: as many rows as the stage is tall, the pet's home row of floor where its feet are.
         val rows = kotlin.math.ceil(size.height / px).toInt().coerceAtLeast(layout.stageHeight + depthRows)
-        val roomW = kotlin.math.ceil(size.width / px).toInt().coerceAtLeast(stageCols)
         val floorRow = rows - (layout.stageHeight + depthRows) + layout.floorY
-        val key = "$roomW:$rows:$floorRow:${phase.key}:${season.name}"
-        val room = roomCache[key] ?: Room.render(roomW, rows, floorRow, phase, seed, season).toImageBitmap().also {
+        val key = "$roomW:$rows:$floorRow:${phase.key}:${season.name}:$roomCode"
+        val scene = roomCache[key] ?: Room.scene(roomW, rows, Room.floorLineFor(floorRow), phase, seed, season, room).let { sc ->
+            // Back to front, so two pieces that overlap are drawn in the right order (as Scene.flatten does).
+            DrawnScene(sc.base.toImageBitmap(), sc.props.sortedWith(compareBy({ it.baseline }, { it.x })).map { DrawnProp(it.image.toImageBitmap(), it.x, it.y, it.baseline) })
+        }.also {
             if (roomCache.size >= 4) roomCache.clear() // a few sizes at most: a resizing stage doesn't keep a bitmap per frame
             roomCache[key] = it
         }
         val roomLeft = ((size.width - px * roomW) / 2).roundToInt()
         val roomTop = (size.height - px * rows).roundToInt()
-        drawImage(room, IntOffset.Zero, IntSize(roomW, rows), IntOffset(roomLeft, roomTop), IntSize((roomW * px).roundToInt(), (rows * px).roundToInt()), filterQuality = FilterQuality.None)
+        drawImage(scene.base, IntOffset.Zero, IntSize(roomW, rows), IntOffset(roomLeft, roomTop), IntSize((roomW * px).roundToInt(), (rows * px).roundToInt()), filterQuality = FilterQuality.None)
+        fun drawProp(p: DrawnProp) = drawImage(p.image, IntOffset.Zero, IntSize(p.image.width, p.image.height), IntOffset(roomLeft + (p.x * px).roundToInt(), roomTop + (p.y * px).roundToInt()), IntSize((p.image.width * px).roundToInt(), (p.image.height * px).roundToInt()), filterQuality = FilterQuality.None)
 
+        // Painter's order: what stands behind the pet's feet first, then the pet, then what stands in front.
+        val petBaseline = floorRow + pose.dy
+        for (p in scene.props) if (p.baseline <= petBaseline) drawProp(p)
 
         // Shadow, smaller while airborne
         val bodyW = layout.body[2] - layout.body[0]
         val half = bodyW * 0.4 * (1.0 + pose.lift / 40.0).coerceIn(0.4, 1.0)
         val cx = pose.x + (layout.body[0] + layout.body[2]) / 2.0
-        drawOval(Color(0x40000000), Offset(sx(cx - half), sy(layout.floorY - 1.0)), Size((half * 2 * px).toFloat(), 2 * px))
+        drawOval(Color(0x40000000), Offset(sx(cx - half), sy(layout.floorY + pose.dy - 1.0)), Size((half * 2 * px).toFloat(), 2 * px))
 
         // Pet (once its drawings for this look and mood are ready)
-        val frames = drawn?.takeIf { it.set === current.set }?.frames ?: return@Canvas
-        val img = frames.getValue(pose.frame)
-        val ix = sx(pose.x).roundToInt()
-        val iy = sy(layout.petTop + pose.lift.toDouble()).roundToInt()
-        val iw = (img.width * px).roundToInt()
-        val ih = (img.height * px).roundToInt()
-        withFlip(pose.flip, ix + iw / 2f) {
-            drawImage(img, IntOffset.Zero, IntSize(img.width, img.height), IntOffset(ix, iy), IntSize(iw, ih), filterQuality = FilterQuality.None)
+        val frames = drawn?.takeIf { it.set === current.set }?.frames
+        if (frames != null) {
+            val img = frames.getValue(pose.frame)
+            val ix = sx(pose.x).roundToInt()
+            val iy = sy(layout.petTop + pose.lift.toDouble() + pose.dy).roundToInt()
+            val iw = (img.width * px).roundToInt()
+            val ih = (img.height * px).roundToInt()
+            withFlip(pose.flip, ix + iw / 2f) {
+                drawImage(img, IntOffset.Zero, IntSize(img.width, img.height), IntOffset(ix, iy), IntSize(iw, ih), filterQuality = FilterQuality.None)
+            }
         }
+        for (p in scene.props) if (p.baseline > petBaseline) drawProp(p)
+        if (frames == null) return@Canvas
+        val img = frames.getValue(pose.frame)
 
         // Effects (mirrored with the pet)
         for (e in pose.effects) {
             val icon = icons.getValue(e.kind)
             val baseH = Icons.forEffect(e.kind).height
             val ex = if (pose.flip) img.width - e.x - icon.width else e.x
-            val ey = layout.petTop + pose.lift + e.y - (icon.height - baseH)
+            val ey = layout.petTop + pose.lift + pose.dy + e.y - (icon.height - baseH)
             drawImage(
                 icon, IntOffset.Zero, IntSize(icon.width, icon.height),
                 IntOffset(sx(pose.x + ex).roundToInt(), sy(ey).roundToInt()),
@@ -230,6 +252,36 @@ fun LivePet(
             )
         }
     }
+    }
+}
+
+/** The room's backdrop and its standing pieces (in room pixels), ready to draw. */
+private class DrawnScene(val base: ImageBitmap, val props: List<DrawnProp>)
+private class DrawnProp(val image: ImageBitmap, val x: Int, val y: Int, val baseline: Int)
+
+/**
+ * The room as the pet's brain sees it: which rows it can walk (those on screen above the controls),
+ * its bed and bowl as pet-canvas positions, and the tiles furniture takes.
+ */
+private fun placesFor(room: RoomLayout, layout: StageLayout, roomW: Int, depthRows: Int, roomOffset: Int): Places {
+    // Rows in front of the home row that still show above the controls (the home row's feet are [depthRows] above them).
+    val front = ((depthRows - 6) / Room.TILE_D).coerceAtLeast(0)
+    val rows = (Room.PET_ROW + 1 + front).coerceAtMost(RoomLayout.ROWS)
+    val g = Room.Geometry(roomW, 1000, 0) // only its x mapping is used here
+    val bodyMid = (layout.body[0] + layout.body[2]) / 2.0
+    fun stageX(roomX: Double) = roomX - roomOffset
+    // The bed's front row must be one the pet can walk to; a bed beyond the walkable rows would be drawn over the sleeping pet.
+    val bed = room.items.firstOrNull { it.item.use == Furniture.Use.SLEEP }?.takeIf { it.y + it.item.rows - 1 < rows }?.let { b ->
+        stageX(g.tileX(b.x) + b.item.cols * Room.TILE_W / 2.0) - bodyMid to b.y + b.item.rows - 1
+    }
+    val bowl = room.items.firstOrNull { it.item.use == Furniture.Use.EAT }?.let { b ->
+        // Standing just left of the bowl, facing it.
+        stageX(g.tileX(b.x).toDouble()) - layout.body[2] - 1 to b.y.coerceAtMost(rows - 1)
+    }
+    val blocked = room.items.filter { !it.item.onWall && !it.item.flat && it.item.use == Furniture.Use.NONE }.flatMap { it.tiles() }.toSet()
+    return Places(rows, bed, bowl) { x, row ->
+        val col = Math.floorDiv((x + roomOffset).toInt() - g.gridLeft, Room.TILE_W)
+        (col to row) !in blocked
     }
 }
 
@@ -268,7 +320,7 @@ fun phaseFor(app: AppScope, state: com.pawpixel.core.AppState): Sky.Phase =
  * aligned to the bottom stands on the floor.
  */
 @Composable
-fun RoomBackdrop(phase: Sky.Phase, modifier: Modifier = Modifier, pixel: Dp = 3.dp, floorDepth: Dp = 18.dp, season: com.pawpixel.sprite.Season = com.pawpixel.sprite.Season.NONE, content: @Composable BoxScope.(floor: Dp) -> Unit) {
+fun RoomBackdrop(phase: Sky.Phase, modifier: Modifier = Modifier, pixel: Dp = 3.dp, floorDepth: Dp = 18.dp, season: com.pawpixel.sprite.Season = com.pawpixel.sprite.Season.NONE, room: RoomLayout = RoomLayout.DEFAULT, content: @Composable BoxScope.(floor: Dp) -> Unit) {
     val cache = remember { HashMap<String, ImageBitmap>() }
     val pxDp = with(LocalDensity.current) { pixel.toPx() }
     val depthPx = with(LocalDensity.current) { floorDepth.toPx() }
@@ -277,8 +329,8 @@ fun RoomBackdrop(phase: Sky.Phase, modifier: Modifier = Modifier, pixel: Dp = 3.
             val cols = kotlin.math.ceil(size.width / pxDp).toInt().coerceAtLeast(40)
             val rows = kotlin.math.ceil(size.height / pxDp).toInt().coerceAtLeast(30)
             val floorRow = rows - kotlin.math.ceil(depthPx / pxDp).toInt() + 2
-            val key = "$cols:$rows:$floorRow:${phase.key}:${season.name}"
-            val img = cache.getOrPut(key) { Room.render(cols, rows, floorRow, phase, season = season).toImageBitmap() }
+            val key = "$cols:$rows:$floorRow:${phase.key}:${season.name}:${room.encode()}"
+            val img = cache.getOrPut(key) { Room.render(cols, rows, floorRow, phase, season = season, layout = room).toImageBitmap() }
             drawImage(img, IntOffset.Zero, IntSize(cols, rows), IntOffset(0, (size.height - rows * pxDp).roundToInt()), IntSize((cols * pxDp).roundToInt(), (rows * pxDp).roundToInt()), filterQuality = FilterQuality.None)
         }
         content(floorDepth)

@@ -45,6 +45,8 @@ sealed interface Screen {
     data class RemakeSprite(val petId: String) : Screen
     /** The Pet Studio: how the pixel pet is drawn (eyes, ears, coat, colours...). */
     data class Studio(val petId: String) : Screen
+    /** Decorate mode: move the room's furniture. */
+    data class Decorate(val petId: String) : Screen { override val fullBleed get() = true }
     /**
      * A panel over the pet's room: "care", "health", "weight", "wardrobe", "share", "more" (the
      * pet's menu) or "pets" (switch pets). Panels slide up over the room and down again.
@@ -71,6 +73,7 @@ internal fun Screen.code(): String = when (this) {
     Screen.CreatePet -> "create"
     is Screen.RemakeSprite -> "remake:$petId"
     is Screen.Studio -> "studio:$petId"
+    is Screen.Decorate -> "decorate:$petId"
     is Screen.PetSection -> "section:$petId:$section"
     is Screen.EditTask -> "task:$petId:${taskId ?: "-"}:${if (health) 1 else 0}"
     Screen.Settings -> "settings"
@@ -89,6 +92,7 @@ internal fun screenOf(code: String): Screen? {
         "pet" -> null // older saved stacks: a pet's page is now the home screen showing it (dropped; Home is under it)
         "remake" -> id(1)?.let { Screen.RemakeSprite(it) }
         "studio" -> id(1)?.let { Screen.Studio(it) }
+        "decorate" -> id(1)?.let { Screen.Decorate(it) }
         "section" -> id(1)?.let { pet -> id(2)?.let { Screen.PetSection(pet, it) } }
         "task" -> id(1)?.let { Screen.EditTask(it, id(2), p.getOrNull(3) == "1") }
         "settings" -> Screen.Settings
@@ -245,6 +249,10 @@ fun App(repo: PawRepository, registerBack: ((() -> Boolean) -> (() -> Unit))? = 
                 is Screen.PetSection -> {
                     val pet = state.pet(screen.petId)
                     if (pet == null) LaunchedEffect(screen) { back() } else PetSectionScreen(app, state, pet, screen.section)
+                }
+                is Screen.Decorate -> {
+                    val pet = state.pet(screen.petId)
+                    if (pet == null) LaunchedEffect(screen) { back() } else DecorateScreen(app, state, pet)
                 }
                 is Screen.EditTask -> {
                     val pet = state.pet(screen.petId)

@@ -27,6 +27,7 @@ Android and iOS, with one Kotlin codebase (Compose Multiplatform) plus a native 
 | **Lost and Found:** one tap on a missing pet's page raises an alert with the pixel twin, the album photos you choose and the spot last seen; every owner within 15 km sees it as a red flag on the map and in a "Lost pets" tab, with the photos, and can report a sighting (spot, note, photo); the owner sees sightings and closes the alert with "Safe home" (confetti). A share link carries the alert to Facebook and Messenger, and a web page shows it to finders without the app. **Noise nights:** two reminders before New Year's Eve everywhere (and July 4 in the US, Bonfire Night in the UK), the nights most pets run away | `composeApp/.../ui/LostAndFound.kt`, `core/.../map/LostAndFound.kt`, `supabase/migrations/0010_lost_and_found.sql`, `web/lost.template.html`, `core/.../core/ReminderPlanner.kt` (`noiseNights`) |
 | **Languages:** English, Filipino, Latin American Spanish and Brazilian Portuguese, the whole app in each (a test fails the build when a string is missing from any of them), chosen from the phone's language or in Settings. Dates follow each language's order ("Sep 30, 2026", "30 sep 2026"). Adding a language is one set of Kotlin maps | `core/.../i18n/I18n.kt`, `Fil*.kt`, `Es*.kt`, `Pt*.kt`, `TranslationTest.kt` |
 | **Vet visit summary:** one page from the Health panel with the pet, birthday and age, microchip, the latest weight and how it moved, every vaccine, deworming and parasite item with last-given and next-due dates, the daily routine and this week's walks; copy it or send it ahead by Messenger or email | `core/.../core/VetSummary.kt`, `composeApp/.../ui/HealthSection.kt` (`VetVisitPanel`) |
+| **Decorate the room:** a 3/4-view pixel room with a 10 x 5 floor of tiles and a wall; 24 pieces (bed, rug, bowl, lamp, plant, side table, armchair, toy box, bookcase, scratch post, fish tank, radio, tea set, window, shelf, pictures, clock, hanging plant, poster, string lights, paw banner) earned with days of care; tap, drag, flip, put away, undo, reset; the pet sleeps on the bed and eats at the bowl where you put them; shared with the household | `core/.../sprite/Decor.kt`, `Room.kt`, `composeApp/.../ui/DecorateScreen.kt`, `supabase/migrations/0021_rooms.sql` |
 | **Seasons in the room:** Halloween (Oct 24 to 31: orange-and-black bunting, a jack-o'-lantern lit at night), Christmas (Dec 15 to Jan 6: string lights, a little tree with baubles) and Valentine's (Feb 12 to 14: a heart garland), drawn in the room's own pixels from the phone's calendar; no update needed | `core/.../sprite/Season.kt`, `Room.kt` |
 | **Birthdays and gotcha days:** on the pet's birthday (from the birthday the owner typed) and on the anniversary of the day they came home, the room gets a bunting card with confetti, the pet says so, and a reminder comes at 9:00. Leap-day birthdays fall on Feb 28 | `core/.../core/Occasions.kt`, `ReminderPlanner.occasions` |
 | **Walks:** "Start a walk" on the Care panel times a walk with the app open: the pixel pet trots along, the phone counts steps (Android step counter, iOS pedometer; permission asked once), and ending it records the walk (minutes, steps, rough km) and logs the pet's walk task as care. "Walks this week" on the Care panel. No location is used; nothing leaves the phone | `composeApp/.../ui/WalkScreen.kt`, `core/.../core/Model.kt` (`Walk`), `CareStats.walkWeek` |
@@ -71,9 +72,14 @@ confetti, spring motion) drives every screen on both platforms:
   display face, for names and screen titles so the type matches the pet; Nunito, soft and
   readable, for everything else. Generous 16dp gutters,
   48dp+ touch targets; every control keeps a spoken label for screen readers.
-- The pet lives in a room (`core/.../sprite/Room.kt`), drawn in its own pixels: papered walls, a
-  window onto the sky of the hour, a shelf with a plant and a framed paw, a clock, a lamp that comes
-  on at night, a rug, a cushion and a bowl. The same room backs the home card, the maker and the Studio.
+- The pet lives in a room (`core/.../sprite/Room.kt`), drawn in its own pixels in a 3/4 view, the
+  way cozy games draw interiors: a papered back wall, a floor of tile rows that recede toward it, and
+  furniture with a lit top, a shaded front and a shadow on the floor, so flat pixels read as a small
+  box of a room. The owner arranges it in **Decorate mode** (`ui/DecorateScreen.kt`): tap a piece,
+  drag it to a tile (a green or red ghost says where it fits), flip it, put it away; Undo and "Put
+  everything back" are always there. Every piece is earned with days of care (`sprite/Decor.kt`),
+  nothing is bought, and the room is shared with the household. The pet walks between the pieces,
+  sleeps on the bed you placed and eats at the bowl. The same room backs the home card and the panels.
 - One icon style, the pet's own (`core/.../sprite/PixelIcons.kt`): 12x12 pixel icons tinted by the
   UI, never emoji (they render differently on every phone and read as placeholders).
 - It plays like a pet game, not a form: the pet's room fills the whole screen (home *is* the room),

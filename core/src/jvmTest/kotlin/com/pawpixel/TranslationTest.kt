@@ -52,6 +52,7 @@ class TranslationTest {
             com.pawpixel.sprite.TailStyle.entries.map { it.label }, com.pawpixel.sprite.Pattern.entries.map { it.label },
             com.pawpixel.sprite.Chest.entries.map { it.label }, com.pawpixel.sprite.Blush.entries.map { it.label },
             com.pawpixel.sprite.Whiskers.entries.map { it.label }, com.pawpixel.sprite.Collar.entries.map { it.label },
+            com.pawpixel.sprite.Furniture.entries.map { it.label },
         ).flatten().toSet()
         for ((name, table) in tables) {
             val missing = labels.filter { table[it].isNullOrBlank() }

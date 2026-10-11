@@ -78,6 +78,11 @@ data class Pet(
      * needs, its room is quiet, and its album and history stay for as long as the owner wants them.
      */
     val rememberedDay: Long? = null,
+    /**
+     * The room's furniture and where it stands ([com.pawpixel.sprite.RoomLayout.encode]); null = the
+     * room as it comes. Shared with the household, so everyone sees the same room.
+     */
+    val room: String? = null,
 ) {
     /** Kept in memory: no care is due, and nothing about it is ever "overdue". */
     val remembered: Boolean get() = rememberedDay != null
@@ -87,6 +92,9 @@ data class Pet(
      * this, so a new outfit, ears or a look from the household shows at once (a name change doesn't redraw).
      */
     val lookKey: List<Any?> get() = listOf(id, spriteVersion, species, ears, accessory, lookCode, style)
+
+    /** The room as the owner arranged it, or the default. */
+    val layout: com.pawpixel.sprite.RoomLayout get() = com.pawpixel.sprite.RoomLayout.decode(room) ?: com.pawpixel.sprite.RoomLayout.DEFAULT
 }
 
 data class SpriteSettings(

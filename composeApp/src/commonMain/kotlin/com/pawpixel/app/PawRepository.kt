@@ -527,6 +527,11 @@ class PawRepository(val platform: Platform) {
         update { StateOps.updatePet(it, updated) } // publishes, and so refreshes the widgets with the right next-change alarm
     }
 
+    /** Arranges the pet's room (Decorate mode). The household sees it too; the widgets don't show the room. */
+    suspend fun decorate(pet: Pet, layout: com.pawpixel.sprite.RoomLayout) {
+        update { com.pawpixel.core.Milestones.decorate(it, pet.id, layout, now()) }
+    }
+
     /** Puts on (or takes off) an outfit the pet has earned, and redraws the widget poses. */
     suspend fun wear(pet: Pet, outfit: com.pawpixel.sprite.Accessory?) {
         val s = update { com.pawpixel.core.Milestones.wear(it, pet.id, outfit) }

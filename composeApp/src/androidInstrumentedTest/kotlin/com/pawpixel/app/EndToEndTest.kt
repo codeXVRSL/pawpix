@@ -317,6 +317,18 @@ class EndToEndTest {
             closePanel()
         }
 
+        step("decorate: a week of care has earned a side table; it goes in the room, Undo takes it out") {
+            retrying { find(By.desc("Decorate the room")).click() } // the house button by the gear
+            find(By.text("Put everything back"))
+            retrying { find(By.desc("Add Side table")).click() }
+            waitFor("the table is in the room") { repo.state.value.pet(petId)?.room?.contains("TABLE") == true }
+            shot("decorate")
+            retrying { find(By.text("Undo")).click() }
+            waitFor("and out again") { repo.state.value.pet(petId)?.room == null }
+            retrying { find(By.desc("Back")).click() }
+            find(By.text("Wardrobe"))
+        }
+
         step("share animation and before/after card open the share sheet") {
             val before = choosers()
             retrying { find(By.text("Share")).click() } // the Share key under the room

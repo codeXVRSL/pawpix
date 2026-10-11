@@ -167,8 +167,8 @@ class QualityTest {
     }
 
     @Test fun thePetIsRedrawnOnlyWhenItMovesAWholePixel() {
-        val a = com.pawpixel.sprite.PetPose(com.pawpixel.sprite.Frame.BASE, 10.2, 0, false, com.pawpixel.sprite.Behavior.WALK,
-            listOf(com.pawpixel.sprite.Effect(com.pawpixel.sprite.EffectKind.HEART, 3.4, -5.6)))
+        val a = com.pawpixel.sprite.PetPose(com.pawpixel.sprite.Frame.BASE, 10.2, 0, flip = false, behavior = com.pawpixel.sprite.Behavior.WALK,
+            effects = listOf(com.pawpixel.sprite.Effect(com.pawpixel.sprite.EffectKind.HEART, 3.4, -5.6)))
         // Sub-pixel steps look the same on screen: no redraw.
         assertEquals(a.onPixelGrid(), a.copy(x = 9.8, effects = listOf(com.pawpixel.sprite.Effect(com.pawpixel.sprite.EffectKind.HEART, 2.6, -6.4))).onPixelGrid())
         assertEquals(10.0, a.onPixelGrid().x)

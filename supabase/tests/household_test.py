@@ -112,6 +112,12 @@ s, r = call("POST", "/rest/v1/household_pets", dict(pet, look="1;ffffff;" + "0" 
             prefer="resolution=merge-duplicates,return=representation")
 check("a clock far ahead can't win every later edit", s in (200, 201) and r[0]["edited_at_ms"] < 9_999_999_999_999, (s, r))
 check("Jamaica sees Chelsea's pixel look", rows(jamaica, "household_pets", hid)[0]["look"].startswith("1;ffffff"))
+# The room travels too: Jamaica moves the bed, Save sees it; a layout with other characters is refused.
+s, r = call("POST", "/rest/v1/household_pets", dict(pet, room="1;BED:4,3,f;BOWL:7,3;WINDOW:1,5", edited_at_ms=9_999_999_999_999), jamaica["token"],
+            prefer="resolution=merge-duplicates")
+check("a room layout is saved with the pet", s in (200, 201) and rows(save, "household_pets", hid)[0]["room"] == "1;BED:4,3,f;BOWL:7,3;WINDOW:1,5", (s, r))
+s, r = call("POST", "/rest/v1/household_pets", dict(pet, room="1;BED:4,3;<script>"), jamaica["token"], prefer="resolution=merge-duplicates")
+check("a room layout with stray characters is refused", s >= 400, (s, r))
 for table, key in (("household_pets", "chelsea"), ("household_tasks", "feed")):
     s, r = call("PATCH", f"/rest/v1/{table}?household_id=eq.{hid}&id=eq.{key}", {"updated_by": None, "edited_at_ms": 9_999_999_999_999},
                 jamaica["token"], prefer="return=representation")

@@ -31,6 +31,7 @@ object StateCodec {
                 "style" to p.style,
                 "edited" to p.editedAtMs,
                 "remembered" to p.rememberedDay,
+                "room" to p.room,
                 "sprite" to Json.obj(
                     "size" to p.sprite.size, "colors" to p.sprite.colors,
                     "outline" to p.sprite.outline, "vibrance" to p.sprite.vibrance,
@@ -126,6 +127,7 @@ object StateCodec {
                 style = p["style"].str?.takeIf { com.pawpixel.sprite.PetStyle.decode(it) != null },
                 editedAtMs = p["edited"].long ?: 0L,
                 rememberedDay = p["remembered"].long,
+                room = p["room"].str?.takeIf { com.pawpixel.sprite.RoomLayout.decode(it) != null },
                 sprite = SpriteSettings(
                     size = sp["size"].int ?: spriteDefaults.size,
                     colors = sp["colors"].int ?: spriteDefaults.colors,

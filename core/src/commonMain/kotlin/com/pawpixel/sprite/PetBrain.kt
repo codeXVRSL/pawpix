@@ -17,6 +17,20 @@ enum class EffectKind { HEART, SPARKLE, QUESTION, EXCLAIM, ZZZ, RAIN, PILL, BOWL
 /** An effect at (x, y) in pet canvas pixels (0,0 = canvas top-left, before [PetPose.x]). */
 data class Effect(val kind: EffectKind, val x: Double, val y: Double)
 
+/**
+ * The room's floor as the pet knows it: how many tile rows it can walk on, where its bed and bowl
+ * are (as the pet-canvas x and the row that put the pet on them), and which spots furniture takes.
+ */
+class Places(
+    val rows: Int = 1,
+    val bed: Pair<Double, Int>? = null,
+    val bowl: Pair<Double, Int>? = null,
+    /** True when a pet whose feet are centred on stage pixel [x] can stand on [row]. */
+    val free: (x: Double, row: Int) -> Boolean = { _, _ -> true },
+) {
+    companion object { val NONE = Places() }
+}
+
 /** What to draw right now. */
 data class PetPose(
     val frame: Frame,
@@ -24,6 +38,10 @@ data class PetPose(
     val x: Double,
     /** Vertical offset in pet pixels; negative = in the air. */
     val lift: Int,
+    /** How far in front of its home row the pet's feet are, in pet pixels (negative = deeper into the room). */
+    val dy: Int = 0,
+    /** True while it eats from the room's own bowl (no bowl is drawn beside it then). */
+    val atBowl: Boolean = false,
     /** Always false now: the pet is drawn as it is, never mirrored (its markings stay on the right side). */
     val flip: Boolean,
     val behavior: Behavior,
@@ -63,7 +81,15 @@ class PetBrain(
     private val stageWidth: Double,
     private val canvasWidth: Int,
     body: IntArray,
+    private val places: Places = Places.NONE,
 ) {
+    /** The row the pet's feet start on: [Room.PET_ROW], or the last one on a shallower floor. */
+    private val homeRow = Room.PET_ROW.coerceAtMost(places.rows - 1).coerceAtLeast(0)
+    /** The tile row the pet stands on; it wanders the room's rows. */
+    var row: Double = homeRow.toDouble(); private set
+    private var targetRow = row
+    /** What to do on arriving at a place (sleep on the bed, eat at the bowl). */
+    private var then: Behavior? = null
     private val headTop = body[1]
     private val feetY = body[3]
     private val bodyLeft = body[0]
@@ -93,10 +119,11 @@ class PetBrain(
 
     fun react(event: PetEvent, nowMs: Long) {
         reaction = true
+        then = null // a walk to the bed or the bowl is forgotten when something else happens
         when (event) {
             PetEvent.Petted -> start(Behavior.PETTED, nowMs, 1600)
             is PetEvent.Cared -> when (event.kind) {
-                TaskKind.FEED, TaskKind.WATER -> start(Behavior.EAT, nowMs, 2800)
+                TaskKind.FEED, TaskKind.WATER -> goTo(places.bowl, nowMs, Behavior.EAT, 2800, speed = 20.0)
                 TaskKind.WALK, TaskKind.PLAY -> { zoomLegs = 2; startZoom(nowMs) }
                 TaskKind.GROOM -> start(Behavior.SHAKE, nowMs, 1100)
                 TaskKind.MEDS, TaskKind.LITTER, TaskKind.VACCINE, TaskKind.DEWORM, TaskKind.FLEA_TICK, TaskKind.VET ->
@@ -118,14 +145,22 @@ class PetBrain(
             if (!first && !reaction) pickNext(nowMs, mood)
         }
         if (nowMs >= ends) {
-            if (behavior == Behavior.ZOOMIES && zoomLegs > 0) startZoom(nowMs) else { reaction = false; pickNext(nowMs, mood) }
+            val next = then
+            when {
+                behavior == Behavior.ZOOMIES && zoomLegs > 0 -> startZoom(nowMs)
+                next != null -> { then = null; start(next, nowMs, if (next == Behavior.SLEEP) 12_000 else 2800) }
+                else -> { reaction = false; pickNext(nowMs, mood) }
+            }
         }
 
-        // Movement
+        // Movement: toward the target across the floor and into it, arriving at both together.
         if (behavior == Behavior.WALK || behavior == Behavior.ZOOMIES) {
             val step = speed * dt
-            if (target != x) facingLeft = target < x // before the step: on the arrival frame it still faces the way it came
-            if (abs(target - x) <= step) { x = target; ends = nowMs } else x += if (target > x) step else -step
+            val dx = target - x; val dyPx = (targetRow - row) * Room.TILE_D
+            val dist = kotlin.math.sqrt(dx * dx + dyPx * dyPx)
+            if (abs(dx) > 1.5) facingLeft = dx < 0 // before the step: on the arrival frame it still faces the way it came
+            if (dist <= step) { x = target; row = targetRow; ends = nowMs }
+            else { x += dx / dist * step; row += dyPx / dist * step / Room.TILE_D }
         }
 
         val t = nowMs - started
@@ -172,7 +207,7 @@ class PetBrain(
                 if (p < 1300) Frame.SLEEP else Frame.SLEEP_BREATHE
             }
             Behavior.EAT -> {
-                effects += bowl()
+                if (!atBowl) effects += bowl()
                 if ((t / 280) % 2 == 0L) Frame.EAT_DOWN else Frame.BASE
             }
             Behavior.PETTED -> {
@@ -214,12 +249,28 @@ class PetBrain(
         if (idle && nowMs < blinkEnd) shown = Frame.BLINK
         else if (idle && nowMs < twitchEnd) shown = if (twitchSide < 0) Frame.EAR_TWITCH_L else Frame.EAR_TWITCH_R
 
-        return PetPose(shown, x, lift, flip = false, behavior, effects)
+        return PetPose(shown, x, lift, dy = ((row - homeRow) * Room.TILE_D).roundToInt(), atBowl = behavior == Behavior.EAT && atBowl, flip = false, behavior = behavior, effects = effects)
+    }
+
+    /** Eating from the room's bowl: the pet walked to it (or stands at it). */
+    private val atBowl: Boolean get() = places.bowl?.let { (bx, br) -> abs(x - bx) < 2 && abs(row - br) < 0.5 } ?: false
+
+    /**
+     * Walks to a place, then does [next] there; or does it on the spot when the room has no such
+     * place or the pet is already there.
+     */
+    private fun goTo(place: Pair<Double, Int>?, nowMs: Long, next: Behavior, durationMs: Long, speed: Double) {
+        if (place == null || (abs(x - place.first) < 2 && abs(row - place.second) < 0.5)) { start(next, nowMs, durationMs); return }
+        this.speed = speed
+        target = place.first.coerceIn(0.0, maxX); targetRow = place.second.toDouble()
+        then = next
+        start(Behavior.WALK, nowMs, 20_000)
     }
 
     // ---------- Choosing what to do next ----------
 
     private fun pickNext(nowMs: Long, mood: Mood) {
+        then = null // a new mood mid-walk drops the errand; it is chosen again below if still wanted
         val weights: List<Pair<Behavior, Int>> = when (mood) {
             Mood.SLEEPY -> listOf(Behavior.SLEEP to 1)
             Mood.HAPPY -> listOf(Behavior.IDLE to 25, Behavior.WALK to 30, Behavior.HOP to 22, Behavior.LOOK to 15, Behavior.SHAKE to 8)
@@ -235,29 +286,36 @@ class PetBrain(
             Behavior.IDLE -> start(next, nowMs, if (mood == Mood.SAD || mood == Mood.NEEDS_MEDS) rnd.nextLong(4000, 8000) else rnd.nextLong(2000, 5000))
             Behavior.WALK -> {
                 speed = when (mood) { Mood.RESTLESS -> 24.0; Mood.HAPPY -> 18.0; Mood.SAD, Mood.NEEDS_MEDS -> 7.0; else -> 13.0 }
-                target = pickTarget()
+                pickTarget()
                 start(next, nowMs, 20_000) // ends early on arrival
             }
             Behavior.LOOK -> start(next, nowMs, 1900)
             Behavior.HOP -> { hops = rnd.nextInt(1, 4); start(next, nowMs, 520L * hops) }
             Behavior.SHAKE -> start(next, nowMs, 800)
             Behavior.BEG -> start(next, nowMs, 2600)
-            Behavior.SLEEP -> start(next, nowMs, 12_000)
+            Behavior.SLEEP -> goTo(places.bed, nowMs, Behavior.SLEEP, 12_000, speed = 9.0)
             else -> start(Behavior.IDLE, nowMs, 3000)
         }
     }
 
-    private fun pickTarget(): Double {
-        if (maxX <= 1) return x
-        var t: Double
+    /** Somewhere else on the floor, a fair walk away, where nothing stands. */
+    private fun pickTarget() {
+        if (maxX <= 1) { target = x; targetRow = row; return }
+        var t = x; var r = row.roundToInt()
         var tries = 0
-        do { t = rnd.nextDouble() * maxX; tries++ } while (abs(t - x) < maxX * 0.2 && tries < 8)
-        return t
+        do {
+            t = rnd.nextDouble() * maxX
+            r = if (places.rows <= 1) 0 else rnd.nextInt(places.rows)
+            tries++
+        } while ((abs(t - x) < maxX * 0.2 || !places.free(t + canvasWidth / 2.0, r)) && tries < 12)
+        if (!places.free(t + canvasWidth / 2.0, r)) { t = x; r = row.roundToInt() }
+        target = t; targetRow = r.toDouble()
     }
 
     private fun startZoom(nowMs: Long) {
         speed = 34.0
         target = if (x > maxX / 2) 0.0 else maxX
+        targetRow = row.roundToInt().toDouble()
         zoomLegs--
         start(Behavior.ZOOMIES, nowMs, 20_000)
     }
