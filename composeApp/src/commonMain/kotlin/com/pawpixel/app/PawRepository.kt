@@ -568,6 +568,15 @@ class PawRepository(val platform: Platform) {
         platform.shareFile(png, "${fileStem(pet)}.png", "image/png")
     }
 
+    /** A picture of the room as the owner arranged it, with the pet in it, to share. */
+    suspend fun shareRoom(pet: Pet, phase: com.pawpixel.core.Sky.Phase, season: com.pawpixel.sprite.Season) {
+        val png = withContext(Dispatchers.Default) {
+            val art = art(pet) ?: return@withContext null
+            Png.encode(com.pawpixel.sprite.RoomCard.render(pet.layout, art, pet.name, phase, season))
+        } ?: return
+        platform.shareFile(png, "${fileStem(pet)}-room.png", "image/png")
+    }
+
     /**
      * A 5-second looping GIF of the pet being itself. Pure (no repository state), so it's safe to run
      * on a background thread: get [art] on the main thread first.

@@ -206,6 +206,12 @@ internal object EsScreens {
         "Poster" to "Póster",
         "String lights" to "Lucecitas",
         "Paw banner" to "Banderín de patita",
+        "Room card" to "Tarjeta del cuarto",
+        "{0} looks around: everything is where it was." to "{0} mira alrededor: todo está como estaba.",
+        "{0} will miss that bed." to "{0} va a extrañar esa cama.",
+        "{0} looks for the bowl." to "{0} busca el plato.",
+        "{0} likes the {1} there." to "A {0} le gusta {1} ahí.",
+        "{0} sniffs the new {1}." to "{0} olfatea {1} nuevo.",
         "These translations are new: tell us if something sounds off." to "Estas traducciones son nuevas: avísanos si algo suena raro.",
     )
 }

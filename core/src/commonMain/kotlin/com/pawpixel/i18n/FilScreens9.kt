@@ -172,6 +172,12 @@ internal object FilScreens9 {
         "Poster" to "Poster",
         "String lights" to "Kumpol ng ilaw",
         "Paw banner" to "Banner na paa",
+        "Room card" to "Card ng kuwarto",
+        "{0} looks around: everything is where it was." to "Tumingin-tingin si {0}: nasa dati na ang lahat.",
+        "{0} will miss that bed." to "Mamimiss ni {0} ang kamang iyon.",
+        "{0} looks for the bowl." to "Hinahanap ni {0} ang mangkok.",
+        "{0} likes the {1} there." to "Gusto ni {0} ang {1} diyan.",
+        "{0} sniffs the new {1}." to "Inaamoy ni {0} ang bagong {1}.",
         "These translations are new: tell us if something sounds off." to "Bago pa ang mga salin na ito: sabihan kami kung may kakaiba.",
     )
 }

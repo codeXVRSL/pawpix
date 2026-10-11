@@ -206,6 +206,12 @@ internal object PtScreens {
         "Poster" to "Pôster",
         "String lights" to "Luzinhas",
         "Paw banner" to "Bandeirinha de patinha",
+        "Room card" to "Cartão do quarto",
+        "{0} looks around: everything is where it was." to "{0} olha em volta: está tudo como estava.",
+        "{0} will miss that bed." to "{0} vai sentir falta daquela cama.",
+        "{0} looks for the bowl." to "{0} procura a tigela.",
+        "{0} likes the {1} there." to "{0} gostou de {1} aí.",
+        "{0} sniffs the new {1}." to "{0} cheira {1} novo.",
         "These translations are new: tell us if something sounds off." to "Estas traduções são novas: avise a gente se algo soar estranho.",
     )
 }

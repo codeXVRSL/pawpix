@@ -156,3 +156,16 @@ class DecorTest {
         assertEquals(0, pose.dy, "a stage with one row keeps the pet on it")
     }
 }
+
+class RoomCardTest {
+    @Test fun theRoomCardShowsThePetInItsRoom() {
+        val look = com.pawpixel.sprite.PetLook(listOf(0xFFA0784E.toInt()), IntArray(com.pawpixel.sprite.PetLook.GRID * com.pawpixel.sprite.PetLook.GRID))
+        val art = com.pawpixel.sprite.PetArt(look, Species.CAT)
+        for (phase in listOf(Sky.Phase.DAY, Sky.Phase.NIGHT)) {
+            val card = com.pawpixel.sprite.RoomCard.render(RoomLayout.DEFAULT, art, "Chelsea", phase)
+            assertEquals(com.pawpixel.sprite.RoomCard.WIDTH * com.pawpixel.sprite.RoomCard.SCALE, card.width)
+            assertEquals(com.pawpixel.sprite.RoomCard.HEIGHT * com.pawpixel.sprite.RoomCard.SCALE, card.height)
+            assertTrue(card.pixels.any { it == 0xFFA0784E.toInt() }, "the pet's fur is on the card")
+        }
+    }
+}

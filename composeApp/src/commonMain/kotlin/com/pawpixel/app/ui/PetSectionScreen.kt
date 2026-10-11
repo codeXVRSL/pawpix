@@ -255,6 +255,8 @@ private fun ShareSection(app: AppScope, pet: Pet) {
         // A pet from a family member's phone has no photo here, so no before/after card.
         val hasPhoto = remember(pet.id, pet.spriteVersion) { app.repo.photoCrop(pet.id) != null }
         if (hasPhoto) TonalPill(tr("Before/after"), icon = PixelIcons.CAMERA) { app.launch { app.repo.shareReveal(pet) } }
+        val phase = if (pet.remembered) com.pawpixel.core.Sky.Phase.NIGHT else phaseFor(app, app.repo.state.value)
+        TonalPill(tr("Room card"), icon = PixelIcons.HOUSE) { app.launch { app.repo.shareRoom(pet, phase, seasonFor(app)) } }
     }
     shareError?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
 

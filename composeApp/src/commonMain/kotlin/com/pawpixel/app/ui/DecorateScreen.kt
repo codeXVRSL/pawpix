@@ -78,13 +78,30 @@ fun DecorateScreen(app: AppScope, state: AppState, pet: Pet) {
     val earned = remember(pet.careDays.size) { Milestones.furniture(pet) }
     val days = Milestones.caredDays(pet)
 
+    // What the pet makes of each change, said in a bubble over the room for a moment.
+    var remark by remember { mutableStateOf<String?>(null) }
+    var remarkAt by remember { mutableStateOf(0L) }
+    androidx.compose.runtime.LaunchedEffect(remarkAt) { if (remark != null) { kotlinx.coroutines.delay(3500); remark = null } }
+    fun say(text: String) { remark = text; remarkAt++ }
+
     fun commit(next: RoomLayout, keep: Placed? = null) {
         if (next == layout) return
         undo.addLast(layout)
         if (undo.size > 30) undo.removeFirst()
+        val before = layout
         layout = next
         selected = keep
         app.launch { app.repo.decorate(pet, next) }
+        val added = next.items.filter { n -> before.items.none { it === n } }
+        val gone = before.items.filter { o -> next.items.none { it === o } }
+        when {
+            next == RoomLayout.DEFAULT -> say(tr("{0} looks around: everything is where it was.", pet.name))
+            gone.any { it.item == Furniture.BED } && added.none { it.item == Furniture.BED } -> say(tr("{0} will miss that bed.", pet.name))
+            gone.any { it.item == Furniture.BOWL } && added.none { it.item == Furniture.BOWL } -> say(tr("{0} looks for the bowl.", pet.name))
+            added.size == 1 && gone.size == 1 && added[0].item == gone[0].item -> say(tr("{0} likes the {1} there.", pet.name, tr(added[0].item.label).lowercase()))
+            added.size == 1 && gone.isEmpty() -> say(tr("{0} sniffs the new {1}.", pet.name, tr(added[0].item.label).lowercase()))
+            else -> Unit
+        }
     }
 
     Column(Modifier.fillMaxSize().background(Color(Room.floorColor(phase)))) {
@@ -96,12 +113,15 @@ fun DecorateScreen(app: AppScope, state: AppState, pet: Pet) {
             GhostPill(tr("Put everything back"), enabled = layout != RoomLayout.DEFAULT) { commit(RoomLayout.DEFAULT) }
         }
 
-        // The room, with the grid showing.
-        RoomEditor(
-            layout, selected, phase, Modifier.weight(1f).fillMaxWidth(),
-            onSelect = { selected = it },
-            onMove = { from, to -> haptics.performHapticFeedback(HapticFeedbackType.LongPress); commit(layout.replace(from, to), keep = to) },
-        )
+        // The room, with the grid showing, and the pet's remark over it.
+        Box(Modifier.weight(1f).fillMaxWidth()) {
+            RoomEditor(
+                layout, selected, phase, Modifier.fillMaxSize(),
+                onSelect = { selected = it },
+                onMove = { from, to -> haptics.performHapticFeedback(HapticFeedbackType.LongPress); commit(layout.replace(from, to), keep = to) },
+            )
+            remark?.let { SpeechBubble(it, Modifier.align(Alignment.TopCenter).padding(top = 12.dp)) }
+        }
 
         // The selected piece's tools, or a hint.
         val sel = selected
