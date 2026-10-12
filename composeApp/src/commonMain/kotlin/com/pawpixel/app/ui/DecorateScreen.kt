@@ -31,7 +31,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.FilterQuality
 import androidx.compose.ui.graphics.ImageBitmap
@@ -223,6 +222,7 @@ private fun catalogueThumb(item: Furniture, phase: Sky.Phase): com.pawpixel.spri
 private fun RoomEditor(layout: RoomLayout, selected: Placed?, phase: Sky.Phase, modifier: Modifier, onSelect: (Placed?) -> Unit, onMove: (Placed, Placed) -> Unit) {
     var drag by remember { mutableStateOf<Drag?>(null) }
     val cache = remember { HashMap<String, Drawn>() }
+    val ghosts = remember { HashMap<Placed, ImageBitmap>() }
     val layoutState by androidx.compose.runtime.rememberUpdatedState(layout)
     val selectedState by androidx.compose.runtime.rememberUpdatedState(selected)
     val desc = tr("The room: {0} pieces of furniture", layout.items.size)
@@ -261,12 +261,12 @@ private fun RoomEditor(layout: RoomLayout, selected: Placed?, phase: Sky.Phase, 
         val d = drawnFor(cache, layout, phase, size.width.toInt(), size.height.toInt()) ?: return@Canvas
         val px = d.px.toFloat()
         drawImage(d.base, IntOffset.Zero, IntSize(d.base.width, d.base.height), IntOffset(d.left, d.top), IntSize((d.base.width * px).roundToInt(), (d.base.height * px).roundToInt()), filterQuality = FilterQuality.None)
-        // The grid: tile lines on the floor, slot lines on the wall, faint.
+        // The grid: tile rows across the floor, columns converging toward the back wall, slot lines on the wall, faint.
         val g = d.geom
         val gridColor = Color(0x3AFFFFFF)
-        for (row in 0..g.rows) { val y = d.top + g.tileTop(row) * px; drawLine(gridColor, Offset(d.left + g.gridLeft * px, y), Offset(d.left + (g.gridLeft + RoomLayout.COLS * Room.TILE_W) * px, y), 1f) }
-        for (col in 0..RoomLayout.COLS) { val x = d.left + g.tileX(col) * px; drawLine(gridColor, Offset(x, d.top + g.floorLine * px), Offset(x, d.top + g.tileTop(g.rows) * px), 1f) }
-        for (slot in 0 until RoomLayout.WALL_SLOTS) { val y = d.top + g.wallBottom(slot) * px; if (y > d.top) drawLine(Color(0x22000000), Offset(d.left + g.gridLeft * px, y), Offset(d.left + (g.gridLeft + RoomLayout.COLS * Room.TILE_W) * px, y), 1f) }
+        for (row in 0..g.rows) { val y = d.top + g.tileTop(row) * px; val depth = row.toDouble(); drawLine(gridColor, Offset(d.left + g.x(0.0, depth).toFloat() * px, y), Offset(d.left + g.x(Room.GRID_W, depth).toFloat() * px, y), 1f) }
+        for (col in 0..RoomLayout.COLS) { val u = col * Room.TILE_W.toDouble(); drawLine(gridColor, Offset(d.left + g.x(u, 0.0).toFloat() * px, d.top + g.floorLine * px), Offset(d.left + g.x(u, g.rows.toDouble()).toFloat() * px, d.top + g.tileTop(g.rows) * px), 1f) }
+        for (slot in 0 until RoomLayout.WALL_SLOTS) { val y = d.top + g.wallBottom(slot) * px; if (y > d.top) drawLine(Color(0x22000000), Offset(d.left + g.backLeft * px, y), Offset(d.left + g.backRight * px, y), 1f) }
         // Standing pieces in painter's order; the dragged one lifted and faded.
         val cur = drag
         for (p in d.props) {
@@ -279,9 +279,9 @@ private fun RoomEditor(layout: RoomLayout, selected: Placed?, phase: Sky.Phase, 
         if (cur != null) {
             val tint = if (cur.valid) Color(0x5560C080) else Color(0x55E04848)
             footprint(this, d, cur.ghost, if (cur.valid) Color(0xFF2E8B5A) else Color(0xFFD9364F), fill = tint)
-            d.sprite(cur.ghost)?.let { img ->
-                val (gx, gy) = d.spriteOrigin(cur.ghost, img)
-                drawImage(img, IntOffset.Zero, IntSize(img.width, img.height), IntOffset(d.left + (gx * px).roundToInt(), d.top + (gy * px).roundToInt()), IntSize((img.width * px).roundToInt(), (img.height * px).roundToInt()), filterQuality = FilterQuality.None, alpha = 0.75f)
+            d.prop(cur.ghost)?.let { pr ->
+                val img = ghosts.getOrPut(cur.ghost) { pr.image.toImageBitmap() }
+                drawImage(img, IntOffset.Zero, IntSize(img.width, img.height), IntOffset(d.left + (pr.x * px).roundToInt(), d.top + (pr.y * px).roundToInt()), IntSize((img.width * px).roundToInt(), (img.height * px).roundToInt()), filterQuality = FilterQuality.None, alpha = 0.75f)
             }
         }
     }
@@ -292,9 +292,9 @@ private data class Drag(val piece: Placed, val grabX: Int, val grabY: Int, val g
 
 /** The scene drawn for the editor at one size: scale, offsets, bitmaps, and hit-testing. */
 private class Drawn(val px: Int, val left: Int, val top: Int, val geom: Room.Geometry, val base: ImageBitmap, val props: List<EditorProp>, val layout: RoomLayout, val phase: Sky.Phase) {
-    val sprites = HashMap<Placed, ImageBitmap>()
-    fun sprite(p: Placed): ImageBitmap? = if (p.item.onWall || p.item.flat) null else sprites.getOrPut(p) { Room.piece(p, Room.palette(phase), phase).toImageBitmap() }
-    fun spriteOrigin(p: Placed, img: ImageBitmap): Pair<Int, Int> = geom.tileX(p.x) to geom.baseline(p.y + p.item.rows - 1) - img.height
+    private val sprites = HashMap<Placed, Room.Prop>()
+    /** A standing piece as it would be drawn at [p]'s place (unlit: a ghost), or null for a rug or a wall piece. */
+    fun prop(p: Placed): Room.Prop? = if (p.item.onWall || p.item.flat) null else sprites.getOrPut(p) { Room.prop(p, geom, Room.palette(phase), phase) }
 
     /** Screen point to room pixel. */
     private fun room(at: Offset): Pair<Int, Int> = floor((at.x - left) / px).toInt() to floor((at.y - top) / px).toInt()
@@ -320,7 +320,7 @@ private fun drawnFor(cache: HashMap<String, Drawn>, layout: RoomLayout, phase: S
     val key = "$width:$height:${phase.key}:${layout.encode()}"
     cache[key]?.let { return it }
     // The grid plus a margin must fit across; the floor's rows plus a margin must fit below the wall.
-    val px = floor(width / (RoomLayout.COLS * Room.TILE_W + 14).toFloat()).toInt().coerceAtLeast(1)
+    val px = floor(width / 100f).toInt().coerceAtLeast(1)
     val roomW = kotlin.math.ceil(width / px.toFloat()).toInt()
     val rows = kotlin.math.ceil(height / px.toFloat()).toInt()
     val floorLine = (rows - RoomLayout.ROWS * Room.TILE_D - 4).coerceAtLeast(20)
@@ -332,15 +332,22 @@ private fun drawnFor(cache: HashMap<String, Drawn>, layout: RoomLayout, phase: S
     return drawn
 }
 
-/** The tiles (or wall cells) a piece covers, outlined and optionally filled. */
+/** The tiles (or wall cells) a piece covers, outlined and optionally filled: a trapezoid on the floor (the box's perspective), a rectangle on the wall. */
 private fun footprint(scope: androidx.compose.ui.graphics.drawscope.DrawScope, d: Drawn, p: Placed, outline: Color, fill: Color?) {
     val px = d.px.toFloat(); val g = d.geom
-    val rect = if (p.item.onWall) {
+    val path = androidx.compose.ui.graphics.Path()
+    if (p.item.onWall) {
         val bottom = g.wallBottom(p.y)
-        Offset(d.left + g.tileX(p.x) * px, d.top + (bottom - g.slotStep + 2) * px) to Size(p.item.cols * Room.TILE_W * px, (g.slotStep) * px)
+        val x0 = d.left + g.x(p.x * Room.TILE_W.toDouble(), 0.0).toFloat() * px; val x1 = d.left + g.x((p.x + p.item.cols) * Room.TILE_W.toDouble(), 0.0).toFloat() * px
+        val y0 = d.top + (bottom - g.slotStep + 2) * px; val y1 = y0 + g.slotStep * px
+        path.moveTo(x0, y0); path.lineTo(x1, y0); path.lineTo(x1, y1); path.lineTo(x0, y1); path.close()
     } else {
-        Offset(d.left + g.tileX(p.x) * px, d.top + g.tileTop(p.y) * px) to Size(p.item.cols * Room.TILE_W * px, p.item.rows * Room.TILE_D * px)
+        val u0 = p.x * Room.TILE_W.toDouble(); val u1 = (p.x + p.item.cols) * Room.TILE_W.toDouble()
+        val back = p.y.toDouble(); val front = (p.y + p.item.rows).toDouble()
+        val yb = d.top + g.tileTop(p.y) * px; val yf = d.top + g.tileTop(p.y + p.item.rows) * px
+        path.moveTo(d.left + g.x(u0, back).toFloat() * px, yb); path.lineTo(d.left + g.x(u1, back).toFloat() * px, yb)
+        path.lineTo(d.left + g.x(u1, front).toFloat() * px, yf); path.lineTo(d.left + g.x(u0, front).toFloat() * px, yf); path.close()
     }
-    if (fill != null) scope.drawRect(fill, rect.first, rect.second)
-    scope.drawRect(outline, rect.first, rect.second, style = Stroke(width = maxOf(2f, px / 2f)))
+    if (fill != null) scope.drawPath(path, fill)
+    scope.drawPath(path, outline, style = Stroke(width = maxOf(2f, px / 2f)))
 }

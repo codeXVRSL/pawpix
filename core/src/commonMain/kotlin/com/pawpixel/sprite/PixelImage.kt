@@ -48,6 +48,21 @@ class PixelImage(val width: Int, val height: Int, val pixels: IntArray = IntArra
         return out
     }
 
+    /**
+     * The image at another size: nearest neighbour when it grows (pixel art stays crisp), area
+     * averaging when it shrinks (thin lines fade rather than vanish). A piece of furniture seen a
+     * little further back in the room.
+     */
+    fun resampled(outW: Int, outH: Int): PixelImage {
+        if (outW == width && outH == height) return copy()
+        if (outW >= width && outH >= height) {
+            val out = PixelImage(outW, outH)
+            for (y in 0 until outH) { val sy = (y.toLong() * height / outH).toInt().coerceIn(0, height - 1); for (x in 0 until outW) out[x, y] = this[(x.toLong() * width / outW).toInt().coerceIn(0, width - 1), sy] }
+            return out
+        }
+        return resampleArea(0.0, 0.0, width.toDouble(), height.toDouble(), outW, outH)
+    }
+
     /** Area-averaging resample of a region (fractional bounds allowed) to [outW]x[outH]. */
     fun resampleArea(srcX: Double, srcY: Double, srcW: Double, srcH: Double, outW: Int, outH: Int): PixelImage {
         val out = PixelImage(outW, outH)

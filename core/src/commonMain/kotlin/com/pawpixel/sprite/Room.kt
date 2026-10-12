@@ -1,47 +1,76 @@
 package com.pawpixel.sprite
 
 import com.pawpixel.core.Sky
+import kotlin.math.exp
+import kotlin.math.floor
+import kotlin.math.roundToInt
+import kotlin.math.sqrt
 import kotlin.random.Random
 
 /**
  * The pet's room, drawn in the pet's own pixels so it never looks pasted on.
  *
- * A 3/4 view, the way cozy games draw interiors: the papered back wall is seen straight on, the
- * floor is a grid of tiles that recede upward, and every piece of furniture has a lit top face, a
- * shaded front and a soft shadow on the floor, so flat pixels read as small boxes in a small room.
- * The light comes from the window side (top left), as pixel artists draw it. The owner decides what
- * stands where (a [RoomLayout]); the pet walks between the pieces, sleeps on the bed and eats at
- * the bowl.
+ * A dollhouse seen through its open front, the way HD-2D games (Octopath Traveler) show pixel art
+ * in a world with depth: the back wall is narrower than the front edge, the side walls lean in,
+ * the floorboards converge, and every piece of furniture is drawn a little smaller the further
+ * back it stands. Then the room is lit: a daylight beam slants in from the window, the lamp pools
+ * warm light on the floor at night, the corners fall off into shade, each piece casts a soft
+ * shadow across the boards, and the brightest spots bloom. The pixels stay crisp; only the light
+ * is smooth. The owner decides what stands where (a [RoomLayout]); the pet walks between the
+ * pieces, sleeps on the bed and eats at the bowl.
  *
- * [scene] draws the backdrop (wall, wall pieces, floor, rugs, shadows) once, and hands back the
- * standing pieces as props with their floor baselines, so the view can draw the pet between them in
- * painter's order. [render] flattens everything for a still image.
+ * [scene] draws the backdrop once (walls, floor, wall pieces, rugs, shadows, light) and hands back
+ * the standing pieces as props, already lit, with their floor baselines, so a view can draw the
+ * pet between them in painter's order. [render] flattens everything for a still image.
  */
 object Room {
-    /** A floor tile on screen: 9 pixels wide, 6 deep (the foreshortened depth of a 3/4 view). */
+    /** A floor tile is [TILE_W] room units wide; the back wall is [RoomLayout.COLS] tiles, [GRID_W] units. */
     const val TILE_W = 9
-    const val TILE_D = 6
+    const val GRID_W = TILE_W * RoomLayout.COLS.toDouble()
+    /** A tile row is this deep on screen: the same for every row (a dollhouse seen from a little above). */
+    const val TILE_D = 8
     /** The tile row the pet's feet start on (rows 0 and 1 are behind that line of feet, the rest in front). */
     const val PET_ROW = 1
+    /** How much wider the room's front edge is than its back wall: the strength of the perspective. */
+    const val DEPTH = 1.35
+    /** Screen pixels per room unit at the front edge of a phone-wide (96 px) stage: pieces are drawn at their own size there. */
+    private const val FRONT = (96 + 4) / GRID_W
 
     /** The floor colour the page continues under the stage (so the floor runs on under a rounded sheet). */
-    fun floorColor(phase: Sky.Phase): Int = palette(phase).floor
+    fun floorColor(phase: Sky.Phase): Int { val a = ambient(phase); return Light.lit(palette(phase).floor, a[0], a[1], a[2]) }
 
     /** Where the floor begins for a pet whose feet stand on [floorY]: [PET_ROW] rows of floor lie behind it. */
     fun floorLineFor(floorY: Int): Int = floorY - (PET_ROW + 1) * TILE_D
 
     /**
-     * Pixel positions of the grid on a stage of [width] by [height] with the floor from [floorLine] down.
-     * The grid is centred; a wider stage shows bare floor at the sides, a deeper one more rows in front.
+     * Where everything is on a stage of [width] by [height] with the back wall's foot at [floorLine].
+     * Positions across the room are in room units ([TILE_W] a tile) and a depth in tile rows from the
+     * back wall; the box projects them to stage pixels: one unit is [scale] pixels, more at the front.
      */
     class Geometry(val width: Int, val height: Int, val floorLine: Int) {
-        val gridLeft: Int = (width - RoomLayout.COLS * TILE_W) / 2
+        /** Pixels per unit at the back wall: the front edge is [DEPTH] times wider and runs just off the stage. */
+        val back: Double = (width + 4) / DEPTH / GRID_W
+        val cx: Double = width / 2.0
         /** Rows of the grid that fit on this floor. */
         val rows: Int = ((height - floorLine) / TILE_D).coerceIn(0, RoomLayout.ROWS)
         /** Wall slots are [RoomLayout.WALL_STEP] apart, squeezed on a short wall so the window still shows. */
         val slotStep: Int = minOf(RoomLayout.WALL_STEP, maxOf(5, (floorLine - 26) / RoomLayout.WALL_SLOTS))
+        /** The back wall's edges, and its top (a very tall stage shows a strip of ceiling above it). */
+        val backLeft: Int = x(0.0, 0.0).roundToInt()
+        val backRight: Int = x(GRID_W, 0.0).roundToInt()
+        val wallTop: Int = maxOf(0, floorLine - (GRID_W * back * 1.3).roundToInt())
 
-        fun tileX(col: Int): Int = gridLeft + col * TILE_W
+        /** Pixels per unit at [depth] rows in front of the back wall. */
+        fun scale(depth: Double): Double = back * (1 + (DEPTH - 1) * depth / RoomLayout.ROWS)
+        /** The stage x of a point [u] units from the left wall at [depth]. */
+        fun x(u: Double, depth: Double): Double = cx + (u - GRID_W / 2) * scale(depth)
+        fun u(x: Double, depth: Double): Double = GRID_W / 2 + (x - cx) / scale(depth)
+        /** The depth of a floor pixel's row. */
+        fun depth(y: Int): Double = (y + 0.5 - floorLine) / TILE_D
+        /** How big a piece or the pet is drawn at [depth]: its own size at the front of a phone-wide room, smaller behind. */
+        fun size(depth: Double): Double = scale(depth) / FRONT
+
+        fun tileX(col: Int, depth: Double = 0.0): Int = x(col * TILE_W.toDouble(), depth).roundToInt()
         /** The y of a row's back edge. */
         fun tileTop(row: Int): Int = floorLine + row * TILE_D
         /** The y just below a row's front edge: where things standing on it are drawn to, and sorted by. */
@@ -51,55 +80,85 @@ object Room {
 
         /** The floor tile under a stage pixel, or null when it's not on the grid. */
         fun tileAt(x: Int, y: Int): Pair<Int, Int>? {
-            val col = (x - gridLeft).floorDiv(TILE_W); val row = (y - floorLine).floorDiv(TILE_D)
-            return if (col in 0 until RoomLayout.COLS && row in 0 until rows) col to row else null
+            val row = (y - floorLine).floorDiv(TILE_D)
+            if (row !in 0 until rows) return null
+            val col = floor(u(x + 0.5, depth(y)) / TILE_W).toInt()
+            return if (col in 0 until RoomLayout.COLS) col to row else null
         }
 
         /** The wall column and slot under a stage pixel, or null when it isn't on the wall. */
         fun wallAt(x: Int, y: Int): Pair<Int, Int>? {
             if (y >= floorLine - 2) return null
-            val col = (x - gridLeft).floorDiv(TILE_W)
+            val col = floor(u(x + 0.5, 0.0) / TILE_W).toInt()
             val slot = (floorLine - 4 - y + slotStep / 2).floorDiv(slotStep)
             return if (col in 0 until RoomLayout.COLS && slot in 0 until RoomLayout.WALL_SLOTS) col to slot else null
         }
     }
 
-    /** A standing piece: its drawing, where it goes on the stage, and the floor baseline it is sorted by. */
+    /** A standing piece: its drawing (scaled for its depth and lit where it stands), where it goes on the stage, and the floor baseline it is sorted by. */
     class Prop(val placed: Placed, val image: PixelImage, val x: Int, val y: Int, val baseline: Int)
 
-    class Scene(val base: PixelImage, val props: List<Prop>, val geom: Geometry) {
+    /** The light over the stage: a multiplier per channel for every pixel (1.0 = the palette's own colour, more in a beam, less in the shade). */
+    class Light(val width: Int, val height: Int) {
+        val r = FloatArray(width * height) { 1f }; val g = FloatArray(width * height) { 1f }; val b = FloatArray(width * height) { 1f }
+        fun at(x: Int, y: Int): FloatArray { val i = y.coerceIn(0, height - 1) * width + x.coerceIn(0, width - 1); return floatArrayOf(r[i], g[i], b[i]) }
+        /** [c] under the light at ([x], [y]); off the stage, as it is. */
+        fun apply(c: Int, x: Int, y: Int): Int {
+            if (x !in 0 until width || y !in 0 until height) return c
+            val i = y * width + x
+            return lit(c, r[i], g[i], b[i])
+        }
+        companion object {
+            fun lit(c: Int, lr: Float, lg: Float, lb: Float): Int {
+                val a = c ushr 24
+                if (a == 0) return c
+                fun ch(v: Int, l: Float) = (v * l).roundToInt().coerceIn(0, 255)
+                return Argb.of(a, ch(Argb.r(c), lr), ch(Argb.g(c), lg), ch(Argb.b(c), lb))
+            }
+        }
+    }
+
+    class Scene(val base: PixelImage, val props: List<Prop>, val geom: Geometry, val light: Light) {
         /** Everything drawn into one picture, in painter's order. */
         fun flatten(): PixelImage {
             val out = base.copy()
             for (p in props.sortedWith(compareBy({ it.baseline }, { it.x }))) out.draw(p.image, p.x, p.y)
             return out
         }
+        /** [sprite] as it looks under the room's light with its top-left at ([x], [y]). */
+        fun lit(sprite: PixelImage, x: Int, y: Int): PixelImage = litSprite(sprite, x, y, light)
+        /** The soft shadow [sprite] casts on the floor, standing with its top-left at ([x], [y]), drawn into [into]. */
+        fun castShadow(into: PixelImage, sprite: PixelImage, x: Int, y: Int, phase: Sky.Phase) {
+            val mask = FloatArray(into.width * into.height)
+            shadowOf(mask, into.width, into.height, sprite, x, y, lampX = lampAt(props, geom))
+            drawShadows(into, mask, phase)
+        }
     }
 
     // ---------------------------------------------------------------- palette
 
     class Palette(
-        val wall: Int, val wallDot: Int, val wainscot: Int, val wainscotLine: Int,
-        val floor: Int, val plank: Int, val floorTop: Int, val tileLine: Int, val shadow: Int,
+        val wall: Int, val wallDot: Int, val wainscot: Int, val wainscotLine: Int, val side: Int, val ceiling: Int,
+        val floor: Int, val plank: Int, val floorTop: Int, val tileLine: Int,
         val frame: Int, val sill: Int, val curtain: Int, val curtainDark: Int,
         val wood: Int, val woodLight: Int, val woodDark: Int,
         val pot: Int, val leaf: Int, val leafDark: Int,
         val cushion: Int, val cushionLight: Int, val cushionDark: Int,
         val rug: Int, val rugEdge: Int, val rugDot: Int,
-        val bowl: Int, val bowlDark: Int, val kibble: Int, val lamp: Int, val shade: Int, val glow: Int?,
+        val bowl: Int, val bowlDark: Int, val kibble: Int, val lamp: Int, val shade: Int,
         val fabric: Int, val fabricLight: Int, val fabricDark: Int,
         val glass: Int, val water: Int, val fish: Int, val metal: Int, val metalDark: Int, val ink: Int,
     )
 
     private val DAY = Palette(
-        wall = 0xFFF4E2D2.toInt(), wallDot = 0xFFEDD6C2.toInt(), wainscot = 0xFFE9CDB7.toInt(), wainscotLine = 0xFFDDBB9F.toInt(),
-        floor = 0xFFD9B48C.toInt(), plank = 0xFFCDA57C.toInt(), floorTop = 0xFFB98E62.toInt(), tileLine = 0xFFC79F74.toInt(), shadow = 0x30362A4A,
+        wall = 0xFFF4E2D2.toInt(), wallDot = 0xFFEDD6C2.toInt(), wainscot = 0xFFE9CDB7.toInt(), wainscotLine = 0xFFDDBB9F.toInt(), side = 0xFFE8D4C2.toInt(), ceiling = 0xFFEFE3D8.toInt(),
+        floor = 0xFFD9B48C.toInt(), plank = 0xFFCDA57C.toInt(), floorTop = 0xFFB98E62.toInt(), tileLine = 0xFFC79F74.toInt(),
         frame = 0xFFFFFDF8.toInt(), sill = 0xFFE6D5C3.toInt(), curtain = 0xFFE88A96.toInt(), curtainDark = 0xFFD06C7B.toInt(),
         wood = 0xFFB9865A.toInt(), woodLight = 0xFFD2A579.toInt(), woodDark = 0xFF8E6240.toInt(),
         pot = 0xFFC9744A.toInt(), leaf = 0xFF78B56F.toInt(), leafDark = 0xFF4F8F4C.toInt(),
         cushion = 0xFF9C8BE6.toInt(), cushionLight = 0xFFC2B6F2.toInt(), cushionDark = 0xFF7A69C4.toInt(),
         rug = 0xFFF0B9B2.toInt(), rugEdge = 0xFFD98C8C.toInt(), rugDot = 0xFFF6D3CE.toInt(),
-        bowl = 0xFF4A90D9.toInt(), bowlDark = 0xFF2F6FB0.toInt(), kibble = 0xFF8B5A2B.toInt(), lamp = 0xFF8C6A48.toInt(), shade = 0xFFFFE2A8.toInt(), glow = null,
+        bowl = 0xFF4A90D9.toInt(), bowlDark = 0xFF2F6FB0.toInt(), kibble = 0xFF8B5A2B.toInt(), lamp = 0xFF8C6A48.toInt(), shade = 0xFFFFE2A8.toInt(),
         fabric = 0xFF6FB3A8.toInt(), fabricLight = 0xFF9ED3C8.toInt(), fabricDark = 0xFF4E8F86.toInt(),
         glass = 0xFFBFE6F2.toInt(), water = 0xFF7CC4E6.toInt(), fish = 0xFFF28C28.toInt(), metal = 0xFFC9C3BE.toInt(), metalDark = 0xFF8E8780.toInt(), ink = 0xFF3A2E4A.toInt(),
     )
@@ -107,20 +166,28 @@ object Room {
     private fun dim(c: Int, t: Double) = Argb.mix(c, 0xFF1B2440.toInt(), t)
 
     private val NIGHT = Palette(
-        wall = dim(DAY.wall, 0.62), wallDot = dim(DAY.wallDot, 0.62), wainscot = dim(DAY.wainscot, 0.62), wainscotLine = dim(DAY.wainscotLine, 0.62),
-        floor = dim(DAY.floor, 0.58), plank = dim(DAY.plank, 0.58), floorTop = dim(DAY.floorTop, 0.58), tileLine = dim(DAY.tileLine, 0.58), shadow = 0x40101830,
+        wall = dim(DAY.wall, 0.62), wallDot = dim(DAY.wallDot, 0.62), wainscot = dim(DAY.wainscot, 0.62), wainscotLine = dim(DAY.wainscotLine, 0.62), side = dim(DAY.side, 0.62), ceiling = dim(DAY.ceiling, 0.65),
+        floor = dim(DAY.floor, 0.58), plank = dim(DAY.plank, 0.58), floorTop = dim(DAY.floorTop, 0.58), tileLine = dim(DAY.tileLine, 0.58),
         frame = dim(DAY.frame, 0.55), sill = dim(DAY.sill, 0.55), curtain = dim(DAY.curtain, 0.5), curtainDark = dim(DAY.curtainDark, 0.5),
         wood = dim(DAY.wood, 0.5), woodLight = dim(DAY.woodLight, 0.5), woodDark = dim(DAY.woodDark, 0.5),
         pot = dim(DAY.pot, 0.5), leaf = dim(DAY.leaf, 0.5), leafDark = dim(DAY.leafDark, 0.5),
         cushion = dim(DAY.cushion, 0.5), cushionLight = dim(DAY.cushionLight, 0.5), cushionDark = dim(DAY.cushionDark, 0.5),
         rug = dim(DAY.rug, 0.55), rugEdge = dim(DAY.rugEdge, 0.55), rugDot = dim(DAY.rugDot, 0.55),
         bowl = dim(DAY.bowl, 0.5), bowlDark = dim(DAY.bowlDark, 0.5), kibble = dim(DAY.kibble, 0.5), lamp = dim(DAY.lamp, 0.4),
-        shade = 0xFFFFE9B0.toInt(), glow = 0x2EFFD98A,
+        shade = 0xFFFFE9B0.toInt(),
         fabric = dim(DAY.fabric, 0.5), fabricLight = dim(DAY.fabricLight, 0.5), fabricDark = dim(DAY.fabricDark, 0.5),
         glass = dim(DAY.glass, 0.45), water = dim(DAY.water, 0.4), fish = dim(DAY.fish, 0.3), metal = dim(DAY.metal, 0.5), metalDark = dim(DAY.metalDark, 0.5), ink = dim(DAY.ink, 0.3),
     )
 
     fun palette(phase: Sky.Phase): Palette = if (phase.dark) NIGHT else DAY
+
+    /** The light in the room with nothing else lit: cool and low at night, warm by day, pink at dawn and dusk. */
+    private fun ambient(phase: Sky.Phase): FloatArray = when (phase) {
+        Sky.Phase.NIGHT -> floatArrayOf(0.44f, 0.46f, 0.64f)
+        Sky.Phase.DAWN -> floatArrayOf(0.90f, 0.84f, 0.82f)
+        Sky.Phase.DUSK -> floatArrayOf(0.90f, 0.82f, 0.80f)
+        Sky.Phase.DAY -> floatArrayOf(0.88f, 0.86f, 0.82f)
+    }
 
     // ---------------------------------------------------------------- the scene
 
@@ -133,84 +200,73 @@ object Room {
         val img = PixelImage(width, height)
         val floorLine = floorLine0.coerceIn(10, height)
         val g = Geometry(width, height, floorLine)
-
-        // Wall: paper with a quiet dot pattern, and a wainscot band above the floor.
-        for (y in 0 until floorLine) for (x in 0 until width) img[x, y] = if ((x + y * 3) % 10 == 0 && (y % 5 == 2)) p.wallDot else p.wall
-        val wainscotTop = floorLine - 7
-        for (y in wainscotTop until floorLine) for (x in 0 until width) img[x, y] = p.wainscot
-        for (x in 0 until width) { img[x, wainscotTop] = p.wainscotLine; if (x % 8 == 4) for (y in wainscotTop + 2 until floorLine - 1) img[x, y] = p.wainscotLine }
-
-        // Floor: boards running across, two tile rows to a board, with a faint joint here and there: the lines recede toward the wall.
-        val seam = Argb.mix(p.floor, p.tileLine, 0.55)
-        for (y in floorLine until height) for (x in 0 until width) {
-            val d = y - floorLine; val row = d / TILE_D
-            val joint = row % 2 == 1 && ((x - g.gridLeft) + (row / 2) * 17).mod(41) == 0 && d % TILE_D != 0
-            img[x, y] = when {
-                d == 0 -> p.floorTop
-                d % (TILE_D * 2) == 0 -> seam
-                joint -> seam
-                else -> p.floor
-            }
-        }
+        box(img, g, p)
 
         // The season's garland along the top of a tall wall.
         if (floorLine > 60) when (season) {
-            Season.CHRISTMAS -> lights(img, 4, p)
-            Season.VALENTINES -> hearts(img, 4, p)
-            Season.HALLOWEEN -> bunting(img, 4, p, intArrayOf(0xFFF28C28.toInt(), 0xFF2B2135.toInt(), 0xFF9C6BD6.toInt()))
+            Season.CHRISTMAS -> lights(img, g, 4, p)
+            Season.VALENTINES -> hearts(img, g, 4, p)
+            Season.HALLOWEEN -> bunting(img, g, 4, p, intArrayOf(0xFFF28C28.toInt(), 0xFF2B2135.toInt(), 0xFF9C6BD6.toInt()))
             Season.NONE -> Unit
         }
 
-        // Wall pieces, flat on the wall.
+        // Wall pieces, flat on the back wall, drawn at the wall's distance. The window's glass is remembered for the light.
+        val glass = ArrayList<IntArray>()
         for (pl in layout.items.filter { it.item.onWall }.sortedBy { it.y }) {
-            val bottom = g.wallBottom(pl.y)
-            val x = g.tileX(pl.x)
-            when (pl.item) {
-                Furniture.WINDOW -> window(img, x + 1, bottom - 24, TILE_W * 3 - 2, 22, phase, p, seed)
-                Furniture.SHELF -> shelf(img, x, bottom, p, pl.flip)
-                Furniture.FRAME -> frame(img, x, bottom - 8, p)
-                Furniture.CLOCK -> clock(img, x + 4, bottom - 5, p)
-                Furniture.HANGING_PLANT -> hanging(img, x + 4, bottom - 18, p)
-                Furniture.POSTER -> poster(img, x, bottom - 12, p)
-                Furniture.STRING_LIGHTS -> stringLights(img, x, bottom - 6, TILE_W * 4, p, phase)
-                Furniture.PAW_BANNER -> banner(img, x + 1, bottom - 14, p)
-                else -> Unit
-            }
+            val sprite = wallPiece(pl, p, phase, seed)
+            val s = g.size(0.0)
+            val scaled = sprite.image.resampled(maxOf(1, (sprite.image.width * s).roundToInt()), maxOf(1, (sprite.image.height * s).roundToInt()))
+            val x = (g.x(pl.x * TILE_W.toDouble(), 0.0) + sprite.dx * s).roundToInt()
+            val y = (g.wallBottom(pl.y) + sprite.dy * s).roundToInt()
+            img.draw(scaled, x, y)
+            if (pl.item == Furniture.WINDOW) glass += intArrayOf(x + (sprite.glass[0] * s).roundToInt(), y + (sprite.glass[1] * s).roundToInt(), maxOf(1, (sprite.glass[2] * s).roundToInt()), maxOf(1, (sprite.glass[3] * s).roundToInt()))
         }
 
-        // By day the window lays a patch of sun on the floor below it, slanting to the right as the light does.
-        if (!phase.dark) for (pl in layout.items.filter { it.item == Furniture.WINDOW }) {
-            val x0 = g.tileX(pl.x) + 2
-            for (row in 0 until minOf(g.rows, 3)) for (yy in g.tileTop(row) until g.baseline(row)) for (xx in x0 + row * 3 until x0 + TILE_W * 3 - 2 + row * 3) {
-                if (img.inBounds(xx, yy) && yy > floorLine) img[xx, yy] = Argb.blend(img[xx, yy], 0x2AFFF0B8)
-            }
-        }
-
-        // Rugs lie flat on the floor, under everything.
+        // Rugs lie flat on the floor, under everything, foreshortened with it.
         for (pl in layout.items.filter { it.item.flat }) {
             if (pl.y + pl.item.rows > g.rows + 1) continue
             when (pl.item) {
-                Furniture.RUG -> rug(img, g.tileX(pl.x), g.tileTop(pl.y), TILE_W * 3, TILE_D * 2, p)
-                Furniture.ROUND_RUG -> roundRug(img, g.tileX(pl.x), g.tileTop(pl.y), p)
+                Furniture.RUG -> rug(img, g, pl, p, round = false)
+                Furniture.ROUND_RUG -> rug(img, g, pl, p, round = true)
                 else -> Unit
             }
         }
 
-        // Standing pieces: a soft shadow on the floor (in the backdrop), the piece itself as a prop.
-        val props = ArrayList<Prop>()
-        // The owner's pieces, then the season's stand-in (a pumpkin or a tree on a free tile, never saved).
+        // Standing pieces: the owner's, then the season's stand-in (a pumpkin or a tree on a free tile, never saved).
         val standing = layout.items.filter { !it.item.onWall && !it.item.flat }.map { it to false } + seasonal(season, layout, g).map { it to true }
+        val props = ArrayList<Prop>()
         for ((pl, isSeasonal) in standing) {
             if (pl.y + pl.item.rows > g.rows + 1) continue
-            val x0 = g.tileX(pl.x); val back = g.tileTop(pl.y); val front = g.baseline(pl.y + pl.item.rows - 1)
-            shadow(img, x0 + 1, back + 2, pl.item.cols * TILE_W, front - back, p)
-            val sprite = piece(pl, p, phase, seed, seasonal = isSeasonal)
-            // The drawing's bottom sits on the front edge; its left on the tile's left.
-            props += Prop(pl, sprite, x0, front - sprite.height, front)
+            props += prop(pl, g, p, phase, seed, isSeasonal, light = null)
         }
-        // The lamp lights the floor around it at night (into the backdrop, under the props).
-        p.glow?.let { glow -> for ((pl, _) in standing) if (pl.item == Furniture.LAMP) lampGlow(img, g.tileX(pl.x) + 4, g.baseline(pl.y) - 24, glow) }
-        return Scene(img, props, g)
+        // Their shadows fall across the floor, away from the window by day and away from the lamp at night.
+        val mask = FloatArray(width * height)
+        val lampX = lampAt(props, g)
+        for (pr in props) shadowOf(mask, width, height, pr.image, pr.x, pr.y, lampX)
+        drawShadows(img, mask, phase)
+
+        // Then the light: over the backdrop, and baked into each piece where it stands.
+        val light = light(g, phase, glass, props)
+        for (i in img.pixels.indices) img.pixels[i] = Light.lit(img.pixels[i], light.r[i], light.g[i], light.b[i])
+        val lit = props.map { Prop(it.placed, litSprite(it.image, it.x, it.y, light), it.x, it.y, it.baseline) }
+        bloom(img, lit)
+        return Scene(img, lit, g, light)
+    }
+
+    /**
+     * A standing piece drawn for its place in the room: [Furniture.cols] tiles wide at the front
+     * edge of its tiles, smaller the deeper it stands, and under the room's [light] when given.
+     */
+    fun prop(pl: Placed, g: Geometry, p: Palette, phase: Sky.Phase, seed: Int = 7, seasonal: Boolean = false, light: Light? = null): Prop {
+        val sprite = piece(pl, p, phase, seed, seasonal)
+        val frontRow = pl.y + pl.item.rows - 1
+        val depth = (frontRow + 1).toDouble()
+        val s = g.size(depth)
+        val scaled = sprite.resampled(maxOf(1, (sprite.width * s).roundToInt()), maxOf(1, (sprite.height * s).roundToInt()))
+        val front = g.baseline(frontRow)
+        val x = (g.x((pl.x + pl.item.cols / 2.0) * TILE_W, depth) - scaled.width / 2.0).roundToInt()
+        val y = front - scaled.height
+        return Prop(pl, if (light != null) litSprite(scaled, x, y, light) else scaled, x, y, front)
     }
 
     /** The season's piece on the floor, on a free tile by the right wall: a jack-o'-lantern or a little tree. */
@@ -221,11 +277,237 @@ object Room {
         return emptyList()
     }
 
+    // ---------------------------------------------------------------- the box
+
+    /** The walls, the ceiling strip on a tall stage, and the floor with its boards running toward the back. */
+    private fun box(img: PixelImage, g: Geometry, p: Palette) {
+        val w = img.width; val h = img.height; val floorLine = g.floorLine
+        val sideDark = Argb.mix(p.side, p.ink, 0.07)
+        val seam = Argb.mix(p.floor, p.tileLine, 0.55)
+        val skirting = p.floorTop
+        for (y in 0 until h) {
+            val onFloor = y >= floorLine
+            // A floor pixel's depth, or a ceiling pixel's (the ceiling recedes the other way, to the stage's top edge).
+            val depth = when {
+                onFloor -> g.depth(y)
+                y < g.wallTop -> (g.wallTop - y - 0.5) / maxOf(1, g.wallTop) * RoomLayout.ROWS
+                else -> 0.0
+            }
+            var prevU = g.u(-0.5, depth)
+            for (x in 0 until w) {
+                val u = g.u(x + 0.5, depth)
+                val inside = u >= 0 && u < GRID_W
+                val edge = (prevU < 0) != (u < 0) || (prevU < GRID_W) != (u < GRID_W)
+                img[x, y] = when {
+                    !inside && !edge -> if (x > g.cx) sideDark else p.side
+                    edge -> if (onFloor || y < g.wallTop) skirting else sideDark
+                    !onFloor && y < g.wallTop -> p.ceiling
+                    !onFloor -> {
+                        // The back wall: paper with a quiet dot pattern, a wainscot band above the floor.
+                        val wainscotTop = floorLine - 7
+                        when {
+                            y == g.wallTop && g.wallTop > 0 -> Argb.mix(p.wall, p.ink, 0.12)
+                            y == wainscotTop -> p.wainscotLine
+                            y > wainscotTop -> if (floor(u / 8).toInt() != floor((u - 0.5 / g.back) / 8).toInt() && y < floorLine - 1) p.wainscotLine else p.wainscot
+                            (x + y * 3) % 10 == 0 && y % 5 == 2 -> p.wallDot
+                            else -> p.wall
+                        }
+                    }
+                    y == floorLine -> skirting
+                    else -> {
+                        // Boards a tile wide running front to back; their ends staggered every few rows.
+                        val board = floor(u / TILE_W).toInt()
+                        val boardSeam = board != floor(prevU / TILE_W).toInt()
+                        val row = (y - floorLine) / TILE_D
+                        val joint = (y - floorLine) % TILE_D == 0 && (row + board * 2) % 3 == 0
+                        if (boardSeam || joint) seam else p.floor
+                    }
+                }
+                prevU = u
+            }
+        }
+    }
+
+    /** A rug on its tiles, foreshortened with the floor: a bordered rectangle or an oval, with a quiet dot pattern. */
+    private fun rug(img: PixelImage, g: Geometry, pl: Placed, p: Palette, round: Boolean) {
+        val top = g.tileTop(pl.y); val bottom = g.tileTop(pl.y + pl.item.rows)
+        val u0 = pl.x * TILE_W.toDouble(); val uw = pl.item.cols * TILE_W.toDouble(); val dh = (bottom - top).toDouble()
+        for (y in top until bottom) {
+            if (y !in 0 until img.height) continue
+            val depth = g.depth(y)
+            val x0 = floor(g.x(u0, depth)).toInt(); val x1 = floor(g.x(u0 + uw, depth)).toInt()
+            for (x in x0 until x1) {
+                if (x !in 0 until img.width) continue
+                val du = g.u(x + 0.5, depth) - u0; val dv = y - top + 0.5
+                val c = if (round) {
+                    val nx = (du - uw / 2) / (uw / 2); val ny = (dv - dh / 2) / (dh / 2)
+                    val r = nx * nx + ny * ny
+                    if (r > 1.0) continue
+                    if (r > 0.72) p.rugEdge else if ((x + y) % 4 == 0) p.rugDot else p.rug
+                } else {
+                    val edge = du < 1.0 || du > uw - 1.0 || y == top || y == bottom - 1
+                    val corner = (du < 1.0 || du > uw - 1.0) && (y == top || y == bottom - 1)
+                    if (corner) continue
+                    if (edge) p.rugEdge else if ((x + y) % 5 == 0 && y % 2 == 1) p.rugDot else p.rug
+                }
+                img[x, y] = c
+            }
+        }
+    }
+
+    // ---------------------------------------------------------------- light and shadow
+
+    /**
+     * The room's light: the time of day's ambient, darker where the wall meets the floor and in the
+     * corners, a beam slanting from each window (warm sun by day, cool moon by night), a pool of warm
+     * light around each lamp (faint by day, the room's light at night), and a glow around the glass.
+     */
+    private fun light(g: Geometry, phase: Sky.Phase, glass: List<IntArray>, props: List<Prop>): Light {
+        val w = g.width; val h = g.height
+        val light = Light(w, h)
+        val amb = ambient(phase)
+        val night = phase.dark
+        // Distances were tuned on a 100-pixel-wide room; a wider stage spreads them.
+        val f = (w / 100.0).toFloat().coerceAtLeast(0.5f)
+        val lamps = props.filter { it.placed.item == Furniture.LAMP }.map { floatArrayOf(it.x + it.image.width / 2f, it.y + 4f) }
+        val cxv = w / 2f; val cyv = h * 0.55f
+        val beam = if (night) floatArrayOf(0.06f, 0.10f, 0.20f) else if (phase == Sky.Phase.DUSK) floatArrayOf(0.26f, 0.16f, 0.07f) else floatArrayOf(0.24f, 0.20f, 0.11f)
+        for (y in 0 until h) for (x in 0 until w) {
+            val i = y * w + x
+            // Ambient occlusion at the floor seam and down the side edges; the corners fall off a little.
+            val dSeam = (y - g.floorLine) / (7f * f)
+            val ao = 1f - 0.28f * exp(-dSeam * dSeam) - 0.12f * maxOf(0f, 1f - minOf(x, w - 1 - x) / (10f * f))
+            val dv = sqrt(((x - cxv) / w) * ((x - cxv) / w) + ((y - cyv) / h) * ((y - cyv) / h)) * 2f
+            val vig = 1f - 0.35f * maxOf(0f, dv - 0.55f) / 0.6f
+            var r = amb[0] * ao * vig; var gg = amb[1] * ao * vig; var b = amb[2] * ao * vig
+            for (gl in glass) {
+                val gx = gl[0]; val gy = gl[1]; val gw = gl[2]; val gh = gl[3]
+                val inGlass = x >= gx && x < gx + gw && y >= gy && y < gy + gh
+                val wx = gx + gw / 2f; val wy = (gy + gh).toFloat()
+                val bx = (x - (wx + (y - wy) * 0.45f)) / (26f * f); val by = (y - wy) / (60f * f)
+                var strength = if (inGlass || y < wy - 4) 0f else maxOf(0f, 1f - (bx * bx * 1.1f + by * by * 0.5f)) * minOf(1f, (y - wy + 4) / 10f)
+                // Most of the beam lands on the floor; the wall below the sill only warms a little.
+                strength *= if (y > g.floorLine) 1.1f else 0.4f
+                r += beam[0] * strength; gg += beam[1] * strength; b += beam[2] * strength
+                if (!night && !inGlass) {
+                    val hx = (x - (gx + gw / 2f)) / (gw * 0.75f); val hy = (y - (gy + gh / 2f)) / (gh * 0.75f)
+                    val halo = maxOf(0f, 1f - sqrt(hx * hx + hy * hy)) * 0.12f
+                    r += halo; gg += halo * 0.95f; b += halo * 0.8f
+                }
+            }
+            for (lp in lamps) {
+                val lx = (x - lp[0]) / ((if (night) 30f else 24f) * f); val ly = (y - lp[1]) / ((if (night) 34f else 26f) * f)
+                val pool = exp(-(lx * lx + ly * ly) * 1.2f) * (if (night) 0.95f else 0.22f)
+                r += pool; gg += pool * 0.78f; b += pool * 0.45f
+            }
+            light.r[i] = r.coerceIn(0f, 1.6f); light.g[i] = gg.coerceIn(0f, 1.6f); light.b[i] = b.coerceIn(0f, 1.6f)
+        }
+        return light
+    }
+
+    private fun litSprite(sprite: PixelImage, x: Int, y: Int, light: Light): PixelImage {
+        val out = PixelImage(sprite.width, sprite.height)
+        for (yy in 0 until sprite.height) for (xx in 0 until sprite.width) out[xx, yy] = light.apply(sprite[xx, yy], x + xx, y + yy)
+        return out
+    }
+
+    /** The x of the lamp's shade, when there is a lamp: at night shadows fall away from it. */
+    private fun lampAt(props: List<Prop>, g: Geometry): Float? = props.firstOrNull { it.placed.item == Furniture.LAMP }?.let { it.x + it.image.width / 2f }
+
+    /**
+     * A piece's shadow: its silhouette flattened onto the floor at its feet, pushed a little to the
+     * right (the window is on the left by day) or away from the lamp, into [mask] (0..1 per pixel).
+     */
+    private fun shadowOf(mask: FloatArray, w: Int, h: Int, sprite: PixelImage, x: Int, y: Int, lampX: Float?) {
+        val shrink = 3
+        val dx = if (lampX != null) ((x + sprite.width / 2f - lampX) * 0.15f).roundToInt().coerceIn(-5, 5) else 3
+        val dy = 2
+        for (sy in 0 until sprite.height) for (sx in 0 until sprite.width) {
+            if (Argb.alpha(sprite[sx, sy]) < 128) continue
+            val tx = x + sx + dx
+            val ty = y + sprite.height + dy - (sprite.height - sy) / shrink - 1
+            if (tx in 0 until w && ty in 0 until h) mask[ty * w + tx] = 1f
+        }
+    }
+
+    /** Softens [mask] (a small blur, twice) and darkens [img] under it. */
+    private fun drawShadows(img: PixelImage, mask: FloatArray, phase: Sky.Phase) {
+        val w = img.width; val h = img.height
+        var m = mask
+        repeat(2) {
+            val out = FloatArray(w * h)
+            for (y in 0 until h) for (x in 0 until w) {
+                var sum = 0f; var n = 0
+                for (yy in maxOf(0, y - 1)..minOf(h - 1, y + 1)) for (xx in maxOf(0, x - 1)..minOf(w - 1, x + 1)) { sum += m[yy * w + xx]; n++ }
+                out[y * w + x] = sum / n
+            }
+            m = out
+        }
+        val strength = if (phase.dark) 0.55f else 0.42f
+        val shade = 0x14 shl 16 or (0x0E shl 8) or 0x28
+        for (i in m.indices) if (m[i] > 0.01f) img.pixels[i] = Argb.blend(img.pixels[i], Argb.withAlpha(shade, (m[i] * strength * 255).roundToInt()))
+    }
+
+    /** The brightest spots (the window by day, the lamp at night) glow onto what's around them. */
+    private fun bloom(img: PixelImage, props: List<Prop>) {
+        val w = img.width; val h = img.height
+        val bright = IntArray(w * h * 3)
+        fun splat(c: Int, x: Int, y: Int) {
+            if (x !in 0 until w || y !in 0 until h || Argb.alpha(c) < 128) return
+            val i = (y * w + x) * 3
+            bright[i] = maxOf(bright[i], maxOf(0, Argb.r(c) - 215) * 5); bright[i + 1] = maxOf(bright[i + 1], maxOf(0, Argb.g(c) - 215) * 5); bright[i + 2] = maxOf(bright[i + 2], maxOf(0, Argb.b(c) - 215) * 5)
+        }
+        for (y in 0 until h) for (x in 0 until w) splat(img[x, y], x, y)
+        for (p in props) for (yy in 0 until p.image.height) for (xx in 0 until p.image.width) splat(p.image[xx, yy], p.x + xx, p.y + yy)
+        if (bright.all { it == 0 }) return
+        var g = bright
+        repeat(2) {
+            val out = IntArray(w * h * 3)
+            for (y in 0 until h) for (x in 0 until w) for (c in 0..2) {
+                var sum = 0; var n = 0
+                for (yy in maxOf(0, y - 2)..minOf(h - 1, y + 2)) for (xx in maxOf(0, x - 2)..minOf(w - 1, x + 2)) { sum += g[(yy * w + xx) * 3 + c]; n++ }
+                out[(y * w + x) * 3 + c] = sum / n
+            }
+            g = out
+        }
+        for (i in 0 until w * h) {
+            val c = img.pixels[i]
+            val r = (Argb.r(c) + g[i * 3] * 0.3f).roundToInt().coerceAtMost(255)
+            val gg = (Argb.g(c) + g[i * 3 + 1] * 0.3f).roundToInt().coerceAtMost(255)
+            val b = (Argb.b(c) + g[i * 3 + 2] * 0.3f).roundToInt().coerceAtMost(255)
+            img.pixels[i] = Argb.of(Argb.alpha(c), r, gg, b)
+        }
+    }
+
+    /**
+     * A diorama photographed up close: the top and bottom of [img] fall softly out of focus. For
+     * stills; a live view blends its own smooth copy instead.
+     */
+    fun softFocus(img: PixelImage, top: Double = 0.10, bottom: Double = 0.14): PixelImage {
+        val w = img.width; val h = img.height
+        val blurred = PixelImage(w, h)
+        for (y in 0 until h) for (x in 0 until w) {
+            var a = 0; var r = 0; var g = 0; var b = 0; var n = 0
+            for (yy in maxOf(0, y - 1)..minOf(h - 1, y + 1)) for (xx in maxOf(0, x - 1)..minOf(w - 1, x + 1)) { val c = img[xx, yy]; a += Argb.alpha(c); r += Argb.r(c); g += Argb.g(c); b += Argb.b(c); n++ }
+            blurred[x, y] = Argb.of(a / n, r / n, g / n, b / n)
+        }
+        val out = img.copy()
+        for (y in 0 until h) {
+            val t = (y + 0.5) / h
+            val share = if (t < top) (top - t) / top else if (t > 1 - bottom) (t - (1 - bottom)) / bottom else 0.0
+            if (share <= 0) continue
+            val k = share * sqrt(share)
+            for (x in 0 until w) out[x, y] = Argb.mix(img[x, y], blurred[x, y], k)
+        }
+        return out
+    }
+
     // ---------------------------------------------------------------- pieces
 
     /**
-     * The drawing of a standing piece: [item.cols] tiles wide, its top face [item.rows] tiles deep, and its
-     * height below that. [seasonal] draws the season's stand-in on that footprint (a pumpkin, a tree).
+     * The drawing of a standing piece at its own size: [Furniture.cols] tiles wide, its top face
+     * [Furniture.rows] tiles deep, and its height below that. [seasonal] draws the season's stand-in
+     * on that footprint (a pumpkin, a tree).
      */
     fun piece(pl: Placed, p: Palette, phase: Sky.Phase, seed: Int = 7, seasonal: Boolean = false): PixelImage {
         val w = pl.item.cols * TILE_W; val d = pl.item.rows * TILE_D
@@ -248,6 +530,33 @@ object Room {
         return if (pl.flip) StageRenderer.mirror(img) else img
     }
 
+    /** A wall piece's drawing, with where its top-left goes relative to its column's x and its slot's bottom, and the window's glass rectangle within it. */
+    class WallSprite(val image: PixelImage, val dx: Int, val dy: Int, val glass: IntArray = intArrayOf(0, 0, 0, 0))
+
+    /** The drawing of a wall piece at its own size (see [WallSprite]). */
+    fun wallPiece(pl: Placed, p: Palette, phase: Sky.Phase, seed: Int = 7): WallSprite {
+        // Drawn on a scratch wall with the column at x = 8 and the slot's bottom at y = 32, then cut out.
+        val pad = 8; val bottom = 32
+        val scratch = PixelImage(pl.item.cols * TILE_W + 2 * pad, bottom + 6)
+        var glass: IntArray? = null
+        when (pl.item) {
+            Furniture.WINDOW -> { val gw = TILE_W * 3 - 2; window(scratch, pad + 1, bottom - 24, gw, 22, phase, p, seed); glass = intArrayOf(pad + 1, bottom - 24, gw, 22) }
+            Furniture.SHELF -> shelf(scratch, pad, bottom, p, pl.flip)
+            Furniture.FRAME -> frame(scratch, pad, bottom - 8, p)
+            Furniture.CLOCK -> clock(scratch, pad + 4, bottom - 5, p)
+            Furniture.HANGING_PLANT -> hanging(scratch, pad + 4, bottom - 18, p)
+            Furniture.POSTER -> poster(scratch, pad, bottom - 12, p)
+            Furniture.STRING_LIGHTS -> stringLights(scratch, pad, bottom - 6, TILE_W * 4, p, phase)
+            Furniture.PAW_BANNER -> banner(scratch, pad + 1, bottom - 14, p)
+            else -> Unit
+        }
+        val b = Animator.opaqueBounds(scratch) ?: return WallSprite(PixelImage(1, 1), 0, 0)
+        val img = PixelImage(b[2] - b[0], b[3] - b[1])
+        for (y in 0 until img.height) for (x in 0 until img.width) img[x, y] = scratch[b[0] + x, b[1] + y]
+        val g = glass?.let { intArrayOf(it[0] - b[0], it[1] - b[1], it[2], it[3]) } ?: intArrayOf(0, 0, 0, 0)
+        return WallSprite(img, b[0] - pad, b[1] - bottom, g)
+    }
+
     /**
      * A box in 3/4 view: a lit top face [d] deep, a front face [h] tall, a darker right edge and a
      * one-pixel outline in the deep tone. Everything "furniture" starts as one of these.
@@ -266,14 +575,14 @@ object Room {
         box(img, 0, 0, w, d, 4, p.cushionLight, p.cushion, p.cushionDark, p.cushionDark)
         img[0, 0] = 0; img[w - 1, 0] = 0; img[0, d + 4] = 0; img[w - 1, d + 4] = 0
         for (xx in 4 until w - 4) set(img, xx, 2, p.cushion)
-        for (xx in 5 until w - 5) set(img, xx, 3, p.cushion)
+        for (xx in 5 until w - 5) for (yy in 3 until d - 1) set(img, xx, yy, p.cushion)
         return img
     }
 
     private fun bowl(p: Palette): PixelImage {
         val img = PixelImage(TILE_W, TILE_D + 3)
         val rows = listOf("..kkkk...", ".kkkkkk..", "bbbbbbbb.", "dbbbbbbd.", ".dddddd..", "..dddd...")
-        rows.forEachIndexed { i, row -> row.forEachIndexed { j, c -> if (c != '.') set(img, j, 3 + i, when (c) { 'k' -> p.kibble; 'b' -> p.bowl; else -> p.bowlDark }) } }
+        rows.forEachIndexed { i, row -> row.forEachIndexed { j, c -> if (c != '.') set(img, j, img.height - 6 + i, when (c) { 'k' -> p.kibble; 'b' -> p.bowl; else -> p.bowlDark }) } }
         return img
     }
 
@@ -285,10 +594,6 @@ object Room {
         // Shade, lit from the left.
         for (dy in 0..6) for (dx in -(2 + dy / 2)..(2 + dy / 2)) set(img, x + dx, dy, if (dy == 6 || dy == 0) p.lamp else if (dx > 1 + dy / 2) Argb.mix(p.shade, p.lamp, 0.35) else p.shade)
         return img
-    }
-
-    private fun lampGlow(img: PixelImage, x: Int, top: Int, glow: Int) {
-        for (dy in -3..20) for (dx in -14..14) { val xx = x + dx; val yy = top + 4 + dy; if (img.inBounds(xx, yy) && dx * dx / 2 + dy * dy / 3 < 70) img[xx, yy] = Argb.blend(img[xx, yy], glow) }
     }
 
     private fun plant(p: Palette, big: Boolean): PixelImage {
@@ -323,7 +628,7 @@ object Room {
         box(img, 0, 0, TILE_W, 2, 7, p.fabricLight, p.fabric, p.fabricDark, p.fabricDark)
         box(img, 0, 7, TILE_W, TILE_D, 4, p.fabricLight, p.fabric, p.fabricDark, p.fabricDark)
         // Arms.
-        for (yy in 6..13) { set(img, 0, yy, p.fabricDark); set(img, 1, yy, p.fabricLight); set(img, TILE_W - 2, yy, p.fabric); set(img, TILE_W - 1, yy, p.fabricDark) }
+        for (yy in 6 until TILE_D + 8) { set(img, 0, yy, p.fabricDark); set(img, 1, yy, p.fabricLight); set(img, TILE_W - 2, yy, p.fabric); set(img, TILE_W - 1, yy, p.fabricDark) }
         return img
     }
 
@@ -378,8 +683,8 @@ object Room {
     private fun radio(p: Palette): PixelImage {
         val img = PixelImage(TILE_W, TILE_D + 4)
         box(img, 0, 1, TILE_W, TILE_D - 2, 5, p.woodLight, p.wood, p.woodDark, p.woodDark)
-        for (yy in 6..8) for (xx in 2..4) set(img, xx, yy, p.metalDark)
-        set(img, 6, 7, p.metal); set(img, 7, 7, p.metal); set(img, 7, 0, p.metalDark); set(img, 8, 0, p.metalDark)
+        for (yy in TILE_D until TILE_D + 3) for (xx in 2..4) set(img, xx, yy, p.metalDark)
+        set(img, 6, TILE_D + 1, p.metal); set(img, 7, TILE_D + 1, p.metal); set(img, 7, 0, p.metalDark); set(img, 8, 0, p.metalDark)
         return img
     }
 
@@ -400,9 +705,10 @@ object Room {
         val dark = if (phase.dark) 0xFF8A4A14.toInt() else 0xFFC96F1E.toInt()
         val face = if (phase.dark) 0xFFFFE27A.toInt() else 0xFF2B2135.toInt()
         val rows = listOf("...gg....", "..xxxxx..", ".xxxxxxx.", "xxxxxxxxx", "xxxxxxxxx", "xxxxxxxxx", ".xxxxxxx.", "..xxxxx..")
-        rows.forEachIndexed { r, row -> row.forEachIndexed { c, ch -> when (ch) { 'x' -> set(img, c, 3 + r, if (c == 2 || c == 6) dark else orange); 'g' -> set(img, c, 3 + r, 0xFF5EA64C.toInt()) } } }
-        set(img, 2, 6, face); set(img, 6, 6, face)
-        for (c in 2..6) set(img, c, 8, face); set(img, 3, 9, face); set(img, 5, 9, face)
+        val top = img.height - rows.size
+        rows.forEachIndexed { r, row -> row.forEachIndexed { c, ch -> when (ch) { 'x' -> set(img, c, top + r, if (c == 2 || c == 6) dark else orange); 'g' -> set(img, c, top + r, 0xFF5EA64C.toInt()) } } }
+        set(img, 2, top + 3, face); set(img, 6, top + 3, face)
+        for (c in 2..6) set(img, c, top + 5, face); set(img, 3, top + 6, face); set(img, 5, top + 6, face)
         return img
     }
 
@@ -423,29 +729,7 @@ object Room {
         return img
     }
 
-    // ---------------------------------------------------------------- floor and wall decor
-
-    /** The shadow a piece casts on the floor: a darker patch under and just right of it. */
-    private fun shadow(img: PixelImage, x: Int, y: Int, w: Int, h: Int, p: Palette) {
-        for (yy in y until y + h) for (xx in x until x + w + 1) if (img.inBounds(xx, yy)) img[xx, yy] = Argb.blend(img[xx, yy], p.shadow)
-    }
-
-    private fun rug(img: PixelImage, x: Int, y: Int, w: Int, h: Int, p: Palette) {
-        for (dy in 0 until h) for (dx in 0 until w) {
-            val edge = dy == 0 || dy == h - 1 || dx == 0 || dx == w - 1
-            val corner = (dx == 0 || dx == w - 1) && (dy == 0 || dy == h - 1)
-            if (!corner) set(img, x + dx, y + dy, if (edge) p.rugEdge else if ((dx + dy) % 5 == 0 && dy % 2 == 1) p.rugDot else p.rug)
-        }
-    }
-
-    private fun roundRug(img: PixelImage, x: Int, y: Int, p: Palette) {
-        val w = TILE_W * 2; val h = TILE_D * 2
-        for (dy in 0 until h) for (dx in 0 until w) {
-            val nx = (dx + 0.5 - w / 2.0) / (w / 2.0); val ny = (dy + 0.5 - h / 2.0) / (h / 2.0)
-            val r = nx * nx + ny * ny
-            if (r <= 1.0) set(img, x + dx, y + dy, if (r > 0.72) p.rugEdge else if ((dx + dy) % 4 == 0) p.rugDot else p.rug)
-        }
-    }
+    // ---------------------------------------------------------------- wall decor
 
     private fun window(img: PixelImage, x: Int, y: Int, w: Int, h: Int, phase: Sky.Phase, p: Palette, seed: Int) {
         for (yy in y until y + h) for (xx in x until x + w) set(img, xx, yy, Argb.mix(phase.top, phase.bottom, (yy - y).toDouble() / (h - 1)))
@@ -542,16 +826,17 @@ object Room {
         }
     }
 
-    /** A string of lights along the top: a dark wire with bulbs in turn red, green and gold. */
-    private fun lights(img: PixelImage, top: Int, p: Palette) = stringLights(img, 2, top, img.width - 4, p, Sky.Phase.NIGHT)
+    /** A string of lights along the top of the back wall: a dark wire with bulbs in turn red, green and gold. */
+    private fun lights(img: PixelImage, g: Geometry, top: Int, p: Palette) = stringLights(img, g.backLeft + 2, maxOf(top, g.wallTop + 2), g.backRight - g.backLeft - 4, p, Sky.Phase.NIGHT)
 
     /** A garland of little hearts. */
-    private fun hearts(img: PixelImage, top: Int, p: Palette) {
-        val w = img.width
+    private fun hearts(img: PixelImage, g: Geometry, top0: Int, p: Palette) {
+        val top = maxOf(top0, g.wallTop + 2)
+        val w = g.backRight - g.backLeft
         val colours = intArrayOf(0xFFE8374E.toInt(), 0xFFFFA9C9.toInt())
-        var i = 0; var x = 2
-        while (x + 6 < w) {
-            val t = (x + 3 - w / 2.0) / (w / 2.0)
+        var i = 0; var x = g.backLeft + 2
+        while (x + 6 < g.backRight) {
+            val t = (x + 3 - g.backLeft - w / 2.0) / (w / 2.0)
             val y = top + (3 * (1 - t * t)).toInt()
             for (xx in x until x + 8) set(img, xx, y, p.wood)
             val c = colours[i % colours.size]
@@ -562,11 +847,12 @@ object Room {
     }
 
     /** A string of little flags across the top of the wall, sagging a little in the middle. */
-    private fun bunting(img: PixelImage, top: Int, p: Palette, colours: IntArray) {
-        val w = img.width
-        var i = 0; var x = 2
-        while (x + 6 < w) {
-            val t = (x + 3 - w / 2.0) / (w / 2.0)
+    private fun bunting(img: PixelImage, g: Geometry, top0: Int, p: Palette, colours: IntArray) {
+        val top = maxOf(top0, g.wallTop + 2)
+        val w = g.backRight - g.backLeft
+        var i = 0; var x = g.backLeft + 2
+        while (x + 6 < g.backRight) {
+            val t = (x + 3 - g.backLeft - w / 2.0) / (w / 2.0)
             val y = top + (3 * (1 - t * t)).toInt()
             for (xx in x until x + 8) set(img, xx, y, p.wood)
             val c = colours[i % colours.size]

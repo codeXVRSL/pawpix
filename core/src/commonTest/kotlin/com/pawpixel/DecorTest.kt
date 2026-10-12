@@ -159,13 +159,15 @@ class DecorTest {
 
 class RoomCardTest {
     @Test fun theRoomCardShowsThePetInItsRoom() {
-        val look = com.pawpixel.sprite.PetLook(listOf(0xFFA0784E.toInt()), IntArray(com.pawpixel.sprite.PetLook.GRID * com.pawpixel.sprite.PetLook.GRID))
-        val art = com.pawpixel.sprite.PetArt(look, Species.CAT)
+        fun art(fur: Int) = com.pawpixel.sprite.PetArt(com.pawpixel.sprite.PetLook(listOf(fur), IntArray(com.pawpixel.sprite.PetLook.GRID * com.pawpixel.sprite.PetLook.GRID)), Species.CAT)
         for (phase in listOf(Sky.Phase.DAY, Sky.Phase.NIGHT)) {
-            val card = com.pawpixel.sprite.RoomCard.render(RoomLayout.DEFAULT, art, "Chelsea", phase)
+            val card = com.pawpixel.sprite.RoomCard.render(RoomLayout.DEFAULT, art(0xFFA0784E.toInt()), "Chelsea", phase)
             assertEquals(com.pawpixel.sprite.RoomCard.WIDTH * com.pawpixel.sprite.RoomCard.SCALE, card.width)
             assertEquals(com.pawpixel.sprite.RoomCard.HEIGHT * com.pawpixel.sprite.RoomCard.SCALE, card.height)
-            assertTrue(card.pixels.any { it == 0xFFA0784E.toInt() }, "the pet's fur is on the card")
+            // The pet is on the card, lit by the room: a pet of another colour gives another card.
+            val other = com.pawpixel.sprite.RoomCard.render(RoomLayout.DEFAULT, art(0xFF3060C0.toInt()), "Chelsea", phase)
+            val differ = card.pixels.indices.count { card.pixels[it] != other.pixels[it] }
+            assertTrue(differ > 100 * com.pawpixel.sprite.RoomCard.SCALE * com.pawpixel.sprite.RoomCard.SCALE, "the pet's fur is on the card ($differ pixels differ)")
         }
     }
 }
