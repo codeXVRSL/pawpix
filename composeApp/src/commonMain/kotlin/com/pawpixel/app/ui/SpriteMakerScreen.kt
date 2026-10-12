@@ -270,7 +270,7 @@ fun SpriteMakerScreen(app: AppScope, state: AppState, existingPetId: String?) {
             }
 
             // Cat, dog or rabbit, first: a cat drawn as a dog is the one mistake that spoils everything.
-            SoftCard(Modifier.fillMaxWidth(), tone = if (species == null) Tone.Accent else Tone.Surface) {
+            SoftCard(Modifier.fillMaxWidth(), tone = if (species == null) Tone.Tonal else Tone.Surface) {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text(
                         when {

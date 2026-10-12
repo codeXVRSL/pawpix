@@ -172,7 +172,7 @@ private fun TaskRow(app: AppScope, state: AppState, pet: Pet, s: TaskStatus) {
                     Meter(fraction, toy, Modifier.padding(end = 8.dp))
                     Text(
                         detail, style = MaterialTheme.typography.bodySmall,
-                        color = when { s.isOverdue -> MaterialTheme.colorScheme.primary; done -> Paw.palette.good; else -> MaterialTheme.colorScheme.onSurfaceVariant },
+                        color = when { s.isOverdue -> Paw.palette.due; done -> Paw.palette.good; else -> MaterialTheme.colorScheme.onSurfaceVariant },
                     )
                 }
                 // Undo takes back your own Done, never someone else's.

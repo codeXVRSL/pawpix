@@ -56,8 +56,15 @@ Build: see the top of `web/build_web.py`.
 `composeApp/.../ui/Theme.kt` (palette, shapes, type) and `Components.kt` (cards, pills, chips, hearts,
 confetti, spring motion) drives every screen on both platforms:
 
-- Warm cream by day, deep plum by night; one coral accent for what matters (Done, the pet's mood),
-  leaf green for good news, lavender for sleep. Every text colour meets WCAG AA on its surface.
+- Warm cream by day, the same cream a shade warmer and dimmer after the owner's bedtime (the app
+  goes by lamplight, not just the room), deep plum in dark mode; one terracotta accent for what
+  matters (Done, the pet's mood), honey for anything waiting (never an alarm red), leaf green for
+  good news, lavender for sleep. Every text colour meets WCAG AA on its surface.
+- Nothing nags: a missed task "waits", there are no streaks to break, furniture and outfits are
+  earned by cumulative days of care, and health "Done" keys wear their own candy colour whether
+  or not the item is due.
+- The room is alive in small ways: dust drifts down the sunbeam by day, the lamp's glow breathes
+  at night, the pet breathes, blinks and fidgets on its own timers.
 - The pet's stage has a sky that follows the real time of day (peach dawn, soft blue day,
   apricot-to-lavender dusk, starry indigo through the owner's set bedtime), dimmed in dark mode.
 - Its own chrome, the "toy box" (`composeApp/.../ui/Toy.kt`), not stock Material: every button,

@@ -128,7 +128,7 @@ fun DecorateScreen(app: AppScope, state: AppState, pet: Pet) {
             if (sel == null) {
                 Text(tr("Tap a piece to pick it up, then drag it where you like."), style = MaterialTheme.typography.labelMedium, color = PawColors.Ink, textAlign = TextAlign.Center)
             } else {
-                ToyPanel(face = Color.White, lip = PawColors.StickerEdge, shape = Pill, padding = 0.dp) {
+                ToyPanel(face = Paw.palette.sticker, lip = PawColors.StickerEdge, shape = Pill, padding = 0.dp) {
                     Row(Modifier.padding(start = 14.dp, end = 6.dp, top = 4.dp, bottom = 4.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         Text(tr(sel.item.label), style = MaterialTheme.typography.labelLarge, color = PawColors.Ink)
                         TonalPill(tr("Flip")) { val flipped = sel.copy(flip = !sel.flip); commit(layout.replace(sel, flipped), keep = flipped) } // the same instance: the tools find it again

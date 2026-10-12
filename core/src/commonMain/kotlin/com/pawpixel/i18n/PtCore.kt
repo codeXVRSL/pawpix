@@ -30,7 +30,7 @@ internal object PtCore {
         " and " to " e ", "{0} is being looked after while you're away." to "Estão cuidando de {0} enquanto você está fora.",
         "Tap Done when you care for {0}, and it shows here." to "Toque em Feito quando cuidar de {0}, e aparece aqui.",
         "You cared for {0} every day this week!" to "Você cuidou de {0} todos os dias esta semana!", "You cared for {0} on {1} of the last 7 days." to "Você cuidou de {0} em {1} dos últimos 7 dias.",
-        "No date yet" to "Sem data ainda", "Due today" to "Para hoje", "Overdue by 1 day" to "Atrasado 1 dia", "Overdue by {0} days" to "Atrasado {0} dias",
+        "No date yet" to "Sem data ainda", "Due today" to "Para hoje", "Waiting 1 day" to "Esperando 1 dia", "Waiting {0} days" to "Esperando {0} dias",
         "Due in 1 day" to "Em 1 dia", "Due in {0} days" to "Em {0} dias", "Due in 1 month" to "Em 1 mês", "Due in {0} months" to "Em {0} meses",
         "A whole year of care" to "Um ano inteiro de cuidados", "Two years of care" to "Dois anos de cuidados", "{0} days of care" to "{0} dias de cuidados",
         "Not born yet" to "Ainda não nasceu", "{0} days old" to "{0} dias", "{0} weeks old" to "{0} semanas", "{0} months old" to "{0} meses", "{0} years old" to "{0} anos",

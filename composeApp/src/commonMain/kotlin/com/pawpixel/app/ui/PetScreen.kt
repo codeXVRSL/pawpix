@@ -117,7 +117,7 @@ fun PetScreen(app: AppScope, state: AppState, pet: Pet) {
         LivePet(
             art, pet.eyes, reading.mood, seed = pet.id.hashCode(), modifier = Modifier.fillMaxSize(), reaction = reaction,
             description = MoodEngine.describe(pet.name, reading.mood), phase = phase, keepAspect = false, floorDepth = hudHeight + 64.dp, zoom = 1f,
-            onPetted = { haptics.performHapticFeedback(HapticFeedbackType.LongPress) },
+            onPetted = { haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove) }, // the lightest tick there is: a pat, not a thump
             season = seasonFor(app), room = pet.layout,
         )
         HeartBurst(burst, Modifier.matchParentSize())
@@ -232,7 +232,7 @@ private fun NamePlate(app: AppScope, state: AppState, pet: Pet, score: Int) {
         else -> null
     }
     ToyPanel(
-        Modifier.widthIn(max = 230.dp), face = Color.White, lip = PawColors.StickerEdge, shape = RoundedCornerShape(16.dp), padding = 0.dp,
+        Modifier.widthIn(max = 230.dp), face = Paw.palette.sticker, lip = PawColors.StickerEdge, shape = RoundedCornerShape(16.dp), padding = 0.dp,
         onClick = if (many) ({ app.navigate(Screen.PetSection(pet.id, "pets")) }) else null, onClickLabel = label,
     ) {
         Column(Modifier.padding(horizontal = 14.dp, vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -290,7 +290,7 @@ private fun NeedTile(app: AppScope, state: AppState, pet: Pet, s: TaskStatus, bi
         else remember { mutableStateOf(0f) }
     Pressable(
         Modifier.offset { androidx.compose.ui.unit.IntOffset(0, lift.value.dp.roundToPx()) }.semantics { contentDescription = label },
-        face = Color.White, lip = PawColors.StickerEdge, outline = if (s.isOverdue) toy.lip else PawColors.StickerEdge,
+        face = Paw.palette.sticker, lip = PawColors.StickerEdge, outline = if (s.isOverdue) toy.lip else PawColors.StickerEdge,
         shape = RoundedCornerShape(16.dp), role = Role.Button, enabled = !done, onClickLabel = label,
         onClick = if (done) null else onDone, contentPadding = PaddingValues(horizontal = 8.dp, vertical = 8.dp),
     ) {
@@ -318,7 +318,7 @@ private fun UndoStrip(app: AppScope, pet: Pet, last: TaskStatus?, onGone: () -> 
         val t = shown?.task ?: return@AnimatedVisibility
         val name = trName(t.title)
         val undoLabel = tr("Undo {0} for {1}", name, pet.name)
-        ToyPanel(Modifier.padding(bottom = 6.dp), face = Color.White, lip = PawColors.StickerEdge, shape = Pill, padding = 0.dp) {
+        ToyPanel(Modifier.padding(bottom = 6.dp), face = Paw.palette.sticker, lip = PawColors.StickerEdge, shape = Pill, padding = 0.dp) {
             Row(Modifier.padding(start = 14.dp, end = 6.dp, top = 2.dp, bottom = 2.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 PixelIcon(PixelIcons.CHECK, tint = Paw.palette.good, size = 14.dp)
                 Text(tr("{0} done", name), style = MaterialTheme.typography.labelMedium, color = PawColors.Ink)
@@ -333,7 +333,7 @@ private fun UndoStrip(app: AppScope, pet: Pet, last: TaskStatus?, onGone: () -> 
 private fun MemoryStrip(app: AppScope, state: AppState, pet: Pet) {
     val photos = state.albumFor(pet.id).size
     val since = LocalClock.shortDate(pet.rememberedDay ?: 0)
-    ToyPanel(Modifier.padding(horizontal = 16.dp, vertical = 6.dp), face = Color.White, lip = PawColors.StickerEdge, padding = 12.dp) {
+    ToyPanel(Modifier.padding(horizontal = 16.dp, vertical = 6.dp), face = Paw.palette.sticker, lip = PawColors.StickerEdge, padding = 12.dp) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             CandyTile(PixelIcons.STAR, Candy.Lavender, size = 40.dp)
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
@@ -405,7 +405,7 @@ private fun LostStrip(app: AppScope, pet: Pet) {
 /** No care tasks yet: one sticker that says what to do. */
 @Composable
 private fun EmptyNeeds(app: AppScope, pet: Pet) {
-    ToyPanel(Modifier.padding(horizontal = 16.dp, vertical = 6.dp), face = Color.White, lip = PawColors.StickerEdge, padding = 12.dp) {
+    ToyPanel(Modifier.padding(horizontal = 16.dp, vertical = 6.dp), face = Paw.palette.sticker, lip = PawColors.StickerEdge, padding = 12.dp) {
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text(tr("No care tasks yet. Add feeding, walks or medicine so {0}'s mood can follow real care.", pet.name), style = MaterialTheme.typography.bodySmall, color = PawColors.Ink)
             PrimaryPill(tr("+ Add care task")) { app.navigate(Screen.EditTask(pet.id, null)) }

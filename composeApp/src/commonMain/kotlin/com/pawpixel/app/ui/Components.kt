@@ -249,7 +249,7 @@ fun TopBar(app: AppScope?, title: String?, modifier: Modifier = Modifier, action
     }
 }
 
-/** The main action: the coral key. */
+/** The main action: the terracotta key. */
 @Composable
 fun PrimaryPill(
     text: String, modifier: Modifier = Modifier, enabled: Boolean = true, big: Boolean = false, icon: PixelIcon? = null,
@@ -276,7 +276,7 @@ fun LinkButton(text: String, modifier: Modifier = Modifier, enabled: Boolean = t
     }
 }
 
-/** One choice among a few (dog/cat, daily/weekly): a small key, coral when chosen. */
+/** One choice among a few (dog/cat, daily/weekly): a small key, terracotta when chosen. */
 @Composable
 fun ChoiceChip(
     selected: Boolean, onClick: () -> Unit, label: String, modifier: Modifier = Modifier, enabled: Boolean = true,
@@ -293,7 +293,7 @@ enum class Tone { Surface, Tonal, Accent, Good, Calm }
 
 /**
  * A soft, rounded card: the page's building block. [Tone.Surface] is the lightest (a card on the
- * page), [Tone.Tonal] a warmer tint, [Tone.Accent] coral, [Tone.Good] green, [Tone.Calm] lavender.
+ * page), [Tone.Tonal] a warmer tint, [Tone.Accent] terracotta, [Tone.Good] green, [Tone.Calm] lavender.
  */
 @Composable
 fun SoftCard(
@@ -309,9 +309,9 @@ fun SoftCard(
     val p = Paw.palette
     // A sticker: a face, a 2dp edge and a 4dp lip in a darker shade of the same hue.
     val (face, lip, fg) = when (tone) {
-        Tone.Surface -> Triple(if (p.dark) cs.surfaceContainerHigh else Color.White, p.edge, cs.onSurface)
+        Tone.Surface -> Triple(p.sticker, p.edge, cs.onSurface)
         Tone.Tonal -> Triple(if (p.dark) cs.surfaceContainerHighest else PawColors.Sand, if (p.dark) Color(0xFF4A3F63) else Color(0xFFE2C39E), cs.onSurface)
-        Tone.Accent -> Triple(cs.primaryContainer, if (p.dark) Color(0xFF8A2F42) else Color(0xFFF2A9B6), cs.onPrimaryContainer)
+        Tone.Accent -> Triple(cs.primaryContainer, if (p.dark) Color(0xFF8A3A2A) else Color(0xFFF0B9A6), cs.onPrimaryContainer)
         Tone.Good -> Triple(cs.secondaryContainer, if (p.dark) Color(0xFF2E6A48) else Color(0xFF9FD9B8), cs.onSecondaryContainer)
         Tone.Calm -> Triple(cs.tertiaryContainer, if (p.dark) Color(0xFF574A9A) else Color(0xFFC4B9F0), cs.onTertiaryContainer)
     }

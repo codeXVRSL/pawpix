@@ -118,7 +118,13 @@ object Room {
         }
     }
 
-    class Scene(val base: PixelImage, val props: List<Prop>, val geom: Geometry, val light: Light) {
+    class Scene(
+        val base: PixelImage, val props: List<Prop>, val geom: Geometry, val light: Light,
+        /** Each window's glass on the stage (x, y, width, height): the sun's beam starts at its sill. */
+        val windows: List<IntArray> = emptyList(),
+        /** Each lamp's shade on the stage (x, y): where its light pools from. */
+        val lamps: List<FloatArray> = emptyList(),
+    ) {
         /** Everything drawn into one picture, in painter's order. */
         fun flatten(): PixelImage {
             val out = base.copy()
@@ -246,11 +252,12 @@ object Room {
         drawShadows(img, mask, phase)
 
         // Then the light: over the backdrop, and baked into each piece where it stands.
-        val light = light(g, phase, glass, props)
+        val lamps = lampShades(props)
+        val light = light(g, phase, glass, lamps)
         for (i in img.pixels.indices) img.pixels[i] = Light.lit(img.pixels[i], light.r[i], light.g[i], light.b[i])
         val lit = props.map { Prop(it.placed, litSprite(it.image, it.x, it.y, light), it.x, it.y, it.baseline) }
         bloom(img, lit)
-        return Scene(img, lit, g, light)
+        return Scene(img, lit, g, light, glass, lamps)
     }
 
     /**
@@ -362,14 +369,15 @@ object Room {
      * corners, a beam slanting from each window (warm sun by day, cool moon by night), a pool of warm
      * light around each lamp (faint by day, the room's light at night), and a glow around the glass.
      */
-    private fun light(g: Geometry, phase: Sky.Phase, glass: List<IntArray>, props: List<Prop>): Light {
+    private fun lampShades(props: List<Prop>): List<FloatArray> = props.filter { it.placed.item == Furniture.LAMP }.map { floatArrayOf(it.x + it.image.width / 2f, it.y + 4f) }
+
+    private fun light(g: Geometry, phase: Sky.Phase, glass: List<IntArray>, lamps: List<FloatArray>): Light {
         val w = g.width; val h = g.height
         val light = Light(w, h)
         val amb = ambient(phase)
         val night = phase.dark
         // Distances were tuned on a 100-pixel-wide room; a wider stage spreads them.
         val f = (w / 100.0).toFloat().coerceAtLeast(0.5f)
-        val lamps = props.filter { it.placed.item == Furniture.LAMP }.map { floatArrayOf(it.x + it.image.width / 2f, it.y + 4f) }
         val cxv = w / 2f; val cyv = h * 0.55f
         val beam = if (night) floatArrayOf(0.06f, 0.10f, 0.20f) else if (phase == Sky.Phase.DUSK) floatArrayOf(0.26f, 0.16f, 0.07f) else floatArrayOf(0.24f, 0.20f, 0.11f)
         for (y in 0 until h) for (x in 0 until w) {

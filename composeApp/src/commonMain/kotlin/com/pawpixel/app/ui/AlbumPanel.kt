@@ -4,6 +4,7 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
@@ -87,10 +88,15 @@ fun AlbumPanel(app: AppScope, state: AppState, pet: Pet) {
     error?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
 
     if (photos.isEmpty()) {
+        // The pet keeps the empty page company: an invitation, not a gap.
         SoftCard(Modifier.fillMaxWidth(), tone = Tone.Tonal) {
-            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                Text(tr("No photos yet"), style = MaterialTheme.typography.titleMedium)
-                Text(tr("A photo from today, the day you brought {0} home, a funny face: this album is for the real {0}.", pet.name), style = MaterialTheme.typography.bodyMedium)
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                val still = remember(pet.lookKey) { app.repo.art(pet)?.still }
+                SpriteView(still, Modifier.size(64.dp), animate = false)
+                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Text(tr("No photos yet"), style = MaterialTheme.typography.titleMedium)
+                    Text(tr("A photo from today, the day you brought {0} home, a funny face: this album is for the real {0}.", pet.name), style = MaterialTheme.typography.bodyMedium)
+                }
             }
         }
     } else {

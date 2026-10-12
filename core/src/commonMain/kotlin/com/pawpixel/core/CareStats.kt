@@ -77,12 +77,12 @@ object CareStats {
         return records.map { c -> HealthRecord(c, if (seen.add(c.localDay)) numbers[c.localDay] else null) }.reversed()
     }
 
-    /** "Due today", "Due in 12 days", "Due in 3 months", "Overdue by 5 days". */
+    /** "Due today", "Due in 12 days", "Due in 3 months", "Waiting 5 days" (never "overdue": a nudge, not a verdict). */
     fun dueLabel(item: HealthItem, nowMs: Long, clock: LocalClock): String {
         val due = item.dueMs ?: return tr("No date yet")
         val days = clock.dayIndex(due) - clock.dayIndex(nowMs)
         return when {
-            days < 0 -> if (days == -1L) tr("Overdue by 1 day") else tr("Overdue by {0} days", -days)
+            days < 0 -> if (days == -1L) tr("Waiting 1 day") else tr("Waiting {0} days", -days)
             days == 0L -> tr("Due today")
             days < 45 -> if (days == 1L) tr("Due in 1 day") else tr("Due in {0} days", days)
             else -> ((days + 15) / 30).let { m -> if (m == 1L) tr("Due in 1 month") else tr("Due in {0} months", m) }

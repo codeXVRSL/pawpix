@@ -136,7 +136,7 @@ private fun HealthRow(app: AppScope, state: AppState, pet: Pet, h: HealthItem) {
                     Text(
                         CareStats.dueLabel(h, app.now, clock), style = MaterialTheme.typography.bodyMedium,
                         fontWeight = if (h.due) FontWeight.Bold else null,
-                        color = if (h.due) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
+                        color = if (h.due) Paw.palette.due else MaterialTheme.colorScheme.onSurface,
                     )
                     val detail = listOfNotNull(
                         h.dose?.let { tr("Dose {0} of {1}", it, h.doses) },
@@ -150,7 +150,7 @@ private fun HealthRow(app: AppScope, state: AppState, pet: Pet, h: HealthItem) {
                 }
                 val recordLabel = tr("Record {0} for {1}", name, pet.name)
                 ToyButton(
-                    tr("Done"), style = if (h.due) ToyStyle.Primary else ToyStyle.Colored(toy),
+                    tr("Done"), style = ToyStyle.Colored(toy), // its own candy colour, due or not: recording care is never an alarm
                     modifier = Modifier.padding(start = 8.dp).semantics { contentDescription = recordLabel },
                 ) { recording = true }
             }

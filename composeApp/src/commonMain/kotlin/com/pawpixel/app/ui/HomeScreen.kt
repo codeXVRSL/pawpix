@@ -76,7 +76,7 @@ private fun EmptyHome(app: AppScope, state: AppState) {
             GlassButton(PixelIcons.GEAR, tr("Settings")) { app.navigate(Screen.Settings) }
         }
         Column(Modifier.align(Alignment.BottomCenter).fillMaxWidth().navigationBarsPadding().padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            ToyPanel(Modifier.fillMaxWidth(), face = Color.White, lip = PawColors.StickerEdge, padding = 20.dp) {
+            ToyPanel(Modifier.fillMaxWidth(), face = Paw.palette.sticker, lip = PawColors.StickerEdge, padding = 20.dp) {
                 Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(12.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                     Text(tr("Turn your pet into pixel art"), style = MaterialTheme.typography.headlineSmall, textAlign = TextAlign.Center, color = PawColors.Ink, modifier = Modifier.semantics { heading() })
                     Text(

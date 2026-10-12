@@ -128,7 +128,7 @@ private fun LostForm(app: AppScope, state: AppState, pet: Pet, map: PetMapModel?
         }
     }
 
-    SoftCard(Modifier.fillMaxWidth(), tone = Tone.Accent) {
+    SoftCard(Modifier.fillMaxWidth(), tone = Tone.Tonal) {
         Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Text(tr("Is {0} missing?", pet.name), style = MaterialTheme.typography.titleLarge)
             Text(

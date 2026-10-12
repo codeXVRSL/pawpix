@@ -32,7 +32,7 @@ import org.jetbrains.compose.resources.Font
 
 /**
  * PawPixel's look: crisp pixel pets living inside soft, warm, rounded chrome ("soft pixel").
- * Warm cream by day, deep plum by night; one coral accent for what matters (Done, the pet's
+ * Warm cream by day, a lamplit cream after bedtime, deep plum in dark mode; one terracotta accent for what matters (Done, the pet's
  * mood), leaf green for good news, lavender for sleep and calm. Nothing shouts.
  *
  * Every colour with text on it meets WCAG AA (4.5:1) against its surface.
@@ -44,8 +44,12 @@ object PawColors {
     val Ink = Color(0xFF2B2135)
     /** A white sticker's sand edge: keys and plates over the room, which stay light in dark mode too. */
     val StickerEdge = Color(0xFFE6D5C3)
-    val Coral = Color(0xFFD9364F)
-    val CoralSoft = Color(0xFFFFDCE1)
+    /** The accent: a warm terracotta, not an alarm red. Passes AA with white text and on cream. */
+    val Coral = Color(0xFFC14F3D)
+    val CoralSoft = Color(0xFFFFE2D8)
+    /** "Due today", "3 days overdue": honey, a nudge rather than a warning. */
+    val Honey = Color(0xFF9A5B13)
+    val HoneySoft = Color(0xFFFFEBC7)
     val Leaf = Color(0xFF2E8B5A)
     val LeafSoft = Color(0xFFD5F2E1)
     val Lavender = Color(0xFF6F5FC7)
@@ -73,6 +77,10 @@ data class PawPalette(
     val hairline: Color,
     /** A sticker panel's or key's edge and lip (sand by day, plum in dark mode). */
     val edge: Color,
+    /** Something due or a little overdue: honey by day, a warm gold at night. Never red. */
+    val due: Color,
+    /** A sticker's face: white by day, warm cream in the evening, plum at night. */
+    val sticker: Color,
 )
 
 val LightPalette = PawPalette(
@@ -83,7 +91,12 @@ val LightPalette = PawPalette(
     calm = PawColors.Lavender, calmSoft = PawColors.LavenderSoft,
     hairline = Color(0x1F2B2135),
     edge = PawColors.StickerEdge,
+    due = PawColors.Honey,
+    sticker = Color.White,
 )
+
+/** After bedtime, by lamplight: the same palette with the whites turned down to a warm cream. */
+val EveningPalette = LightPalette.copy(sticker = Color(0xFFFFF6EA), glow = Color(0x55FFB380))
 
 val DarkPalette = PawPalette(
     dark = true,
@@ -93,13 +106,15 @@ val DarkPalette = PawPalette(
     calm = Color(0xFFB9ADF2), calmSoft = Color(0xFF2E2748),
     hairline = Color(0x33FFFFFF),
     edge = Color(0xFF3B3150),
+    due = Color(0xFFFFC66E),
+    sticker = Color(0xFF362C4E),
 )
 
 val LocalPawPalette = staticCompositionLocalOf { LightPalette }
 
 private val Light: ColorScheme = lightColorScheme(
     primary = PawColors.Coral, onPrimary = Color.White,
-    primaryContainer = PawColors.CoralSoft, onPrimaryContainer = Color(0xFF7A1225),
+    primaryContainer = PawColors.CoralSoft, onPrimaryContainer = Color(0xFF6E2415),
     secondary = PawColors.Leaf, onSecondary = Color.White,
     secondaryContainer = PawColors.LeafSoft, onSecondaryContainer = Color(0xFF0F4A2C),
     tertiary = PawColors.Lavender, onTertiary = Color.White,
@@ -117,9 +132,20 @@ private val Light: ColorScheme = lightColorScheme(
     errorContainer = Color(0xFFFFDAD9), onErrorContainer = Color(0xFF6E0B1A),
 )
 
+/** The light scheme after bedtime: every surface a shade warmer and dimmer, as a room is by lamplight. The ink stays, so nothing gets harder to read. */
+private val Evening: ColorScheme = Light.copy(
+    background = Color(0xFFFBEFDD), surface = Color(0xFFFBEFDD),
+    surfaceVariant = Color(0xFFFCE2C2),
+    surfaceContainerLowest = Color(0xFFFFF8EE),
+    surfaceContainerLow = Color(0xFFFEF3E4),
+    surfaceContainer = Color(0xFFFCEBD6),
+    surfaceContainerHigh = Color(0xFFF9E2C6),
+    surfaceContainerHighest = Color(0xFFF3D8BA),
+)
+
 private val Dark: ColorScheme = darkColorScheme(
-    primary = Color(0xFFFF8093), onPrimary = Color(0xFF4A0A18),
-    primaryContainer = Color(0xFF5C1B2B), onPrimaryContainer = Color(0xFFFFD9DE),
+    primary = Color(0xFFFF9A86), onPrimary = Color(0xFF4A160C),
+    primaryContainer = Color(0xFF5C2A1E), onPrimaryContainer = Color(0xFFFFDDD1),
     secondary = Color(0xFF7BD6A3), onSecondary = Color(0xFF0B3A22),
     secondaryContainer = Color(0xFF1F4A33), onSecondaryContainer = Color(0xFFCFF2DD),
     tertiary = Color(0xFFB9ADF2), onTertiary = Color(0xFF2A1F63),
@@ -191,10 +217,10 @@ fun pawTypography(): Typography {
 }
 
 @Composable
-fun PawTheme(dark: Boolean = isSystemInDarkTheme(), content: @Composable () -> Unit) {
-    CompositionLocalProvider(LocalPawPalette provides if (dark) DarkPalette else LightPalette) {
+fun PawTheme(dark: Boolean = isSystemInDarkTheme(), evening: Boolean = false, content: @Composable () -> Unit) {
+    CompositionLocalProvider(LocalPawPalette provides if (dark) DarkPalette else if (evening) EveningPalette else LightPalette) {
         MaterialTheme(
-            colorScheme = if (dark) Dark else Light,
+            colorScheme = if (dark) Dark else if (evening) Evening else Light,
             shapes = PawShapes,
             typography = pawTypography(),
             content = content,

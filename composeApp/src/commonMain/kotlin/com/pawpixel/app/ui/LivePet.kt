@@ -22,6 +22,7 @@ import androidx.compose.runtime.withFrameMillis
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.BlendMode
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.FilterQuality
@@ -144,12 +145,18 @@ fun LivePet(
      * keeps its time for scrolling and its battery.
      */
     var shown by remember(brain) { mutableStateOf<PetPose?>(null) }
-    LaunchedEffect(brain) {
+    // The room's own slow life: dust drifting in the sunbeam by day, the lamp breathing at night.
+    // A few beats a second, enough for motes to drift and a glow to swell, not a frame rate.
+    var ambientBeat by remember { mutableStateOf(0L) }
+    val ambientStep = if (phase.dark) 160L else 90L
+    LaunchedEffect(brain, ambientStep) {
         while (true) withFrameMillis { t ->
             if (clock[0] < 0) clock[0] = t
             clock[1] = t - clock[0]
             val pose = brain.pose(clock[1], currentMood).onPixelGrid()
             if (pose != shown) shown = pose
+            val beat = clock[1] / ambientStep
+            if (beat != ambientBeat) ambientBeat = beat
         }
     }
     // Keyed on the reaction alone: a rebuilt brain (a new outfit, a resized stage) doesn't replay the last one.
@@ -191,7 +198,7 @@ fun LivePet(
         val key = "$roomW:$rows:$floorRow:${phase.key}:${season.name}:$roomCode"
         val scene = roomCache[key] ?: Room.scene(roomW, rows, Room.floorLineFor(floorRow), phase, seed, season, room).let { sc ->
             // Back to front, so two pieces that overlap are drawn in the right order (as Scene.flatten does).
-            DrawnScene(sc.base.toImageBitmap(), sc.flatten().toImageBitmap(), sc.props.sortedWith(compareBy({ it.baseline }, { it.x })).map { DrawnProp(it.image.toImageBitmap(), it.x, it.y, it.baseline, it.placed.item == Furniture.LAMP) }, sc.geom, sc.light)
+            DrawnScene(sc.base.toImageBitmap(), sc.flatten().toImageBitmap(), sc.props.sortedWith(compareBy({ it.baseline }, { it.x })).map { DrawnProp(it.image.toImageBitmap(), it.x, it.y, it.baseline, it.placed.item == Furniture.LAMP) }, sc.geom, sc.light, sc.windows, sc.lamps)
         }.also {
             if (roomCache.size >= 4) roomCache.clear() // a few sizes at most: a resizing stage doesn't keep a bitmap per frame
             roomCache[key] = it
@@ -219,6 +226,17 @@ fun LivePet(
         val iw = canvasW * petPx; val ih = canvasH * petPx
         petBox[0] = ix + layout.body[0] * petPx.toFloat(); petBox[1] = iy + layout.body[1] * petPx.toFloat()
         petBox[2] = ix + layout.body[2] * petPx.toFloat(); petBox[3] = feetY
+
+        // The lamp breathes at night: its pool swells and settles over a few seconds, like a flame settling.
+        val ambientMs = ambientBeat * ambientStep
+        if (phase.dark) for (lamp in scene.lamps) {
+            val breath = 0.5f + 0.5f * kotlin.math.sin(ambientMs / 950.0 + lamp[0]).toFloat() // a full swell and settle every six seconds
+            val r = (26 + 4 * breath) * px
+            drawCircle(
+                Brush.radialGradient(0f to Color(0xFFFFC978).copy(alpha = 0.10f + 0.07f * breath), 1f to Color.Transparent, center = Offset(sx(lamp[0].toDouble()), sy(lamp[1] + 6.0)), radius = r),
+                radius = r, center = Offset(sx(lamp[0].toDouble()), sy(lamp[1] + 6.0)),
+            )
+        }
 
         // Painter's order: what stands behind the pet's feet first, then the pet, then what stands in front.
         val petBaseline = feetRoomY
@@ -263,6 +281,23 @@ fun LivePet(
                 )
             }
         }
+        // Dust drifting down the sunbeam by day: a few specks that catch the light, each on its own slow fall.
+        if (!phase.dark) for (win in scene.windows) {
+            val f = (roomW / 100f).coerceAtLeast(0.5f)
+            val wx = win[0] + win[2] / 2.0; val wy = (win[1] + win[3]).toDouble()
+            val fall = (g.floorLine - wy + 10 * f).coerceAtLeast(12.0)
+            for (i in 0 until 9) {
+                val period = 9000.0 + 1700.0 * ((i * 7) % 5)
+                val t = ((ambientMs + i * 1310L) % period.toLong()) / period
+                val sway = kotlin.math.sin(ambientMs / 1400.0 + i * 1.9) * (2.0 + 4.0 * t) * f
+                val lane = ((i * 37) % 11 - 5) * 1.6 * f
+                val y = wy + 2 + t * fall
+                val x = wx + (y - wy) * 0.45 + lane * (0.4 + t) + sway
+                val glow = (kotlin.math.sin(t * kotlin.math.PI) * (0.55 + 0.45 * kotlin.math.sin(ambientMs / 700.0 + i * 2.3))).toFloat().coerceIn(0f, 1f)
+                if (glow < 0.08f) continue
+                drawRect(Color(0xFFFFF3C8).copy(alpha = 0.75f * glow), Offset(sx(x), sy(y)), androidx.compose.ui.geometry.Size(px, px))
+            }
+        }
         softBand(roomTop.toFloat(), roomTop + stageH * 0.09f, 5, topEdge = true)
         softBand(roomTop + stageH * 0.88f, roomTop + stageH, 5, topEdge = false)
 
@@ -285,7 +320,7 @@ fun LivePet(
 }
 
 /** The room's backdrop, its smooth copy for the soft edges, and its standing pieces (in room pixels), ready to draw. */
-private class DrawnScene(val base: ImageBitmap, val soft: ImageBitmap, val props: List<DrawnProp>, val geom: Room.Geometry, val light: Room.Light)
+private class DrawnScene(val base: ImageBitmap, val soft: ImageBitmap, val props: List<DrawnProp>, val geom: Room.Geometry, val light: Room.Light, val windows: List<IntArray>, val lamps: List<FloatArray>)
 private class DrawnProp(val image: ImageBitmap, val x: Int, val y: Int, val baseline: Int, val lamp: Boolean)
 
 /**

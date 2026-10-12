@@ -52,7 +52,7 @@ class HealthCareTest {
         var s = StateOps.logOnDay(withTask(rabies()), "v", today - 400, now, clock)
         var item = CareStats.healthDue(s, "p1", now, clock).single()
         assertTrue(item.due)
-        assertEquals("Overdue by 35 days", CareStats.dueLabel(item, now, clock))
+        assertEquals("Waiting 35 days", CareStats.dueLabel(item, now, clock))
         assertEquals(Mood.NEEDS_MEDS, MoodEngine.read(s, "p1", now, clock).mood)
         assertEquals("Mochi's anti-rabies shot is due", MoodEngine.read(s, "p1", now, clock).caption)
 
@@ -118,8 +118,8 @@ class HealthReviewFixesTest {
         var s = AppState(pets = listOf(pet), tasks = listOf(task(TaskKind.DEWORM, "d"), task(TaskKind.FLEA_TICK, "f")))
         s = StateOps.logOnDay(s, "d", today - 182, now, clock)
         s = StateOps.logOnDay(s, "f", today - 365, now, clock)
-        assertEquals("Overdue by 92 days", label(s, "d"))
-        assertEquals("Overdue by 335 days", label(s, "f"))
+        assertEquals("Waiting 92 days", label(s, "d"))
+        assertEquals("Waiting 335 days", label(s, "f"))
     }
 
     @Test fun unknownDatesNeverUpsetThePetAndOnlyOneHealthItemCounts() {

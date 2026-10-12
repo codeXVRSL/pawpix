@@ -87,7 +87,7 @@ fun FloatingDock(items: List<DockItem>, modifier: Modifier = Modifier, compact: 
 @Composable
 fun GlassButton(icon: PixelIcon, label: String, modifier: Modifier = Modifier, night: Boolean = false, onClick: () -> Unit) {
     Pressable(
-        modifier.semantics { contentDescription = label }, face = Color.White, lip = PawColors.StickerEdge, outline = PawColors.StickerEdge,
+        modifier.semantics { contentDescription = label }, face = Paw.palette.sticker, lip = PawColors.StickerEdge, outline = PawColors.StickerEdge,
         shape = Pill, onClickLabel = label, onClick = onClick,
     ) { Box(Modifier.size(38.dp), contentAlignment = Alignment.Center) { PixelIcon(icon, tint = PawColors.Ink, size = 18.dp) } }
 }

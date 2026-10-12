@@ -17,6 +17,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.saveable.Saver
 import androidx.compose.runtime.saveable.rememberSaveable
+import com.pawpixel.core.Sky
 import com.pawpixel.i18n.tr
 import kotlinx.coroutines.CancellationException
 import androidx.compose.runtime.Composable
@@ -142,7 +143,10 @@ class AppScope(
  */
 @Composable
 fun App(repo: PawRepository, registerBack: ((() -> Boolean) -> (() -> Unit))? = null) {
-    PawTheme {
+    val themeState by repo.state.collectAsState()
+    // After the owner's bedtime the whole app goes by lamplight: the same cream, a shade warmer and dimmer.
+    val evening = Sky.phase(repo.clock.minuteOfDay(repo.now()), themeState.settings.nightStart, themeState.settings.nightEnd).dark
+    PawTheme(evening = evening) {
         val state by repo.state.collectAsState()
         val scope = rememberCoroutineScope()
         var stack by rememberSaveable(stateSaver = StackSaver) { mutableStateOf(listOf<Screen>(Screen.Home)) }

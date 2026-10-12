@@ -34,7 +34,7 @@ internal object EsCore {
         " and " to " y ", "{0} is being looked after while you're away." to "Cuidan de {0} mientras no estás.",
         "Tap Done when you care for {0}, and it shows here." to "Toca Hecho cuando cuides de {0}, y aparecerá aquí.",
         "You cared for {0} every day this week!" to "¡Cuidaste de {0} todos los días esta semana!", "You cared for {0} on {1} of the last 7 days." to "Cuidaste de {0} {1} de los últimos 7 días.",
-        "No date yet" to "Sin fecha aún", "Due today" to "Toca hoy", "Overdue by 1 day" to "Atrasado 1 día", "Overdue by {0} days" to "Atrasado {0} días",
+        "No date yet" to "Sin fecha aún", "Due today" to "Toca hoy", "Waiting 1 day" to "Esperando 1 día", "Waiting {0} days" to "Esperando {0} días",
         "Due in 1 day" to "Toca en 1 día", "Due in {0} days" to "Toca en {0} días", "Due in 1 month" to "Toca en 1 mes", "Due in {0} months" to "Toca en {0} meses",
         "A whole year of care" to "Un año entero de cuidados", "Two years of care" to "Dos años de cuidados", "{0} days of care" to "{0} días de cuidados",
         "Not born yet" to "Aún no nació", "{0} days old" to "{0} días", "{0} weeks old" to "{0} semanas", "{0} months old" to "{0} meses", "{0} years old" to "{0} años",
