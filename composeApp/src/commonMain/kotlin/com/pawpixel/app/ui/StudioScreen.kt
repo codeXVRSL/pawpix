@@ -144,7 +144,7 @@ fun StudioScreen(app: AppScope, state: AppState, pet: Pet) {
                 RoundIconButton(PixelIcons.DICE, tr("Shuffle: a random look")) {
                     shuffles++
                     style = PetStyle.random(pet.id.hashCode() + shuffles).copy(furBase = style.furBase, furLight = style.furLight, furDark = style.furDark)
-                    haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                    haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                 }
                 PrimaryPill(tr("Save look"), enabled = dirty && !saving && art != null, onClick = save)
             }
@@ -155,7 +155,7 @@ fun StudioScreen(app: AppScope, state: AppState, pet: Pet) {
                     LivePet(
                         art, pet.eyes, Mood.HAPPY, seed = pet.id.hashCode(), modifier = Modifier.fillMaxWidth(),
                         description = MoodEngine.describe(pet.name, Mood.HAPPY), phase = phase,
-                        onPetted = { haptics.performHapticFeedback(HapticFeedbackType.LongPress) },
+                        onPetted = { haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove) },
                     )
                     if (dirty) {
                         StatusPill(tr("Unsaved look"), MaterialTheme.colorScheme.primary, tone = Tone.Surface, modifier = Modifier.align(Alignment.TopStart).padding(10.dp))
@@ -180,7 +180,7 @@ fun StudioScreen(app: AppScope, state: AppState, pet: Pet) {
                 ColourPanel(style, colourSlot, onSlot = { colourSlot = it }) { style = it }
             } else {
                 val category = CATEGORIES[tab]
-                OptionGrid(category, style, base) { style = it; haptics.performHapticFeedback(HapticFeedbackType.LongPress) }
+                OptionGrid(category, style, base) { style = it; haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove) }
             }
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                 LinkButton(tr("Back to the photo's look"), enabled = style != PetStyle.DEFAULT, color = MaterialTheme.colorScheme.onSurfaceVariant) { style = PetStyle.DEFAULT }

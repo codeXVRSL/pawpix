@@ -331,7 +331,8 @@ class PetBrain(
      * never reads as a metronome. A sad pet breathes slowly and doesn't wag.
      */
     private fun breathing(t: Long, mood: Mood): Frame {
-        val period = when (mood) { Mood.SAD, Mood.NEEDS_MEDS -> 2600L; Mood.RESTLESS -> 1100L; Mood.HAPPY -> 1400L; else -> 1800L }
+        // A resting animal breathes 15 to 20 times a minute: about three seconds a breath, quicker when happy or restless, slower when low.
+        val period = when (mood) { Mood.SAD, Mood.NEEDS_MEDS -> 3600L; Mood.RESTLESS -> 1400L; Mood.HAPPY -> 2400L; else -> 3200L }
         val p = (t % period).toDouble() / period
         return when {
             p < 0.38 -> Frame.BASE

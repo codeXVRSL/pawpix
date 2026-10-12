@@ -286,7 +286,7 @@ private fun NeedTile(app: AppScope, state: AppState, pet: Pet, s: TaskStatus, bi
     // Overdue: a slow bob, like a pet pawing at its bowl. Only an overdue tile runs the animation, and the
     // offset is read in the layout lambda, so the rest of the room doesn't recompose on every frame.
     val lift: androidx.compose.runtime.State<Float> =
-        if (s.isOverdue && !state.isAway(app.now)) rememberInfiniteTransition(label = "bob").animateFloat(0f, -4f, infiniteRepeatable(tween(520), RepeatMode.Reverse), label = "lift")
+        if (s.isOverdue && !state.isAway(app.now)) rememberInfiniteTransition(label = "bob").animateFloat(0f, -3f, infiniteRepeatable(tween(1400, easing = androidx.compose.animation.core.EaseInOutSine), RepeatMode.Reverse), label = "lift") // a slow nod, not a jiggle
         else remember { mutableStateOf(0f) }
     Pressable(
         Modifier.offset { androidx.compose.ui.unit.IntOffset(0, lift.value.dp.roundToPx()) }.semantics { contentDescription = label },
