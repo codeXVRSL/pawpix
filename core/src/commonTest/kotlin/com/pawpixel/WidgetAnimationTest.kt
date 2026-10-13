@@ -36,6 +36,15 @@ class WidgetAnimationTest {
         assertTrue(Poses.distinctFrames(a, Mood.SLEEPY)[0].pixels.contentEquals(Poses.render(Chibi.sleeping(a), Mood.SLEEPY).pixels))
     }
 
+    @Test fun theFineFramesAreTheSameAnimationAtTwiceTheResolution() {
+        val a = art()
+        val coarse = Poses.distinctFrames(a, Mood.HAPPY); val fine = Poses.distinctFrames(a, Mood.HAPPY, fine = 2)
+        assertEquals(coarse.size, fine.size)
+        // The fine still is the first fine frame, and every fine frame is exactly twice the coarse one (the icons scale with the pet).
+        assertTrue(fine[0].pixels.contentEquals(Poses.render(a.fineStill, Mood.HAPPY).pixels))
+        for ((c, f) in coarse.zip(fine)) { assertEquals(c.width * 2, f.width); assertEquals(c.height * 2 - 3, f.height) }
+    }
+
     @Test fun theSkyFollowsTheDayAndTheOwnersNight() {
         assertEquals(Sky.Phase.NIGHT, Sky.phase(3 * 60, 22 * 60, 6 * 60))
         assertEquals(Sky.Phase.DAWN, Sky.phase(6 * 60 + 30, 22 * 60, 6 * 60))

@@ -9,8 +9,8 @@ import kotlin.math.roundToInt
  * pet's face, so every pose stays faithful to the real pet.
  */
 object Poses {
-    /** Icons and margins grow with the sprite so effects stay readable on a widget. */
-    fun iconScale(sprite: PixelImage) = if (sprite.width >= 36) 2 else 1
+    /** Icons and margins grow with the sprite so effects stay readable on a widget, and keep their size next to the fine (twice as wide) pet. */
+    fun iconScale(sprite: PixelImage) = if (sprite.width >= 72) 4 else if (sprite.width >= 36) 2 else 1
 
     fun canvasSize(sprite: PixelImage): Pair<Int, Int> {
         val s = iconScale(sprite)
@@ -55,11 +55,11 @@ object Poses {
         return keys.map { k -> distinct.indexOfFirst { it.pose == k.pose && it.tick == k.tick }.takeIf { it >= 0 } ?: run { distinct += k; distinct.size - 1 } }
     }
 
-    /** Each distinct picture of [mood]'s idle animation, in [frameSequence]'s numbering. */
-    fun distinctFrames(art: PetArt, mood: Mood): List<PixelImage> {
+    /** Each distinct picture of [mood]'s idle animation, in [frameSequence]'s numbering; at [fine] pixels per pet pixel. */
+    fun distinctFrames(art: PetArt, mood: Mood, fine: Int = 1): List<PixelImage> {
         val distinct = ArrayList<Key>()
         for (k in keys(mood)) if (distinct.none { it.pose == k.pose && it.tick == k.tick }) distinct += k
-        return distinct.map { render(Chibi.compose(art, it.pose), mood, it.tick) }
+        return distinct.map { render(Chibi.compose(art, it.pose, fine), mood, it.tick) }
     }
 
     /** One mood pose; [tick] (0 or 1) moves the mood's icons for the idle animation. */
@@ -81,7 +81,8 @@ object Poses {
         }
         canvas.draw(body, baseX, baseY + lift)
 
-        fun icon(img: PixelImage) = img.scaled(s)
+        // Icons beside a fine pet are smoothed (Scale2x) rather than just enlarged, so they are as fine as the pet.
+        fun icon(img: PixelImage) = if (s >= 2) img.scale2x().scaled(s / 2) else img
         fun atRight(img: PixelImage, fromRight: Int, y: Int) { val i = icon(img); canvas.draw(i, w - 1 - fromRight * s - i.width, y * s) }
         fun atBottom(img: PixelImage, x: Int, right: Boolean) {
             val i = icon(img)

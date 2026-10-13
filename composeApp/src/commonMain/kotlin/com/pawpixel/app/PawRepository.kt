@@ -483,14 +483,14 @@ class PawRepository(val platform: Platform) {
         headCache = headCache + (petId to head)
     }
 
-    /** Pre-rendered mood poses for the widgets, pre-scaled so widgets that smooth when scaling stay crisp. */
+    /** Pre-rendered mood poses for the widgets: the fine pet, pre-scaled so widgets that smooth when scaling stay crisp. */
     private fun writeWidgetPoses(pet: Pet, art: PetArt? = art(pet), root: String = "") {
         art ?: return
-        val sleeping = Chibi.sleeping(art)
-        for ((mood, img) in Poses.renderAll(art.still, sleeping)) {
+        val sleeping = Chibi.sleeping(art, fine = PET_FINE)
+        for ((mood, img) in Poses.renderAll(art.fineStill, sleeping)) {
             files.writeBytes(root + WidgetSnapshot.spritePath(pet.id, mood), Png.encode(img.scaled(WIDGET_SCALE)))
             // The idle animation the Android widget plays (iOS shows the still above).
-            Poses.distinctFrames(art, mood).forEachIndexed { i, frame ->
+            Poses.distinctFrames(art, mood, PET_FINE).forEachIndexed { i, frame ->
                 files.writeBytes(root + WidgetSnapshot.framePath(pet.id, mood, i), Png.encode(frame.scaled(WIDGET_SCALE)))
             }
         }
@@ -547,7 +547,7 @@ class PawRepository(val platform: Platform) {
     fun photoCrop(petId: String): PixelImage? = files.readBytes("sprites/$petId/photo.bin")?.let(RawImage::decode)
 
     fun pose(pet: Pet, mood: Mood): PixelImage? = art(pet)?.let { a ->
-        if (mood == Mood.SLEEPY) Poses.render(Chibi.sleeping(a), mood) else Poses.render(a.still, mood)
+        if (mood == Mood.SLEEPY) Poses.render(Chibi.sleeping(a, fine = PET_FINE), mood) else Poses.render(a.fineStill, mood)
     }
 
     /** The stored face and crop as a [SpriteResult], for marking eyes or switching species without a new photo. */
@@ -610,7 +610,10 @@ class PawRepository(val platform: Platform) {
         /** A state.json that couldn't be read, kept aside (never sent anywhere) in case it can be recovered. */
         private const val STATE_DAMAGED = "state-damaged.json"
 
-        const val WIDGET_SCALE = 4
+        /** The pet is drawn at this many pixels per pet pixel (see [PetArt.fineStill]). */
+        const val PET_FINE = 2
+        /** Widget PNGs are the fine pet scaled up this much more: the same picture size as before, at twice the detail. */
+        const val WIDGET_SCALE = 2
         /** Health photos: big enough to read a vaccination card, small enough for backups (~250 KB). */
         const val CARD_MAX_SIDE = 1280
         /** Album photos: a phone screen's worth of detail, ~300 KB each. */

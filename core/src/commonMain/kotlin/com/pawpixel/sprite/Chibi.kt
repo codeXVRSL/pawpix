@@ -841,5 +841,5 @@ object Chibi {
 
     /** A still of the pet curled up asleep, for the sleeping widget pose. */
     @Suppress("UNUSED_PARAMETER")
-    fun sleeping(art: PetArt, eyes: List<Pair<Int, Int>> = emptyList()): PixelImage = compose(art, Pose(lying = true, eyesClosed = true))
+    fun sleeping(art: PetArt, eyes: List<Pair<Int, Int>> = emptyList(), fine: Int = 1): PixelImage = compose(art, Pose(lying = true, eyesClosed = true), fine)
 }
