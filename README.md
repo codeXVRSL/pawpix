@@ -63,6 +63,10 @@ confetti, spring motion) drives every screen on both platforms:
 - Nothing nags: a missed task "waits", there are no streaks to break, furniture and outfits are
   earned by cumulative days of care, and health "Done" keys wear their own candy colour whether
   or not the item is due.
+- Finer pixels: the pet is drawn by `Chibi.compose(fine = 2)`, the same shapes on a canvas twice as
+  large (every curve, ear and outline twice as fine, the eyes and markings their usual size), and
+  the room and its pieces pass through `PixelImage.scale2x`; both are drawn on whole screen pixels at
+  half the room scale, so nothing changes size and about twice as many art pixels cross the screen.
 - The room is alive in small ways: dust drifts down the sunbeam by day, the lamp's glow breathes
   at night, the pet breathes, blinks and fidgets on its own timers.
 - The pet's stage has a sky that follows the real time of day (peach dawn, soft blue day,

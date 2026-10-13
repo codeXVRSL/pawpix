@@ -268,7 +268,12 @@ object Chibi {
     private const val PINK = 0xFFF09AA8.toInt()
     private const val NOSE_DOG = 0xFF33242A.toInt()
 
-    fun compose(art: PetArt, pose: Pose): PixelImage {
+    /**
+     * Draws the pet. [fine] pixels per drawing pixel: 1 is the pet's own 41 x 34 canvas; 2 draws the same
+     * shapes onto an 82 x 68 canvas, so every curve, ear and outline is twice as fine while the eyes,
+     * nose and markings keep their size (they are placed by drawing pixel and fill a 2 x 2 block).
+     */
+    fun compose(art: PetArt, pose: Pose, fine: Int = 1): PixelImage {
         val look = art.look
         val style = art.style
         val cat = art.species == Species.CAT
@@ -304,21 +309,35 @@ object Chibi {
         val stripeRamps = if (coat.stripes) ramps.map { ramp(it.deep) } else ramps
         // Rabbits get four rows of headroom above the usual canvas, so long ears never touch the edge (the feet stay at the bottom).
         val top = if (rabbit) 4 else 0
-        val w = WIDTH; val h = HEIGHT + top
+        val w = WIDTH * fine; val h = (HEIGHT + top) * fine
         val col = IntArray(w * h)
         val part = IntArray(w * h)
+        val F = fine.toDouble()
 
-        // Drawing coordinates are the usual 41 x 34 ones; [top] shifts them down into the canvas. Every
-        // read and write by drawing coordinates goes through [at], so none forgets the shift.
-        /** The canvas index of drawing point (x, y), or -1 off the canvas. */
-        fun at(x: Int, y: Int): Int { val yy = y + top; return if (x in 0 until w && yy in 0 until h) yy * w + x else -1 }
-        fun put(x: Int, y: Int, c: Int, p: Int) { val i = at(x, y); if (i >= 0) { col[i] = c; part[i] = p } }
+        // Drawing coordinates are the usual 41 x 34 ones; [top] shifts them down into the canvas, and
+        // [fine] canvas pixels make one drawing pixel. Every read and write by drawing coordinates goes
+        // through [at] or [put], so none forgets either.
+        /** The canvas index of canvas pixel (fx, fy), or -1 off the canvas. */
+        fun atFine(fx: Int, fy: Int): Int { val yy = fy + top * fine; return if (fx in 0 until w && yy in 0 until h) yy * w + fx else -1 }
+        fun putFine(fx: Int, fy: Int, c: Int, p: Int) { val i = atFine(fx, fy); if (i >= 0) { col[i] = c; part[i] = p } }
+        /** The canvas index of the top-left canvas pixel of drawing point (x, y), or -1 off the canvas. */
+        fun at(x: Int, y: Int): Int = atFine(x * fine, y * fine)
+        /** Paints the whole block of drawing point (x, y). */
+        fun put(x: Int, y: Int, c: Int, p: Int) { for (dy in 0 until fine) for (dx in 0 until fine) putFine(x * fine + dx, y * fine + dy, c, p) }
+        /** Changes every painted canvas pixel of drawing point (x, y). */
+        fun tint(x: Int, y: Int, onPart: Int?, f: (Int) -> Int) {
+            for (dy in 0 until fine) for (dx in 0 until fine) { val i = atFine(x * fine + dx, y * fine + dy); if (i >= 0 && (onPart == null || part[i] == onPart) && (onPart != null || part[i] != NONE)) col[i] = f(col[i]) }
+        }
+        /** Walks every canvas pixel of the drawing rectangle, giving its drawing point and its centre in drawing coordinates. */
+        fun fineLoop(y0: Int, y1: Int, x0: Int, x1: Int, body: (fx: Int, fy: Int, x: Int, y: Int, px: Double, py: Double) -> Unit) {
+            for (fy in y0 * fine until (y1 + 1) * fine) for (fx in x0 * fine until (x1 + 1) * fine) body(fx, fy, fx.floorDiv(fine), fy.floorDiv(fine), (fx + 0.5) / F, (fy + 0.5) / F)
+        }
 
-        /** Filled ellipse (superellipse with exponent [e]); [paint] gets normalised coordinates. */
+        /** Filled ellipse (superellipse with exponent [e]); [paint] gets the drawing point and normalised coordinates. */
         fun blob(cx: Double, cy: Double, rx: Double, ry: Double, p: Int, e: Double = 2.0, paint: (Int, Int, Double, Double) -> Int) {
-            for (y in (cy - ry - 1).toInt()..(cy + ry + 1).toInt()) for (x in (cx - rx - 1).toInt()..(cx + rx + 1).toInt()) {
-                val nx = (x + 0.5 - cx) / rx; val ny = (y + 0.5 - cy) / ry
-                if (abs(nx).pow(e) + abs(ny).pow(e) <= 1.0) put(x, y, paint(x, y, nx, ny), p)
+            fineLoop((cy - ry - 1).toInt(), (cy + ry + 1).toInt(), (cx - rx - 1).toInt(), (cx + rx + 1).toInt()) { fx, fy, x, y, px, py ->
+                val nx = (px - cx) / rx; val ny = (py - cy) / ry
+                if (abs(nx).pow(e) + abs(ny).pow(e) <= 1.0) putFine(fx, fy, paint(x, y, nx, ny), p)
             }
         }
         /** Light from the top-left. [rim]: shadow only this far out from the centre (0 = anywhere). */
@@ -421,7 +440,7 @@ object Chibi {
                     rect(lx, 27 + oy, lx + 2, bottom, { _, y -> if (y >= bottom - 1) pawR.shade else baseR.shade }, LEG)
                 }
                 // Tail, behind the body on the right.
-                tail(cat, style.tail, pose.tail, 27.5, 25.5 + oy, baseR, lightR, ::put, ring = if (coat.stripes) stripeRamps[0] else null)
+                tail(cat, style.tail, pose.tail, 27.5, 25.5 + oy, baseR, lightR, ::putFine, fine, ring = if (coat.stripes) stripeRamps[0] else null)
             }
             blob(cx, bcy, brx, bry, BODY, e = bodyE) { x, y, nx, ny -> shaded(bodyRamp(x, y, nx, ny), nx, ny, hiAt = 0.75, shAt = 0.5) }
             if (style.body == BodyShape.FLUFFY) {
@@ -462,7 +481,7 @@ object Chibi {
             val bcy = 27.8 - pose.breathe * 0.3
             val wide = when (style.body) { BodyShape.CHUBBY -> 12.2; BodyShape.SLIM -> 10.2; else -> 11.2 }
             if (rabbit) blob(31.6, 28.6, 2.5, 2.3, TAIL) { _, _, nx, ny -> if (nx * 0.5 + ny * 0.9 > 0.55) paleR.shade else paleR.mid }
-            else tail(cat, style.tail, 0, 29.5, 29.0, baseR, lightR, ::put, lying = true, ring = if (coat.stripes) stripeRamps[0] else null)
+            else tail(cat, style.tail, 0, 29.5, 29.0, baseR, lightR, ::putFine, fine, lying = true, ring = if (coat.stripes) stripeRamps[0] else null)
             blob(cx, bcy, wide, 4.8 + pose.breathe * 0.4, BODY, e = 2.3) { x, y, nx, ny -> shaded(bodyRamp(x, y, nx, ny), nx, ny, hiAt = 0.8, shAt = 0.5) }
             for (px in listOf(15.5, 25.5)) blob(px, 31.6, 2.2, 1.3, LEG) { _, _, nx, _ -> if (nx > 0.5) pawR.shade else pawR.mid }
         }
@@ -491,11 +510,11 @@ object Chibi {
                     val t = k.toDouble() / n
                     val px = bx + (tx - bx) * t; val py = by + (ty - by) * t
                     val rad = 1.3 + 0.7 * kotlin.math.sin(kotlin.math.PI * (0.25 + 0.6 * t))
-                    for (y in (py - rad - 1).toInt()..(py + rad + 1).toInt()) for (x in (px - rad - 1).toInt()..(px + rad + 1).toInt()) {
-                        val dx = x + 0.5 - px; val dy = y + 0.5 - py
-                        if (dx * dx + dy * dy > rad * rad) continue
+                    fineLoop((py - rad - 1).toInt(), (py + rad + 1).toInt(), (px - rad - 1).toInt(), (px + rad + 1).toInt()) { fx, fy, _, _, qx, qy ->
+                        val dx = qx - px; val dy = qy - py
+                        if (dx * dx + dy * dy > rad * rad) return@fineLoop
                         val across = if (pose.lying) dy else dx * side // away from the ear's middle line
-                        put(x, y, when {
+                        putFine(fx, fy, when {
                             // Laid back, the ear shows its outside: a shade darker than the head, with a deep lower edge.
                             pose.lying -> if (across > rad * 0.35) r.deep else if (side < 0) r.shade else r.mid
                             earStyle == EarStyle.FOLDED && t > 0.78 -> r.deep
@@ -521,13 +540,12 @@ object Chibi {
                 val ay = hcy - (if (big) 14.6 else if (folded) 9.4 else 11.8) - twitch
                 val b1x = hcx + side * (if (big) 11.4 else 10.4); val b1y = hcy - 4.2
                 val b2x = hcx + side * (if (big) 2.6 else 3.4); val b2y = hcy - 7.6
-                for (y in (ay - 1).toInt()..(b1y + 1).toInt()) for (x in (hcx - 14).toInt()..(hcx + 14).toInt()) {
-                    val px = x + 0.5; val py = y + 0.5
-                    if (!inTri(px, py, ax, ay, b1x, b1y, b2x, b2y)) continue
+                fineLoop((ay - 1).toInt(), (b1y + 1).toInt(), (hcx - 14).toInt(), (hcx + 14).toInt()) { fx, fy, _, _, px, py ->
+                    if (!inTri(px, py, ax, ay, b1x, b1y, b2x, b2y)) return@fineLoop
                     // Inner ear: a smaller triangle towards the middle.
                     val inner = inTri(px, py, ax + side * -0.3, ay + 2.6, b1x - side * 2.2, b1y - 0.4, b2x + side * 1.8, b2y + 0.4)
                     val outerEdge = if (side < 0) px < (ax + b1x) / 2 + 0.5 else px > (ax + b1x) / 2 - 0.5
-                    put(x, y, when {
+                    putFine(fx, fy, when {
                         folded && py < ay + 2.5 -> r.deep
                         inner -> Argb.mix(PINK, r.mid, if (cat) 0.35 else 0.55)
                         side > 0 && outerEdge -> r.shade
@@ -574,16 +592,16 @@ object Chibi {
                     val px = hcx + side * ((if (rabbit) 6.2 else 7.4) + 3.2 * t - 0.8 * t * t + twitch * t)
                     val py = hcy - (if (rabbit) 5.6 else 6.9) + (if (rabbit) 11.0 else 9.2) * t - twitch * (1.0 + t)
                     val rad = 1.4 + 1.3 * sqrt(t)
-                    for (y in (py - rad - 1).toInt()..(py + rad + 1).toInt()) for (x in (px - rad - 1).toInt()..(px + rad + 1).toInt()) {
-                        val dx = x + 0.5 - px; val dy = y + 0.5 - py
-                        if (dx * dx + dy * dy > rad * rad) continue
+                    fineLoop((py - rad - 1).toInt(), (py + rad + 1).toInt(), (px - rad - 1).toInt(), (px + rad + 1).toInt()) { fx, fy, _, _, qx, qy ->
+                        val dx = qx - px; val dy = qy - py
+                        if (dx * dx + dy * dy > rad * rad) return@fineLoop
                         val c = when {
                             t > 0.8 && dy > rad * 0.2 -> r.deep
                             dx * side > rad * 0.35 -> r.deep
                             dx * side < -rad * 0.3 && t < 0.5 -> r.mid
                             else -> r.shade
                         }
-                        put(x, y, c, HEAD)
+                        putFine(fx, fy, c, HEAD)
                     }
                 }
             }
@@ -641,11 +659,7 @@ object Chibi {
             val rosy = style.blush == Blush.ROSY
             for ((side, x0) in listOf(ex[0] - (if (rosy) 3 else 2), ex[1] + 2).withIndex()) {
                 val y = eyTop + 3
-                for (dx in 0 until (if (rosy) 3 else 2)) {
-                    val x = x0 + dx
-                    val i = at(x, y)
-                    if (i >= 0 && part[i] == HEAD) col[i] = Argb.mix(col[i], PINK, if (rosy) 0.75 else 0.45)
-                }
+                for (dx in 0 until (if (rosy) 3 else 2)) tint(x0 + dx, y, HEAD) { c -> Argb.mix(c, PINK, if (rosy) 0.75 else 0.45) }
             }
         }
         // Nose and mouth.
@@ -688,10 +702,7 @@ object Chibi {
         if (style.collar != Collar.NONE && !pose.lying) {
             val cc = style.collarColor ?: 0xFFE8374E.toInt()
             val y = (hcy + hry).toInt()
-            for (x in (cx - 5.5).toInt()..(cx + 5.5).toInt()) for (dy in 0..1) {
-                val i = at(x, y + dy)
-                if (i >= 0 && part[i] != NONE) { col[i] = if (dy == 1) Argb.mix(cc, EYE_DARK, 0.25) else cc }
-            }
+            for (x in (cx - 5.5).toInt()..(cx + 5.5).toInt()) for (dy in 0..1) tint(x, y + dy, null) { if (dy == 1) Argb.mix(cc, EYE_DARK, 0.25) else cc }
             when (style.collar) {
                 Collar.BELL -> { for (dx in 0..1) for (dy in 1..2) put(cx.toInt() + dx - 1, y + dy, if (dy == 1 && dx == 0) 0xFFFFE28A.toInt() else 0xFFF6C744.toInt(), BODY) }
                 Collar.BOW -> {
@@ -725,8 +736,11 @@ object Chibi {
             }
             if (best != null) res[x, y] = outlineOf(best, baseR)
         }
-        // An outfit earned with care goes on top, following the head.
-        art.accessory?.drawOn(res, hcx, hcy + top, eyTop + top)
+        // An outfit earned with care goes on top, following the head (drawn at the pet's own size, then enlarged to the canvas).
+        art.accessory?.let { acc ->
+            if (fine == 1) acc.drawOn(res, hcx, hcy + top, eyTop + top)
+            else { val layer = PixelImage(WIDTH, HEIGHT + top); acc.drawOn(layer, hcx, hcy + top, eyTop + top); res.draw(layer.scaled(fine), 0, 0) }
+        }
         return res
     }
 
@@ -742,7 +756,7 @@ object Chibi {
         return !(neg && pos)
     }
 
-    private fun tail(cat: Boolean, style: TailStyle, swing: Int, bx: Double, by: Double, r: Ramp, light: Ramp?, put: (Int, Int, Int, Int) -> Unit, lying: Boolean = false, ring: Ramp? = null) {
+    private fun tail(cat: Boolean, style: TailStyle, swing: Int, bx: Double, by: Double, r: Ramp, light: Ramp?, put: (Int, Int, Int, Int) -> Unit, fine: Int = 1, lying: Boolean = false, ring: Ramp? = null) {
         val thick = when (style) { TailStyle.FLUFFY -> 1.6; TailStyle.STUB -> 1.2; else -> 1.0 }
         val span = if (style == TailStyle.STUB) 0.4 else 1.0
         val pts: List<DoubleArray> = if (lying) {
@@ -773,25 +787,25 @@ object Chibi {
         }
         for (p in pts) {
             val (px, py, rad, t) = listOf(p[0], p[1], p[2], p[3])
-            for (y in (py - rad - 1).toInt()..(py + rad + 1).toInt()) for (x in (px - rad - 1).toInt()..(px + rad + 1).toInt()) {
-                val dx = x + 0.5 - px; val dy = y + 0.5 - py
+            for (fy in ((py - rad - 1).toInt()) * fine until ((py + rad + 2).toInt()) * fine) for (fx in ((px - rad - 1).toInt()) * fine until ((px + rad + 2).toInt()) * fine) {
+                val dx = (fx + 0.5) / fine - px; val dy = (fy + 0.5) / fine - py
                 if (dx * dx + dy * dy > rad * rad) continue
                 val ramp = when {
                     !cat && t > 0.78 && light != null -> light
                     ring != null && t > 0.15 && (t * 10).toInt() % 3 == 1 -> ring // tabby rings
                     else -> r
                 }
-                put(x, y, if (dx > rad * 0.25) ramp.shade else ramp.mid, TAIL)
+                put(fx, fy, if (dx > rad * 0.25) ramp.shade else ramp.mid, TAIL)
             }
         }
     }
 
     /** The full animation set for a pet. [eyes] is ignored (kept for older callers): the eyes are drawn. */
     @Suppress("UNUSED_PARAMETER")
-    fun build(art: PetArt, eyes: List<Pair<Int, Int>> = emptyList()): AnimationSet {
-        fun c(p: Pose) = compose(art, p)
+    fun build(art: PetArt, eyes: List<Pair<Int, Int>> = emptyList(), fine: Int = 1): AnimationSet {
+        fun c(p: Pose) = compose(art, p, fine)
         val base = c(Pose())
-        val pad = 5
+        val pad = 5 * fine
         fun padded(img: PixelImage) = PixelImage(img.width + 2 * pad, img.height + 2 * pad).also { it.draw(img, pad, pad) }
 
         val frames = LinkedHashMap<Frame, PixelImage>()
@@ -817,7 +831,7 @@ object Chibi {
         frames[Frame.LOOK_LEFT] = padded(c(Pose(headDx = -1, tail = -1)))
         frames[Frame.LOOK_RIGHT] = padded(c(Pose(headDx = 1, tail = 1)))
         frames[Frame.EAT_DOWN] = padded(c(Pose(headDy = 2, tail = 1)))
-        Frame.SHAKE.forEachIndexed { i, f -> frames[f] = Animator.wave(baseP, box, 2, i * kotlin.math.PI / 2) }
+        Frame.SHAKE.forEachIndexed { i, f -> frames[f] = Animator.wave(baseP, box, 2 * fine, i * kotlin.math.PI / 2) }
         frames[Frame.SLEEP] = padded(c(Pose(lying = true, eyesClosed = true)))
         frames[Frame.SLEEP_BREATHE] = padded(c(Pose(lying = true, breathe = 1, eyesClosed = true)))
         return AnimationSet(frames, emptyList(), pad)

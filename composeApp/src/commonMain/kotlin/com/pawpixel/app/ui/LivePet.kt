@@ -95,15 +95,16 @@ fun LivePet(
         value = withContext(Dispatchers.Default) {
             val set = Chibi.build(art)
             val layout = StageLayout(set)
-            Built(set, layout, EffectKind.entries.associateWith { Icons.forEffect(it).scaled(layout.iconScale).toImageBitmap() })
+            // The frames that are drawn: the same pet at twice the resolution (every curve, ear and outline finer), see Chibi.compose.
+            val fineSet = Chibi.build(art, fine = DrawnScene.FINE)
+            Built(set, fineSet, layout, EffectKind.entries.associateWith { Icons.forEffect(it).scaled(layout.iconScale).toImageBitmap() })
         }
     }
     val drawn by produceState<MoodFrames?>(null, built, mood) {
         val b = built ?: return@produceState
         value = withContext(Dispatchers.Default) {
-            val moodSet = b.set.forMood(mood)
-            // Every frame at twice its resolution with its corners rounded (see PixelImage.scale2x): the pet keeps its size on screen but its pixels are half as big.
-            MoodFrames(b.set, Frame.entries.associateWith { moodSet[it].scale2x().toImageBitmap() })
+            val moodSet = b.fineSet.forMood(mood)
+            MoodFrames(b.fineSet, Frame.entries.associateWith { moodSet[it].toImageBitmap() })
         }
     }
     val current = built
@@ -224,7 +225,7 @@ fun LivePet(
         val feetRoomY = floorRow + pose.dy
         val centreX = sx(g.x(pose.x + bodyMid, depth))
         val feetY = sy(feetRoomY.toDouble())
-        val frames = drawn?.takeIf { it.set === current.set }?.frames
+        val frames = drawn?.takeIf { it.set === current.fineSet }?.frames
         val img = frames?.getValue(pose.frame)
         val canvasW = layout.set.width; val canvasH = layout.set.height
         val ix = (centreX - bodyMid * petPx).roundToInt()
@@ -357,7 +358,7 @@ private fun placesFor(room: RoomLayout, layout: StageLayout, depthRows: Int): Pl
 }
 
 /** A pet's drawings for one look: its animation frames for every mood, stage and effect icons. */
-private class Built(val set: AnimationSet, val layout: StageLayout, val icons: Map<EffectKind, ImageBitmap>)
+private class Built(val set: AnimationSet, val fineSet: AnimationSet, val layout: StageLayout, val icons: Map<EffectKind, ImageBitmap>)
 
 /** The frames of one mood, and which drawings they came from. */
 private class MoodFrames(val set: AnimationSet, val frames: Map<Frame, ImageBitmap>)

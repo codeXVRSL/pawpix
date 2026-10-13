@@ -403,6 +403,23 @@ class AnimationTest {
         assertEquals(Ears.FLOPPY, Ears.of("FLOPPY")); assertEquals(null, Ears.of(""))
     }
 
+    @Test fun theFinePetIsTheSamePetAtTwiceTheResolution() {
+        val a = art()
+        val coarse = Chibi.compose(a, Chibi.Pose())
+        val fine = Chibi.compose(a, Chibi.Pose(), fine = 2)
+        assertEquals(coarse.width * 2, fine.width); assertEquals(coarse.height * 2, fine.height)
+        val cb = Animator.opaqueBounds(coarse)!!; val fb = Animator.opaqueBounds(fine)!!
+        for (i in 0..3) assertTrue(kotlin.math.abs(fb[i] - cb[i] * 2) <= 2, "bounds $i: fine ${fb[i]} vs coarse ${cb[i]} x 2")
+        // The same colours, and the eye's shine is still there at the same place (a 2 x 2 block).
+        val coarseColours = coarse.pixels.filter { it != 0 }.toSet(); val fineColours = fine.pixels.filter { it != 0 }.toSet()
+        assertTrue(fineColours.containsAll(coarseColours.filter { c -> coarse.pixels.count { it == c } > 6 }), "every fur tone survives")
+        val shines = (0 until fine.height).flatMap { y -> (0 until fine.width).filter { x -> fine[x, y] == 0xFFFFFFFF.toInt() }.map { x -> x to y } }
+        assertTrue(shines.size >= 8, "two eye shines of 2 x 2: ${shines.size}")
+        // The full animation set at twice the resolution keeps the frames twice the coarse frames' size.
+        val set = Chibi.build(a, fine = 2); val set1 = Chibi.build(a)
+        assertEquals(set1.width * 2, set.width); assertEquals(set1.height * 2, set.height)
+    }
+
     @Test fun breatheAndWalkMovePixels() {
         val set = Chibi.build(art(), emptyList())
         for (f in listOf(Frame.BREATHE, Frame.WALK_2, Frame.LOOK_LEFT, Frame.SQUASH, Frame.STRETCH, Frame.EAT_DOWN, Frame.SHAKE_1)) {
