@@ -39,6 +39,7 @@ object RoomCard {
         PixelFont.draw(soft, name, 3, HEIGHT - PixelFont.H - 3, 1, ink)
         val mark = "PAWPIXEL"
         PixelFont.draw(soft, mark, WIDTH - PixelFont.textWidth(mark, 1) - 3, HEIGHT - PixelFont.H - 3, 1, ink)
-        return soft.scaled(SCALE)
+        // Twice the resolution with rounded corners, then enlarged to the card's size.
+        return soft.scale2x().scaled(SCALE / 2)
     }
 }

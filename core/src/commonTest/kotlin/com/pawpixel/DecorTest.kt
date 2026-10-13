@@ -209,3 +209,33 @@ class RoomCardTest {
         }
     }
 }
+
+/** The UI's pixel icons: every glyph on the same 12x12 grid, drawn only with ink, light ink and empty cells, nothing stray. */
+class PixelIconTest {
+    @Test fun everyIconIsATidy12By12Grid() {
+        val all = listOf(
+            com.pawpixel.sprite.PixelIcons.BOWL, com.pawpixel.sprite.PixelIcons.DROP, com.pawpixel.sprite.PixelIcons.PAW, com.pawpixel.sprite.PixelIcons.BALL, com.pawpixel.sprite.PixelIcons.PILL,
+            com.pawpixel.sprite.PixelIcons.COMB, com.pawpixel.sprite.PixelIcons.SCOOP, com.pawpixel.sprite.PixelIcons.SYRINGE, com.pawpixel.sprite.PixelIcons.WORM, com.pawpixel.sprite.PixelIcons.SHIELD,
+            com.pawpixel.sprite.PixelIcons.STETHO, com.pawpixel.sprite.PixelIcons.HEART, com.pawpixel.sprite.PixelIcons.SCALE, com.pawpixel.sprite.PixelIcons.SHIRT, com.pawpixel.sprite.PixelIcons.SPARKLE,
+            com.pawpixel.sprite.PixelIcons.SHARE, com.pawpixel.sprite.PixelIcons.PIN, com.pawpixel.sprite.PixelIcons.HOUSE, com.pawpixel.sprite.PixelIcons.GEAR, com.pawpixel.sprite.PixelIcons.BELL,
+            com.pawpixel.sprite.PixelIcons.GLOBE, com.pawpixel.sprite.PixelIcons.BAG, com.pawpixel.sprite.PixelIcons.MOON, com.pawpixel.sprite.PixelIcons.STAR, com.pawpixel.sprite.PixelIcons.SAVE,
+            com.pawpixel.sprite.PixelIcons.LOCK, com.pawpixel.sprite.PixelIcons.CAMERA, com.pawpixel.sprite.PixelIcons.CHEVRON_LEFT, com.pawpixel.sprite.PixelIcons.CHEVRON_RIGHT, com.pawpixel.sprite.PixelIcons.PENCIL,
+            com.pawpixel.sprite.PixelIcons.PLUS, com.pawpixel.sprite.PixelIcons.CHECK, com.pawpixel.sprite.PixelIcons.CLOSE, com.pawpixel.sprite.PixelIcons.DICE, com.pawpixel.sprite.PixelIcons.PARTY,
+            com.pawpixel.sprite.PixelIcons.PHONE, com.pawpixel.sprite.PixelIcons.PEOPLE,
+        )
+        for (icon in all) {
+            assertEquals(12, icon.height, "12 rows")
+            for (row in icon.rows) {
+                assertEquals(12, row.length, "12 cells in '$row'")
+                assertTrue(row.all { it == 'x' || it == 'o' || it == '.' }, "only ink, light and empty in '$row'")
+            }
+            // Something is drawn, and no lone pixel floats away from the rest (a stray that reads as dirt).
+            val ink = (0 until 12).flatMap { y -> (0 until 12).filter { x -> icon.cell(x, y) != 0 }.map { x -> x to y } }
+            assertTrue(ink.size >= 8)
+            for ((x, y) in ink) {
+                val neighbour = listOf(x - 1 to y, x + 1 to y, x to y - 1, x to y + 1, x - 1 to y - 1, x + 1 to y - 1, x - 1 to y + 1, x + 1 to y + 1).any { it in ink }
+                assertTrue(neighbour || icon === com.pawpixel.sprite.PixelIcons.PARTY || icon === com.pawpixel.sprite.PixelIcons.SPARKLE, "a stray pixel at $x,$y")
+            }
+        }
+    }
+}

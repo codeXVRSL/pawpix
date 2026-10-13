@@ -63,6 +63,31 @@ class PixelImage(val width: Int, val height: Int, val pixels: IntArray = IntArra
         return resampleArea(0.0, 0.0, width.toDouble(), height.toDouble(), outW, outH)
     }
 
+    /**
+     * Twice the size with the corners of every diagonal step rounded off (Scale2x, also called EPX):
+     * each pixel becomes four, and where two equal neighbours meet at a corner the corner takes
+     * their colour. No new colours, no blur; outlines read as drawn at twice the resolution. Flat
+     * areas and isolated pixels are untouched, so eyes and single highlights keep their shape.
+     */
+    fun scale2x(): PixelImage {
+        val out = PixelImage(width * 2, height * 2)
+        for (y in 0 until height) for (x in 0 until width) {
+            val p = this[x, y]
+            val a = if (y > 0) this[x, y - 1] else p          // above
+            val b = if (x < width - 1) this[x + 1, y] else p  // right
+            val c = if (x > 0) this[x - 1, y] else p          // left
+            val d = if (y < height - 1) this[x, y + 1] else p // below
+            var e0 = p; var e1 = p; var e2 = p; var e3 = p
+            if (c == a && c != d && a != b) e0 = a
+            if (a == b && a != c && b != d) e1 = b
+            if (d == c && d != b && c != a) e2 = c
+            if (b == d && b != a && d != c) e3 = d
+            val ox = x * 2; val oy = y * 2
+            out[ox, oy] = e0; out[ox + 1, oy] = e1; out[ox, oy + 1] = e2; out[ox + 1, oy + 1] = e3
+        }
+        return out
+    }
+
     /** Area-averaging resample of a region (fractional bounds allowed) to [outW]x[outH]. */
     fun resampleArea(srcX: Double, srcY: Double, srcW: Double, srcH: Double, outW: Int, outH: Int): PixelImage {
         val out = PixelImage(outW, outH)

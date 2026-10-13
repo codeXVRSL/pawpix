@@ -200,12 +200,12 @@ fun BackButton(app: AppScope) {
 fun PixelIcon(icon: PixelIcon, modifier: Modifier = Modifier, tint: Color = LocalContentColor.current, size: Dp = 20.dp) {
     val light = tint.copy(alpha = tint.alpha * 0.55f)
     Canvas(modifier.size(size).clearAndSetSemantics {}) {
-        val cell = this.size.width / icon.width
-        // Each cell from its own pixel edge to the next: no gaps and no overlap (overlap doubles a light cell's alpha).
-        fun edge(i: Int) = kotlin.math.floor(i * cell)
+        // A whole number of screen pixels per icon pixel, the icon centred in its box: every cell the same size, none blurred.
+        val cell = kotlin.math.floor(minOf(this.size.width / icon.width, this.size.height / icon.height)).coerceAtLeast(1f)
+        val ox = kotlin.math.floor((this.size.width - cell * icon.width) / 2); val oy = kotlin.math.floor((this.size.height - cell * icon.height) / 2)
         for (y in 0 until icon.height) for (x in 0 until icon.width) {
             val colour = when (icon.cell(x, y)) { 1 -> tint; 2 -> light; else -> null } ?: continue
-            drawRect(colour, Offset(edge(x), edge(y)), Size(edge(x + 1) - edge(x), edge(y + 1) - edge(y)))
+            drawRect(colour, Offset(ox + x * cell, oy + y * cell), Size(cell, cell))
         }
     }
 }
