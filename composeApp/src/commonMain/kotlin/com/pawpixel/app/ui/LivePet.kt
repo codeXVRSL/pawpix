@@ -309,6 +309,22 @@ fun LivePet(
                 drawRect(Color(0xFFFFF3C8).copy(alpha = 0.75f * glow), Offset(sx(x), sy(y)), androidx.compose.ui.geometry.Size(px, px))
             }
         }
+        // Fireflies over the garden at night: a few soft green-gold points wandering above the hedge, each lighting up on its own slow pulse.
+        if (phase.dark && room.theme == com.pawpixel.sprite.RoomTheme.GARDEN) {
+            val f = (roomW / 100f).coerceAtLeast(0.5f)
+            for (i in 0 until 7) {
+                val x0 = g.backLeft + (g.backRight - g.backLeft) * (((i * 53) % 17) / 17.0 + 0.03)
+                val y0 = g.floorLine - (10 + (i * 29) % 26) * f
+                val x = x0 + kotlin.math.sin(ambientMs / 2300.0 + i * 1.1) * 7 * f + kotlin.math.sin(ambientMs / 700.0 + i) * 1.5 * f
+                val y = y0 + kotlin.math.cos(ambientMs / 1900.0 + i * 1.7) * 4 * f
+                val pulse = kotlin.math.sin(ambientMs / 1100.0 + i * 2.4).coerceAtLeast(0.0)
+                val glow = (pulse * pulse * pulse).toFloat()
+                if (glow < 0.05f) continue
+                val r = (2.2f + 1.3f * glow) * px
+                drawCircle(Brush.radialGradient(0f to Color(0xFFE4FF9A).copy(alpha = 0.55f * glow), 1f to Color.Transparent, center = Offset(sx(x), sy(y)), radius = r), radius = r, center = Offset(sx(x), sy(y)))
+                drawRect(Color(0xFFF4FFC2).copy(alpha = 0.9f * glow), Offset(sx(x) - px / 2, sy(y) - px / 2), androidx.compose.ui.geometry.Size(px, px))
+            }
+        }
         softBand(roomTop.toFloat(), roomTop + stageH * 0.09f, 5, topEdge = true)
         softBand(roomTop + stageH * 0.88f, roomTop + stageH, 5, topEdge = false)
 
