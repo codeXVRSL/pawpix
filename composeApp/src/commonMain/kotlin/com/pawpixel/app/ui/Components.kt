@@ -200,11 +200,13 @@ fun BackButton(app: AppScope) {
 fun PixelIcon(icon: PixelIcon, modifier: Modifier = Modifier, tint: Color = LocalContentColor.current, size: Dp = 20.dp) {
     val light = tint.copy(alpha = tint.alpha * 0.55f)
     Canvas(modifier.size(size).clearAndSetSemantics {}) {
+        // The fine (twice as dense, smoothed) grid wherever it still gets two whole screen pixels per cell; the plain grid on tiny icons.
+        val grid = if (minOf(this.size.width / icon.width, this.size.height / icon.height) >= 4f) icon.fine else icon
         // A whole number of screen pixels per icon pixel, the icon centred in its box: every cell the same size, none blurred.
-        val cell = kotlin.math.floor(minOf(this.size.width / icon.width, this.size.height / icon.height)).coerceAtLeast(1f)
-        val ox = kotlin.math.floor((this.size.width - cell * icon.width) / 2); val oy = kotlin.math.floor((this.size.height - cell * icon.height) / 2)
-        for (y in 0 until icon.height) for (x in 0 until icon.width) {
-            val colour = when (icon.cell(x, y)) { 1 -> tint; 2 -> light; else -> null } ?: continue
+        val cell = kotlin.math.floor(minOf(this.size.width / grid.width, this.size.height / grid.height)).coerceAtLeast(1f)
+        val ox = kotlin.math.floor((this.size.width - cell * grid.width) / 2); val oy = kotlin.math.floor((this.size.height - cell * grid.height) / 2)
+        for (y in 0 until grid.height) for (x in 0 until grid.width) {
+            val colour = when (grid.cell(x, y)) { 1 -> tint; 2 -> light; else -> null } ?: continue
             drawRect(colour, Offset(ox + x * cell, oy + y * cell), Size(cell, cell))
         }
     }

@@ -238,4 +238,21 @@ class PixelIconTest {
             }
         }
     }
+
+    @Test fun theFineIconIsTheSameIconOnAGridTwiceAsDense() {
+        val icon = com.pawpixel.sprite.PixelIcons.HEART
+        val fine = icon.fine
+        assertEquals(icon.width * 2, fine.width); assertEquals(icon.height * 2, fine.height)
+        // Every ink cell of the icon still holds ink somewhere in its 2x2 block, and no ink appears where the icon had none nearby.
+        for (y in 0 until icon.height) for (x in 0 until icon.width) {
+            val block = listOf(fine.cell(2 * x, 2 * y), fine.cell(2 * x + 1, 2 * y), fine.cell(2 * x, 2 * y + 1), fine.cell(2 * x + 1, 2 * y + 1))
+            if (icon.cell(x, y) != 0) assertTrue(block.any { it != 0 }, "ink lost at $x,$y")
+            val neighbours = listOf(x to y - 1, x + 1 to y, x - 1 to y, x to y + 1).filter { (nx, ny) -> nx in 0 until icon.width && ny in 0 until icon.height }
+            if (icon.cell(x, y) == 0 && neighbours.all { (nx, ny) -> icon.cell(nx, ny) == 0 }) assertTrue(block.all { it == 0 }, "ink appeared at $x,$y")
+        }
+        // A diagonal stroke gets its steps halved: the chevron's fine grid has more distinct row shapes than its coarse one.
+        val chevron = com.pawpixel.sprite.PixelIcons.CHEVRON_RIGHT
+        assertTrue(chevron.fine.rows.distinct().size > chevron.rows.distinct().size)
+    }
+
 }

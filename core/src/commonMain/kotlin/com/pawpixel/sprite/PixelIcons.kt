@@ -12,6 +12,28 @@ class PixelIcon(val rows: List<String>) {
     val height = rows.size
     /** 0 = empty, 1 = ink, 2 = light ink. */
     fun cell(x: Int, y: Int): Int = when (rows[y].getOrNull(x)) { 'x' -> 1; 'o' -> 2; else -> 0 }
+
+    /**
+     * The same icon on a grid twice as fine, its diagonals and corners smoothed by the Scale2x
+     * (EPX) rule, so on screen the steps of a slanted stroke are half as tall. Straight edges,
+     * single dots and checker patterns come through unchanged.
+     */
+    val fine: PixelIcon by lazy {
+        val out = Array(height * 2) { CharArray(width * 2) }
+        fun at(x: Int, y: Int, p: Int) = if (x in 0 until width && y in 0 until height) cell(x, y) else p
+        fun ch(v: Int) = when (v) { 1 -> 'x'; 2 -> 'o'; else -> '.' }
+        for (y in 0 until height) for (x in 0 until width) {
+            val p = cell(x, y)
+            val a = at(x, y - 1, p); val b = at(x + 1, y, p); val c = at(x - 1, y, p); val d = at(x, y + 1, p)
+            var e0 = p; var e1 = p; var e2 = p; var e3 = p
+            if (c == a && c != d && a != b) e0 = a
+            if (a == b && a != c && b != d) e1 = b
+            if (d == c && d != b && c != a) e2 = c
+            if (b == d && b != a && d != c) e3 = d
+            out[y * 2][x * 2] = ch(e0); out[y * 2][x * 2 + 1] = ch(e1); out[y * 2 + 1][x * 2] = ch(e2); out[y * 2 + 1][x * 2 + 1] = ch(e3)
+        }
+        PixelIcon(out.map { it.concatToString() })
+    }
 }
 
 object PixelIcons {
