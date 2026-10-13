@@ -221,11 +221,18 @@ private fun catalogueThumb(item: Furniture, phase: Sky.Phase, theme: RoomTheme):
     val roomW = RoomLayout.COLS * Room.TILE_W + 20; val h = 64
     val x = 2; val y = if (item.onWall) 1 else 1
     // Cut from the fine picture (twice the resolution), so the thumbnail is as fine as the room.
-    val with = Room.scene(roomW, h, Room.floorLineFor(h - 10), phase, layout = RoomLayout(listOf(Placed(item, x, y)), theme)).flattenFine()
-    val without = emptyThumbRooms.getOrPut(phase to theme) { Room.scene(roomW, h, Room.floorLineFor(h - 10), phase, layout = RoomLayout(emptyList(), theme)).flattenFine() }
+    val scene = Room.scene(roomW, h, Room.floorLineFor(h - 10), phase, layout = RoomLayout(listOf(Placed(item, x, y)), theme))
+    val with = scene.flattenFine()
     val fw = with.width; val fh = with.height
     var l = fw; var t = fh; var r = -1; var b = -1
-    for (yy in 0 until fh) for (xx in 0 until fw) if (with[xx, yy] != without[xx, yy]) { if (xx < l) l = xx; if (xx > r) r = xx; if (yy < t) t = yy; if (yy > b) b = yy }
+    val standing = scene.props.firstOrNull()
+    if (standing != null) {
+        // A standing piece is cut to its own drawing (a lamp's light pool would otherwise widen the thumbnail to most of the room).
+        l = standing.x * Room.FINE; t = standing.y * Room.FINE; r = l + standing.fine.width - 1; b = t + standing.fine.height - 1
+    } else {
+        val without = emptyThumbRooms.getOrPut(phase to theme) { Room.scene(roomW, h, Room.floorLineFor(h - 10), phase, layout = RoomLayout(emptyList(), theme)).flattenFine() }
+        for (yy in 0 until fh) for (xx in 0 until fw) if (with[xx, yy] != without[xx, yy]) { if (xx < l) l = xx; if (xx > r) r = xx; if (yy < t) t = yy; if (yy > b) b = yy }
+    }
     if (r < 0) return com.pawpixel.sprite.PixelImage(8, 8)
     l = (l - 4).coerceAtLeast(0); t = (t - 4).coerceAtLeast(0); r = (r + 4).coerceAtMost(fw - 1); b = (b + 4).coerceAtMost(fh - 1)
     val out = com.pawpixel.sprite.PixelImage(r - l + 1, b - t + 1)
