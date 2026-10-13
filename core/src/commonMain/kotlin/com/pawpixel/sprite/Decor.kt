@@ -78,6 +78,8 @@ enum class Furniture(
     FLOOR_CUSHION("Floor cushion", 2, 1, use = Use.SLEEP, theme = RoomTheme.LIVING),
     RECORD_PLAYER("Record player", 10, 1, theme = RoomTheme.LIVING),
     FIREPLACE("Fireplace", 7, 2, theme = RoomTheme.LIVING),
+    PIANO("Piano", 14, 3, theme = RoomTheme.LIVING),
+    GALLERY_WALL("Gallery wall", 4, 3, place = Place.WALL, theme = RoomTheme.LIVING),
     // ---- playroom ----
     TOY_CHEST("Toy chest", 0, 2, theme = RoomTheme.PLAYROOM),
     BLOCKS("Building blocks", 3, 1, theme = RoomTheme.PLAYROOM),
@@ -90,6 +92,8 @@ enum class Furniture(
     SLIDE("Slide", 12, 2, theme = RoomTheme.PLAYROOM),
     TRAIN_SET("Train set", 17, 2, theme = RoomTheme.PLAYROOM),
     PLAY_MAT("Play mat", 2, 2, 2, Place.RUG, theme = RoomTheme.PLAYROOM),
+    TEDDY("Teddy bear", 1, 1, theme = RoomTheme.PLAYROOM),
+    HEIGHT_CHART("Height chart", 3, 1, place = Place.WALL, theme = RoomTheme.PLAYROOM),
     // ---- garden ----
     FLOWER_BED("Flower bed", 0, 2, theme = RoomTheme.GARDEN),
     GARDEN_BENCH("Garden bench", 3, 2, use = Use.SLEEP, theme = RoomTheme.GARDEN),
@@ -103,6 +107,8 @@ enum class Furniture(
     WAGON("Wagon", 9, 1, theme = RoomTheme.GARDEN),
     SCARECROW("Scarecrow", 17, 1, theme = RoomTheme.GARDEN),
     PICKET_FENCE("Picket fence", 4, 3, theme = RoomTheme.GARDEN),
+    SWING("Swing", 6, 2, theme = RoomTheme.GARDEN),
+    SUNFLOWERS("Sunflowers", 2, 1, theme = RoomTheme.GARDEN),
     // ---- bedroom ----
     BIG_BED("Big bed", 0, 3, 2, use = Use.SLEEP, theme = RoomTheme.BEDROOM),
     NIGHTSTAND("Nightstand", 3, 1, theme = RoomTheme.BEDROOM),
@@ -112,6 +118,8 @@ enum class Furniture(
     LAUNDRY_BASKET("Laundry basket", 10, 1, theme = RoomTheme.BEDROOM),
     STAR_GARLAND("Star garland", 0, 4, place = Place.WALL, theme = RoomTheme.BEDROOM),
     DREAMCATCHER("Dreamcatcher", 14, 1, place = Place.WALL, theme = RoomTheme.BEDROOM),
+    DRESSER("Dresser", 4, 2, theme = RoomTheme.BEDROOM),
+    CANOPY("Canopy", 8, 3, place = Place.WALL, theme = RoomTheme.BEDROOM),
     // ---- kitchen ----
     COUNTER("Counter", 0, 3, theme = RoomTheme.KITCHEN),
     BOWL_STAND("Bowl stand", 2, 1, use = Use.EAT, theme = RoomTheme.KITCHEN),
@@ -121,6 +129,8 @@ enum class Furniture(
     CAT_GRASS("Cat grass", 14, 1, theme = RoomTheme.KITCHEN),
     HERB_SHELF("Herb shelf", 3, 2, place = Place.WALL, theme = RoomTheme.KITCHEN),
     POT_RACK("Pot rack", 10, 2, place = Place.WALL, theme = RoomTheme.KITCHEN),
+    DINING_TABLE("Dining table", 4, 3, theme = RoomTheme.KITCHEN),
+    CAKE_STAND("Cake stand", 8, 1, theme = RoomTheme.KITCHEN),
     // ---- bathroom ----
     BATHTUB("Bathtub", 0, 3, theme = RoomTheme.BATHROOM),
     SINK("Sink", 3, 1, theme = RoomTheme.BATHROOM),
@@ -129,7 +139,9 @@ enum class Furniture(
     TOWEL_STACK("Towel stack", 7, 1, theme = RoomTheme.BATHROOM),
     WASHING_MACHINE("Washing machine", 12, 2, theme = RoomTheme.BATHROOM),
     MIRROR("Mirror", 0, 1, place = Place.WALL, theme = RoomTheme.BATHROOM),
-    TOWEL_RAIL("Towel rail", 2, 2, place = Place.WALL, theme = RoomTheme.BATHROOM);
+    TOWEL_RAIL("Towel rail", 2, 2, place = Place.WALL, theme = RoomTheme.BATHROOM),
+    LITTER_BOX("Litter box", 0, 1, theme = RoomTheme.BATHROOM),
+    SHOWER("Shower", 6, 2, place = Place.WALL, theme = RoomTheme.BATHROOM);
 
     enum class Place { FLOOR, RUG, WALL }
     enum class Use { NONE, SLEEP, EAT }

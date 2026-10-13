@@ -723,6 +723,14 @@ object Room {
             Furniture.WAGON -> wagon(p)
             Furniture.SCARECROW -> scarecrow(p)
             Furniture.PICKET_FENCE -> picketFence(w, d, p)
+            Furniture.PIANO -> piano(w, d, p)
+            Furniture.TEDDY -> teddy(p)
+            Furniture.SWING -> swing(w, d, p)
+            Furniture.SUNFLOWERS -> sunflowers(p)
+            Furniture.DRESSER -> dresser(w, d, p)
+            Furniture.DINING_TABLE -> diningTable(w, d, p)
+            Furniture.CAKE_STAND -> cakeStand(p)
+            Furniture.LITTER_BOX -> litterBox(p)
             else -> PixelImage(w, d)
         }
         return if (pl.flip) StageRenderer.mirror(img) else img
@@ -756,6 +764,10 @@ object Room {
             Furniture.POT_RACK -> potRack(scratch, pad, bottom - 12, TILE_W * 2, p)
             Furniture.MIRROR -> mirror(scratch, pad, bottom - 12, p)
             Furniture.TOWEL_RAIL -> towelRail(scratch, pad, bottom - 10, TILE_W * 2, p)
+            Furniture.GALLERY_WALL -> galleryWall(scratch, pad, bottom - 18, TILE_W * 3, p)
+            Furniture.HEIGHT_CHART -> heightChart(scratch, pad + 2, bottom - 24, p)
+            Furniture.CANOPY -> canopy(scratch, pad, bottom - 26, TILE_W * 3, p)
+            Furniture.SHOWER -> shower(scratch, pad, bottom - 26, TILE_W * 2, p)
             else -> Unit
         }
         val b = Animator.opaqueBounds(scratch) ?: return WallSprite(PixelImage(1, 1), 0, 0)
@@ -1293,6 +1305,153 @@ object Room {
         disc(img, w / 2, d + 9, 5.0, p.metalDark); disc(img, w / 2, d + 9, 3.8, p.glass); disc(img, w / 2, d + 10, 2.2, p.water)
         for (xx in 2..4) set(img, xx, d + 2, p.metalDark); set(img, w - 3, d + 2, p.curtain)
         return img
+    }
+
+    // ---- batch 3: two more pieces for every room ----
+
+    private fun piano(w: Int, d: Int, p: Palette): PixelImage {
+        val img = PixelImage(w, d + 20)
+        val body = p.ink; val edge = Argb.mix(p.ink, p.frame, 0.25)
+        // An upright: a tall dark body, a lid, white keys with black ones between, and a stool-free front.
+        box(img, 0, 0, w, d, 20, edge, body, Argb.mix(body, 0xFF000000.toInt(), 0.3), Argb.mix(body, 0xFF000000.toInt(), 0.4))
+        for (xx in 1 until w - 1) set(img, xx, d + 9, edge)
+        for (xx in 2 until w - 2) for (yy in d + 10..d + 12) set(img, xx, yy, if (yy == d + 12) p.metal else p.frame)
+        for (xx in 3 until w - 3 step 2) if ((xx / 2) % 7 != 2 && (xx / 2) % 7 != 6) set(img, xx, d + 10, body)
+        for (xx in 1 until w - 1) set(img, xx, d + 13, edge)
+        // Sheet music on the stand.
+        for (xx in w / 2 - 3..w / 2 + 2) for (yy in d + 3..d + 7) set(img, xx, yy, if (yy % 2 == 0 && xx > w / 2 - 3 && xx < w / 2 + 2) p.metalDark else p.frame)
+        return img
+    }
+
+    private fun teddy(p: Palette): PixelImage {
+        val img = PixelImage(TILE_W, TILE_D + 6)
+        val fur = 0xFFC8955A.toInt(); val dark = 0xFF9C6B3C.toInt(); val muzzle = 0xFFEBCFA6.toInt()
+        // Round ears, a head, a tummy with a muzzle, little arms out to the side.
+        for ((ex, ey) in listOf(1 to 1, 7 to 1)) { set(img, ex, ey, dark); set(img, ex + 1, ey, fur); set(img, ex, ey + 1, fur) }
+        for (yy in 2..6) for (xx in 2..6) set(img, xx, yy, if ((yy == 2 || yy == 6) && (xx == 2 || xx == 6)) 0 else fur)
+        for (xx in 3..5) for (yy in 5..6) set(img, xx, yy, muzzle)
+        set(img, 3, 4, p.ink); set(img, 5, 4, p.ink); set(img, 4, 5, dark)
+        for (yy in 7..12) for (xx in 2..6) set(img, xx, yy, if (yy == 12 && (xx == 2 || xx == 6)) 0 else fur)
+        for (xx in 3..5) for (yy in 8..11) set(img, xx, yy, muzzle)
+        for (yy in 8..10) { set(img, 1, yy, fur); set(img, 7, yy, fur) }
+        set(img, 1, 11, dark); set(img, 7, 11, dark)
+        for (xx in 2..6) set(img, xx, 13, dark)
+        set(img, 4, 7, p.curtain)
+        return img
+    }
+
+    private fun swing(w: Int, d: Int, p: Palette): PixelImage {
+        val img = PixelImage(w, d + 26)
+        val wood = p.wood; val dark = p.woodDark
+        // An A-frame at each end, a top beam, two ropes and a seat.
+        for (yy in 0 until d + 26) { val spread = yy / 7
+            set(img, 2 - minOf(spread, 2), yy, dark); set(img, 3 + minOf(spread, 2), yy, wood)
+            set(img, w - 3 - minOf(spread, 2), yy, dark); set(img, w - 4 + minOf(spread, 2), yy, wood) }
+        for (xx in 0 until w) { set(img, xx, 0, Argb.mix(wood, p.frame, 0.3)); set(img, xx, 1, wood); set(img, xx, 2, dark) }
+        val sx = w / 2 - 4; val seatY = d + 16
+        for (yy in 3 until seatY) { set(img, sx + 1, yy, p.metalDark); set(img, sx + 7, yy, p.metalDark) }
+        for (xx in sx..sx + 8) { set(img, xx, seatY, Argb.mix(p.curtain, p.frame, 0.2)); set(img, xx, seatY + 1, p.curtainDark) }
+        return img
+    }
+
+    private fun sunflowers(p: Palette): PixelImage {
+        val img = PixelImage(TILE_W, TILE_D + 18)
+        val petal = 0xFFFFC93C.toInt(); val petalDark = 0xFFE0A520.toInt(); val seeds = 0xFF6B4A2E.toInt()
+        // Three stalks at different heights, each with a seed disc ringed by petals, and a leaf or two.
+        for ((cx, top) in listOf(2 to 4, 6 to 1, 4 to 8)) {
+            for (yy in top + 4 until TILE_D + 17) set(img, cx, yy, p.leafDark)
+            set(img, cx + 1, top + 9, p.leaf); set(img, cx + 2, top + 9, p.leaf); set(img, cx - 1, top + 12, p.leaf)
+            for (dy in -2..2) for (dx in -2..2) if (kotlin.math.abs(dx) + kotlin.math.abs(dy) <= 3) set(img, cx + dx, top + 2 + dy, if (kotlin.math.abs(dx) + kotlin.math.abs(dy) == 3) petalDark else petal)
+            set(img, cx, top + 2, seeds); set(img, cx + 1, top + 2, seeds); set(img, cx, top + 3, seeds); set(img, cx + 1, top + 3, Argb.mix(seeds, p.ink, 0.3))
+        }
+        for (xx in 1 until TILE_W - 1) set(img, xx, TILE_D + 17, Argb.mix(0xFF6B4A2E.toInt(), p.ink, 0.2))
+        return img
+    }
+
+    private fun dresser(w: Int, d: Int, p: Palette): PixelImage {
+        val img = PixelImage(w, d + 14)
+        // A chest of three drawers with round knobs, a little vase on top.
+        box(img, 0, 2, w, d, 12, p.woodLight, p.wood, p.woodDark, p.woodDark)
+        for (row in 0..2) { val yy = d + 3 + row * 4; for (xx in 2 until w - 2) set(img, xx, yy, p.woodDark); set(img, w / 2 - 1, yy + 2, p.metalDark); set(img, w / 2, yy + 2, p.metal) }
+        for (xx in 1 until w - 1) set(img, xx, d + 2, p.woodLight)
+        set(img, 3, 1, p.bowl); set(img, 4, 1, p.bowl); set(img, 3, 0, p.curtain); set(img, 4, 0, p.leaf)
+        return img
+    }
+
+    private fun diningTable(w: Int, d: Int, p: Palette): PixelImage {
+        val img = PixelImage(w, d + 8)
+        // A round-cornered top on four legs, a cloth runner and two plates.
+        for (lx in listOf(1, w - 3)) for (yy in d + 2 until d + 8) { set(img, lx, yy, p.woodDark); set(img, lx + 1, yy, p.wood) }
+        box(img, 0, 0, w, d, 2, p.woodLight, p.wood, p.woodDark, p.woodDark)
+        img[0, 0] = 0; img[w - 1, 0] = 0
+        for (xx in w / 2 - 3..w / 2 + 2) for (yy in 1 until d - 1) set(img, xx, yy, if (yy % 2 == 0) p.curtain else Argb.mix(p.curtain, p.frame, 0.4))
+        for (cx in listOf(4, w - 5)) { disc(img, cx, d / 2, 1.6, p.frame); set(img, cx, d / 2, p.metal) }
+        return img
+    }
+
+    private fun cakeStand(p: Palette): PixelImage {
+        val img = PixelImage(TILE_W, TILE_D + 8)
+        val cream = 0xFFFFF1D6.toInt(); val cake = 0xFFF2B5C4.toInt(); val cherry = 0xFFD9364F.toInt()
+        // A glass stand with a layered cake on it, a cherry on top.
+        for (xx in 1 until TILE_W - 1) set(img, xx, TILE_D + 3, p.metal); for (yy in TILE_D + 4 until TILE_D + 7) set(img, 4, yy, p.metalDark)
+        for (xx in 2..6) set(img, xx, TILE_D + 7, p.metalDark)
+        for (yy in 0..3) for (xx in 2..6) set(img, xx, TILE_D - 1 + yy, if (yy == 0) cream else if (yy == 2) cream else cake)
+        for (xx in 3..5) set(img, xx, TILE_D - 2, cake); set(img, 4, TILE_D - 3, cherry)
+        return img
+    }
+
+    private fun litterBox(p: Palette): PixelImage {
+        val img = PixelImage(TILE_W, TILE_D + 3)
+        // A low tray with a lip, pale litter inside, a little scoop hooked on the side.
+        box(img, 0, 1, TILE_W, TILE_D - 1, 2, p.cushionLight, p.cushion, p.cushionDark, p.cushionDark)
+        for (yy in 2 until TILE_D - 1) for (xx in 1 until TILE_W - 1) set(img, xx, yy, if ((xx + yy) % 3 == 0) Argb.mix(p.sill, p.metalDark, 0.3) else p.sill)
+        set(img, TILE_W - 1, 0, p.metalDark); set(img, TILE_W - 1, 1, p.metal)
+        return img
+    }
+
+    private fun galleryWall(img: PixelImage, x: Int, y: Int, w: Int, p: Palette) {
+        // Five little frames of different sizes hung together, each with its own picture.
+        val pics = listOf(intArrayOf(0, 0, 6, 7, p.leaf), intArrayOf(7, 2, 8, 5, p.bowl), intArrayOf(16, 0, 5, 5, p.curtain), intArrayOf(7, 8, 6, 6, p.cushion), intArrayOf(14, 7, 8, 7, p.fish))
+        for (f in pics) { val fx = x + f[0]; val fy = y + f[1]; val fw = f[2]; val fh = f[3]
+            for (yy in 0 until fh) for (xx in 0 until fw) set(img, fx + xx, fy + yy, if (yy == 0 || yy == fh - 1 || xx == 0 || xx == fw - 1) p.wood else if ((xx + yy) % 3 == 1) Argb.mix(f[4], p.frame, 0.4) else f[4]) }
+    }
+
+    private fun heightChart(img: PixelImage, x: Int, y: Int, p: Palette) {
+        // A tall strip with tick marks and a little paw where the pet measured up to.
+        for (yy in 0 until 22) for (xx in 0 until 5) set(img, x + xx, y + yy, if (xx == 0 || xx == 4) p.woodDark else p.sill)
+        for (yy in 1 until 22 step 3) { set(img, x + 1, y + yy, p.ink); if (yy % 2 == 1) set(img, x + 2, y + yy, p.ink) }
+        set(img, x + 2, y + 13, p.curtain); set(img, x + 3, y + 13, p.curtain); set(img, x + 2, y + 12, p.curtain)
+    }
+
+    private fun canopy(img: PixelImage, x: Int, y: Int, w: Int, p: Palette) {
+        // A sheer curtain gathered on a ring, falling open to each side like a tent over the bed:
+        // two full panels of pale fabric with fold lines, a darker lining showing inside, tied back near the bottom.
+        val cx = x + w / 2
+        val light = Argb.mix(p.rug, p.frame, 0.45); val fold = Argb.mix(p.rug, p.frame, 0.15); val lining = p.rugEdge
+        for (yy in 0 until 26) {
+            val spread = minOf(w / 2 - 1, 2 + yy * (w / 2 - 3) / 20)   // how far each panel has swung out at this height
+            val thick = if (yy < 4) spread else 5                       // the gathered top is solid, below it the panels have a width
+            for (side in intArrayOf(-1, 1)) for (i in 0 until thick) {
+                val xx = cx + side * (spread - i)
+                val c = if (i == thick - 1 && yy >= 4) lining else if ((xx + yy / 2) % 4 == 0) fold else light
+                set(img, xx, y + yy, c)
+            }
+        }
+        for (xx in cx - 2..cx + 2) set(img, xx, y, p.metal); set(img, cx, y - 1, p.metalDark)
+        // The tie-backs.
+        for (side in intArrayOf(-1, 1)) { val tx = cx + side * (w / 2 - 3); for (xx in tx - 2..tx + 2) set(img, xx, y + 18, p.curtainDark); set(img, tx, y + 19, p.curtainDark) }
+    }
+
+    private fun shower(img: PixelImage, x: Int, y: Int, w: Int, p: Palette) {
+        // A pipe up the wall to a head, water falling from it in drops, a curtain rail across the top.
+        for (xx in x until x + w) set(img, xx, y, p.metalDark)
+        for (xx in x + 1 until x + w step 3) for (yy in 1..3) set(img, xx, y + yy, p.metal)
+        val hx = x + w - 4
+        for (yy in 4..12) set(img, hx, y + yy, p.metal)
+        for (xx in hx - 3..hx + 2) set(img, xx, y + 12, p.metalDark); for (xx in hx - 2..hx + 1) set(img, xx, y + 13, p.metal)
+        for (i in 0..4) { val dx = hx - 2 + i; for (yy in 15 until 26) if ((yy + i * 2) % 4 == 0) set(img, dx, y + yy, Argb.mix(p.water, p.frame, 0.4)) }
+        // The curtain hanging at the left in soft folds.
+        for (yy in 1 until 24) for (xx in x until x + 5) set(img, xx, y + yy, if (xx % 2 == 0) p.fabricLight else p.fabric)
     }
 
     private fun starGarland(img: PixelImage, x: Int, y: Int, w: Int, p: Palette) {
