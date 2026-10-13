@@ -83,6 +83,8 @@ fun LivePet(
     /** Draw the pet this much bigger than the stage's own scale (the room that fills a phone); it then wanders the width that is on screen. */
     zoom: Float = 1f,
     onPetted: () -> Unit = {},
+    /** The phone's reduce-motion setting: the pet breathes and blinks but stays put. */
+    calm: Boolean = false,
     /** The calendar's decorations (Halloween, Christmas, Valentine's). */
     season: com.pawpixel.sprite.Season = com.pawpixel.sprite.Season.NONE,
     /** The room's furniture, as the owner arranged it. */
@@ -141,7 +143,7 @@ fun LivePet(
     val depthRows = kotlin.math.ceil(floorDepthPx / px).toInt()
     val roomW = kotlin.math.ceil(widthPx / px).toInt().coerceAtLeast(layout.stageWidth / 2)
     val places = remember(layout, depthRows, room, art?.species) { placesFor(room, layout, depthRows, art?.species ?: com.pawpixel.core.Species.OTHER) }
-    val brain = remember(layout, seed, places) { PetBrain(seed, Room.GRID_W, layout.set.width, layout.body, places) }
+    val brain = remember(layout, seed, places, calm) { PetBrain(seed, Room.GRID_W, layout.set.width, layout.body, places, calm) }
     /**
      * The pose on screen. The pet thinks every frame, but the stage is redrawn only when what it
      * shows changes by a pet pixel (a few times a second), not 60 times a second: a budget phone

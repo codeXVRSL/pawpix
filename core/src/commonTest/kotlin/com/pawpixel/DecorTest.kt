@@ -223,6 +223,19 @@ class DecorTest {
         assertEquals(Behavior.SLEEP, sleeper.pose(u + 600, Mood.SLEEPY).behavior)
     }
 
+    @Test fun aCalmPetNeverWalksHopsOrZooms() {
+        val brain = PetBrain(seed = 9, stageWidth = 120.0, canvasWidth = 51, body = intArrayOf(5, 4, 45, 42), places = Places(rows = 5, bed = 10.0 to 3, play = 50.0 to 2), calm = true)
+        val still = setOf(Behavior.IDLE, Behavior.LOOK, Behavior.PETTED, Behavior.EAT, Behavior.SLEEP, Behavior.GLANCE)
+        var t = 0L
+        val x0 = brain.x; val row0 = brain.row
+        for (mood in listOf(Mood.HAPPY, Mood.RESTLESS, Mood.CONTENT, Mood.SLEEPY)) {
+            repeat(400) { t += 50; val p = brain.pose(t, mood); assertTrue(p.behavior in still, "$mood: ${p.behavior}") }
+        }
+        brain.react(com.pawpixel.sprite.PetEvent.Cared(com.pawpixel.core.TaskKind.WALK), t)
+        repeat(100) { t += 50; assertTrue(brain.pose(t, Mood.HAPPY).behavior in still) }
+        assertEquals(x0, brain.x, 0.0); assertEquals(row0, brain.row, 0.0) // it is wherever it started: no movement at all
+    }
+
     @Test fun aPatOnTheWayToBedDropsTheErrand() {
         val places = Places(rows = 5, bed = 10.0 to 3)
         val brain = PetBrain(seed = 3, stageWidth = 120.0, canvasWidth = 51, body = intArrayOf(5, 4, 45, 42), places = places)

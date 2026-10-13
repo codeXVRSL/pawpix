@@ -118,7 +118,7 @@ fun PetScreen(app: AppScope, state: AppState, pet: Pet) {
             art, pet.eyes, reading.mood, seed = pet.id.hashCode(), modifier = Modifier.fillMaxSize(), reaction = reaction,
             description = MoodEngine.describe(pet.name, reading.mood), phase = phase, keepAspect = false, floorDepth = hudHeight + 64.dp, zoom = 1f,
             onPetted = { haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove) }, // the lightest tick there is: a pat, not a thump
-            season = seasonFor(app), room = pet.layout,
+            season = seasonFor(app), room = pet.layout, calm = remember { app.repo.platform.reduceMotion() },
         )
         HeartBurst(burst, Modifier.matchParentSize())
 

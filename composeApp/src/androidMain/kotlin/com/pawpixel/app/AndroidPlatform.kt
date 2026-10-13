@@ -184,6 +184,10 @@ class AndroidPlatform(private val context: Context) : Platform {
     override fun notificationsAllowed(): Boolean =
         runCatching { androidx.core.app.NotificationManagerCompat.from(context).areNotificationsEnabled() }.getOrDefault(true)
 
+    // Android's "Remove animations" sets the animator scale to zero; that is how apps are told to hold still.
+    override fun reduceMotion(): Boolean =
+        runCatching { android.provider.Settings.Global.getFloat(context.contentResolver, android.provider.Settings.Global.ANIMATOR_DURATION_SCALE, 1f) == 0f }.getOrDefault(false)
+
     override fun backgroundTip(): BackgroundTip? {
         val prefs = reminderPrefs(context)
         if (prefs.getBoolean(KEY_TIP_DISMISSED, false) || prefs.getInt(KEY_LOST, 0) < ReminderDelivery.TIP_AFTER) return null

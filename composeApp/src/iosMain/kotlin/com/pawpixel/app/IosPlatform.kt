@@ -218,6 +218,7 @@ class IosPlatform(private val host: IosHost) : Platform {
 
     override fun requestNotificationPermission() = host.requestNotificationPermission()
     override fun notificationsAllowed(): Boolean? = when (host.notificationStatus()) { 1 -> true; 0 -> false; else -> null }
+    override fun reduceMotion(): Boolean = platform.UIKit.UIAccessibilityIsReduceMotionEnabled()
     // WidgetKit timelines already contain future mood changes, so only a reload is needed.
     override fun refreshWidgets(nextChangeMs: Long?) = host.reloadWidgets()
     override fun shareFile(bytes: ByteArray, fileName: String, mimeType: String) =

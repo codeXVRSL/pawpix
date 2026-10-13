@@ -213,6 +213,7 @@ fun App(repo: PawRepository, registerBack: ((() -> Boolean) -> (() -> Unit))? = 
 
         // A new language redraws everything (remembered texts included).
         key(com.pawpixel.i18n.I18n.lang, state.settings.language) {
+        val reduceMotion = remember(stack.size) { repo.platform.reduceMotion() } // re-read as screens change, so a toggled setting is picked up
         Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
             // Screens slide in from the right and settle; going back slides them out again, the way
             // the phone's own apps move. Each screen on the stack gets its own state (two pets'
@@ -225,7 +226,10 @@ fun App(repo: PawRepository, registerBack: ((() -> Boolean) -> (() -> Unit))? = 
                     // A panel over the room rises from the bottom and drops back down; the room
                     // stays put under it.
                     val panel = (if (forward) targetState else initialState).last() is Screen.PetSection
-                    if (panel && forward) {
+                    if (reduceMotion) {
+                        // The phone asked for less motion: screens fade in place.
+                        fadeIn(tween(220)) togetherWith fadeOut(tween(220))
+                    } else if (panel && forward) {
                         (slideInVertically(defaultSpatial()) { it } + fadeIn(tween(160))) togetherWith fadeOut(tween(360))
                     } else if (panel) {
                         fadeIn(tween(200)) togetherWith (slideOutVertically(tween(260)) { it } + fadeOut(tween(260)))

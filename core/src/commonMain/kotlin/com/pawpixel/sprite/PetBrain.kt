@@ -86,6 +86,8 @@ class PetBrain(
     private val canvasWidth: Int,
     body: IntArray,
     private val places: Places = Places.NONE,
+    /** The phone asked for less motion: the pet breathes, blinks, glances and sleeps where it stands, and never walks, hops or zooms. */
+    private val calm: Boolean = false,
 ) {
     /** The row the pet's feet start on: [Room.PET_ROW], or the last one on a shallower floor. */
     private val homeRow = Room.PET_ROW.coerceAtMost(places.rows - 1).coerceAtLeast(0)
@@ -135,8 +137,8 @@ class PetBrain(
         when (event) {
             PetEvent.Petted -> start(Behavior.PETTED, nowMs, 1600)
             is PetEvent.Cared -> when (event.kind) {
-                TaskKind.FEED, TaskKind.WATER -> goTo(places.bowl, nowMs, Behavior.EAT, 2800, speed = 20.0)
-                TaskKind.WALK, TaskKind.PLAY -> { zoomLegs = 2; playAfter = places.play != null; startZoom(nowMs) }
+                TaskKind.FEED, TaskKind.WATER -> if (calm) start(Behavior.EAT, nowMs, 2800) else goTo(places.bowl, nowMs, Behavior.EAT, 2800, speed = 20.0)
+                TaskKind.WALK, TaskKind.PLAY -> if (calm) start(Behavior.LOOK, nowMs, 1900) else { zoomLegs = 2; playAfter = places.play != null; startZoom(nowMs) }
                 TaskKind.GROOM -> start(Behavior.SHAKE, nowMs, 1100)
                 TaskKind.MEDS, TaskKind.LITTER, TaskKind.VACCINE, TaskKind.DEWORM, TaskKind.FLEA_TICK, TaskKind.VET ->
                     start(Behavior.PETTED, nowMs, 1600)
@@ -291,14 +293,17 @@ class PetBrain(
 
     private fun pickNext(nowMs: Long, mood: Mood) {
         then = null // a new mood mid-walk drops the errand; it is chosen again below if still wanted
-        val weights: List<Pair<Behavior, Int>> = when (mood) {
-            Mood.SLEEPY -> listOf(Behavior.SLEEP to 1)
-            Mood.HAPPY -> listOf(Behavior.IDLE to 25, Behavior.WALK to 30, Behavior.HOP to 22, Behavior.LOOK to 15, Behavior.SHAKE to 8)
-            Mood.CONTENT -> listOf(Behavior.IDLE to 40, Behavior.WALK to 30, Behavior.LOOK to 22, Behavior.HOP to 5, Behavior.SHAKE to 3)
-            Mood.HUNGRY -> listOf(Behavior.BEG to 40, Behavior.WALK to 20, Behavior.LOOK to 20, Behavior.IDLE to 20)
-            Mood.RESTLESS -> listOf(Behavior.WALK to 55, Behavior.LOOK to 15, Behavior.HOP to 15, Behavior.SHAKE to 15)
-            Mood.NEEDS_MEDS -> listOf(Behavior.IDLE to 60, Behavior.LOOK to 25, Behavior.WALK to 15)
-            Mood.SAD -> listOf(Behavior.IDLE to 70, Behavior.LOOK to 20, Behavior.WALK to 10)
+        val weights: List<Pair<Behavior, Int>> = when {
+            calm && mood == Mood.SLEEPY -> { start(Behavior.SLEEP, nowMs, 12_000); return } // asleep where it stands
+            calm -> listOf(Behavior.IDLE to 70, Behavior.LOOK to 30)
+            mood == Mood.SLEEPY -> listOf(Behavior.SLEEP to 1)
+            mood == Mood.HAPPY -> listOf(Behavior.IDLE to 25, Behavior.WALK to 30, Behavior.HOP to 22, Behavior.LOOK to 15, Behavior.SHAKE to 8)
+            mood == Mood.CONTENT -> listOf(Behavior.IDLE to 40, Behavior.WALK to 30, Behavior.LOOK to 22, Behavior.HOP to 5, Behavior.SHAKE to 3)
+            mood == Mood.HUNGRY -> listOf(Behavior.BEG to 40, Behavior.WALK to 20, Behavior.LOOK to 20, Behavior.IDLE to 20)
+            mood == Mood.RESTLESS -> listOf(Behavior.WALK to 55, Behavior.LOOK to 15, Behavior.HOP to 15, Behavior.SHAKE to 15)
+            mood == Mood.NEEDS_MEDS -> listOf(Behavior.IDLE to 60, Behavior.LOOK to 25, Behavior.WALK to 15)
+            mood == Mood.SAD -> listOf(Behavior.IDLE to 70, Behavior.LOOK to 20, Behavior.WALK to 10)
+            else -> listOf(Behavior.IDLE to 1)
         }
         var roll = rnd.nextInt(weights.sumOf { it.second })
         val next = weights.first { roll -= it.second; roll < 0 }.first

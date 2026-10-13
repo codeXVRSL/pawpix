@@ -120,7 +120,7 @@ fun DecorateScreen(app: AppScope, state: AppState, pet: Pet) {
             RoomEditor(
                 layout, selected, phase, Modifier.fillMaxSize(),
                 onSelect = { selected = it },
-                onMove = { from, to -> haptics.performHapticFeedback(HapticFeedbackType.LongPress); commit(layout.replace(from, to), keep = to) },
+                onMove = { from, to -> haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove); commit(layout.replace(from, to), keep = to) },
             )
             remark?.let { SpeechBubble(it, Modifier.align(Alignment.TopCenter).padding(top = 12.dp)) }
         }
@@ -174,7 +174,7 @@ fun DecorateScreen(app: AppScope, state: AppState, pet: Pet) {
                     CataloguePiece(item, phase, layout.theme, enabled = spot != null, daysLeft = if (unlocked) null else daysLeft, count = have, label = label) {
                         if (spot == null) return@CataloguePiece
                         val placed = Placed(item, spot.first, spot.second)
-                        haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                        haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                         commit(layout.with(placed), keep = placed)
                     }
                 }
