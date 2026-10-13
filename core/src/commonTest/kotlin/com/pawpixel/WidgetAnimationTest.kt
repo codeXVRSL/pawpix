@@ -42,7 +42,7 @@ class WidgetAnimationTest {
         assertEquals(coarse.size, fine.size)
         // The fine still is the first fine frame, and every fine frame is exactly twice the coarse one (the icons scale with the pet).
         assertTrue(fine[0].pixels.contentEquals(Poses.render(a.fineStill, Mood.HAPPY).pixels))
-        for ((c, f) in coarse.zip(fine)) { assertEquals(c.width * 2, f.width); assertEquals(c.height * 2 - 3, f.height) }
+        for ((c, f) in coarse.zip(fine)) { assertEquals(c.width * 2, f.width); assertEquals(c.height * 2 - 1, f.height) }
     }
 
     @Test fun theSkyFollowsTheDayAndTheOwnersNight() {

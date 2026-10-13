@@ -14,7 +14,7 @@ object Poses {
 
     fun canvasSize(sprite: PixelImage): Pair<Int, Int> {
         val s = iconScale(sprite)
-        return (sprite.width + 2 * 7 * s) to (sprite.height + 10 * s + 3)
+        return (sprite.width + 2 * 7 * s) to (sprite.height + 10 * s + 1 + s)
     }
 
     /** All poses; [eyesClosed] (if the owner marked the eyes) is used for the sleeping pose. */
@@ -71,7 +71,7 @@ object Poses {
         val baseY = 10 * s
         val lift = when (mood) { Mood.HAPPY -> -2 * s; Mood.SAD -> s; else -> 0 }
 
-        drawShadow(canvas, sprite, baseX, h - 3, if (mood == Mood.HAPPY) 0.6 else 0.8)
+        drawShadow(canvas, sprite, baseX, h - 1 - s, if (mood == Mood.HAPPY) 0.6 else 0.8, rows = s)
         val body = when (mood) {
             Mood.SLEEPY -> tint(sprite, 0xFF1D2B53.toInt(), 0.35)
             Mood.SAD -> desaturate(sprite, 0.65, 0.85)
@@ -116,7 +116,8 @@ object Poses {
         return canvas
     }
 
-    private fun drawShadow(canvas: PixelImage, sprite: PixelImage, x0: Int, y: Int, widthFactor: Double) {
+    /** A soft two-tone shadow [rows] deep (it thickens with the pet: two rows under the plain pet, four under the fine one). */
+    private fun drawShadow(canvas: PixelImage, sprite: PixelImage, x0: Int, y: Int, widthFactor: Double, rows: Int = 2) {
         var minX = sprite.width; var maxX = -1
         for (yy in 0 until sprite.height) for (xx in 0 until sprite.width) if (Argb.alpha(sprite[xx, yy]) > 0) {
             if (xx < minX) minX = xx; if (xx > maxX) maxX = xx
@@ -125,8 +126,8 @@ object Poses {
         val cx = x0 + (minX + maxX) / 2.0
         val half = (maxX - minX + 1) * widthFactor / 2
         val shadow = 0x40000000
-        for (row in 0..1) {
-            val hw = if (row == 0) half else half * 0.7
+        for (row in 0 until rows) {
+            val hw = if (row < rows / 2) half else half * 0.7
             for (x in (cx - hw).roundToInt()..(cx + hw).roundToInt()) {
                 val yy = y + row
                 if (canvas.inBounds(x, yy)) canvas[x, yy] = Argb.blend(canvas[x, yy], shadow)
