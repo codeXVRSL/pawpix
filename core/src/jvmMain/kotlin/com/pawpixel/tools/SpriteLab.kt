@@ -68,7 +68,7 @@ fun main(args: Array<String>) {
         for (p in poses) { sheet.draw(p, x, 0); x += p.width + 2 }
         File(outDir, "$base.poses.png").writeBytes(Png.encode(sheet.scaled(6)))
 
-        val card = RevealCard.render(result.photoCrop, art.still, base.replace('_', ' ').replace('-', ' '))
+        val card = RevealCard.render(result.photoCrop, art.fineStill, base.replace('_', ' ').replace('-', ' '))
         File(outDir, "$base.reveal.png").writeBytes(Png.encode(card))
         println("${file.name}: ${result.head.width}px face, ${result.palette.size} colours, background " +
             (if (result.backgroundRemoved) "removed" + (if (mask != null) " (mask file)" else " (fallback)") else "kept (centre crop)") +

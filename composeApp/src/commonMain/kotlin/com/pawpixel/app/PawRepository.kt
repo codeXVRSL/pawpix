@@ -563,7 +563,7 @@ class PawRepository(val platform: Platform) {
         val png = withContext(Dispatchers.Default) {
             val art = art(pet) ?: return@withContext null
             val photo = photoCrop(pet.id) ?: return@withContext null
-            Png.encode(RevealCard.render(photo, art.still, pet.name))
+            Png.encode(RevealCard.render(photo, art.fineStill, pet.name))
         } ?: return
         platform.shareFile(png, "${fileStem(pet)}.png", "image/png")
     }
@@ -589,7 +589,7 @@ class PawRepository(val platform: Platform) {
     suspend fun shareMilestone(pet: Pet, days: Int) {
         val png = withContext(Dispatchers.Default) {
             val art = art(pet) ?: return@withContext null
-            Png.encode(com.pawpixel.sprite.MilestoneCard.render(art.still, pet.name, com.pawpixel.core.Milestones.title(days)))
+            Png.encode(com.pawpixel.sprite.MilestoneCard.render(art.fineStill, pet.name, com.pawpixel.core.Milestones.title(days)))
         } ?: return
         platform.shareFile(png, "${fileStem(pet)}-$days-days.png", "image/png")
     }

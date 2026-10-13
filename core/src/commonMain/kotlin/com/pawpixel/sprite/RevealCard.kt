@@ -125,9 +125,13 @@ object RevealCard {
         val f = maxOf(1, minOf((PANEL - 24) / pose.width, (PANEL - 24) / pose.height))
         val big = pose.scaled(f)
         panel.draw(big, (PANEL - big.width) / 2, (PANEL - big.height) / 2)
-        val heart = Icons.HEART.scaled(maxOf(3, f - 1))
+        // The hearts keep their size beside a fine (twice as wide) pet, and are smoothed like it.
+        val hs = maxOf(3, f * (if (sprite.width >= 72) 2 else 1) - 1)
+        fun heartIcon(i: PixelImage) = if (hs >= 2) i.scale2x().scaled(hs / 2) else i.scaled(hs)
+        val heart = heartIcon(Icons.HEART)
         panel.draw(heart, PANEL - heart.width - 16, 16)
-        panel.draw(Icons.HEART_SMALL.scaled(maxOf(3, f - 1)), PANEL - heart.width - 16 - Icons.HEART_SMALL.width * maxOf(3, f - 1) - 8, 16 + heart.height / 2)
+        val small = heartIcon(Icons.HEART_SMALL)
+        panel.draw(small, PANEL - heart.width - 16 - small.width - 8, 16 + heart.height / 2)
         card.draw(panel, rightX, top)
         border(card, rightX, top, PANEL, PANEL)
 

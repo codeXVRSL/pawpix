@@ -88,5 +88,5 @@ class PawWebPet(
 
     fun gif(name: String): ByteArray = AnimatedExport.clip(art, emptyList(), name, mood = if (mood == Mood.SLEEPY) Mood.SLEEPY else Mood.HAPPY)
 
-    fun revealPng(name: String): ByteArray = Png.encode(RevealCard.render(result.photoCrop, art.still, name))
+    fun revealPng(name: String): ByteArray = Png.encode(RevealCard.render(result.photoCrop, art.fineStill, name))
 }
