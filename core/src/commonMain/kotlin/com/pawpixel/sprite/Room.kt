@@ -275,6 +275,7 @@ object Room {
                 Furniture.ROUND_RUG -> rug(img, g, pl, p, Flat.ROUND)
                 Furniture.POND -> rug(img, g, pl, p, Flat.POND)
                 Furniture.KITCHEN_MAT, Furniture.BATH_MAT -> rug(img, g, pl, p, Flat.RUG)
+                Furniture.PLAY_MAT -> rug(img, g, pl, p, Flat.PLAY_MAT)
                 else -> Unit
             }
         }
@@ -427,7 +428,7 @@ object Room {
         clouds(img, g, hedgeTop, cloud)
     }
 
-    private enum class Flat { RUG, ROUND, POND }
+    private enum class Flat { RUG, ROUND, POND, PLAY_MAT }
 
     /** A few soft clouds in the garden's sky, drawn after the box so they sit over the sky and nothing else. */
     private fun clouds(img: PixelImage, g: Geometry, hedgeTop: Int, cloud: Int) {
@@ -455,6 +456,13 @@ object Room {
                     if (r > 1.0) continue
                     val pad = (du - uw * 0.3).let { it * it } + (dv - dh * 0.6).let { it * it * 2 } < 6.0
                     if (r > 0.78) p.metalDark else if (r > 0.6) p.metal else if (pad) p.leafDark else if (r in 0.22..0.3) p.glass else p.water
+                } else if (kind == Flat.PLAY_MAT) {
+                    // Foam squares in four colours, like a jigsaw play mat.
+                    val cu = floor(du / (uw / 4)).toInt().coerceIn(0, 3); val cv = floor(dv / (dh / 2)).toInt().coerceIn(0, 1)
+                    val colours = intArrayOf(p.curtain, 0xFFFFCF5C.toInt(), p.bowl, p.leaf)
+                    val c = colours[(cu + cv) % 4]
+                    val edge = du < 1.0 || du > uw - 1.0 || y == top || y == bottom - 1 || floor(du).toInt().mod((uw / 4).toInt().coerceAtLeast(1)) == 0 || (y - top) == (dh / 2).toInt()
+                    if (edge) Argb.mix(c, p.ink, 0.3) else if ((x + y) % 5 == 0) Argb.mix(c, p.frame, 0.25) else c
                 } else if (kind == Flat.ROUND) {
                     val nx = (du - uw / 2) / (uw / 2); val ny = (dv - dh / 2) / (dh / 2)
                     val r = nx * nx + ny * ny
@@ -478,7 +486,7 @@ object Room {
      * corners, a beam slanting from each window (warm sun by day, cool moon by night), a pool of warm
      * light around each lamp (faint by day, the room's light at night), and a glow around the glass.
      */
-    private fun lampShades(props: List<Prop>): List<FloatArray> = props.filter { it.placed.item == Furniture.LAMP || it.placed.item == Furniture.GARDEN_LANTERN || it.placed.item == Furniture.MOON_LAMP }.map { floatArrayOf(it.x + it.image.width / 2f, it.y + 4f) }
+    private fun lampShades(props: List<Prop>): List<FloatArray> = props.filter { it.placed.item == Furniture.LAMP || it.placed.item == Furniture.GARDEN_LANTERN || it.placed.item == Furniture.MOON_LAMP || it.placed.item == Furniture.FIREPLACE }.map { floatArrayOf(it.x + it.image.width / 2f, it.y + 4f) }
 
     private fun light(g: Geometry, phase: Sky.Phase, glass: List<IntArray>, lamps: List<FloatArray>): Light {
         val w = g.width; val h = g.height
@@ -529,7 +537,7 @@ object Room {
     }
 
     /** The x of the lamp's shade, when there is a lamp: at night shadows fall away from it. */
-    private fun lampAt(props: List<Prop>, g: Geometry): Float? = props.firstOrNull { it.placed.item == Furniture.LAMP || it.placed.item == Furniture.GARDEN_LANTERN || it.placed.item == Furniture.MOON_LAMP }?.let { it.x + it.image.width / 2f }
+    private fun lampAt(props: List<Prop>, g: Geometry): Float? = props.firstOrNull { it.placed.item == Furniture.LAMP || it.placed.item == Furniture.GARDEN_LANTERN || it.placed.item == Furniture.MOON_LAMP || it.placed.item == Furniture.FIREPLACE }?.let { it.x + it.image.width / 2f }
 
     /**
      * A piece's shadow: its silhouette flattened onto the floor at its feet, pushed a little to the
@@ -674,6 +682,13 @@ object Room {
             Furniture.RUBBER_DUCK -> rubberDuck(p)
             Furniture.TOWEL_STACK -> towelStack(p)
             Furniture.WASHING_MACHINE -> washingMachine(w, d, p)
+            Furniture.FIREPLACE -> fireplace(w, d, p, phase)
+            Furniture.SLIDE -> slide(w, d, p)
+            Furniture.TRAIN_SET -> trainSet(w, d, p)
+            Furniture.DOGHOUSE -> doghouse(w, d, p)
+            Furniture.WAGON -> wagon(p)
+            Furniture.SCARECROW -> scarecrow(p)
+            Furniture.PICKET_FENCE -> picketFence(w, d, p)
             else -> PixelImage(w, d)
         }
         return if (pl.flip) StageRenderer.mirror(img) else img
@@ -1300,6 +1315,97 @@ object Room {
         set(img, x, y + 1, p.metalDark); set(img, x + w - 1, y + 1, p.metalDark)
         for (xx in x + 2 until x + 7) for (yy in y + 1..y + 8) set(img, xx, yy, if (yy == y + 8 || xx == x + 2) Argb.mix(p.curtain, p.ink, 0.25) else p.curtain)
         for (xx in x + 10 until x + 15) for (yy in y + 1..y + 7) set(img, xx, yy, if (yy == y + 7 || xx == x + 10) Argb.mix(p.bowl, p.ink, 0.25) else p.bowl)
+    }
+
+    // ---- more for the first rooms ----
+
+    private fun fireplace(w: Int, d: Int, p: Palette, phase: Sky.Phase): PixelImage {
+        val img = PixelImage(w, d + 18)
+        // A stone surround with a mantel, a dark hearth and a fire that burns brighter at night.
+        box(img, 0, 0, w, 2, 16, p.metal, Argb.mix(p.metal, p.frame, 0.3), p.metalDark, p.metalDark)
+        for (xx in 0 until w) set(img, xx, 2, p.woodLight)
+        for (yy in 5 until d + 16) for (xx in 3 until w - 3) set(img, xx, yy, if (yy == 5 || xx == 3 || xx == w - 4) p.metalDark else p.ink)
+        val flame = if (phase.dark) 0xFFFFB347.toInt() else 0xFFF28C28.toInt(); val core = 0xFFFFE27A.toInt()
+        for ((dx, dy) in listOf(0 to 0, -1 to 0, 1 to 0, -2 to 1, 2 to 1, -1 to 1, 1 to 1, 0 to 1, 0 to -1, -1 to -2, 1 to -2, 0 to -3)) set(img, w / 2 + dx, d + 11 + dy, flame)
+        for ((dx, dy) in listOf(0 to 0, 0 to -1, -1 to 1, 1 to 1)) set(img, w / 2 + dx, d + 11 + dy, core)
+        for (xx in 4 until w - 4) set(img, xx, d + 13, p.woodDark)
+        for (xx in 1 until w - 1 step 4) set(img, xx, d + 15, p.metal)
+        return img
+    }
+
+    private fun slide(w: Int, d: Int, p: Palette): PixelImage {
+        val img = PixelImage(w, d + 14)
+        // A ladder up the left, a chute sloping down to the right.
+        for (yy in 1 until d + 13) { set(img, 2, yy, p.metalDark); set(img, 4, yy, p.metalDark); if (yy % 3 == 1) set(img, 3, yy, p.metal) }
+        for (xx in 2..6) set(img, xx, 0, p.curtainDark)
+        for (xx in 5 until w - 1) {
+            val yy = 1 + ((xx - 5) * (d + 10)) / (w - 6)
+            set(img, xx, yy, p.curtainDark); set(img, xx, yy + 1, p.curtain); set(img, xx, yy + 2, p.curtain); set(img, xx, yy + 3, p.curtainDark)
+        }
+        for (xx in w - 4 until w - 1) set(img, xx, d + 13, p.curtainDark)
+        return img
+    }
+
+    private fun trainSet(w: Int, d: Int, p: Palette): PixelImage {
+        val img = PixelImage(w, d + 6)
+        // An oval of track with a little engine and a carriage on it.
+        for (yy in 2 until d + 5) for (xx in 0 until w) {
+            val nx = (xx + 0.5 - w / 2.0) / (w / 2.0); val ny = (yy + 0.5 - (d + 7) / 2.0 - 1) / ((d + 3) / 2.0)
+            val r = nx * nx + ny * ny
+            if (r in 0.62..1.0) set(img, xx, yy, if ((xx + yy) % 2 == 0) p.woodDark else p.wood)
+        }
+        for (xx in 2..5) for (yy in 0..3) set(img, xx, yy, if (yy == 0 || xx == 2) Argb.mix(p.curtain, p.ink, 0.3) else p.curtain)
+        set(img, 3, 0, p.ink); set(img, 6, 2, p.ink); set(img, 6, 3, p.ink)
+        for (xx in 8..11) for (yy in 1..3) set(img, xx, yy, if (yy == 1) Argb.mix(p.bowl, p.ink, 0.3) else p.bowl)
+        for (xx in listOf(3, 5, 9, 11)) set(img, xx, 4, p.ink)
+        return img
+    }
+
+    private fun doghouse(w: Int, d: Int, p: Palette): PixelImage {
+        val img = PixelImage(w, d + 16)
+        // A little house with a peaked roof and a dark round door; the pet can sleep inside.
+        for (dy in 0..5) for (dx in dy..w - 1 - dy) set(img, dx, 5 - dy, if (dy == 0 || dx == dy || dx == w - 1 - dy) Argb.mix(p.curtainDark, p.ink, 0.3) else p.curtainDark)
+        for (xx in 0 until w) set(img, xx, 5, Argb.mix(p.curtainDark, p.ink, 0.4))
+        for (yy in 6 until d + 15) for (xx in 1 until w - 1) set(img, xx, yy, if (xx == 1 || xx == w - 2 || yy == d + 14) p.woodDark else if (yy % 4 == 2) p.wood else p.woodLight)
+        for (yy in 9 until d + 14) for (xx in w / 2 - 3..w / 2 + 2) if (yy > 9 || xx in w / 2 - 2..w / 2 + 1) set(img, xx, yy, p.ink)
+        for (xx in w / 2 - 2..w / 2 + 1) set(img, xx, d + 15, p.woodDark)
+        return img
+    }
+
+    private fun wagon(p: Palette): PixelImage {
+        val img = PixelImage(TILE_W, TILE_D + 5)
+        // A red garden wagon with two wheels and a handle.
+        for (yy in 3..7) for (xx in 0..7) set(img, xx, yy, if (yy == 3 || yy == 7 || xx == 0 || xx == 7) p.curtainDark else p.curtain)
+        for (xx in 1..6) set(img, xx, 4, Argb.mix(p.curtain, p.frame, 0.35))
+        set(img, 1, 8, p.ink); set(img, 2, 8, p.ink); set(img, 5, 8, p.ink); set(img, 6, 8, p.ink); set(img, 1, 9, p.ink); set(img, 6, 9, p.ink)
+        set(img, 8, 2, p.metalDark); set(img, 8, 1, p.metalDark); set(img, 7, 2, p.metalDark)
+        for (xx in 2..5) set(img, xx, 2, if (xx % 2 == 0) p.leaf else p.leafDark)
+        return img
+    }
+
+    private fun scarecrow(p: Palette): PixelImage {
+        val img = PixelImage(TILE_W, TILE_D + 20)
+        val x = 4
+        // A pole with a cross bar, a shirt, a straw head under a hat.
+        for (yy in 8 until TILE_D + 19) set(img, x, yy, p.woodDark)
+        for (xx in 0 until TILE_W) set(img, xx, 11, p.woodDark)
+        for (yy in 10..17) for (xx in 2..6) set(img, xx, yy, if (xx == 2 || xx == 6 || yy == 17) Argb.mix(p.bowl, p.ink, 0.3) else if ((xx + yy) % 3 == 0) Argb.mix(p.bowl, p.frame, 0.3) else p.bowl)
+        for (yy in 5..9) for (xx in 2..6) set(img, xx, yy, if ((xx + yy) % 2 == 0) 0xFFFFCF5C.toInt() else 0xFFE0B23A.toInt())
+        set(img, 3, 7, p.ink); set(img, 5, 7, p.ink); set(img, 4, 8, p.curtainDark)
+        for (xx in 1..7) set(img, xx, 4, p.woodDark); for (xx in 2..6) for (yy in 2..3) set(img, xx, yy, p.wood)
+        set(img, 1, 12, p.leaf); set(img, 7, 13, p.leaf)
+        return img
+    }
+
+    private fun picketFence(w: Int, d: Int, p: Palette): PixelImage {
+        val img = PixelImage(w, d + 8)
+        for (xx in 0 until w) { set(img, xx, 3, p.frame); set(img, xx, 4, p.sill); set(img, xx, d + 4, p.frame); set(img, xx, d + 5, p.sill) }
+        for (xx in 1 until w step 4) {
+            set(img, xx, 0, p.frame)
+            for (yy in 1 until d + 8) { set(img, xx, yy, p.frame); set(img, xx + 1, yy, p.sill) }
+        }
+        set(img, 3, d + 6, p.leaf); set(img, 4, d + 7, p.leafDark); set(img, w - 5, d + 7, p.curtain)
+        return img
     }
 
     // ---- the season's stand-ins ----

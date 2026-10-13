@@ -77,6 +77,7 @@ enum class Furniture(
     COFFEE_TABLE("Coffee table", 5, 2, theme = RoomTheme.LIVING),
     FLOOR_CUSHION("Floor cushion", 2, 1, use = Use.SLEEP, theme = RoomTheme.LIVING),
     RECORD_PLAYER("Record player", 10, 1, theme = RoomTheme.LIVING),
+    FIREPLACE("Fireplace", 7, 2, theme = RoomTheme.LIVING),
     // ---- playroom ----
     TOY_CHEST("Toy chest", 0, 2, theme = RoomTheme.PLAYROOM),
     BLOCKS("Building blocks", 3, 1, theme = RoomTheme.PLAYROOM),
@@ -86,6 +87,9 @@ enum class Furniture(
     PLAY_TENT("Play tent", 21, 2, use = Use.SLEEP, theme = RoomTheme.PLAYROOM),
     BUNTING("Bunting", 0, 4, place = Place.WALL, theme = RoomTheme.PLAYROOM),
     CHALKBOARD("Chalkboard", 5, 2, place = Place.WALL, theme = RoomTheme.PLAYROOM),
+    SLIDE("Slide", 12, 2, theme = RoomTheme.PLAYROOM),
+    TRAIN_SET("Train set", 17, 2, theme = RoomTheme.PLAYROOM),
+    PLAY_MAT("Play mat", 2, 2, 2, Place.RUG, theme = RoomTheme.PLAYROOM),
     // ---- garden ----
     FLOWER_BED("Flower bed", 0, 2, theme = RoomTheme.GARDEN),
     GARDEN_BENCH("Garden bench", 3, 2, use = Use.SLEEP, theme = RoomTheme.GARDEN),
@@ -95,6 +99,10 @@ enum class Furniture(
     LITTLE_TREE("Little tree", 14, 2, theme = RoomTheme.GARDEN),
     BIRDHOUSE("Birdhouse", 12, 1, place = Place.WALL, theme = RoomTheme.GARDEN),
     WIND_CHIME("Wind chime", 20, 1, place = Place.WALL, theme = RoomTheme.GARDEN),
+    DOGHOUSE("Doghouse", 2, 2, use = Use.SLEEP, theme = RoomTheme.GARDEN),
+    WAGON("Wagon", 9, 1, theme = RoomTheme.GARDEN),
+    SCARECROW("Scarecrow", 17, 1, theme = RoomTheme.GARDEN),
+    PICKET_FENCE("Picket fence", 4, 3, theme = RoomTheme.GARDEN),
     // ---- bedroom ----
     BIG_BED("Big bed", 0, 3, 2, use = Use.SLEEP, theme = RoomTheme.BEDROOM),
     NIGHTSTAND("Nightstand", 3, 1, theme = RoomTheme.BEDROOM),
