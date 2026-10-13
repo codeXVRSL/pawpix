@@ -57,6 +57,7 @@ import com.pawpixel.core.MoodEngine
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
+import com.pawpixel.app.PawRepository
 import com.pawpixel.app.rememberPhotoPicker
 import com.pawpixel.app.toImageBitmap
 import com.pawpixel.core.AppState
@@ -245,8 +246,8 @@ fun SpriteMakerScreen(app: AppScope, state: AppState, existingPetId: String?) {
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             for (m in listOf(Mood.HUNGRY, Mood.RESTLESS, Mood.SLEEPY, Mood.SAD)) {
                                 val img = remember(art, m) {
-                                    if (m == Mood.SLEEPY) Poses.render(Chibi.sleeping(art), m)
-                                    else Poses.render(art.still, m)
+                                    if (m == Mood.SLEEPY) Poses.render(Chibi.sleeping(art, fine = PawRepository.PET_FINE), m)
+                                    else Poses.render(art.fineStill, m)
                                 }
                                 Box(Modifier.size(64.dp).clip(MaterialTheme.shapes.small).background(MaterialTheme.colorScheme.surfaceContainer), contentAlignment = Alignment.Center) {
                                     SpriteView(img, Modifier.size(56.dp), animate = false, description = MoodEngine.describe(shownName, m))
