@@ -333,8 +333,8 @@ object Room {
         for (i in img2.pixels.indices) img2.pixels[i] = Light.lit(img2.pixels[i], light2.r[i], light2.g[i], light2.b[i])
         for (i in img.pixels.indices) img.pixels[i] = Light.lit(img.pixels[i], light.r[i], light.g[i], light.b[i])
         val lit = props.map { Prop(it.placed, litSprite(it.image, it.x, it.y, light), it.x, it.y, it.baseline, litSprite(it.fine, it.x * FINE, it.y * FINE, light2)) }
-        bloom(img, lit, 1)
-        bloom(img2, lit, FINE)
+        // The glow is a blur, so one computed at room resolution serves both pictures.
+        glow(img, lit)?.let { addGlow(img, it, width, height, 1); addGlow(img2, it, width, height, FINE) }
         return Scene(img, lit, g, light, img2, light2, glass, lamps)
     }
 
@@ -630,27 +630,51 @@ object Room {
         return out
     }
 
-    private fun bloom(img: PixelImage, props: List<Prop>, scale: Int) {
+    /** The bloom glow of [img] with [props] on it (three channels per pixel, the brightest spots blurred outwards), or null when nothing glows. */
+    private fun glow(img: PixelImage, props: List<Prop>): IntArray? {
         val w = img.width; val h = img.height
         val bright = IntArray(w * h * 3)
+        var any = false
         fun splat(c: Int, x: Int, y: Int) {
             if (x !in 0 until w || y !in 0 until h || Argb.alpha(c) < 128) return
             val i = (y * w + x) * 3
-            bright[i] = maxOf(bright[i], maxOf(0, Argb.r(c) - 215) * 5); bright[i + 1] = maxOf(bright[i + 1], maxOf(0, Argb.g(c) - 215) * 5); bright[i + 2] = maxOf(bright[i + 2], maxOf(0, Argb.b(c) - 215) * 5)
+            val r = maxOf(0, Argb.r(c) - 215) * 5; val g = maxOf(0, Argb.g(c) - 215) * 5; val b = maxOf(0, Argb.b(c) - 215) * 5
+            if (r == 0 && g == 0 && b == 0) return
+            any = true
+            bright[i] = maxOf(bright[i], r); bright[i + 1] = maxOf(bright[i + 1], g); bright[i + 2] = maxOf(bright[i + 2], b)
         }
         for (y in 0 until h) for (x in 0 until w) splat(img[x, y], x, y)
-        for (p in props) { val im = if (scale == 1) p.image else p.fine; for (yy in 0 until im.height) for (xx in 0 until im.width) splat(im[xx, yy], p.x * scale + xx, p.y * scale + yy) }
-        if (bright.all { it == 0 }) return
+        for (p in props) for (yy in 0 until p.image.height) for (xx in 0 until p.image.width) splat(p.image[xx, yy], p.x + xx, p.y + yy)
+        if (!any) return null
         // Two box blurs, each done as a horizontal then a vertical pass (the same result as the square kernel at a fraction of the work).
         var g = bright
-        val r = 2 * scale
-        repeat(2) { g = boxBlur(boxBlur(g, w, h, r, horizontal = true), w, h, r, horizontal = false) }
-        for (i in 0 until w * h) {
+        repeat(2) { g = boxBlur(boxBlur(g, w, h, 2, horizontal = true), w, h, 2, horizontal = false) }
+        return g
+    }
+
+    /** [glow] (sized [gw] x [gh]) added over [img], which is [scale] times as large, sampled smoothly between glow pixels. */
+    private fun addGlow(img: PixelImage, glow: IntArray, gw: Int, gh: Int, scale: Int) {
+        val w = img.width; val h = img.height
+        for (y in 0 until h) for (x in 0 until w) {
+            val i = y * w + x
             val c = img.pixels[i]
-            val r = (Argb.r(c) + g[i * 3] * 0.3f).roundToInt().coerceAtMost(255)
-            val gg = (Argb.g(c) + g[i * 3 + 1] * 0.3f).roundToInt().coerceAtMost(255)
-            val b = (Argb.b(c) + g[i * 3 + 2] * 0.3f).roundToInt().coerceAtMost(255)
-            img.pixels[i] = Argb.of(Argb.alpha(c), r, gg, b)
+            var gr: Float; var gg: Float; var gb: Float
+            if (scale == 1) { gr = glow[i * 3].toFloat(); gg = glow[i * 3 + 1].toFloat(); gb = glow[i * 3 + 2].toFloat() }
+            else {
+                val fx = ((x + 0.5f) / scale - 0.5f).coerceIn(0f, gw - 1f); val fy = ((y + 0.5f) / scale - 0.5f).coerceIn(0f, gh - 1f)
+                val x0 = fx.toInt(); val y0 = fy.toInt(); val x1 = minOf(gw - 1, x0 + 1); val y1 = minOf(gh - 1, y0 + 1)
+                val tx = fx - x0; val ty = fy - y0
+                fun at(ch: Int): Float {
+                    val a = glow[(y0 * gw + x0) * 3 + ch]; val b = glow[(y0 * gw + x1) * 3 + ch]; val cc = glow[(y1 * gw + x0) * 3 + ch]; val d = glow[(y1 * gw + x1) * 3 + ch]
+                    return (a + (b - a) * tx) * (1 - ty) + (cc + (d - cc) * tx) * ty
+                }
+                gr = at(0); gg = at(1); gb = at(2)
+            }
+            if (gr == 0f && gg == 0f && gb == 0f) continue
+            val r = (Argb.r(c) + gr * 0.3f).roundToInt().coerceAtMost(255)
+            val gg2 = (Argb.g(c) + gg * 0.3f).roundToInt().coerceAtMost(255)
+            val b = (Argb.b(c) + gb * 0.3f).roundToInt().coerceAtMost(255)
+            img.pixels[i] = Argb.of(Argb.alpha(c), r, gg2, b)
         }
     }
 
