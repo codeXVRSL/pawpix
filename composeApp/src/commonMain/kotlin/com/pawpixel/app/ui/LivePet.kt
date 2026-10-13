@@ -168,6 +168,8 @@ fun LivePet(
 
     // The room behind the pet, drawn once per size, time of day and arrangement (it is tiny: stage pixels).
     val roomCache = remember { HashMap<String, DrawnScene>() }
+    // When the time of day turns (dawn, dusk, night), the old room fades into the new over a minute and a half rather than snapping.
+    val fade = remember { PhaseFade() }
     val roomCode = remember(room) { room.encode() }
     // Where the pet was last drawn on screen (left, top, right, bottom), for taps: written by the draw, read by the hit-test.
     val petBox = remember { FloatArray(4) }
@@ -213,8 +215,10 @@ fun LivePet(
         fun sx(v: Double) = roomLeft + (v * px).toFloat()
         fun sy(v: Double) = roomTop + (v * px).toFloat()
         val fine = DrawnScene.FINE
-        drawImage(scene.base, IntOffset.Zero, IntSize(roomW * fine, rows * fine), IntOffset(roomLeft, roomTop), IntSize((roomW * px).roundToInt(), (rows * px).roundToInt()), filterQuality = FilterQuality.None)
-        fun drawProp(p: DrawnProp) = drawImage(p.image, IntOffset.Zero, IntSize(p.image.width, p.image.height), IntOffset(roomLeft + (p.x * px).roundToInt(), roomTop + (p.y * px).roundToInt()), IntSize((p.image.width * px / fine).roundToInt(), (p.image.height * px / fine).roundToInt()), filterQuality = FilterQuality.None)
+        val blend = fade.progress(scene, phase, clock[1]) // 1 once the new room is fully in
+        if (blend < 1f) fade.from?.let { old -> drawImage(old.soft, IntOffset.Zero, IntSize(roomW * fine, rows * fine), IntOffset(roomLeft, roomTop), IntSize((roomW * px).roundToInt(), (rows * px).roundToInt()), filterQuality = FilterQuality.None) }
+        drawImage(scene.base, IntOffset.Zero, IntSize(roomW * fine, rows * fine), IntOffset(roomLeft, roomTop), IntSize((roomW * px).roundToInt(), (rows * px).roundToInt()), filterQuality = FilterQuality.None, alpha = blend)
+        fun drawProp(p: DrawnProp) = drawImage(p.image, IntOffset.Zero, IntSize(p.image.width, p.image.height), IntOffset(roomLeft + (p.x * px).roundToInt(), roomTop + (p.y * px).roundToInt()), IntSize((p.image.width * px / fine).roundToInt(), (p.image.height * px / fine).roundToInt()), filterQuality = FilterQuality.None, alpha = blend)
 
         // Where the pet stands: its row's depth sets how big it is drawn and where its row is on the box's floor.
         val depth = Room.PET_ROW + 1.0 + pose.dy.toDouble() / Room.TILE_D
@@ -327,6 +331,34 @@ fun LivePet(
 }
 
 /** The room's backdrop, its smooth copy for the soft edges, and its standing pieces (in room pixels), ready to draw. */
+/**
+ * The slow cross-fade between the room by one time of day and the next: the old picture stays
+ * underneath while the new one comes in over [FADE_MS]. Read only while drawing.
+ */
+private class PhaseFade {
+    private var last: DrawnScene? = null
+    private var lastPhase: Sky.Phase? = null
+    private var start = 0L
+    /** The room being faded out, while a fade runs. */
+    var from: DrawnScene? = null; private set
+
+    /** How far the new [scene] is in (0 to 1) at [nowMs]; a change of [phase] starts a fade, any other change of scene (a resize, a new piece) just swaps. */
+    fun progress(scene: DrawnScene, phase: Sky.Phase, nowMs: Long): Float {
+        if (scene !== last) {
+            val old = last
+            if (old != null && lastPhase != null && lastPhase != phase && old.geom.width == scene.geom.width && old.geom.height == scene.geom.height) { from = old; start = nowMs }
+            else from = null
+            last = scene; lastPhase = phase
+        }
+        val f = from ?: return 1f
+        val t = (nowMs - start).toFloat() / FADE_MS
+        if (t >= 1f) { from = null; return 1f }
+        return t.coerceAtLeast(0f)
+    }
+
+    companion object { const val FADE_MS = 90_000f }
+}
+
 private class DrawnScene(val base: ImageBitmap, val soft: ImageBitmap, val props: List<DrawnProp>, val geom: Room.Geometry, val light: Room.Light, val windows: List<IntArray>, val lamps: List<FloatArray>) {
     companion object {
         /** The bitmaps hold this many fine pixels per room pixel (they are drawn through [com.pawpixel.sprite.PixelImage.scale2x]). */
