@@ -1,0 +1,107 @@
+PASS  an area with 2 owners stays hidden
+PASS  its pets stay hidden too
+PASS  with 3 owners the area appears, counting pets
+PASS  pets come back with look codes
+PASS  no owner ids or photos are exposed
+PASS  row security: you can't list other owners' pets
+PASS  row security: you can't read anyone's area
+PASS  signed-out callers get nothing
+PASS  blocking an owner drops the area below 3, so it hides
+PASS  blocks work both ways only for the pair (others still see it)
+PASS  reports reach the moderator
+PASS  reporters can't read reports back
+PASS  the fourth change of area in a day is refused
+PASS  deleting and re-adding the area doesn't reset the count (0018)
+PASS  the service role isn't limited (moves e back far away)
+PASS  gatherings list shows no venue
+PASS  the raw gatherings table isn't readable
+PASS  an RSVP can't be inserted directly, only through rsvp() (0017)
+PASS  a walk can't be inserted directly, only proposed through host_walk (0016)
+PASS  venue hidden before RSVP
+PASS  RSVP reveals the venue
+PASS  capacity is enforced
+PASS  you must join the map to RSVP
+PASS  you can cancel
+PASS  a walk shows the pixel pets of the owners going, with no owner ids
+PASS  signed-out callers see nobody
+PASS  an owner on the map can propose a walk
+PASS  you must join the map to host
+PASS  a proposed walk stays hidden until approved
+PASS  the host sees it waiting, with the venue, trimmed title, and themselves going
+PASS  nobody else sees it in their walks
+PASS  a walk in the past, or more than 90 days out, is refused
+PASS  at most 3 walks waiting per host
+PASS  once approved, everyone sees it with the note and area pin, but no venue
+PASS  the host is marked as host
+PASS  the host sees the venue without an RSVP
+PASS  community totals count owners, pets, areas and walks, nothing else
+PASS  only the host can cancel a walk
+PASS  the host can cancel it
+PASS  a signed-in owner (even one not on the map) can raise a lost alert
+PASS  a signed-out caller can't
+PASS  owners nearby see the alert, nearest first, without photos or owner
+PASS  far away it doesn't show
+PASS  the details carry the photos
+PASS  the share link's page reads the alert without signing in, owner left out
+PASS  a sighting can be reported
+PASS  the owner can't report a sighting on their own alert (0015)
+PASS  the owner sees the sightings (where, when, the note), never who
+PASS  nobody else can read them
+PASS  at most 3 photos
+PASS  alert names pass the word filter
+PASS  only the owner can close an alert
+PASS  safe home: the alert leaves the map and the share page says found
+PASS  the owner keeps their own alerts, with the sighting count
+PASS  a closed alert takes no more sightings
+PASS  the tables themselves are closed
+PASS  an owner makes an ID card for a pet
+PASS  making it again updates the same card
+PASS  the card page reads without signing in, owner left out
+PASS  a finder's message reaches the owner
+PASS  nobody else reads them
+PASS  an empty message is refused
+PASS  the owner lists their cards with the message count
+PASS  removing the card takes the page down
+PASS  a rabbit gets an ID card too (0019)
+PASS  an owner gets one six-character pal code
+PASS  an owner sets the pets their pals see
+PASS  a friend adds them by code (any case, spaces ignored)
+PASS  your own code is refused
+PASS  an unknown code is refused (no pal, and the miss is counted)
+PASS  pals see each other's pixel pets, names filtered, never a location
+PASS  a rabbit stays a rabbit for pals (0019)
+PASS  the other side sees the pal too (with no pets yet)
+PASS  a treat reaches the pal's inbox
+PASS  only pals can send treats
+PASS  a pal sees the moment with the pet's name and caption
+PASS  a new moment replaces the old one and a blocked caption is dropped
+PASS  a moment must be a small base64 JPEG
+PASS  non-pals see no moments
+PASS  the eleventh moment of the day is refused
+PASS  the owner can take a moment down
+PASS  the moments table itself is closed
+PASS  a treat's sender name goes through the word filter (0017)
+PASS  someone you blocked no longer sees your pets in Pals (0020)
+PASS  treats are refused across a block and earlier ones leave the inbox (0020)
+PASS  unblocking brings the pal back
+PASS  signed-out callers can't call the moment functions (0020)
+PASS  either side can unpal
+PASS  someone who unpalled you can't be re-added with their old code (0017)
+PASS  a replaced code stops working
+PASS  add_pal can't be called directly, only add_pal_tracked (0018)
+PASS  ten wrong codes in an hour lock guessing, even for a right one
+PASS  the pal tables themselves are closed
+PASS  a banned owner's pets disappear (area drops below 3)
+PASS  a banned owner can't unban themselves
+PASS  a banned owner can't delete the profile and come back clean (0017)
+PASS  re-joining keeps the ban
+PASS  pet names are filtered on the server ('G4g0' -> 'A dog')
+PASS  pet names are filtered on the server ('tang!na mo' -> 'A dog')
+PASS  pet names are filtered on the server ('Grape' -> 'Grape')
+PASS  pet names are filtered on the server ('Petite' -> 'Petite')
+PASS  look codes are validated
+PASS  presence must be a grid cell id, not coordinates
+PASS  leaving the map removes your area
+PASS  deleting the account removes it and everything with it
+
+all map backend checks passed
