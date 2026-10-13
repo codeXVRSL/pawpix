@@ -1,0 +1,29 @@
+PASS  first open goes straight to making a pet  (1727 ms)
+PASS  photo becomes a pixel pet  (8983 ms)
+PASS  cat body and ears  (8531 ms)
+      typed on attempt 1
+      scroll down #0 for Save: exists=true frame=(16.0, 903.6666870117188, 408.0, 42.33331298828125) hittable=true
+PASS  name and save  (59055 ms)
+PASS  Done on a care task  (4098 ms)
+PASS  add a medicine task  (15827 ms)
+PASS  decorate: the room's furniture can be moved; Back returns to the room  (5968 ms)
+PASS  health: a kitten's birthday gives her the first-year plan  (17262 ms)
+PASS  weight: two weigh-ins draw the chart  (30644 ms)
+PASS  before/after card opens the share sheet  (14567 ms)
+PASS  share animation opens the share sheet  (14000 ms)
+      scroll down #0 for Away 3 days: exists=true frame=(139.0, 544.3333129882812, 105.0, 48.0) hittable=true
+      scroll down #0 for Save backup file: exists=true frame=(32.0, 786.3333129882812, 149.6666717529297, 48.0) hittable=true
+      scroll down #0 for Back: exists=true frame=(16.0, -1374.3333740234375, 36.0, 36.0) hittable=false
+      scroll down #1 for Back: exists=true frame=(16.0, -1373.3333740234375, 36.0, 36.0) hittable=false
+      scroll down #2 for Back: exists=true frame=(16.0, -1374.6666259765625, 36.0, 36.0) hittable=false
+      scroll up #0 for Back: exists=true frame=(16.0, -913.0, 36.0, 36.0) hittable=false
+      scroll up #1 for Back: exists=true frame=(16.0, -503.3333435058594, 36.0, 36.0) hittable=false
+      scroll up #2 for Back: exists=true frame=(16.0, -38.66666793823242, 36.0, 36.0) hittable=false
+PASS  home is the pet's room; settings open  (49146 ms)
+PASS  album: a photo with a caption, then the pet remembered and brought back  (33457 ms)
+PASS  pet map opens (this CI build has no map server: it says so)  (8933 ms)
+PASS  demo map (no server): join, the pets nearby, a walk, RSVP, host a walk  (47043 ms)
+      scroll down #0 for Alert owners nearby: exists=true frame=(16.0, 792.3333129882812, 229.0, 50.0) hittable=true
+PASS  lost and found: raise an alert, then safe home  (28582 ms)
+PASS  share with your household (no server in this CI build: says it's not available yet)  (9743 ms)
+PASS  relaunch keeps the pet  (8683 ms)
