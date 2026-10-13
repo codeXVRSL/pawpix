@@ -43,6 +43,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import com.pawpixel.app.toImageBitmap
@@ -253,18 +254,28 @@ private fun RoomEditor(layout: RoomLayout, selected: Placed?, phase: Sky.Phase, 
     val layoutState by androidx.compose.runtime.rememberUpdatedState(layout)
     val selectedState by androidx.compose.runtime.rememberUpdatedState(selected)
     val desc = tr("The room: {0} pieces of furniture", layout.items.size)
+    // The lit scene is built off the main thread after every change (a few dozen milliseconds of pixel work);
+    // until the new one is ready the previous picture stays up, so a drop never stutters the editor.
+    var size by remember { mutableStateOf(IntSize.Zero) }
+    var drawn by remember { mutableStateOf<Drawn?>(null) }
+    androidx.compose.runtime.LaunchedEffect(layout, phase, size) {
+        val d = cache[drawnKey(layout, phase, size.width, size.height)]
+            ?: kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Default) { drawnFor(cache, layout, phase, size.width, size.height) }
+        if (d != null) drawn = d
+    }
     Canvas(
         modifier.semantics { contentDescription = desc }
+            .onSizeChanged { size = it }
             .pointerInput(Unit) {
                 detectTapGestures { tap ->
-                    val d = drawnFor(cache, layoutState, phase, size.width, size.height) ?: return@detectTapGestures
+                    val d = drawn ?: return@detectTapGestures
                     onSelect(d.hit(tap))
                 }
             }
             .pointerInput(Unit) {
                 detectDragGestures(
                     onDragStart = { start ->
-                        val d = drawnFor(cache, layoutState, phase, size.width, size.height) ?: return@detectDragGestures
+                        val d = drawn ?: return@detectDragGestures
                         val hit = d.hit(start) ?: return@detectDragGestures
                         onSelect(hit)
                         val (gx, gy) = d.cell(start, hit.item.onWall) ?: (hit.x to hit.y)
@@ -272,7 +283,7 @@ private fun RoomEditor(layout: RoomLayout, selected: Placed?, phase: Sky.Phase, 
                     },
                     onDrag = { change, _ ->
                         val cur = drag ?: return@detectDragGestures
-                        val d = drawnFor(cache, layoutState, phase, size.width, size.height) ?: return@detectDragGestures
+                        val d = drawn ?: return@detectDragGestures
                         val cell = d.cell(change.position, cur.piece.item.onWall)
                         val ghost = if (cell == null) cur.ghost else cur.piece.copy(x = cell.first - cur.grabX, y = cell.second - cur.grabY)
                         drag = cur.copy(ghost = ghost, valid = cell != null && layoutState.canPlace(ghost.item, ghost.x, ghost.y, except = cur.piece), at = change.position)
@@ -285,7 +296,7 @@ private fun RoomEditor(layout: RoomLayout, selected: Placed?, phase: Sky.Phase, 
                 )
             },
     ) {
-        val d = drawnFor(cache, layout, phase, size.width.toInt(), size.height.toInt()) ?: return@Canvas
+        val d = drawn ?: return@Canvas
         val px = d.px.toFloat()
         // The bitmaps hold two fine pixels per room pixel (PixelImage.scale2x), as the live room does.
         drawImage(d.base, IntOffset.Zero, IntSize(d.base.width, d.base.height), IntOffset(d.left, d.top), IntSize((d.base.width * px / 2).roundToInt(), (d.base.height * px / 2).roundToInt()), filterQuality = FilterQuality.None)
@@ -344,9 +355,11 @@ private class Drawn(val px: Int, val left: Int, val top: Int, val geom: Room.Geo
 private class EditorProp(val placed: Placed, val image: ImageBitmap, val x: Int, val y: Int, val w: Int, val h: Int)
 
 /** The editor's drawing of [layout] at a canvas size, cached per layout and size. */
+private fun drawnKey(layout: RoomLayout, phase: Sky.Phase, width: Int, height: Int) = "$width:$height:${phase.key}:${layout.encode()}"
+
 private fun drawnFor(cache: HashMap<String, Drawn>, layout: RoomLayout, phase: Sky.Phase, width: Int, height: Int): Drawn? {
     if (width <= 0 || height <= 0) return null
-    val key = "$width:$height:${phase.key}:${layout.encode()}"
+    val key = drawnKey(layout, phase, width, height)
     cache[key]?.let { return it }
     // The grid plus a margin must fit across; the floor's rows plus a margin must fit below the wall.
     val px = (floor(width / 100f).toInt() / 2 * 2).coerceAtLeast(2) // even, so the fine drawing lands on whole pixels
