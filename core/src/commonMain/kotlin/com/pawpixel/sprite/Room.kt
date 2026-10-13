@@ -133,6 +133,12 @@ object Room {
         }
         /** [sprite] as it looks under the room's light with its top-left at ([x], [y]). */
         fun lit(sprite: PixelImage, x: Int, y: Int): PixelImage = litSprite(sprite, x, y, light)
+        /** [sprite] drawn at [fine] pixels per room pixel with its top-left at fine ([x], [y]), under the room's light. */
+        fun litFine(sprite: PixelImage, x: Int, y: Int, fine: Int): PixelImage {
+            val out = PixelImage(sprite.width, sprite.height)
+            for (yy in 0 until sprite.height) for (xx in 0 until sprite.width) out[xx, yy] = light.apply(sprite[xx, yy], (x + xx).floorDiv(fine), (y + yy).floorDiv(fine))
+            return out
+        }
         /** The soft shadow [sprite] casts on the floor, standing with its top-left at ([x], [y]), drawn into [into]. */
         fun castShadow(into: PixelImage, sprite: PixelImage, x: Int, y: Int, phase: Sky.Phase) {
             val mask = FloatArray(into.width * into.height)

@@ -206,7 +206,7 @@ private fun MomentPhoto(m: Moment, pals: List<Pal>, description: String) {
     else {
         val pet = pals.firstOrNull { it.id == m.palId }?.pets?.firstOrNull { it.name == m.petName } ?: pals.firstOrNull { it.id == m.palId }?.pets?.firstOrNull()
         val species = Species.entries.firstOrNull { it.name == pet?.species } ?: Species.OTHER
-        val img = remember(m.palId, pet?.petId) { pet?.look?.let { PetArt(it, species, Ears.of(pet.ears)).still } }
+        val img = remember(m.palId, pet?.petId) { pet?.look?.let { PetArt(it, species, Ears.of(pet.ears)).fineStill } }
         SpriteView(img, Modifier.size(132.dp), animate = false, description = description)
     }
 }
@@ -279,7 +279,7 @@ private fun PalCard(app: AppScope, map: PetMapModel, pal: Pal, onTreat: (PalPet)
                 items(pal.pets, key = { it.petId }) { pet ->
                     val species = Species.entries.firstOrNull { it.name == pet.species } ?: Species.OTHER
                     Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.widthIn(min = 112.dp, max = 168.dp)) {
-                        val img = remember(pet.petId) { pet.look?.let { PetArt(it, species, Ears.of(pet.ears)).still } }
+                        val img = remember(pet.petId) { pet.look?.let { PetArt(it, species, Ears.of(pet.ears)).fineStill } }
                         SpriteView(img, Modifier.size(72.dp), animate = false, description = tr("Pixel {0}", pet.name))
                         Text(pet.name, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
                         GhostPill(tr("Treat"), icon = PixelIcons.BOWL) { onTreat(pet) }

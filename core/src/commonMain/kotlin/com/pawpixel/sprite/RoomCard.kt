@@ -19,27 +19,30 @@ object RoomCard {
         val floorY = HEIGHT - 30
         val scene = Room.scene(WIDTH, HEIGHT, Room.floorLineFor(floorY), phase, seed, season, layout)
         val g = scene.geom
-        val img = scene.base.copy()
         val size = g.size(Room.PET_ROW + 1.0)
+        // The pet's place is worked out at the room's own size; its picture is the fine one, twice the resolution.
         val still = art.still.let { it.resampled(maxOf(1, (it.width * size).roundToInt()), maxOf(1, (it.height * size).roundToInt())) }
         val body = Animator.opaqueBounds(still) ?: intArrayOf(0, 0, still.width, still.height)
         val petX = (g.x(Room.GRID_W / 2, Room.PET_ROW + 1.0) - (body[0] + body[2]) / 2.0).roundToInt()
         val petY = floorY - body[3]
         val petBaseline = floorY
         val sorted = scene.props.sortedWith(compareBy({ it.baseline }, { it.x }))
+        val img = scene.base.copy()
         for (p in sorted) if (p.baseline <= petBaseline) img.draw(p.image, p.x, p.y)
-        // Its shadow across the boards, then the pet under the room's light.
+        // Its shadow across the boards (at the room's size), then everything at twice the resolution with the fine pet on top.
         scene.castShadow(img, still, petX, petY, phase)
-        img.draw(scene.lit(still, petX, petY), petX, petY)
-        for (p in sorted) if (p.baseline > petBaseline) img.draw(p.image, p.x, p.y)
-        val soft = Room.softFocus(img, 0.08, 0.10)
+        val fine = img.scale2x()
+        val F = 2
+        val finePet = art.fineStill.let { it.resampled(still.width * F, still.height * F) }
+        fine.draw(scene.litFine(finePet, petX * F, petY * F, F), petX * F, petY * F)
+        for (p in sorted) if (p.baseline > petBaseline) fine.draw(p.image.scale2x(), p.x * F, p.y * F)
+        val soft = Room.softFocus(fine, 0.08, 0.10)
         // The caption on the floor's front edge: the name on the left, the mark on the right.
         val ink = if (phase.dark) 0xFFEADFCF.toInt() else 0xFF6B4E33.toInt()
-        val name = PixelFont.fit(petName.uppercase(), 1, WIDTH / 2)
-        PixelFont.draw(soft, name, 3, HEIGHT - PixelFont.H - 3, 1, ink)
+        val name = PixelFont.fit(petName.uppercase(), F, WIDTH * F / 2)
+        PixelFont.draw(soft, name, 3 * F, (HEIGHT - PixelFont.H - 3) * F, F, ink)
         val mark = "PAWPIXEL"
-        PixelFont.draw(soft, mark, WIDTH - PixelFont.textWidth(mark, 1) - 3, HEIGHT - PixelFont.H - 3, 1, ink)
-        // Twice the resolution with rounded corners, then enlarged to the card's size.
-        return soft.scale2x().scaled(SCALE / 2)
+        PixelFont.draw(soft, mark, (WIDTH - PixelFont.textWidth(mark, 1) - 3) * F, (HEIGHT - PixelFont.H - 3) * F, F, ink)
+        return soft.scaled(SCALE / F)
     }
 }

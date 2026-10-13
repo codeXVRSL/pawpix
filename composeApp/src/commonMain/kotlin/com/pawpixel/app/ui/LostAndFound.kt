@@ -301,7 +301,7 @@ private fun OpenAlert(app: AppScope, map: PetMapModel, pet: Pet, alertId: String
     val d = details
     SoftCard(Modifier.fillMaxWidth(), tone = Tone.Accent) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            val pose = remember(pet.lookKey) { app.repo.art(pet)?.still }
+            val pose = remember(pet.lookKey) { app.repo.art(pet)?.fineStill }
             SpriteView(pose, Modifier.size(64.dp), animate = false, description = tr("Pixel {0}", pet.name))
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 Text(tr("Alert is on for {0}", pet.name), style = MaterialTheme.typography.titleMedium)
@@ -399,7 +399,7 @@ fun LostPetSheet(app: AppScope, map: PetMapModel, lost: LostPet, onClose: () -> 
         SoftCard(Modifier.fillMaxWidth().padding(12.dp), tone = Tone.Surface) {
             Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    val img = remember(lost.id) { lost.look?.let { PetArt(it, species, Ears.of(lost.ears)).still } }
+                    val img = remember(lost.id) { lost.look?.let { PetArt(it, species, Ears.of(lost.ears)).fineStill } }
                     SpriteView(img, Modifier.size(64.dp), animate = false, description = tr("Pixel {0}", lost.name))
                     Column(Modifier.weight(1f)) {
                         Text(tr("LOST: {0}", lost.name), style = MaterialTheme.typography.titleLarge)
@@ -504,7 +504,7 @@ fun LostList(app: AppScope, lost: List<LostPet>, onOpen: (LostPet) -> Unit) {
             val label = tr("Lost pet: {0}", l.name)
             SoftCard(Modifier.fillMaxWidth(), tone = if (l.mine) Tone.Accent else Tone.Surface, onClick = { onOpen(l) }, onClickLabel = label) {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    val img = remember(l.id) { l.look?.let { PetArt(it, species, Ears.of(l.ears)).still } }
+                    val img = remember(l.id) { l.look?.let { PetArt(it, species, Ears.of(l.ears)).fineStill } }
                     SpriteView(img, Modifier.size(56.dp), animate = false, description = tr("Pixel {0}", l.name))
                     Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                         Text((if (l.mine) tr("Yours") + " · " else "") + l.name, style = MaterialTheme.typography.titleMedium)

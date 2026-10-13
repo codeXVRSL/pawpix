@@ -91,7 +91,7 @@ fun AlbumPanel(app: AppScope, state: AppState, pet: Pet) {
         // The pet keeps the empty page company: an invitation, not a gap.
         SoftCard(Modifier.fillMaxWidth(), tone = Tone.Tonal) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                val still = remember(pet.lookKey) { app.repo.art(pet)?.still }
+                val still = remember(pet.lookKey) { app.repo.art(pet)?.fineStill }
                 SpriteView(still, Modifier.size(64.dp), animate = false)
                 Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     Text(tr("No photos yet"), style = MaterialTheme.typography.titleMedium)

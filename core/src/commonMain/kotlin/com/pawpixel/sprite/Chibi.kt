@@ -215,6 +215,8 @@ class PetArt(look: PetLook, val species: Species, ears: Ears? = null, val access
     }
     /** The standing pose, for widgets, poses and the reveal card. */
     val still: PixelImage by lazy { Chibi.compose(this, Chibi.Pose()) }
+    /** The standing pose at twice the resolution, for pictures on screen (see [Chibi.compose]'s fine). */
+    val fineStill: PixelImage by lazy { Chibi.compose(this, Chibi.Pose(), fine = 2) }
 }
 
 /**

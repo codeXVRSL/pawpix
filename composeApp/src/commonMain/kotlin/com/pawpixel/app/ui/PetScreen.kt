@@ -145,7 +145,7 @@ fun PetScreen(app: AppScope, state: AppState, pet: Pet) {
         }
         visitor?.let { v ->
             val species = Species.entries.firstOrNull { it.name == v.species } ?: Species.OTHER
-            val img = remember(v.petId) { v.look?.let { PetArt(it, species, Ears.of(v.ears)).still } }
+            val img = remember(v.petId) { v.look?.let { PetArt(it, species, Ears.of(v.ears)).fineStill } }
             Column(
                 Modifier.align(Alignment.BottomStart).padding(start = 18.dp, bottom = hudHeight + 70.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,

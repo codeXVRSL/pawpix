@@ -412,7 +412,7 @@ private fun AreaPets(
             else LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 items(list, key = { it.id }) { pet ->
                     Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.width(84.dp)) {
-                        val img = remember(pet.id) { pet.look?.let { PetArt(it, speciesOf(pet.species), Ears.of(pet.ears)).still } }
+                        val img = remember(pet.id) { pet.look?.let { PetArt(it, speciesOf(pet.species), Ears.of(pet.ears)).fineStill } }
                         SpriteView(img, Modifier.size(72.dp), animate = false, description = tr("Pixel {0}", pet.name))
                         Text(pet.name, fontWeight = FontWeight.Bold, maxLines = 1)
                         if (pet.mine) Text(tr("Yours"), style = MaterialTheme.typography.bodySmall)
@@ -593,7 +593,7 @@ private fun GoingPets(map: PetMapModel, g: Gathering) {
         LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             items(list, key = { it.id }) { pet ->
                 Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.width(56.dp)) {
-                    val img = remember(pet.id) { pet.look?.let { PetArt(it, speciesOf(pet.species), Ears.of(pet.ears)).still } }
+                    val img = remember(pet.id) { pet.look?.let { PetArt(it, speciesOf(pet.species), Ears.of(pet.ears)).fineStill } }
                     SpriteView(img, Modifier.size(44.dp), animate = false, description = tr("Pixel {0}", pet.name))
                     Text(pet.name, style = MaterialTheme.typography.labelSmall, maxLines = 1)
                 }

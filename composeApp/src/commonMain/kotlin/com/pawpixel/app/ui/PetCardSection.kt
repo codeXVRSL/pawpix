@@ -109,7 +109,7 @@ fun PetCardSection(app: AppScope, pet: Pet) {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     QrView(PetCardClient.url(id), size = 128.dp, description = tr("QR code for {0}'s ID card", pet.name))
                     Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        val pose = remember(pet.lookKey) { app.repo.art(pet)?.still }
+                        val pose = remember(pet.lookKey) { app.repo.art(pet)?.fineStill }
                         SpriteView(pose, Modifier.size(56.dp), animate = false, description = tr("Pixel {0}", pet.name))
                         Text(pet.name, fontWeight = FontWeight.Bold)
                         Text(tr("Scan to reach my owner"), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
