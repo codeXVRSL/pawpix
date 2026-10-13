@@ -188,7 +188,7 @@ private val Furniture.maxInRoom: Int get() = when (this) { Furniture.BED, Furnit
 @Composable
 private fun CataloguePiece(item: Furniture, phase: Sky.Phase, theme: RoomTheme, enabled: Boolean, daysLeft: Int?, count: Int, label: String, onClick: () -> Unit) {
     val locked = daysLeft != null
-    val thumb = remember(item, phase, theme) { catalogueThumb(item, phase, theme).toImageBitmap() }
+    val thumb = remember(item, phase, theme) { catalogueThumb(item, phase, theme).scale2x().toImageBitmap() }
     Pressable(
         Modifier.semantics { contentDescription = label }, face = if (locked) Color(0xFFF3EEE8) else Color.White, lip = PawColors.StickerEdge, outline = PawColors.StickerEdge,
         shape = RoundedCornerShape(14.dp), role = Role.Button, enabled = enabled, onClickLabel = label, onClick = if (enabled) onClick else null,
@@ -197,6 +197,7 @@ private fun CataloguePiece(item: Furniture, phase: Sky.Phase, theme: RoomTheme, 
         Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Box(Modifier.size(64.dp, 52.dp), contentAlignment = Alignment.Center) {
                 Canvas(Modifier.fillMaxSize()) {
+                    // The thumbnail holds two fine pixels per room pixel: a whole number of screen pixels per fine pixel.
                     val scale = floor(minOf(size.width / thumb.width, size.height / thumb.height)).coerceAtLeast(1f)
                     val w = (thumb.width * scale).roundToInt(); val h = (thumb.height * scale).roundToInt()
                     drawImage(thumb, IntOffset.Zero, IntSize(thumb.width, thumb.height), IntOffset(((size.width - w) / 2).roundToInt(), ((size.height - h) / 2).roundToInt()), IntSize(w, h), filterQuality = FilterQuality.None, alpha = if (locked) 0.45f else 1f)
