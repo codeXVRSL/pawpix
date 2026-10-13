@@ -156,7 +156,8 @@ fun DecorateScreen(app: AppScope, state: AppState, pet: Pet) {
             }
             Text(tr("{0} earns furniture with days of care. Nothing to buy.", pet.name), Modifier.padding(horizontal = 16.dp), style = MaterialTheme.typography.labelSmall, color = Color(0xFF6E6287))
             // Earned pieces not yet in the room first (something new to try), then the placed ones, then the locked ones by the day they arrive.
-            val pieces = Furniture.entries.filter { layout.allows(it) }.sortedWith(compareBy({ it !in earned }, { layout.items.any { p -> p.item == it } }, { it.unlockDays }))
+            // Earned before locked, not yet placed before placed, the room's own pieces before the ones every room shares, then by when they unlock.
+            val pieces = Furniture.entries.filter { layout.allows(it) }.sortedWith(compareBy({ it !in earned }, { layout.items.any { p -> p.item == it } }, { it.theme == null && layout.theme != RoomTheme.COZY }, { it.unlockDays }))
             LazyRow(contentPadding = PaddingValues(horizontal = 12.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 items(pieces, key = { it.name }) { item ->
                     val have = layout.items.count { it.item == item }
