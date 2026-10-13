@@ -97,8 +97,8 @@ object Room {
 
     /** A standing piece: its drawing (scaled for its depth and lit where it stands), where it goes on the stage, and the floor baseline it is sorted by. */
     class Prop(val placed: Placed, val image: PixelImage, val x: Int, val y: Int, val baseline: Int,
-        /** The same piece at [FINE] pixels per room pixel, lit by the fine light map; its top-left goes at ([x], [y]) times [FINE]. */
-        val fine: PixelImage = image,
+        /** The same piece at [FINE] pixels per room pixel (lit by the fine light map once in a [Scene]); its top-left goes at ([x], [y]) times [FINE]. */
+        val fine: PixelImage,
     )
 
     /** The fine drawings hold this many pixels per room pixel. */
@@ -128,6 +128,8 @@ object Room {
         val base: PixelImage, val props: List<Prop>, val geom: Geometry, val light: Light,
         /** The backdrop at [FINE] pixels per room pixel: crisp pixel edges (scale2x), smooth light. */
         val fineBase: PixelImage,
+        /** The light map at [FINE] pixels per room pixel, the one [fineBase] and each [Prop.fine] are lit by. */
+        val fineLight: Light,
         /** Each window's glass on the stage (x, y, width, height): the sun's beam starts at its sill. */
         val windows: List<IntArray> = emptyList(),
         /** Each lamp's shade on the stage (x, y): where its light pools from. */
@@ -149,6 +151,7 @@ object Room {
         fun lit(sprite: PixelImage, x: Int, y: Int): PixelImage = litSprite(sprite, x, y, light)
         /** [sprite] drawn at [fine] pixels per room pixel with its top-left at fine ([x], [y]), under the room's light. */
         fun litFine(sprite: PixelImage, x: Int, y: Int, fine: Int): PixelImage {
+            if (fine == FINE) return litSprite(sprite, x, y, fineLight)
             val out = PixelImage(sprite.width, sprite.height)
             for (yy in 0 until sprite.height) for (xx in 0 until sprite.width) out[xx, yy] = light.apply(sprite[xx, yy], (x + xx).floorDiv(fine), (y + yy).floorDiv(fine))
             return out
@@ -329,10 +332,10 @@ object Room {
         val img2 = img.scale2x()
         for (i in img2.pixels.indices) img2.pixels[i] = Light.lit(img2.pixels[i], light2.r[i], light2.g[i], light2.b[i])
         for (i in img.pixels.indices) img.pixels[i] = Light.lit(img.pixels[i], light.r[i], light.g[i], light.b[i])
-        val lit = props.map { Prop(it.placed, litSprite(it.image, it.x, it.y, light), it.x, it.y, it.baseline, litSprite(it.image.scale2x(), it.x * FINE, it.y * FINE, light2)) }
+        val lit = props.map { Prop(it.placed, litSprite(it.image, it.x, it.y, light), it.x, it.y, it.baseline, litSprite(it.fine, it.x * FINE, it.y * FINE, light2)) }
         bloom(img, lit, 1)
         bloom(img2, lit, FINE)
-        return Scene(img, lit, g, light, img2, glass, lamps)
+        return Scene(img, lit, g, light, img2, light2, glass, lamps)
     }
 
     /**
@@ -348,7 +351,8 @@ object Room {
         val front = g.baseline(frontRow)
         val x = (g.x((pl.x + pl.item.cols / 2.0) * TILE_W, depth) - scaled.width / 2.0).roundToInt()
         val y = front - scaled.height
-        return Prop(pl, if (light != null) litSprite(scaled, x, y, light) else scaled, x, y, front)
+        val image = if (light != null) litSprite(scaled, x, y, light) else scaled
+        return Prop(pl, image, x, y, front, image.scale2x())
     }
 
     /** The season's piece on the floor, on a free tile by the right wall: a jack-o'-lantern or a little tree. */
@@ -543,7 +547,7 @@ object Room {
                 val inGlass = x >= gx && x < gx + gw && y >= gy && y < gy + gh
                 val wx = gx + gw / 2f; val wy = (gy + gh).toFloat()
                 val bx = (x - (wx + (y - wy) * 0.45f)) / (26f * f); val by = (y - wy) / (60f * f)
-                var strength = if (inGlass || y < wy - 4) 0f else maxOf(0f, 1f - (bx * bx * 1.1f + by * by * 0.5f)) * minOf(1f, (y - wy + 4) / 10f)
+                var strength = if (inGlass || y < wy - 4 * f) 0f else maxOf(0f, 1f - (bx * bx * 1.1f + by * by * 0.5f)) * minOf(1f, (y - wy + 4 * f) / (10f * f))
                 // Most of the beam lands on the floor; the wall below the sill only warms a little.
                 strength *= if (y > g.floorLine) 1.1f else 0.4f
                 r += beam[0] * strength; gg += beam[1] * strength; b += beam[2] * strength
@@ -607,6 +611,25 @@ object Room {
     }
 
     /** The brightest spots (the window by day, the lamp at night) glow onto what's around them. */
+    /** [g] (three channels per pixel) averaged over a window of [r] either side of each pixel along one axis. */
+    private fun boxBlur(g: IntArray, w: Int, h: Int, r: Int, horizontal: Boolean): IntArray {
+        val out = IntArray(w * h * 3)
+        val lines = if (horizontal) h else w; val len = if (horizontal) w else h
+        fun idx(line: Int, i: Int) = (if (horizontal) line * w + i else i * w + line) * 3
+        for (line in 0 until lines) for (c in 0..2) {
+            // A running sum over the window: one add and one subtract per pixel.
+            var sum = 0; var n = 0
+            for (i in 0 until minOf(len, r + 1)) { sum += g[idx(line, i) + c]; n++ }
+            for (i in 0 until len) {
+                out[idx(line, i) + c] = sum / n
+                val add = i + r + 1; val drop = i - r
+                if (add < len) { sum += g[idx(line, add) + c]; n++ }
+                if (drop >= 0) { sum -= g[idx(line, drop) + c]; n-- }
+            }
+        }
+        return out
+    }
+
     private fun bloom(img: PixelImage, props: List<Prop>, scale: Int) {
         val w = img.width; val h = img.height
         val bright = IntArray(w * h * 3)
@@ -618,17 +641,10 @@ object Room {
         for (y in 0 until h) for (x in 0 until w) splat(img[x, y], x, y)
         for (p in props) { val im = if (scale == 1) p.image else p.fine; for (yy in 0 until im.height) for (xx in 0 until im.width) splat(im[xx, yy], p.x * scale + xx, p.y * scale + yy) }
         if (bright.all { it == 0 }) return
+        // Two box blurs, each done as a horizontal then a vertical pass (the same result as the square kernel at a fraction of the work).
         var g = bright
         val r = 2 * scale
-        repeat(2) {
-            val out = IntArray(w * h * 3)
-            for (y in 0 until h) for (x in 0 until w) for (c in 0..2) {
-                var sum = 0; var n = 0
-                for (yy in maxOf(0, y - r)..minOf(h - 1, y + r)) for (xx in maxOf(0, x - r)..minOf(w - 1, x + r)) { sum += g[(yy * w + xx) * 3 + c]; n++ }
-                out[(y * w + x) * 3 + c] = sum / n
-            }
-            g = out
-        }
+        repeat(2) { g = boxBlur(boxBlur(g, w, h, r, horizontal = true), w, h, r, horizontal = false) }
         for (i in 0 until w * h) {
             val c = img.pixels[i]
             val r = (Argb.r(c) + g[i * 3] * 0.3f).roundToInt().coerceAtMost(255)

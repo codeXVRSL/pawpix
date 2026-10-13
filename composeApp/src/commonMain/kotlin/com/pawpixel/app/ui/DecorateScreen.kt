@@ -213,13 +213,16 @@ private fun CataloguePiece(item: Furniture, phase: Sky.Phase, theme: RoomTheme, 
     }
 }
 
+/** The empty drawer room per phase and theme: every thumbnail is cut against the same one. */
+private val emptyThumbRooms = HashMap<Pair<Sky.Phase, RoomTheme>, com.pawpixel.sprite.PixelImage>()
+
 /** The piece alone, cut out of a room, for the drawer. */
 private fun catalogueThumb(item: Furniture, phase: Sky.Phase, theme: RoomTheme): com.pawpixel.sprite.PixelImage {
     val roomW = RoomLayout.COLS * Room.TILE_W + 20; val h = 64
     val x = 2; val y = if (item.onWall) 1 else 1
     // Cut from the fine picture (twice the resolution), so the thumbnail is as fine as the room.
     val with = Room.scene(roomW, h, Room.floorLineFor(h - 10), phase, layout = RoomLayout(listOf(Placed(item, x, y)), theme)).flattenFine()
-    val without = Room.scene(roomW, h, Room.floorLineFor(h - 10), phase, layout = RoomLayout(emptyList(), theme)).flattenFine()
+    val without = emptyThumbRooms.getOrPut(phase to theme) { Room.scene(roomW, h, Room.floorLineFor(h - 10), phase, layout = RoomLayout(emptyList(), theme)).flattenFine() }
     val fw = with.width; val fh = with.height
     var l = fw; var t = fh; var r = -1; var b = -1
     for (yy in 0 until fh) for (xx in 0 until fw) if (with[xx, yy] != without[xx, yy]) { if (xx < l) l = xx; if (xx > r) r = xx; if (yy < t) t = yy; if (yy > b) b = yy }
@@ -297,7 +300,7 @@ private fun RoomEditor(layout: RoomLayout, selected: Placed?, phase: Sky.Phase, 
             val tint = if (cur.valid) Color(0x5560C080) else Color(0x55E04848)
             footprint(this, d, cur.ghost, if (cur.valid) Color(0xFF2E8B5A) else Color(0xFFD9364F), fill = tint)
             d.prop(cur.ghost)?.let { pr ->
-                val img = ghosts.getOrPut(cur.ghost) { pr.image.scale2x().toImageBitmap() }
+                val img = ghosts.getOrPut(cur.ghost) { pr.fine.toImageBitmap() }
                 drawImage(img, IntOffset.Zero, IntSize(img.width, img.height), IntOffset(d.left + (pr.x * px).roundToInt(), d.top + (pr.y * px).roundToInt()), IntSize((img.width * px / 2).roundToInt(), (img.height * px / 2).roundToInt()), filterQuality = FilterQuality.None, alpha = 0.75f)
             }
         }
