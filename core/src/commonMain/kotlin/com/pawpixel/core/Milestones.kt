@@ -32,7 +32,7 @@ object Milestones {
             if (p.id != petId) p
             else {
                 val earned = furniture(p)
-                val kept = com.pawpixel.sprite.RoomLayout(layout.items.filter { it.item in earned })
+                val kept = com.pawpixel.sprite.RoomLayout(layout.items.filter { it.item in earned }, layout.theme)
                 val code = kept.encode().takeIf { kept != com.pawpixel.sprite.RoomLayout.DEFAULT }
                 if (code == p.room) p else p.copy(room = code, editedAtMs = nowMs)
             }

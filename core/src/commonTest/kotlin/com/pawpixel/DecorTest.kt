@@ -77,6 +77,44 @@ class DecorTest {
         assertNull(Milestones.decorate(s, "p1", RoomLayout.DEFAULT, 6).pets[0].room)
     }
 
+    @Test fun aThemedRoomKeepsItsThemeAndOlderAppsStillReadIt() {
+        val garden = RoomLayout.starter(com.pawpixel.sprite.RoomTheme.GARDEN)
+        assertTrue(garden.encode().startsWith("1;T:GARDEN;"), garden.encode())
+        assertEquals(garden, RoomLayout.decode(garden.encode()))
+        assertTrue(garden.encode().all { it.isLetterOrDigit() || it in "_;:," })
+        // A piece from another room can't be placed here; the ones that fit anywhere can.
+        assertFalse(garden.canPlace(Furniture.SOFA, 3, 3))
+        assertTrue(garden.canPlace(Furniture.FLOWER_BED, 4, 1) || garden.canPlace(Furniture.FLOWER_BED, 6, 1))
+        // Switching rooms keeps what fits and puts the rest away.
+        val living = garden.inTheme(com.pawpixel.sprite.RoomTheme.LIVING)
+        assertFalse(living.items.any { it.item == Furniture.FLOWER_BED })
+        assertTrue(living.items.any { it.item == Furniture.BOWL })
+        // The theme survives the unlock check, and every starter room only uses pieces free from day one.
+        val pet = Pet("p1", "Chelsea", Species.CAT, 0)
+        val s = Milestones.decorate(AppState(pets = listOf(pet)), "p1", garden, nowMs = 5)
+        assertEquals(com.pawpixel.sprite.RoomTheme.GARDEN, s.pets[0].layout.theme)
+        for (t in com.pawpixel.sprite.RoomTheme.entries) {
+            val st = RoomLayout.starter(t)
+            assertEquals(t, st.theme)
+            assertTrue(st.items.all { it.item.unlockDays == 0 }, "$t's starter pieces are all free")
+            for (pl in st.items) assertTrue(st.without(pl).canPlace(pl.item, pl.x, pl.y), "$t: ${pl.item} at ${pl.x},${pl.y} fits")
+            assertTrue(Milestones.decorate(AppState(pets = listOf(pet)), "p1", st, 5).pets[0].layout == st, "$t's starter survives the unlock check")
+        }
+        // The code with the theme is what older apps see: they skip the T token and keep the cozy nook.
+        assertNull(RoomLayout.decode("1;T:ATTIC;BED:0,3")?.takeIf { it.theme != com.pawpixel.sprite.RoomTheme.COZY })
+    }
+
+    @Test fun everyThemeDrawsEveryOfItsPieces() {
+        for (t in com.pawpixel.sprite.RoomTheme.entries) for (phase in listOf(Sky.Phase.DAY, Sky.Phase.NIGHT)) {
+            val pieces = Furniture.entries.filter { it.theme == t }
+            var layout = RoomLayout(emptyList(), t)
+            for (f in pieces) { val spot = layout.freeSpot(f) ?: continue; layout = layout.with(Placed(f, spot.first, spot.second)) }
+            val img = Room.render(100, 150, 118, phase, layout = layout)
+            assertTrue(img.pixels.any { it != 0 })
+            assertTrue(layout.items.size >= pieces.size - 2, "$t: ${layout.items.size} of ${pieces.size} pieces fit the room")
+        }
+    }
+
     @Test fun theSceneSortsStandingPiecesByTheirFrontEdge() {
         val scene = Room.scene(120, 90, 50, Sky.Phase.DAY)
         assertEquals(RoomLayout.DEFAULT.items.count { !it.item.onWall && !it.item.flat }, scene.props.size)

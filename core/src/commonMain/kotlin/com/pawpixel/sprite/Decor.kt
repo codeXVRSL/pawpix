@@ -11,6 +11,22 @@ package com.pawpixel.sprite
  * Every piece is free: the ones not there from the start are earned with days of care (see
  * [com.pawpixel.core.Milestones]), like outfits. Nothing is ever taken away.
  */
+/**
+ * What kind of room it is: the wallpaper, the floor and which pieces belong. Every theme is free from
+ * the start; the pieces inside it are earned with days of care like everything else. Encoded in the
+ * layout code as `T:NAME`, which older apps skip (they show the cozy nook).
+ */
+enum class RoomTheme(val label: String) {
+    COZY("Cozy nook"),
+    LIVING("Living room"),
+    PLAYROOM("Playroom"),
+    GARDEN("Garden");
+
+    companion object {
+        fun of(name: String?): RoomTheme? = entries.firstOrNull { it.name == name }
+    }
+}
+
 enum class Furniture(
     val label: String,
     /** Days of care before it appears in the catalogue; 0 = from the start. */
@@ -22,6 +38,8 @@ enum class Furniture(
     val place: Place = Place.FLOOR,
     /** The pet can lie on it (a bed) or eat from it (a bowl). */
     val use: Use = Use.NONE,
+    /** The room this piece belongs to; null means it fits any room. */
+    val theme: RoomTheme? = null,
 ) {
     // ---- floor: from the start ----
     BED("Bed", 0, 3, use = Use.SLEEP),
@@ -49,7 +67,31 @@ enum class Furniture(
     HANGING_PLANT("Hanging plant", 12, 1, place = Place.WALL),
     POSTER("Poster", 17, 1, place = Place.WALL),
     STRING_LIGHTS("String lights", 30, 4, place = Place.WALL),
-    PAW_BANNER("Paw banner", 60, 2, place = Place.WALL);
+    PAW_BANNER("Paw banner", 60, 2, place = Place.WALL),
+    // ---- living room ----
+    SOFA("Sofa", 0, 3, use = Use.SLEEP, theme = RoomTheme.LIVING),
+    TV("TV", 3, 2, theme = RoomTheme.LIVING),
+    COFFEE_TABLE("Coffee table", 5, 2, theme = RoomTheme.LIVING),
+    FLOOR_CUSHION("Floor cushion", 2, 1, use = Use.SLEEP, theme = RoomTheme.LIVING),
+    RECORD_PLAYER("Record player", 10, 1, theme = RoomTheme.LIVING),
+    // ---- playroom ----
+    TOY_CHEST("Toy chest", 0, 2, theme = RoomTheme.PLAYROOM),
+    BLOCKS("Building blocks", 3, 1, theme = RoomTheme.PLAYROOM),
+    PLAY_TUNNEL("Play tunnel", 7, 3, theme = RoomTheme.PLAYROOM),
+    BALL_PIT("Ball pit", 10, 2, 2, theme = RoomTheme.PLAYROOM),
+    ROCKING_HORSE("Rocking horse", 14, 2, theme = RoomTheme.PLAYROOM),
+    PLAY_TENT("Play tent", 21, 2, use = Use.SLEEP, theme = RoomTheme.PLAYROOM),
+    BUNTING("Bunting", 0, 4, place = Place.WALL, theme = RoomTheme.PLAYROOM),
+    CHALKBOARD("Chalkboard", 5, 2, place = Place.WALL, theme = RoomTheme.PLAYROOM),
+    // ---- garden ----
+    FLOWER_BED("Flower bed", 0, 2, theme = RoomTheme.GARDEN),
+    GARDEN_BENCH("Garden bench", 3, 2, use = Use.SLEEP, theme = RoomTheme.GARDEN),
+    GARDEN_LANTERN("Garden lantern", 5, 1, theme = RoomTheme.GARDEN),
+    BIRD_BATH("Bird bath", 7, 1, theme = RoomTheme.GARDEN),
+    POND("Pond", 10, 3, 2, Place.RUG, theme = RoomTheme.GARDEN),
+    LITTLE_TREE("Little tree", 14, 2, theme = RoomTheme.GARDEN),
+    BIRDHOUSE("Birdhouse", 12, 1, place = Place.WALL, theme = RoomTheme.GARDEN),
+    WIND_CHIME("Wind chime", 20, 1, place = Place.WALL, theme = RoomTheme.GARDEN);
 
     enum class Place { FLOOR, RUG, WALL }
     enum class Use { NONE, SLEEP, EAT }
@@ -79,7 +121,13 @@ data class Placed(val item: Furniture, val x: Int, val y: Int, val flip: Boolean
  * grid centre it; deeper floors show more rows. Stored on the pet as [encode]'s string and shared
  * with the household, so everyone sees the same room.
  */
-data class RoomLayout(val items: List<Placed>) {
+data class RoomLayout(val items: List<Placed>, val theme: RoomTheme = RoomTheme.COZY) {
+    /** The pieces that may stand in this room: the theme's own and the ones that fit anywhere. */
+    fun allows(item: Furniture): Boolean = item.theme == null || item.theme == theme
+
+    /** The same arrangement in another room; pieces that don't belong there are put away. */
+    fun inTheme(t: RoomTheme): RoomLayout = RoomLayout(items.filter { it.item.theme == null || it.item.theme == t }, t)
+
     fun at(x: Int, y: Int, onWall: Boolean): Placed? = items.lastOrNull { p ->
         if (p.item.onWall != onWall) false
         else if (onWall) x in p.x until p.x + p.item.cols && y == p.y
@@ -89,6 +137,7 @@ data class RoomLayout(val items: List<Placed>) {
     /** Where a piece of [item] could go at ([x], [y]) in this room, ignoring [except] (the piece being moved). */
     fun canPlace(item: Furniture, x: Int, y: Int, except: Placed? = null): Boolean {
         val others = items.filter { it !== except }
+        if (!allows(item)) return false
         if (item.onWall) {
             if (x < 0 || x + item.cols > COLS || y < 0 || y >= WALL_SLOTS) return false
             return others.none { o -> o.item.onWall && o.y == y && x < o.x + o.item.cols && o.x < x + item.cols }
@@ -99,9 +148,9 @@ data class RoomLayout(val items: List<Placed>) {
         return others.none { o -> !o.item.flat && !o.item.onWall && o.tiles().any { it in mine } }
     }
 
-    fun with(p: Placed): RoomLayout = RoomLayout(items + p)
-    fun without(p: Placed): RoomLayout = RoomLayout(items.filter { it !== p })
-    fun replace(old: Placed, new: Placed): RoomLayout = RoomLayout(items.map { if (it === old) new else it })
+    fun with(p: Placed): RoomLayout = copy(items = items + p)
+    fun without(p: Placed): RoomLayout = copy(items = items.filter { it !== p })
+    fun replace(old: Placed, new: Placed): RoomLayout = copy(items = items.map { if (it === old) new else it })
 
     /** The first spot a new piece fits, front rows first (where the owner sees it), or null when the room is full. */
     fun freeSpot(item: Furniture): Pair<Int, Int>? {
@@ -113,7 +162,8 @@ data class RoomLayout(val items: List<Placed>) {
         return null
     }
 
-    fun encode(): String = "1;" + items.joinToString(";") { p -> "${p.item.name}:${p.x},${p.y}" + (if (p.flip) ",f" else "") }
+    fun encode(): String = "1;" + (if (theme == RoomTheme.COZY) "" else "T:${theme.name};") +
+        items.joinToString(";") { p -> "${p.item.name}:${p.x},${p.y}" + (if (p.flip) ",f" else "") }
 
     /** True when [encode]'s string is short enough to be saved and shared ([MAX_CODE]); the editor stops adding pieces before that. */
     fun fits(): Boolean = encode().length <= MAX_CODE
@@ -133,6 +183,23 @@ data class RoomLayout(val items: List<Placed>) {
             Placed(Furniture.RUG, 4, 2), Placed(Furniture.BED, 0, 3), Placed(Furniture.PLANT, 0, 1), Placed(Furniture.BOWL, 8, 3), Placed(Furniture.LAMP, 9, 1),
         ))
 
+        /** A starter arrangement for each room, so switching themes never shows an empty box. */
+        fun starter(theme: RoomTheme): RoomLayout = when (theme) {
+            RoomTheme.COZY -> DEFAULT
+            RoomTheme.LIVING -> RoomLayout(listOf(
+                Placed(Furniture.WINDOW, 1, 3), Placed(Furniture.FRAME, 5, 4), Placed(Furniture.CLOCK, 8, 4), Placed(Furniture.SHELF, 6, 2),
+                Placed(Furniture.RUG, 3, 2), Placed(Furniture.SOFA, 0, 3), Placed(Furniture.PLANT, 9, 1), Placed(Furniture.BOWL, 8, 3), Placed(Furniture.LAMP, 0, 1),
+            ), RoomTheme.LIVING)
+            RoomTheme.PLAYROOM -> RoomLayout(listOf(
+                Placed(Furniture.WINDOW, 1, 3), Placed(Furniture.BUNTING, 5, 4), Placed(Furniture.FRAME, 8, 2),
+                Placed(Furniture.RUG, 4, 2), Placed(Furniture.BED, 0, 3), Placed(Furniture.TOY_CHEST, 8, 1), Placed(Furniture.BOWL, 8, 3), Placed(Furniture.PLANT, 0, 1),
+            ), RoomTheme.PLAYROOM)
+            RoomTheme.GARDEN -> RoomLayout(listOf(
+                Placed(Furniture.WINDOW, 1, 3), Placed(Furniture.FRAME, 7, 3),
+                Placed(Furniture.FLOWER_BED, 0, 1), Placed(Furniture.BED, 0, 3), Placed(Furniture.BOWL, 8, 3), Placed(Furniture.PLANT, 9, 1), Placed(Furniture.LAMP, 8, 1),
+            ), RoomTheme.GARDEN)
+        }
+
         /** Reads [encode]'s string; pieces that don't fit or overlap are dropped, so a bad string still gives a room. Null for a different format. */
         fun decode(code: String?): RoomLayout? {
             if (code == null || code.length > MAX_CODE) return null
@@ -142,6 +209,8 @@ data class RoomLayout(val items: List<Placed>) {
             for (part in parts.drop(1)) {
                 if (part.isEmpty()) continue
                 val (name, pos) = part.split(':').let { if (it.size != 2) return@let null to null else it[0] to it[1] }
+                // The room's theme comes first in the code; an app that doesn't know it keeps the cozy nook.
+                if (name == "T") { RoomTheme.of(pos)?.let { layout = layout.inTheme(it) }; continue }
                 val item = Furniture.of(name) ?: continue
                 val f = pos?.split(',') ?: continue
                 val x = f.getOrNull(0)?.toIntOrNull() ?: continue

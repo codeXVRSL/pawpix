@@ -143,7 +143,7 @@ object Room {
 
     // ---------------------------------------------------------------- palette
 
-    class Palette(
+    data class Palette(
         val wall: Int, val wallDot: Int, val wainscot: Int, val wainscotLine: Int, val side: Int, val ceiling: Int,
         val floor: Int, val plank: Int, val floorTop: Int, val tileLine: Int,
         val frame: Int, val sill: Int, val curtain: Int, val curtainDark: Int,
@@ -171,21 +171,43 @@ object Room {
 
     private fun dim(c: Int, t: Double) = Argb.mix(c, 0xFF1B2440.toInt(), t)
 
-    private val NIGHT = Palette(
-        wall = dim(DAY.wall, 0.62), wallDot = dim(DAY.wallDot, 0.62), wainscot = dim(DAY.wainscot, 0.62), wainscotLine = dim(DAY.wainscotLine, 0.62), side = dim(DAY.side, 0.62), ceiling = dim(DAY.ceiling, 0.65),
-        floor = dim(DAY.floor, 0.58), plank = dim(DAY.plank, 0.58), floorTop = dim(DAY.floorTop, 0.58), tileLine = dim(DAY.tileLine, 0.58),
-        frame = dim(DAY.frame, 0.55), sill = dim(DAY.sill, 0.55), curtain = dim(DAY.curtain, 0.5), curtainDark = dim(DAY.curtainDark, 0.5),
-        wood = dim(DAY.wood, 0.5), woodLight = dim(DAY.woodLight, 0.5), woodDark = dim(DAY.woodDark, 0.5),
-        pot = dim(DAY.pot, 0.5), leaf = dim(DAY.leaf, 0.5), leafDark = dim(DAY.leafDark, 0.5),
-        cushion = dim(DAY.cushion, 0.5), cushionLight = dim(DAY.cushionLight, 0.5), cushionDark = dim(DAY.cushionDark, 0.5),
-        rug = dim(DAY.rug, 0.55), rugEdge = dim(DAY.rugEdge, 0.55), rugDot = dim(DAY.rugDot, 0.55),
-        bowl = dim(DAY.bowl, 0.5), bowlDark = dim(DAY.bowlDark, 0.5), kibble = dim(DAY.kibble, 0.5), lamp = dim(DAY.lamp, 0.4),
+    /** The same room by night: everything dimmed toward a deep blue, the lamp's shade still warm. */
+    private fun night(d: Palette) = Palette(
+        wall = dim(d.wall, 0.62), wallDot = dim(d.wallDot, 0.62), wainscot = dim(d.wainscot, 0.62), wainscotLine = dim(d.wainscotLine, 0.62), side = dim(d.side, 0.62), ceiling = dim(d.ceiling, 0.65),
+        floor = dim(d.floor, 0.58), plank = dim(d.plank, 0.58), floorTop = dim(d.floorTop, 0.58), tileLine = dim(d.tileLine, 0.58),
+        frame = dim(d.frame, 0.55), sill = dim(d.sill, 0.55), curtain = dim(d.curtain, 0.5), curtainDark = dim(d.curtainDark, 0.5),
+        wood = dim(d.wood, 0.5), woodLight = dim(d.woodLight, 0.5), woodDark = dim(d.woodDark, 0.5),
+        pot = dim(d.pot, 0.5), leaf = dim(d.leaf, 0.5), leafDark = dim(d.leafDark, 0.5),
+        cushion = dim(d.cushion, 0.5), cushionLight = dim(d.cushionLight, 0.5), cushionDark = dim(d.cushionDark, 0.5),
+        rug = dim(d.rug, 0.55), rugEdge = dim(d.rugEdge, 0.55), rugDot = dim(d.rugDot, 0.55),
+        bowl = dim(d.bowl, 0.5), bowlDark = dim(d.bowlDark, 0.5), kibble = dim(d.kibble, 0.5), lamp = dim(d.lamp, 0.4),
         shade = 0xFFFFE9B0.toInt(),
-        fabric = dim(DAY.fabric, 0.5), fabricLight = dim(DAY.fabricLight, 0.5), fabricDark = dim(DAY.fabricDark, 0.5),
-        glass = dim(DAY.glass, 0.45), water = dim(DAY.water, 0.4), fish = dim(DAY.fish, 0.3), metal = dim(DAY.metal, 0.5), metalDark = dim(DAY.metalDark, 0.5), ink = dim(DAY.ink, 0.3),
+        fabric = dim(d.fabric, 0.5), fabricLight = dim(d.fabricLight, 0.5), fabricDark = dim(d.fabricDark, 0.5),
+        glass = dim(d.glass, 0.45), water = dim(d.water, 0.4), fish = dim(d.fish, 0.3), metal = dim(d.metal, 0.5), metalDark = dim(d.metalDark, 0.5), ink = dim(d.ink, 0.3),
     )
 
-    fun palette(phase: Sky.Phase): Palette = if (phase.dark) NIGHT else DAY
+    /** Each room's walls and floor by day: sage and walnut for the living room, butter and foam tiles for the playroom, hedge and grass for the garden. */
+    private val DAY_BY_THEME: Map<RoomTheme, Palette> = mapOf(
+        RoomTheme.COZY to DAY,
+        RoomTheme.LIVING to DAY.copy(
+            wall = 0xFFD3DFC8.toInt(), wallDot = 0xFFC4D3B7.toInt(), wainscot = 0xFFEFE6D6.toInt(), wainscotLine = 0xFFD6C7B0.toInt(), side = 0xFFC6D3BA.toInt(), ceiling = 0xFFE8EDE1.toInt(),
+            floor = 0xFFB27C50.toInt(), plank = 0xFFA36E46.toInt(), floorTop = 0xFF7E5232.toInt(), tileLine = 0xFF9A6A42.toInt(),
+            rug = 0xFFD9C3A5.toInt(), rugEdge = 0xFFB89A74.toInt(), rugDot = 0xFFE8D7BE.toInt(),
+        ),
+        RoomTheme.PLAYROOM to DAY.copy(
+            wall = 0xFFFFF1BC.toInt(), wallDot = 0xFFFFD98E.toInt(), wainscot = 0xFFFFE6C4.toInt(), wainscotLine = 0xFFF2CF9C.toInt(), side = 0xFFF6E3A8.toInt(), ceiling = 0xFFFFF7DC.toInt(),
+            floor = 0xFFC2E4F2.toInt(), plank = 0xFFB0D9EC.toInt(), floorTop = 0xFF7FB8D6.toInt(), tileLine = 0xFF9FCDE4.toInt(),
+            rug = 0xFFFFC2CF.toInt(), rugEdge = 0xFFE88AA4.toInt(), rugDot = 0xFFFFE0E8.toInt(),
+        ),
+        RoomTheme.GARDEN to DAY.copy(
+            wall = 0xFF9ECC80.toInt(), wallDot = 0xFF86B86A.toInt(), wainscot = 0xFFF4EAD6.toInt(), wainscotLine = 0xFFCDB996.toInt(), side = 0xFF8CBE70.toInt(), ceiling = 0xFFCFE6FA.toInt(),
+            floor = 0xFFA9D67E.toInt(), plank = 0xFF99C96E.toInt(), floorTop = 0xFF7EB35C.toInt(), tileLine = 0xFF8EC264.toInt(),
+            rug = 0xFFE3D3B2.toInt(), rugEdge = 0xFFC0A980.toInt(), rugDot = 0xFFF0E4CB.toInt(),
+        ),
+    )
+    private val NIGHT_BY_THEME: Map<RoomTheme, Palette> = DAY_BY_THEME.mapValues { night(it.value) }
+
+    fun palette(phase: Sky.Phase, theme: RoomTheme = RoomTheme.COZY): Palette = (if (phase.dark) NIGHT_BY_THEME else DAY_BY_THEME).getValue(theme)
 
     /** The light in the room with nothing else lit: cool and low at night, warm by day, pink at dawn and dusk. */
     private fun ambient(phase: Sky.Phase): FloatArray = when (phase) {
@@ -202,11 +224,11 @@ object Room {
         scene(width, height, floorLineFor(floorY), phase, seed, season, layout).flatten()
 
     fun scene(width: Int, height: Int, floorLine0: Int, phase: Sky.Phase, seed: Int = 7, season: Season = Season.NONE, layout: RoomLayout = RoomLayout.DEFAULT): Scene {
-        val p = palette(phase)
+        val p = palette(phase, layout.theme)
         val img = PixelImage(width, height)
         val floorLine = floorLine0.coerceIn(10, height)
         val g = Geometry(width, height, floorLine)
-        box(img, g, p)
+        box(img, g, p, layout.theme)
 
         // The season's garland along the top of a tall wall.
         if (floorLine > 60) when (season) {
@@ -232,8 +254,9 @@ object Room {
         for (pl in layout.items.filter { it.item.flat }) {
             if (pl.y + pl.item.rows > g.rows + 1) continue
             when (pl.item) {
-                Furniture.RUG -> rug(img, g, pl, p, round = false)
-                Furniture.ROUND_RUG -> rug(img, g, pl, p, round = true)
+                Furniture.RUG -> rug(img, g, pl, p, Flat.RUG)
+                Furniture.ROUND_RUG -> rug(img, g, pl, p, Flat.ROUND)
+                Furniture.POND -> rug(img, g, pl, p, Flat.POND)
                 else -> Unit
             }
         }
@@ -287,12 +310,22 @@ object Room {
     // ---------------------------------------------------------------- the box
 
     /** The walls, the ceiling strip on a tall stage, and the floor with its boards running toward the back. */
-    private fun box(img: PixelImage, g: Geometry, p: Palette) {
+    private fun box(img: PixelImage, g: Geometry, p: Palette, theme: RoomTheme) {
         val w = img.width; val h = img.height; val floorLine = g.floorLine
         val sideDark = Argb.mix(p.side, p.ink, 0.07)
         val seam = Argb.mix(p.floor, p.tileLine, 0.55)
         val skirting = p.floorTop
+        // A garden has no wall: a hedge up to about head height, and sky above it (with a cloud or two).
+        val hedgeTop = if (theme == RoomTheme.GARDEN) floorLine - minOf(46, floorLine * 11 / 20) else -1
+        val sky = p.ceiling; val skyDeep = Argb.mix(p.ceiling, 0xFF7FB2E6.toInt(), 0.35); val cloud = Argb.withAlpha(Argb.mix(p.ceiling, 0xFFFFFFFF.toInt(), 0.8), 0xD0)
         for (y in 0 until h) {
+            if (y < hedgeTop) {
+                // Sky: deeper blue high up, a soft cloud band, the hedge's top edge a shade darker.
+                val t = y.toDouble() / maxOf(1, hedgeTop)
+                val base = Argb.mix(skyDeep, sky, t)
+                for (x in 0 until w) img[x, y] = if (y == hedgeTop - 1) Argb.mix(p.wall, p.ink, 0.15) else base
+                continue
+            }
             val onFloor = y >= floorLine
             // A floor pixel's depth, or a ceiling pixel's (the ceiling recedes the other way, to the stage's top edge).
             val depth = when {
@@ -310,33 +343,65 @@ object Room {
                     edge -> if (onFloor || y < g.wallTop) skirting else sideDark
                     !onFloor && y < g.wallTop -> p.ceiling
                     !onFloor -> {
-                        // The back wall: paper with a quiet dot pattern, a wainscot band above the floor.
+                        // The back wall: paper (or hedge) with the room's own pattern, a wainscot band (or picket fence) above the floor.
                         val wainscotTop = floorLine - 7
                         when {
                             y == g.wallTop && g.wallTop > 0 -> Argb.mix(p.wall, p.ink, 0.12)
                             y == wainscotTop -> p.wainscotLine
-                            y > wainscotTop -> if (floor(u / 8).toInt() != floor((u - 0.5 / g.back) / 8).toInt() && y < floorLine - 1) p.wainscotLine else p.wainscot
-                            (x + y * 3) % 10 == 0 && y % 5 == 2 -> p.wallDot
-                            else -> p.wall
+                            y > wainscotTop -> when (theme) {
+                                // Pickets two units wide with a gap of hedge between, a rail along the top.
+                                RoomTheme.GARDEN -> if (floor(u).toInt().mod(4) == 3 && y < floorLine - 1) p.wallDot else if (y == wainscotTop + 1) p.wainscotLine else p.wainscot
+                                else -> if (floor(u / 8).toInt() != floor((u - 0.5 / g.back) / 8).toInt() && y < floorLine - 1) p.wainscotLine else p.wainscot
+                            }
+                            else -> when (theme) {
+                                RoomTheme.LIVING -> if (floor(u / 6).toInt() % 2 == 0 && floor(u).toInt().mod(6) == 0) p.wallDot else p.wall // thin stripes
+                                RoomTheme.PLAYROOM -> if ((x % 7 == 2 || x % 7 == 3) && ((y + (x / 7) * 3) % 7 == 1 || (y + (x / 7) * 3) % 7 == 2)) p.wallDot else p.wall // polka dots
+                                RoomTheme.GARDEN -> if ((x * 3 + y * 5) % 7 == 0 || (x * 5 + y * 3) % 11 == 4) p.wallDot else p.wall // leaves
+                                RoomTheme.COZY -> if ((x + y * 3) % 10 == 0 && y % 5 == 2) p.wallDot else p.wall
+                            }
                         }
                     }
                     y == floorLine -> skirting
-                    else -> {
-                        // Boards a tile wide running front to back; their ends staggered every few rows.
-                        val board = floor(u / TILE_W).toInt()
-                        val boardSeam = board != floor(prevU / TILE_W).toInt()
-                        val row = (y - floorLine) / TILE_D
-                        val joint = (y - floorLine) % TILE_D == 0 && (row + board * 2) % 3 == 0
-                        if (boardSeam || joint) seam else p.floor
+                    else -> when (theme) {
+                        RoomTheme.PLAYROOM -> {
+                            // Foam tiles: a soft checker, one tile each, with a seam around every tile.
+                            val col = floor(u / TILE_W).toInt(); val row = (y - floorLine) / TILE_D
+                            val tileSeam = col != floor(prevU / TILE_W).toInt() || (y - floorLine) % TILE_D == 0
+                            if (tileSeam) p.tileLine else if ((col + row) % 2 == 0) p.floor else p.plank
+                        }
+                        RoomTheme.GARDEN -> {
+                            // Grass: two greens scattered like blades, a darker tuft here and there.
+                            val n = (x * 7 + y * 13 + (x xor y) * 3) % 17
+                            if (n == 0) p.floorTop else if (n < 6) p.plank else p.floor
+                        }
+                        else -> {
+                            // Boards a tile wide running front to back; their ends staggered every few rows.
+                            val board = floor(u / TILE_W).toInt()
+                            val boardSeam = board != floor(prevU / TILE_W).toInt()
+                            val row = (y - floorLine) / TILE_D
+                            val joint = (y - floorLine) % TILE_D == 0 && (row + board * 2) % 3 == 0
+                            if (boardSeam || joint) seam else p.floor
+                        }
                     }
                 }
                 prevU = u
             }
         }
+        clouds(img, g, hedgeTop, cloud)
     }
 
-    /** A rug on its tiles, foreshortened with the floor: a bordered rectangle or an oval, with a quiet dot pattern. */
-    private fun rug(img: PixelImage, g: Geometry, pl: Placed, p: Palette, round: Boolean) {
+    private enum class Flat { RUG, ROUND, POND }
+
+    /** A few soft clouds in the garden's sky, drawn after the box so they sit over the sky and nothing else. */
+    private fun clouds(img: PixelImage, g: Geometry, hedgeTop: Int, cloud: Int) {
+        if (hedgeTop < 12) return
+        cloud(img, g.backLeft + 6, hedgeTop / 3, cloud); cloud(img, g.backLeft + 10, hedgeTop / 3 + 2, cloud)
+        cloud(img, g.backRight - 22, hedgeTop / 2 + 1, cloud); cloud(img, g.backRight - 17, hedgeTop / 2 - 1, cloud)
+        if (hedgeTop > 30) cloud(img, g.cx.toInt() - 4, hedgeTop / 6, cloud)
+    }
+
+    /** A rug (or a pond) on its tiles, foreshortened with the floor: a bordered rectangle or an oval, with a quiet dot pattern. */
+    private fun rug(img: PixelImage, g: Geometry, pl: Placed, p: Palette, kind: Flat) {
         val top = g.tileTop(pl.y); val bottom = g.tileTop(pl.y + pl.item.rows)
         val u0 = pl.x * TILE_W.toDouble(); val uw = pl.item.cols * TILE_W.toDouble(); val dh = (bottom - top).toDouble()
         for (y in top until bottom) {
@@ -346,7 +411,14 @@ object Room {
             for (x in x0 until x1) {
                 if (x !in 0 until img.width) continue
                 val du = g.u(x + 0.5, depth) - u0; val dv = y - top + 0.5
-                val c = if (round) {
+                val c = if (kind == Flat.POND) {
+                    // Still water with a stone rim, a ripple ring and a lily pad.
+                    val nx = (du - uw / 2) / (uw / 2); val ny = (dv - dh / 2) / (dh / 2)
+                    val r = nx * nx + ny * ny
+                    if (r > 1.0) continue
+                    val pad = (du - uw * 0.3).let { it * it } + (dv - dh * 0.6).let { it * it * 2 } < 6.0
+                    if (r > 0.78) p.metalDark else if (r > 0.6) p.metal else if (pad) p.leafDark else if (r in 0.22..0.3) p.glass else p.water
+                } else if (kind == Flat.ROUND) {
                     val nx = (du - uw / 2) / (uw / 2); val ny = (dv - dh / 2) / (dh / 2)
                     val r = nx * nx + ny * ny
                     if (r > 1.0) continue
@@ -369,7 +441,7 @@ object Room {
      * corners, a beam slanting from each window (warm sun by day, cool moon by night), a pool of warm
      * light around each lamp (faint by day, the room's light at night), and a glow around the glass.
      */
-    private fun lampShades(props: List<Prop>): List<FloatArray> = props.filter { it.placed.item == Furniture.LAMP }.map { floatArrayOf(it.x + it.image.width / 2f, it.y + 4f) }
+    private fun lampShades(props: List<Prop>): List<FloatArray> = props.filter { it.placed.item == Furniture.LAMP || it.placed.item == Furniture.GARDEN_LANTERN }.map { floatArrayOf(it.x + it.image.width / 2f, it.y + 4f) }
 
     private fun light(g: Geometry, phase: Sky.Phase, glass: List<IntArray>, lamps: List<FloatArray>): Light {
         val w = g.width; val h = g.height
@@ -420,7 +492,7 @@ object Room {
     }
 
     /** The x of the lamp's shade, when there is a lamp: at night shadows fall away from it. */
-    private fun lampAt(props: List<Prop>, g: Geometry): Float? = props.firstOrNull { it.placed.item == Furniture.LAMP }?.let { it.x + it.image.width / 2f }
+    private fun lampAt(props: List<Prop>, g: Geometry): Float? = props.firstOrNull { it.placed.item == Furniture.LAMP || it.placed.item == Furniture.GARDEN_LANTERN }?.let { it.x + it.image.width / 2f }
 
     /**
      * A piece's shadow: its silhouette flattened onto the floor at its feet, pushed a little to the
@@ -533,6 +605,22 @@ object Room {
             Furniture.FISH_TANK -> fishTank(w, d, p, phase)
             Furniture.RADIO -> radio(p)
             Furniture.TEA_SET -> teaSet(p)
+            Furniture.SOFA -> sofa(w, d, p)
+            Furniture.TV -> tv(w, d, p, phase)
+            Furniture.COFFEE_TABLE -> coffeeTable(w, d, p)
+            Furniture.FLOOR_CUSHION -> floorCushion(w, d, p)
+            Furniture.RECORD_PLAYER -> recordPlayer(w, d, p)
+            Furniture.TOY_CHEST -> toyChest(w, d, p)
+            Furniture.BLOCKS -> blocks(p)
+            Furniture.PLAY_TUNNEL -> playTunnel(w, d, p)
+            Furniture.BALL_PIT -> ballPit(w, d, p, seed)
+            Furniture.ROCKING_HORSE -> rockingHorse(w, d, p)
+            Furniture.PLAY_TENT -> playTent(w, d, p)
+            Furniture.FLOWER_BED -> flowerBed(w, d, p)
+            Furniture.GARDEN_BENCH -> gardenBench(w, d, p)
+            Furniture.GARDEN_LANTERN -> gardenLantern(p)
+            Furniture.BIRD_BATH -> birdBath(p)
+            Furniture.LITTLE_TREE -> littleTree(w, d, p)
             else -> PixelImage(w, d)
         }
         return if (pl.flip) StageRenderer.mirror(img) else img
@@ -556,6 +644,10 @@ object Room {
             Furniture.POSTER -> poster(scratch, pad, bottom - 12, p)
             Furniture.STRING_LIGHTS -> stringLights(scratch, pad, bottom - 6, TILE_W * 4, p, phase)
             Furniture.PAW_BANNER -> banner(scratch, pad + 1, bottom - 14, p)
+            Furniture.BUNTING -> buntingStrip(scratch, pad, bottom - 10, TILE_W * 4, p, intArrayOf(p.curtain, p.bowl, 0xFFFFCF5C.toInt(), p.leaf))
+            Furniture.CHALKBOARD -> chalkboard(scratch, pad, bottom - 14, TILE_W * 2, p)
+            Furniture.BIRDHOUSE -> birdhouse(scratch, pad + 1, bottom - 16, p)
+            Furniture.WIND_CHIME -> windChime(scratch, pad + 4, bottom - 18, p)
             else -> Unit
         }
         val b = Animator.opaqueBounds(scratch) ?: return WallSprite(PixelImage(1, 1), 0, 0)
@@ -703,6 +795,238 @@ object Room {
         for ((dx, dy) in listOf(2 to 1, 3 to 1, 4 to 1, 1 to 2, 2 to 2, 3 to 2, 4 to 2, 5 to 2, 3 to 0)) set(img, dx, dy, p.frame)
         set(img, 0, 2, p.frame); set(img, 7, 2, p.frame); set(img, 7, 1, p.curtain); set(img, 8, 2, p.frame)
         return img
+    }
+
+    // ---- living room ----
+
+    private fun sofa(w: Int, d: Int, p: Palette): PixelImage {
+        val img = PixelImage(w, d + 11)
+        // A long back rest, the seat in front of it, an arm at each end and two cushions.
+        box(img, 1, 0, w - 2, 2, 7, p.fabricLight, p.fabric, p.fabricDark, p.fabricDark)
+        box(img, 1, 7, w - 2, d, 4, p.fabricLight, p.fabric, p.fabricDark, p.fabricDark)
+        for (yy in 5 until d + 10) { set(img, 0, yy, p.fabricDark); set(img, 1, yy, p.fabricLight); set(img, w - 2, yy, p.fabric); set(img, w - 1, yy, p.fabricDark) }
+        for (xx in 3 until w - 3) if (xx % 8 == 3) for (yy in 8 until 7 + d) set(img, xx, yy, p.fabricDark)
+        for ((cx, c) in listOf(6 to p.cushion, w - 10 to p.curtain)) for (yy in 2..5) for (xx in cx until cx + 5) set(img, xx, yy, if (yy == 2 || xx == cx) Argb.mix(c, p.frame, 0.3) else c)
+        return img
+    }
+
+    private fun tv(w: Int, d: Int, p: Palette, phase: Sky.Phase): PixelImage {
+        val img = PixelImage(w, d + 16)
+        // A low stand with a dark screen standing on it; by night the screen shows a dim glow.
+        box(img, 0, d + 10, w, 2, 4, p.woodLight, p.wood, p.woodDark, p.woodDark)
+        val screen = if (phase.dark) 0xFF4A6E8C.toInt() else 0xFF2F3A4A.toInt()
+        for (yy in 0 until d + 9) for (xx in 1 until w - 1) set(img, xx, yy, if (yy == 0 || yy == d + 8 || xx == 1 || xx == w - 2) p.metalDark else screen)
+        for (xx in 3..5) set(img, xx, 2, Argb.mix(screen, 0xFFFFFFFF.toInt(), 0.35))
+        if (phase.dark) for (yy in 3 until d + 6) for (xx in 4 until w - 4) if ((xx + yy) % 3 == 0) set(img, xx, yy, Argb.mix(screen, 0xFFFFE9B0.toInt(), 0.25))
+        for (xx in w / 2 - 1..w / 2) set(img, xx, d + 9, p.metalDark)
+        return img
+    }
+
+    private fun coffeeTable(w: Int, d: Int, p: Palette): PixelImage {
+        val img = PixelImage(w, d + 6)
+        for (lx in listOf(1, w - 3)) for (yy in d + 2 until d + 6) { set(img, lx, yy, p.woodDark); set(img, lx + 1, yy, p.wood) }
+        box(img, 0, 0, w, d, 2, p.woodLight, p.wood, p.woodDark, p.woodDark)
+        // A book and a mug on it.
+        for (xx in 3..7) for (yy in 2..3) set(img, xx, yy, if (yy == 2) p.curtainDark else p.curtain)
+        for (xx in w - 6..w - 4) set(img, xx, 2, p.frame); set(img, w - 3, 2, p.frame)
+        return img
+    }
+
+    private fun floorCushion(w: Int, d: Int, p: Palette): PixelImage {
+        val img = PixelImage(w, d + 3)
+        box(img, 0, 0, w, d, 2, p.rugDot, p.rug, p.rugEdge, p.rugEdge)
+        img[0, 0] = 0; img[w - 1, 0] = 0; img[0, d + 2] = 0; img[w - 1, d + 2] = 0
+        set(img, w / 2, d / 2, p.rugEdge)
+        return img
+    }
+
+    private fun recordPlayer(w: Int, d: Int, p: Palette): PixelImage {
+        val img = PixelImage(w, d + 5)
+        box(img, 0, 2, w, d - 1, 4, p.woodLight, p.wood, p.woodDark, p.woodDark)
+        // The record, its label, and the arm across it.
+        disc(img, 4, d / 2 + 2, 3.0, p.ink); set(img, 4, d / 2 + 2, p.curtain)
+        for (yy in 1..3) set(img, w - 2, yy, p.metal); set(img, w - 3, 4, p.metal); set(img, 6, 4, p.metal); set(img, 5, 4, p.metal)
+        return img
+    }
+
+    // ---- playroom ----
+
+    private fun toyChest(w: Int, d: Int, p: Palette): PixelImage {
+        val img = PixelImage(w, d + 8)
+        box(img, 0, 2, w, d - 1, 7, p.bowl, p.bowlDark, Argb.mix(p.bowlDark, p.ink, 0.3), Argb.mix(p.bowlDark, p.ink, 0.45))
+        // A lifted lid with toys peeking out: a ball, a block, a bone.
+        for (xx in 1 until w - 1) set(img, xx, 2, Argb.mix(p.bowl, p.frame, 0.3))
+        set(img, 3, 1, p.curtain); set(img, 4, 1, p.curtain); set(img, 3, 0, p.curtain); set(img, 4, 0, p.curtainDark)
+        for (xx in 7..9) set(img, xx, 1, 0xFFFFCF5C.toInt()); set(img, 8, 0, 0xFFFFCF5C.toInt())
+        for (xx in 12..14) set(img, xx, 1, p.frame); set(img, 12, 0, p.frame); set(img, 14, 0, p.frame)
+        return img
+    }
+
+    private fun blocks(p: Palette): PixelImage {
+        val img = PixelImage(TILE_W, TILE_D + 6)
+        // Three stacked blocks, each a little box with a letter-like mark.
+        val colours = listOf(p.curtain, p.bowl, p.leaf)
+        box(img, 1, 8, 5, 2, 3, Argb.mix(colours[0], p.frame, 0.3), colours[0], Argb.mix(colours[0], p.ink, 0.3), Argb.mix(colours[0], p.ink, 0.45))
+        box(img, 4, 8, 5, 2, 3, Argb.mix(colours[1], p.frame, 0.3), colours[1], Argb.mix(colours[1], p.ink, 0.3), Argb.mix(colours[1], p.ink, 0.45))
+        box(img, 2, 3, 5, 2, 3, Argb.mix(colours[2], p.frame, 0.3), colours[2], Argb.mix(colours[2], p.ink, 0.3), Argb.mix(colours[2], p.ink, 0.45))
+        set(img, 4, 6, p.frame); set(img, 2, 11, p.frame); set(img, 6, 11, p.frame)
+        return img
+    }
+
+    private fun playTunnel(w: Int, d: Int, p: Palette): PixelImage {
+        val img = PixelImage(w, d + 10)
+        // A fabric tube lying across: striped body, a dark round mouth at the right end.
+        for (yy in 2 until d + 9) for (xx in 2 until w - 4) set(img, xx, yy, if ((xx / 4) % 2 == 0) p.fabric else p.fabricLight)
+        for (xx in 2 until w - 4) { set(img, xx, 2, p.fabricDark); set(img, xx, d + 8, p.fabricDark) }
+        for (yy in 0 until d + 11) for (xx in w - 8 until w) {
+            val nx = (xx - (w - 4) + 0.5) / 4.0; val ny = (yy - (d + 10) / 2.0 + 0.5) / ((d + 10) / 2.0)
+            val r = nx * nx + ny * ny
+            if (r <= 1.0) set(img, xx, yy, if (r > 0.7) p.fabricDark else if (r > 0.45) p.fabric else p.ink)
+        }
+        return img
+    }
+
+    private fun ballPit(w: Int, d: Int, p: Palette, seed: Int): PixelImage {
+        val img = PixelImage(w, d + 5)
+        box(img, 0, 0, w, d, 5, p.fabricLight, p.fabric, p.fabricDark, p.fabricDark)
+        // Balls piled on top, in the toy box's colours.
+        val colours = intArrayOf(p.curtain, p.bowl, 0xFFFFCF5C.toInt(), p.leaf, p.cushion)
+        val r = Random(seed)
+        for (yy in 1 until d - 1 step 2) for (xx in 1 until w - 2 step 3) {
+            val c = colours[r.nextInt(colours.size)]; val ox = xx + r.nextInt(2)
+            set(img, ox, yy, c); set(img, ox + 1, yy, c); set(img, ox, yy + 1, Argb.mix(c, p.ink, 0.25)); set(img, ox + 1, yy + 1, c)
+        }
+        return img
+    }
+
+    private fun rockingHorse(w: Int, d: Int, p: Palette): PixelImage {
+        val img = PixelImage(w, d + 12)
+        val wood = p.wood; val dark = p.woodDark
+        // Body, head up on the right, a mane, the rockers underneath.
+        for (yy in 5..9) for (xx in 4 until w - 5) set(img, xx, yy, if (yy == 5 || yy == 9) dark else wood)
+        for (yy in 1..7) for (xx in w - 6 until w - 2) set(img, xx, yy, if (yy == 1 || xx == w - 3) dark else wood)
+        set(img, w - 3, 3, p.ink); set(img, w - 7, 2, p.curtain); set(img, w - 7, 3, p.curtain); set(img, w - 8, 4, p.curtain)
+        for (xx in 5..7) for (yy in 9 until d + 9) set(img, xx, yy, dark)
+        for (xx in w - 9 until w - 7) for (yy in 9 until d + 9) set(img, xx, yy, dark)
+        for (xx in 1 until w - 1) { val dip = if (xx < 4 || xx > w - 5) 1 else 0; set(img, xx, d + 9 + dip, dark); set(img, xx, d + 10 + dip, p.woodLight) }
+        return img
+    }
+
+    private fun playTent(w: Int, d: Int, p: Palette): PixelImage {
+        val img = PixelImage(w, d + 16)
+        val h = d + 15; val cx = w / 2
+        // A tipi: a striped triangle with a dark opening and a pole at the top.
+        for (yy in 1..h) {
+            val half = (yy * (w / 2 - 1)) / h
+            for (xx in cx - half..cx + half) {
+                val stripe = ((xx - cx + half) / 3) % 2 == 0
+                set(img, xx, yy, if (xx == cx - half || xx == cx + half) p.fabricDark else if (stripe) p.fabricLight else p.fabric)
+            }
+        }
+        for (yy in h - 7..h) { val half = (yy - (h - 7)) / 3 + 1; for (xx in cx - half..cx + half) set(img, xx, yy, p.ink) }
+        set(img, cx, 0, p.woodDark); set(img, cx - 1, 0, p.woodDark); set(img, cx + 1, 0, p.woodDark)
+        return img
+    }
+
+    // ---- garden ----
+
+    private fun flowerBed(w: Int, d: Int, p: Palette): PixelImage {
+        val img = PixelImage(w, d + 8)
+        box(img, 0, 5, w, d, 3, Argb.mix(p.wood, p.ink, 0.35), p.woodDark, Argb.mix(p.woodDark, p.ink, 0.3), Argb.mix(p.woodDark, p.ink, 0.45))
+        for (xx in 1 until w - 1) for (yy in 6 until 5 + d) if ((xx + yy) % 3 != 0) set(img, xx, yy, 0xFF6B4A2E.toInt())
+        // Flowers on stems: pink, gold and blue heads with a leaf or two.
+        val heads = intArrayOf(p.curtain, 0xFFFFCF5C.toInt(), p.bowl, 0xFFFFA9C9.toInt())
+        var i = 0
+        for (xx in 2 until w - 1 step 3) {
+            for (yy in 2..5) set(img, xx, yy, p.leafDark)
+            val c = heads[i % heads.size]
+            set(img, xx, 1, c); set(img, xx - 1, 1, c); set(img, xx + 1, 1, c); set(img, xx, 0, c); set(img, xx, 2, c)
+            set(img, xx, 1, Argb.mix(c, p.frame, 0.4)); set(img, xx + 1, 3, p.leaf)
+            i++
+        }
+        return img
+    }
+
+    private fun gardenBench(w: Int, d: Int, p: Palette): PixelImage {
+        val img = PixelImage(w, d + 10)
+        // A slatted back, a slatted seat, two legs.
+        for (yy in 0..5) for (xx in 1 until w - 1) set(img, xx, yy, if (yy % 2 == 0) p.woodDark else p.woodLight)
+        box(img, 0, 6, w, d - 2, 2, p.woodLight, p.wood, p.woodDark, p.woodDark)
+        for (xx in 2 until w - 2 step 4) for (yy in 6 until 6 + d - 2) set(img, xx, yy, p.wood)
+        for (lx in listOf(1, w - 3)) for (yy in d + 6 until d + 10) { set(img, lx, yy, p.woodDark); set(img, lx + 1, yy, p.wood) }
+        return img
+    }
+
+    private fun gardenLantern(p: Palette): PixelImage {
+        val img = PixelImage(TILE_W, 26)
+        val x = 4
+        // A post with a little glass lantern on top, lit like the floor lamp.
+        for (yy in 9 until 25) set(img, x, yy, p.metalDark)
+        for (dx in -2..2) set(img, x + dx, 25, p.metalDark)
+        for (dy in 2..8) for (dx in -2..2) set(img, x + dx, dy, if (dy == 2 || dy == 8 || dx == -2 || dx == 2) p.metalDark else p.shade)
+        set(img, x, 1, p.metalDark); set(img, x, 0, p.metalDark); set(img, x, 5, Argb.mix(p.shade, 0xFFFFFFFF.toInt(), 0.5))
+        return img
+    }
+
+    private fun birdBath(p: Palette): PixelImage {
+        val img = PixelImage(TILE_W, TILE_D + 12)
+        // A stone pedestal with a shallow bowl of water, and a bird on the rim.
+        for (yy in 7 until TILE_D + 10) { set(img, 3, yy, p.metalDark); set(img, 4, yy, p.metal); set(img, 5, yy, p.metal) }
+        for (dx in 1..7) { set(img, dx, TILE_D + 10, p.metalDark); set(img, dx, TILE_D + 11, p.metal) }
+        for (dx in 0 until TILE_W) { set(img, dx, 4, p.metal); set(img, dx, 5, p.metalDark); set(img, dx, 6, p.metalDark) }
+        for (dx in 1..7) set(img, dx, 4, p.water); set(img, 1, 4, p.glass); set(img, 7, 4, p.glass)
+        set(img, 7, 3, p.bowl); set(img, 8, 2, p.bowl); set(img, 7, 2, p.bowl); set(img, 6, 3, p.bowlDark)
+        return img
+    }
+
+    private fun littleTree(w: Int, d: Int, p: Palette): PixelImage {
+        val img = PixelImage(w, d + 22)
+        val cx = w / 2
+        // A round canopy with lighter leaves on the sunny side, a short trunk in a ring of soil.
+        disc(img, cx, 8, 8.5, p.leafDark); disc(img, cx - 2, 6, 6.0, p.leaf)
+        for (yy in 0 until 17) for (xx in 0 until w) if (img[xx, yy] == p.leaf && (xx * 3 + yy * 5) % 7 == 0) img[xx, yy] = Argb.mix(p.leaf, p.frame, 0.35)
+        for (yy in 15 until d + 20) for (xx in cx - 1..cx + 1) set(img, xx, yy, if (xx == cx + 1) p.woodDark else p.wood)
+        for (xx in cx - 4..cx + 4) { set(img, xx, d + 20, 0xFF6B4A2E.toInt()); set(img, xx, d + 21, Argb.mix(0xFF6B4A2E.toInt(), p.ink, 0.2)) }
+        set(img, cx + 3, 9, p.curtain); set(img, cx - 5, 11, p.curtain)
+        return img
+    }
+
+    /** A string of little flags from [x0] across [w], sagging in the middle. */
+    private fun buntingStrip(img: PixelImage, x0: Int, top: Int, w: Int, p: Palette, colours: IntArray) {
+        var i = 0; var x = x0
+        while (x + 6 <= x0 + w) {
+            val t = (x + 3 - x0 - w / 2.0) / (w / 2.0)
+            val y = top + (3 * (1 - t * t)).toInt()
+            for (xx in x until x + 8) set(img, xx, y, p.woodDark)
+            val c = colours[i % colours.size]
+            for (dy in 0..4) for (dx in dy..6 - dy) set(img, x + 1 + dx, y + 1 + dy, c)
+            i++; x += 8
+        }
+    }
+
+    private fun chalkboard(img: PixelImage, x: Int, y: Int, w: Int, p: Palette) {
+        // A dark green board in a wooden frame, with a chalk paw and a line of chalk.
+        for (dy in 0 until 13) for (dx in 0 until w) set(img, x + dx, y + dy, if (dy == 0 || dy == 12 || dx == 0 || dx == w - 1) p.wood else 0xFF3E5C4A.toInt())
+        for ((dx, dy) in listOf(4 to 4, 6 to 4, 3 to 5, 7 to 5, 5 to 6, 4 to 7, 5 to 7, 6 to 7)) set(img, x + dx, y + dy, p.frame)
+        for (dx in w - 7 until w - 2) set(img, x + dx, y + 9, Argb.mix(p.frame, 0xFF3E5C4A.toInt(), 0.4))
+        for (dx in 1 until w - 1) set(img, x + dx, y + 11, if (dx % 5 == 2) p.frame else p.woodLight)
+    }
+
+    private fun birdhouse(img: PixelImage, x: Int, y: Int, p: Palette) {
+        // A little house on a bracket: a roof, a round door, a perch.
+        for (dy in 0..2) for (dx in 1 - dy..5 + dy) set(img, x + dx, y + dy, p.curtainDark)
+        for (dy in 3..10) for (dx in 1..5) set(img, x + dx, y + dy, if (dx == 1 || dx == 5 || dy == 10) p.woodDark else p.woodLight)
+        set(img, x + 3, y + 5, p.ink); set(img, x + 3, y + 6, p.ink); set(img, x + 2, y + 6, p.ink); set(img, x + 4, y + 6, p.ink)
+        set(img, x + 3, y + 8, p.woodDark); set(img, x + 3, y + 9, p.woodDark)
+        for (dy in 11..13) set(img, x + 3, y + dy, p.woodDark)
+    }
+
+    private fun windChime(img: PixelImage, x: Int, top: Int, p: Palette) {
+        // A wooden disc with metal tubes of different lengths hanging from it.
+        for (dy in 0..3) set(img, x, top + dy, p.woodDark)
+        for (dx in -3..3) { set(img, x + dx, top + 4, p.wood); set(img, x + dx, top + 5, p.woodDark) }
+        val lengths = intArrayOf(9, 12, 7, 11, 8)
+        lengths.forEachIndexed { i, len -> val xx = x - 3 + i * 6 / 4; for (dy in 6 until 6 + len) set(img, xx, top + dy, if (dy % 3 == 0) p.metal else p.metalDark) }
     }
 
     // ---- the season's stand-ins ----

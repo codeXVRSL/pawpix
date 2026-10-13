@@ -56,6 +56,7 @@ import com.pawpixel.sprite.Placed
 import com.pawpixel.sprite.PixelIcons
 import com.pawpixel.sprite.Room
 import com.pawpixel.sprite.RoomLayout
+import com.pawpixel.sprite.RoomTheme
 import kotlin.math.floor
 import kotlin.math.roundToInt
 
@@ -94,7 +95,8 @@ fun DecorateScreen(app: AppScope, state: AppState, pet: Pet) {
         val added = next.items.filter { n -> before.items.none { it === n } }
         val gone = before.items.filter { o -> next.items.none { it === o } }
         when {
-            next == RoomLayout.DEFAULT -> say(tr("{0} looks around: everything is where it was.", pet.name))
+            next == RoomLayout.starter(next.theme) && next.theme == before.theme -> say(tr("{0} looks around: everything is where it was.", pet.name))
+            next.theme != before.theme -> Unit
             gone.any { it.item == Furniture.BED } && added.none { it.item == Furniture.BED } -> say(tr("{0} will miss that bed.", pet.name))
             gone.any { it.item == Furniture.BOWL } && added.none { it.item == Furniture.BOWL } -> say(tr("{0} looks for the bowl.", pet.name))
             added.size == 1 && gone.size == 1 && added[0].item == gone[0].item -> say(tr("{0} likes the {1} there.", pet.name, tr(added[0].item.label).lowercase()))
@@ -109,7 +111,7 @@ fun DecorateScreen(app: AppScope, state: AppState, pet: Pet) {
             GlassButton(PixelIcons.CHEVRON_LEFT, tr("Back")) { app.back() }
             Spacer(Modifier.weight(1f))
             GhostPill(tr("Undo"), enabled = undo.isNotEmpty()) { undo.removeLastOrNull()?.let { prev -> layout = prev; selected = null; app.launch { app.repo.decorate(pet, prev) } } }
-            GhostPill(tr("Put everything back"), enabled = layout != RoomLayout.DEFAULT) { commit(RoomLayout.DEFAULT) }
+            GhostPill(tr("Put everything back"), enabled = layout != RoomLayout.starter(layout.theme)) { commit(RoomLayout.starter(layout.theme)) }
         }
 
         // The room, with the grid showing, and the pet's remark over it.
@@ -139,11 +141,22 @@ fun DecorateScreen(app: AppScope, state: AppState, pet: Pet) {
             }
         }
 
-        // The drawer: every piece, earned ones first.
-        Column(Modifier.fillMaxWidth().background(Color.White).navigationBarsPadding().padding(vertical = 10.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        // The drawer: the room to be in, then every piece that fits it, earned ones first.
+        Column(Modifier.fillMaxWidth().background(Paw.palette.sticker).navigationBarsPadding().padding(vertical = 10.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            LazyRow(contentPadding = PaddingValues(horizontal = 12.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                items(RoomTheme.entries, key = { it.name }) { t ->
+                    ChoiceChip(layout.theme == t, {
+                        if (layout.theme != t) {
+                            // A room the owner hasn't arranged yet starts furnished; one they have keeps what fits.
+                            val next = if (layout.items.isEmpty() || layout == RoomLayout.starter(layout.theme)) RoomLayout.starter(t) else layout.inTheme(t)
+                            commit(next); say(tr("{0} looks around the {1}.", pet.name, tr(t.label).lowercase()))
+                        }
+                    }, tr(t.label))
+                }
+            }
             Text(tr("{0} earns furniture with days of care. Nothing to buy.", pet.name), Modifier.padding(horizontal = 16.dp), style = MaterialTheme.typography.labelSmall, color = Color(0xFF6E6287))
             // Earned pieces not yet in the room first (something new to try), then the placed ones, then the locked ones by the day they arrive.
-            val pieces = Furniture.entries.sortedWith(compareBy({ it !in earned }, { layout.items.any { p -> p.item == it } }, { it.unlockDays }))
+            val pieces = Furniture.entries.filter { layout.allows(it) }.sortedWith(compareBy({ it !in earned }, { layout.items.any { p -> p.item == it } }, { it.unlockDays }))
             LazyRow(contentPadding = PaddingValues(horizontal = 12.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 items(pieces, key = { it.name }) { item ->
                     val have = layout.items.count { it.item == item }
@@ -156,7 +169,7 @@ fun DecorateScreen(app: AppScope, state: AppState, pet: Pet) {
                         spot == null -> tr("{0} · all placed", tr(item.label))
                         else -> tr("Add {0}", tr(item.label))
                     }
-                    CataloguePiece(item, phase, enabled = spot != null, daysLeft = if (unlocked) null else daysLeft, count = have, label = label) {
+                    CataloguePiece(item, phase, layout.theme, enabled = spot != null, daysLeft = if (unlocked) null else daysLeft, count = have, label = label) {
                         if (spot == null) return@CataloguePiece
                         val placed = Placed(item, spot.first, spot.second)
                         haptics.performHapticFeedback(HapticFeedbackType.LongPress)
@@ -173,9 +186,9 @@ private val Furniture.maxInRoom: Int get() = when (this) { Furniture.BED, Furnit
 
 /** One piece in the drawer: a little picture of it in the room, its count, and a lock until it's earned ([daysLeft] until then). */
 @Composable
-private fun CataloguePiece(item: Furniture, phase: Sky.Phase, enabled: Boolean, daysLeft: Int?, count: Int, label: String, onClick: () -> Unit) {
+private fun CataloguePiece(item: Furniture, phase: Sky.Phase, theme: RoomTheme, enabled: Boolean, daysLeft: Int?, count: Int, label: String, onClick: () -> Unit) {
     val locked = daysLeft != null
-    val thumb = remember(item, phase) { catalogueThumb(item, phase).toImageBitmap() }
+    val thumb = remember(item, phase, theme) { catalogueThumb(item, phase, theme).toImageBitmap() }
     Pressable(
         Modifier.semantics { contentDescription = label }, face = if (locked) Color(0xFFF3EEE8) else Color.White, lip = PawColors.StickerEdge, outline = PawColors.StickerEdge,
         shape = RoundedCornerShape(14.dp), role = Role.Button, enabled = enabled, onClickLabel = label, onClick = if (enabled) onClick else null,
@@ -200,11 +213,11 @@ private fun CataloguePiece(item: Furniture, phase: Sky.Phase, enabled: Boolean, 
 }
 
 /** The piece alone, cut out of a room, for the drawer. */
-private fun catalogueThumb(item: Furniture, phase: Sky.Phase): com.pawpixel.sprite.PixelImage {
+private fun catalogueThumb(item: Furniture, phase: Sky.Phase, theme: RoomTheme): com.pawpixel.sprite.PixelImage {
     val roomW = RoomLayout.COLS * Room.TILE_W + 20; val h = 64
     val x = 2; val y = if (item.onWall) 1 else 1
-    val with = Room.render(roomW, h, h - 10, phase, layout = RoomLayout(listOf(Placed(item, x, y))))
-    val without = Room.render(roomW, h, h - 10, phase, layout = RoomLayout(emptyList()))
+    val with = Room.render(roomW, h, h - 10, phase, layout = RoomLayout(listOf(Placed(item, x, y)), theme))
+    val without = Room.render(roomW, h, h - 10, phase, layout = RoomLayout(emptyList(), theme))
     var l = roomW; var t = h; var r = -1; var b = -1
     for (yy in 0 until h) for (xx in 0 until roomW) if (with[xx, yy] != without[xx, yy]) { if (xx < l) l = xx; if (xx > r) r = xx; if (yy < t) t = yy; if (yy > b) b = yy }
     if (r < 0) return com.pawpixel.sprite.PixelImage(8, 8)
@@ -294,7 +307,7 @@ private data class Drag(val piece: Placed, val grabX: Int, val grabY: Int, val g
 private class Drawn(val px: Int, val left: Int, val top: Int, val geom: Room.Geometry, val base: ImageBitmap, val props: List<EditorProp>, val layout: RoomLayout, val phase: Sky.Phase) {
     private val sprites = HashMap<Placed, Room.Prop>()
     /** A standing piece as it would be drawn at [p]'s place (unlit: a ghost), or null for a rug or a wall piece. */
-    fun prop(p: Placed): Room.Prop? = if (p.item.onWall || p.item.flat) null else sprites.getOrPut(p) { Room.prop(p, geom, Room.palette(phase), phase) }
+    fun prop(p: Placed): Room.Prop? = if (p.item.onWall || p.item.flat) null else sprites.getOrPut(p) { Room.prop(p, geom, Room.palette(phase, layout.theme), phase) }
 
     /** Screen point to room pixel. */
     private fun room(at: Offset): Pair<Int, Int> = floor((at.x - left) / px).toInt() to floor((at.y - top) / px).toInt()
