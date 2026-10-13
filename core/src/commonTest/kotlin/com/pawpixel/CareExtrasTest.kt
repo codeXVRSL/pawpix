@@ -319,3 +319,33 @@ class NameFilterTest {
         assertEquals("A dog", NameFilter.forMap("G4go", Species.DOG))
     }
 }
+
+class MissedCareTest {
+    private val clock = LocalClock.MANILA
+    private val today = 20400L
+    private val now = clock.at(today, 9 * 60)
+    private val pet = Pet("p1", "Mochi", Species.CAT, clock.at(today - 10, 12 * 60))
+    private val feed = StateOps.defaultTask(pet, TaskKind.FEED, today - 10, "feed", clock.at(today - 10, 12 * 60))
+    private val vet = StateOps.defaultTask(pet, TaskKind.VET, today - 10, "vet", clock.at(today - 10, 12 * 60))
+
+    @Test fun anUnloggedYesterdayIsAskedAboutOnceAndCanBeLoggedWithoutPenalty() {
+        var state = AppState(pets = listOf(pet), tasks = listOf(feed, vet))
+        assertEquals(listOf(feed), MissedCare.yesterday(state, pet.id, now, clock), "only the everyday task, never a health item")
+        // Logging it for yesterday puts the completion on that day; asking moves on.
+        state = StateOps.logOnDay(state, feed.id, today - 1, now, clock)
+        assertEquals(today - 1, state.completions.single().localDay)
+        assertTrue(MissedCare.yesterday(state, pet.id, now, clock).isEmpty())
+        // Skipping marks the day asked, so it is not asked again; tomorrow's question is a new one.
+        var skipped = StateOps.setSettings(AppState(pets = listOf(pet), tasks = listOf(feed)), Settings(missAskedDay = today - 1))
+        assertTrue(MissedCare.yesterday(skipped, pet.id, now, clock).isEmpty())
+        assertEquals(listOf(feed), MissedCare.yesterday(skipped, pet.id, now + DAY_MS, clock))
+    }
+
+    @Test fun nothingIsAskedForADayAwayOrBeforeThePetExisted() {
+        val away = StateOps.setAway(AppState(pets = listOf(pet), tasks = listOf(feed)), now + DAY_MS)
+        assertTrue(MissedCare.yesterday(away, pet.id, now, clock).isEmpty())
+        val newPet = pet.copy(createdAtMs = clock.at(today - 1, 15 * 60))
+        val fresh = AppState(pets = listOf(newPet), tasks = listOf(feed.copy(createdAtMs = newPet.createdAtMs)))
+        assertTrue(MissedCare.yesterday(fresh, pet.id, now, clock).isEmpty())
+    }
+}

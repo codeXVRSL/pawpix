@@ -51,6 +51,7 @@ fun CarePanel(app: AppScope, state: AppState, pet: Pet) {
     val clock = app.repo.clock
     val statuses = statusesFor(app, state, pet.id).filter { !it.task.kind.health }
     RemindersCard(app, state, pet)
+    MissedYesterdayCard(app, state, pet)
     SectionTitle(tr("Care")) {
         LinkButton(tr("+ Add care task"), color = MaterialTheme.colorScheme.primary) { app.navigate(Screen.EditTask(pet.id, null)) }
     }
@@ -107,6 +108,44 @@ fun CarePanel(app: AppScope, state: AppState, pet: Pet) {
  * Asks for the notification permission here, once, next to the care it's for: never out of the
  * blue at first launch. Hidden once answered (either way) or when notifications already work.
  */
+/**
+ * Yesterday went unlogged: state it and invite, never scold. "Yes, log it" records the care for
+ * yesterday (no mood penalty either way); "Skip" moves on. Each missed day is asked about once.
+ */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun MissedYesterdayCard(app: AppScope, state: AppState, pet: Pet) {
+    val clock = app.repo.clock
+    val missed = remember(state, app.now) { com.pawpixel.core.MissedCare.yesterday(state, pet.id, app.now, clock) }
+    val task = missed.firstOrNull() ?: return
+    val yesterday = clock.dayIndex(app.now) - 1
+    fun asked() = app.launch { app.repo.editSettings { it.copy(missAskedDay = yesterday) } }
+    val question = when (task.kind) {
+        com.pawpixel.core.TaskKind.FEED -> tr("Was {0} fed yesterday?", pet.name)
+        com.pawpixel.core.TaskKind.WATER -> tr("Did {0} get fresh water yesterday?", pet.name)
+        com.pawpixel.core.TaskKind.WALK -> tr("Did {0} get a walk yesterday?", pet.name)
+        com.pawpixel.core.TaskKind.PLAY -> tr("Did {0} get to play yesterday?", pet.name)
+        com.pawpixel.core.TaskKind.MEDS -> tr("Did {0} get yesterday's medicine?", pet.name)
+        com.pawpixel.core.TaskKind.GROOM -> tr("Was {0} groomed yesterday?", pet.name)
+        else -> tr("Was it done?")
+    }
+    SoftCard(Modifier.fillMaxWidth(), tone = Tone.Calm) {
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text(tr("Yesterday's {0} wasn't logged.", trName(task.title)), style = MaterialTheme.typography.titleMedium, modifier = Modifier.semantics { heading() })
+            Text(question, style = MaterialTheme.typography.bodyMedium)
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                PrimaryPill(tr("Yes, log it")) {
+                    app.launch {
+                        app.repo.update { com.pawpixel.core.StateOps.logOnDay(it, task.id, yesterday, app.now, clock) }
+                        app.repo.editSettings { it.copy(missAskedDay = yesterday) }
+                    }
+                }
+                LinkButton(tr("Skip"), color = MaterialTheme.colorScheme.onTertiaryContainer) { asked() }
+            }
+        }
+    }
+}
+
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun RemindersCard(app: AppScope, state: AppState, pet: Pet) {

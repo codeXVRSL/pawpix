@@ -15,6 +15,7 @@ object StateCodec {
             "nightStart" to state.settings.nightStart,
             "nightEnd" to state.settings.nightEnd,
             "remindersAsked" to state.settings.remindersAsked,
+            "missAskedDay" to state.settings.missAskedDay,
         ),
         "pets" to state.pets.map { p ->
             Json.obj(
@@ -101,6 +102,7 @@ object StateCodec {
             nightStart = s["nightStart"].int ?: defaults.nightStart,
             nightEnd = s["nightEnd"].int ?: defaults.nightEnd,
             remindersAsked = s["remindersAsked"].bool ?: defaults.remindersAsked,
+            missAskedDay = s["missAskedDay"].long ?: defaults.missAskedDay,
         )
         val spriteDefaults = SpriteSettings()
         val pets = root["pets"].list.mapNotNull { p ->

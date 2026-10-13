@@ -197,6 +197,11 @@ data class Settings(
      * notification permission there, once, where it's clear what the reminders are for.
      */
     val remindersAsked: Boolean = false,
+    /**
+     * The local day up to which "yesterday's care wasn't logged, was it done?" has been asked (answered
+     * or skipped), so each missed day is asked about once. See [CareEngine.missedYesterday].
+     */
+    val missAskedDay: Long = -1,
 )
 
 data class AppState(

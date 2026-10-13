@@ -112,6 +112,29 @@ class LocalClock(private val offsetAt: (Long) -> Long) {
 }
 
 /** Where a task stands right now within its current cycle (a day, or N days for every-N-days tasks). */
+/**
+ * The gentle answer to a day that went unlogged ("state + invitation", never a penalty): the
+ * everyday tasks of a pet with nothing logged on the local day before [nowMs], each asked about once.
+ * Nothing is asked for a day the owner was away, a day before the task or the pet existed, a
+ * health item (those are due by date, not by day), a task done every few days, or a pet that is
+ * remembered. The owner either logs it for yesterday ([StateOps.logOnDay]) or skips, and either
+ * way [Settings.missAskedDay] moves on.
+ */
+object MissedCare {
+    fun yesterday(state: AppState, petId: String, nowMs: Long, clock: LocalClock): List<CareTask> {
+        val today = clock.dayIndex(nowMs)
+        val day = today - 1
+        if (state.settings.missAskedDay >= day) return emptyList()
+        val pet = state.pet(petId) ?: return emptyList()
+        if (pet.remembered || clock.dayIndex(pet.createdAtMs) >= day) return emptyList()
+        if (state.isAway(clock.at(day, 23 * 60 + 59)) || state.isAway(clock.at(day, 0))) return emptyList()
+        val loggedThatDay = state.completions.filter { it.localDay == day }.map { it.taskId }.toSet()
+        return state.tasksFor(petId).filter { t ->
+            !t.kind.health && t.everyDays == 1 && clock.dayIndex(t.createdAtMs) < day && t.id !in loggedThatDay
+        }
+    }
+}
+
 data class TaskStatus(
     val task: CareTask,
     val cycleStartDay: Long,
