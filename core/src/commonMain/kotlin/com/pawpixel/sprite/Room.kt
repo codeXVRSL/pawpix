@@ -96,7 +96,13 @@ object Room {
     }
 
     /** A standing piece: its drawing (scaled for its depth and lit where it stands), where it goes on the stage, and the floor baseline it is sorted by. */
-    class Prop(val placed: Placed, val image: PixelImage, val x: Int, val y: Int, val baseline: Int)
+    class Prop(val placed: Placed, val image: PixelImage, val x: Int, val y: Int, val baseline: Int,
+        /** The same piece at [FINE] pixels per room pixel, lit by the fine light map; its top-left goes at ([x], [y]) times [FINE]. */
+        val fine: PixelImage = image,
+    )
+
+    /** The fine drawings hold this many pixels per room pixel. */
+    const val FINE = 2
 
     /** The light over the stage: a multiplier per channel for every pixel (1.0 = the palette's own colour, more in a beam, less in the shade). */
     class Light(val width: Int, val height: Int) {
@@ -120,6 +126,8 @@ object Room {
 
     class Scene(
         val base: PixelImage, val props: List<Prop>, val geom: Geometry, val light: Light,
+        /** The backdrop at [FINE] pixels per room pixel: crisp pixel edges (scale2x), smooth light. */
+        val fineBase: PixelImage,
         /** Each window's glass on the stage (x, y, width, height): the sun's beam starts at its sill. */
         val windows: List<IntArray> = emptyList(),
         /** Each lamp's shade on the stage (x, y): where its light pools from. */
@@ -129,6 +137,12 @@ object Room {
         fun flatten(): PixelImage {
             val out = base.copy()
             for (p in props.sortedWith(compareBy({ it.baseline }, { it.x }))) out.draw(p.image, p.x, p.y)
+            return out
+        }
+        /** Everything at the fine resolution, in painter's order. */
+        fun flattenFine(): PixelImage {
+            val out = fineBase.copy()
+            for (p in props.sortedWith(compareBy({ it.baseline }, { it.x }))) out.draw(p.fine, p.x * FINE, p.y * FINE)
             return out
         }
         /** [sprite] as it looks under the room's light with its top-left at ([x], [y]). */
@@ -144,6 +158,12 @@ object Room {
             val mask = FloatArray(into.width * into.height)
             shadowOf(mask, into.width, into.height, sprite, x, y, lampX = lampAt(props, geom))
             drawShadows(into, mask, phase)
+        }
+        /** The same shadow drawn into the fine picture [into] (room-sized [sprite] at room ([x], [y])). */
+        fun castShadowFine(into: PixelImage, sprite: PixelImage, x: Int, y: Int, phase: Sky.Phase) {
+            val mask = FloatArray(into.width * into.height)
+            shadowOf(mask, into.width, into.height, sprite.scaled(FINE), x * FINE, y * FINE, lampX = lampAt(props, geom)?.let { it * FINE }, scale = FINE)
+            drawShadows(into, mask, phase, blur = FINE)
         }
     }
 
@@ -302,10 +322,17 @@ object Room {
         // Then the light: over the backdrop, and baked into each piece where it stands.
         val lamps = lampShades(props)
         val light = light(g, phase, glass, lamps)
+        // The fine picture: the same backdrop and pieces at twice the resolution (crisp edges from scale2x),
+        // lit by a light map computed at that resolution, so beams, pools and shade are smooth gradients.
+        val g2 = Geometry(width * FINE, height * FINE, floorLine * FINE)
+        val light2 = light(g2, phase, glass.map { intArrayOf(it[0] * FINE, it[1] * FINE, it[2] * FINE, it[3] * FINE) }, lamps.map { floatArrayOf(it[0] * FINE, it[1] * FINE) })
+        val img2 = img.scale2x()
+        for (i in img2.pixels.indices) img2.pixels[i] = Light.lit(img2.pixels[i], light2.r[i], light2.g[i], light2.b[i])
         for (i in img.pixels.indices) img.pixels[i] = Light.lit(img.pixels[i], light.r[i], light.g[i], light.b[i])
-        val lit = props.map { Prop(it.placed, litSprite(it.image, it.x, it.y, light), it.x, it.y, it.baseline) }
-        bloom(img, lit)
-        return Scene(img, lit, g, light, glass, lamps)
+        val lit = props.map { Prop(it.placed, litSprite(it.image, it.x, it.y, light), it.x, it.y, it.baseline, litSprite(it.image.scale2x(), it.x * FINE, it.y * FINE, light2)) }
+        bloom(img, lit, 1)
+        bloom(img2, lit, FINE)
+        return Scene(img, lit, g, light, img2, glass, lamps)
     }
 
     /**
@@ -549,10 +576,10 @@ object Room {
      * A piece's shadow: its silhouette flattened onto the floor at its feet, pushed a little to the
      * right (the window is on the left by day) or away from the lamp, into [mask] (0..1 per pixel).
      */
-    private fun shadowOf(mask: FloatArray, w: Int, h: Int, sprite: PixelImage, x: Int, y: Int, lampX: Float?) {
+    private fun shadowOf(mask: FloatArray, w: Int, h: Int, sprite: PixelImage, x: Int, y: Int, lampX: Float?, scale: Int = 1) {
         val shrink = 3
-        val dx = if (lampX != null) ((x + sprite.width / 2f - lampX) * 0.15f).roundToInt().coerceIn(-5, 5) else 3
-        val dy = 2
+        val dx = if (lampX != null) ((x + sprite.width / 2f - lampX) * 0.15f).roundToInt().coerceIn(-5 * scale, 5 * scale) else 3 * scale
+        val dy = 2 * scale
         for (sy in 0 until sprite.height) for (sx in 0 until sprite.width) {
             if (Argb.alpha(sprite[sx, sy]) < 128) continue
             val tx = x + sx + dx
@@ -562,14 +589,14 @@ object Room {
     }
 
     /** Softens [mask] (a small blur, twice) and darkens [img] under it. */
-    private fun drawShadows(img: PixelImage, mask: FloatArray, phase: Sky.Phase) {
+    private fun drawShadows(img: PixelImage, mask: FloatArray, phase: Sky.Phase, blur: Int = 1) {
         val w = img.width; val h = img.height
         var m = mask
         repeat(2) {
             val out = FloatArray(w * h)
             for (y in 0 until h) for (x in 0 until w) {
                 var sum = 0f; var n = 0
-                for (yy in maxOf(0, y - 1)..minOf(h - 1, y + 1)) for (xx in maxOf(0, x - 1)..minOf(w - 1, x + 1)) { sum += m[yy * w + xx]; n++ }
+                for (yy in maxOf(0, y - blur)..minOf(h - 1, y + blur)) for (xx in maxOf(0, x - blur)..minOf(w - 1, x + blur)) { sum += m[yy * w + xx]; n++ }
                 out[y * w + x] = sum / n
             }
             m = out
@@ -580,7 +607,7 @@ object Room {
     }
 
     /** The brightest spots (the window by day, the lamp at night) glow onto what's around them. */
-    private fun bloom(img: PixelImage, props: List<Prop>) {
+    private fun bloom(img: PixelImage, props: List<Prop>, scale: Int) {
         val w = img.width; val h = img.height
         val bright = IntArray(w * h * 3)
         fun splat(c: Int, x: Int, y: Int) {
@@ -589,14 +616,15 @@ object Room {
             bright[i] = maxOf(bright[i], maxOf(0, Argb.r(c) - 215) * 5); bright[i + 1] = maxOf(bright[i + 1], maxOf(0, Argb.g(c) - 215) * 5); bright[i + 2] = maxOf(bright[i + 2], maxOf(0, Argb.b(c) - 215) * 5)
         }
         for (y in 0 until h) for (x in 0 until w) splat(img[x, y], x, y)
-        for (p in props) for (yy in 0 until p.image.height) for (xx in 0 until p.image.width) splat(p.image[xx, yy], p.x + xx, p.y + yy)
+        for (p in props) { val im = if (scale == 1) p.image else p.fine; for (yy in 0 until im.height) for (xx in 0 until im.width) splat(im[xx, yy], p.x * scale + xx, p.y * scale + yy) }
         if (bright.all { it == 0 }) return
         var g = bright
+        val r = 2 * scale
         repeat(2) {
             val out = IntArray(w * h * 3)
             for (y in 0 until h) for (x in 0 until w) for (c in 0..2) {
                 var sum = 0; var n = 0
-                for (yy in maxOf(0, y - 2)..minOf(h - 1, y + 2)) for (xx in maxOf(0, x - 2)..minOf(w - 1, x + 2)) { sum += g[(yy * w + xx) * 3 + c]; n++ }
+                for (yy in maxOf(0, y - r)..minOf(h - 1, y + r)) for (xx in maxOf(0, x - r)..minOf(w - 1, x + r)) { sum += g[(yy * w + xx) * 3 + c]; n++ }
                 out[(y * w + x) * 3 + c] = sum / n
             }
             g = out

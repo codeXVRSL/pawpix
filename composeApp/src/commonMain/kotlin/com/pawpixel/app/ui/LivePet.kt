@@ -202,7 +202,7 @@ fun LivePet(
         val scene = roomCache[key] ?: Room.scene(roomW, rows, Room.floorLineFor(floorRow), phase, seed, season, room).let { sc ->
             // Back to front, so two pieces that overlap are drawn in the right order (as Scene.flatten does).
             // The room and its pieces at twice their resolution too (DrawnScene.FINE pixels per room pixel), corners rounded.
-            DrawnScene(sc.base.scale2x().toImageBitmap(), sc.flatten().scale2x().toImageBitmap(), sc.props.sortedWith(compareBy({ it.baseline }, { it.x })).map { DrawnProp(it.image.scale2x().toImageBitmap(), it.x, it.y, it.baseline, it.placed.item == Furniture.LAMP) }, sc.geom, sc.light, sc.windows, sc.lamps)
+            DrawnScene(sc.fineBase.toImageBitmap(), sc.flattenFine().toImageBitmap(), sc.props.sortedWith(compareBy({ it.baseline }, { it.x })).map { DrawnProp(it.fine.toImageBitmap(), it.x, it.y, it.baseline, it.placed.item == Furniture.LAMP) }, sc.geom, sc.light, sc.windows, sc.lamps)
         }.also {
             if (roomCache.size >= 4) roomCache.clear() // a few sizes at most: a resizing stage doesn't keep a bitmap per frame
             roomCache[key] = it
@@ -330,7 +330,7 @@ fun LivePet(
 private class DrawnScene(val base: ImageBitmap, val soft: ImageBitmap, val props: List<DrawnProp>, val geom: Room.Geometry, val light: Room.Light, val windows: List<IntArray>, val lamps: List<FloatArray>) {
     companion object {
         /** The bitmaps hold this many fine pixels per room pixel (they are drawn through [com.pawpixel.sprite.PixelImage.scale2x]). */
-        const val FINE = 2
+        const val FINE = Room.FINE
     }
 }
 private class DrawnProp(val image: ImageBitmap, val x: Int, val y: Int, val baseline: Int, val lamp: Boolean)
@@ -399,7 +399,7 @@ fun RoomBackdrop(phase: Sky.Phase, modifier: Modifier = Modifier, pixel: Dp = 3.
             val rows = kotlin.math.ceil(size.height / pxDp).toInt().coerceAtLeast(30)
             val floorRow = rows - kotlin.math.ceil(depthPx / pxDp).toInt() + 2
             val key = "$cols:$rows:$floorRow:${phase.key}:${season.name}:${room.encode()}"
-            val img = cache.getOrPut(key) { Room.render(cols, rows, floorRow, phase, season = season, layout = room).scale2x().toImageBitmap() }
+            val img = cache.getOrPut(key) { Room.scene(cols, rows, Room.floorLineFor(floorRow), phase, season = season, layout = room).flattenFine().toImageBitmap() }
             drawImage(img, IntOffset.Zero, IntSize(cols * 2, rows * 2), IntOffset(0, (size.height - rows * pxDp).roundToInt()), IntSize((cols * pxDp).roundToInt(), (rows * pxDp).roundToInt()), filterQuality = FilterQuality.None)
         }
         content(floorDepth)

@@ -188,7 +188,7 @@ private val Furniture.maxInRoom: Int get() = when (this) { Furniture.BED, Furnit
 @Composable
 private fun CataloguePiece(item: Furniture, phase: Sky.Phase, theme: RoomTheme, enabled: Boolean, daysLeft: Int?, count: Int, label: String, onClick: () -> Unit) {
     val locked = daysLeft != null
-    val thumb = remember(item, phase, theme) { catalogueThumb(item, phase, theme).scale2x().toImageBitmap() }
+    val thumb = remember(item, phase, theme) { catalogueThumb(item, phase, theme).toImageBitmap() }
     Pressable(
         Modifier.semantics { contentDescription = label }, face = if (locked) Color(0xFFF3EEE8) else Color.White, lip = PawColors.StickerEdge, outline = PawColors.StickerEdge,
         shape = RoundedCornerShape(14.dp), role = Role.Button, enabled = enabled, onClickLabel = label, onClick = if (enabled) onClick else null,
@@ -217,12 +217,14 @@ private fun CataloguePiece(item: Furniture, phase: Sky.Phase, theme: RoomTheme, 
 private fun catalogueThumb(item: Furniture, phase: Sky.Phase, theme: RoomTheme): com.pawpixel.sprite.PixelImage {
     val roomW = RoomLayout.COLS * Room.TILE_W + 20; val h = 64
     val x = 2; val y = if (item.onWall) 1 else 1
-    val with = Room.render(roomW, h, h - 10, phase, layout = RoomLayout(listOf(Placed(item, x, y)), theme))
-    val without = Room.render(roomW, h, h - 10, phase, layout = RoomLayout(emptyList(), theme))
-    var l = roomW; var t = h; var r = -1; var b = -1
-    for (yy in 0 until h) for (xx in 0 until roomW) if (with[xx, yy] != without[xx, yy]) { if (xx < l) l = xx; if (xx > r) r = xx; if (yy < t) t = yy; if (yy > b) b = yy }
+    // Cut from the fine picture (twice the resolution), so the thumbnail is as fine as the room.
+    val with = Room.scene(roomW, h, Room.floorLineFor(h - 10), phase, layout = RoomLayout(listOf(Placed(item, x, y)), theme)).flattenFine()
+    val without = Room.scene(roomW, h, Room.floorLineFor(h - 10), phase, layout = RoomLayout(emptyList(), theme)).flattenFine()
+    val fw = with.width; val fh = with.height
+    var l = fw; var t = fh; var r = -1; var b = -1
+    for (yy in 0 until fh) for (xx in 0 until fw) if (with[xx, yy] != without[xx, yy]) { if (xx < l) l = xx; if (xx > r) r = xx; if (yy < t) t = yy; if (yy > b) b = yy }
     if (r < 0) return com.pawpixel.sprite.PixelImage(8, 8)
-    l = (l - 2).coerceAtLeast(0); t = (t - 2).coerceAtLeast(0); r = (r + 2).coerceAtMost(roomW - 1); b = (b + 2).coerceAtMost(h - 1)
+    l = (l - 4).coerceAtLeast(0); t = (t - 4).coerceAtLeast(0); r = (r + 4).coerceAtMost(fw - 1); b = (b + 4).coerceAtMost(fh - 1)
     val out = com.pawpixel.sprite.PixelImage(r - l + 1, b - t + 1)
     for (yy in t..b) for (xx in l..r) out[xx - l, yy - t] = with[xx, yy]
     return out
@@ -341,8 +343,8 @@ private fun drawnFor(cache: HashMap<String, Drawn>, layout: RoomLayout, phase: S
     val rows = kotlin.math.ceil(height / px.toFloat()).toInt()
     val floorLine = (rows - RoomLayout.ROWS * Room.TILE_D - 4).coerceAtLeast(20)
     val scene = Room.scene(roomW, rows, floorLine, phase, layout = layout)
-    val props = scene.props.sortedWith(compareBy({ it.baseline }, { it.x })).map { EditorProp(it.placed, it.image.scale2x().toImageBitmap(), it.x, it.y, it.image.width, it.image.height) }
-    val drawn = Drawn(px, (width - roomW * px) / 2, height - rows * px, scene.geom, scene.base.scale2x().toImageBitmap(), props, layout, phase)
+    val props = scene.props.sortedWith(compareBy({ it.baseline }, { it.x })).map { EditorProp(it.placed, it.fine.toImageBitmap(), it.x, it.y, it.image.width, it.image.height) }
+    val drawn = Drawn(px, (width - roomW * px) / 2, height - rows * px, scene.geom, scene.fineBase.toImageBitmap(), props, layout, phase)
     if (cache.size > 6) cache.clear()
     cache[key] = drawn
     return drawn

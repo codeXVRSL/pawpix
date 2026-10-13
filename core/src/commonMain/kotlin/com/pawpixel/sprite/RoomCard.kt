@@ -27,15 +27,14 @@ object RoomCard {
         val petY = floorY - body[3]
         val petBaseline = floorY
         val sorted = scene.props.sortedWith(compareBy({ it.baseline }, { it.x }))
-        val img = scene.base.copy()
-        for (p in sorted) if (p.baseline <= petBaseline) img.draw(p.image, p.x, p.y)
-        // Its shadow across the boards (at the room's size), then everything at twice the resolution with the fine pet on top.
-        scene.castShadow(img, still, petX, petY, phase)
-        val fine = img.scale2x()
-        val F = 2
+        val F = Room.FINE
+        val fine = scene.fineBase.copy()
+        for (p in sorted) if (p.baseline <= petBaseline) fine.draw(p.fine, p.x * F, p.y * F)
+        // Its shadow across the boards, then the fine pet lit where it stands, then what stands in front.
+        scene.castShadowFine(fine, still, petX, petY, phase)
         val finePet = art.fineStill.let { it.resampled(still.width * F, still.height * F) }
         fine.draw(scene.litFine(finePet, petX * F, petY * F, F), petX * F, petY * F)
-        for (p in sorted) if (p.baseline > petBaseline) fine.draw(p.image.scale2x(), p.x * F, p.y * F)
+        for (p in sorted) if (p.baseline > petBaseline) fine.draw(p.fine, p.x * F, p.y * F)
         val soft = Room.softFocus(fine, 0.08, 0.10)
         // The caption on the floor's front edge: the name on the left, the mark on the right.
         val ink = if (phase.dark) 0xFFEADFCF.toInt() else 0xFF6B4E33.toInt()
