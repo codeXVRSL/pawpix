@@ -189,6 +189,9 @@ fun LivePet(
                     if (tap.x >= petBox[0] - pad && tap.x <= petBox[2] + pad && tap.y >= petBox[1] - pad * 2 && tap.y <= petBox[3] + pad / 2) {
                         brain.react(PetEvent.Petted, clock[1])
                         petted()
+                    } else {
+                        // A tap elsewhere in the room: the pet glances that way.
+                        brain.react(PetEvent.Noticed(left = tap.x < (petBox[0] + petBox[2]) / 2), clock[1])
                     }
                 }
             },

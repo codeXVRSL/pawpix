@@ -205,6 +205,24 @@ class DecorTest {
         assertTrue(Behavior.ZOOMIES in seen && Behavior.WALK in seen, "$seen")
     }
 
+    @Test fun aTapBesideThePetMakesItGlanceThatWayUnlessItIsBusy() {
+        val brain = PetBrain(seed = 5, stageWidth = 120.0, canvasWidth = 51, body = intArrayOf(5, 4, 45, 42), places = Places(rows = 3))
+        var t = 0L
+        var pose = brain.pose(t, Mood.SAD) // sad pets mostly sit still
+        while (pose.behavior != Behavior.IDLE && t < 20_000) { t += 50; pose = brain.pose(t, Mood.SAD) }
+        assertEquals(Behavior.IDLE, pose.behavior)
+        brain.react(com.pawpixel.sprite.PetEvent.Noticed(left = true), t)
+        assertEquals(com.pawpixel.sprite.Frame.BASE, brain.pose(t + 100, Mood.SAD).frame, "a beat passes before it turns")
+        assertEquals(com.pawpixel.sprite.Frame.LOOK_LEFT, brain.pose(t + 600, Mood.SAD).frame)
+        assertEquals(Behavior.GLANCE, brain.pose(t + 600, Mood.SAD).behavior)
+        // Asleep, it does not stir.
+        val sleeper = PetBrain(seed = 5, stageWidth = 120.0, canvasWidth = 51, body = intArrayOf(5, 4, 45, 42), places = Places(rows = 3))
+        var s = sleeper.pose(0, Mood.SLEEPY); var u = 0L
+        while (s.behavior != Behavior.SLEEP && u < 30_000) { u += 50; s = sleeper.pose(u, Mood.SLEEPY) }
+        sleeper.react(com.pawpixel.sprite.PetEvent.Noticed(left = false), u)
+        assertEquals(Behavior.SLEEP, sleeper.pose(u + 600, Mood.SLEEPY).behavior)
+    }
+
     @Test fun aPatOnTheWayToBedDropsTheErrand() {
         val places = Places(rows = 5, bed = 10.0 to 3)
         val brain = PetBrain(seed = 3, stageWidth = 120.0, canvasWidth = 51, body = intArrayOf(5, 4, 45, 42), places = places)

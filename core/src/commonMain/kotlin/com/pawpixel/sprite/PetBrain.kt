@@ -9,7 +9,7 @@ import kotlin.math.roundToInt
 import kotlin.math.sin
 import kotlin.random.Random
 
-enum class Behavior { IDLE, WALK, LOOK, HOP, SHAKE, BEG, SLEEP, EAT, PETTED, ZOOMIES }
+enum class Behavior { IDLE, WALK, LOOK, HOP, SHAKE, BEG, SLEEP, EAT, PETTED, ZOOMIES, GLANCE }
 
 /** Little icons drawn around the pet. */
 enum class EffectKind { HEART, SPARKLE, QUESTION, EXCLAIM, ZZZ, RAIN, PILL, BOWL, DROPS }
@@ -63,6 +63,8 @@ data class PetPose(
 sealed interface PetEvent {
     data object Petted : PetEvent
     data class Cared(val kind: TaskKind) : PetEvent
+    /** Something caught its eye on that side of the room (a tap beside it): a glance, after a beat, unless it is busy or asleep. */
+    data class Noticed(val left: Boolean) : PetEvent
 }
 
 /**
@@ -105,6 +107,7 @@ class PetBrain(
     private var target = x
     private var speed = 14.0
     private var hops = 1
+    private val GLANCE_FROM = setOf(Behavior.IDLE, Behavior.LOOK, Behavior.HOP, Behavior.BEG, Behavior.SHAKE, Behavior.PETTED, Behavior.GLANCE)
     private var zoomLegs = 0
     /** After the zoomies, straight to the favourite toy for a few hops. */
     private var playAfter = false
@@ -122,6 +125,11 @@ class PetBrain(
     private val bodyHeight get() = feetY - headTop
 
     fun react(event: PetEvent, nowMs: Long) {
+        if (event is PetEvent.Noticed) {
+            // Only a pet with nothing on its mind turns to look; a walk, a meal or a nap goes on.
+            if (behavior in GLANCE_FROM) { facingLeft = event.left; start(Behavior.GLANCE, nowMs, 1500) }
+            return
+        }
         reaction = true
         then = null // a walk to the bed or the bowl is forgotten when something else happens
         when (event) {
@@ -133,6 +141,7 @@ class PetBrain(
                 TaskKind.MEDS, TaskKind.LITTER, TaskKind.VACCINE, TaskKind.DEWORM, TaskKind.FLEA_TICK, TaskKind.VET ->
                     start(Behavior.PETTED, nowMs, 1600)
             }
+            is PetEvent.Noticed -> Unit // handled above
         }
     }
 
@@ -173,6 +182,12 @@ class PetBrain(
         var lift = 0
         val frame: Frame = when (behavior) {
             Behavior.IDLE -> breathing(t, mood)
+            // A beat before it reacts (an animal notices, then turns), a look held toward the spot, then back.
+            Behavior.GLANCE -> when (t) {
+                in 0 until 220 -> Frame.BASE
+                in 220 until 1150 -> if (facingLeft) Frame.LOOK_LEFT else Frame.LOOK_RIGHT
+                else -> Frame.BASE
+            }
             Behavior.LOOK -> when (t) {
                 in 0 until 550 -> if (facingLeft) Frame.LOOK_LEFT else Frame.LOOK_RIGHT
                 in 550 until 850 -> Frame.BASE
