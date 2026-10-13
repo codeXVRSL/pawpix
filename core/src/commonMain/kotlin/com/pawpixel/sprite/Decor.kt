@@ -20,7 +20,10 @@ enum class RoomTheme(val label: String) {
     COZY("Cozy nook"),
     LIVING("Living room"),
     PLAYROOM("Playroom"),
-    GARDEN("Garden");
+    GARDEN("Garden"),
+    BEDROOM("Bedroom"),
+    KITCHEN("Kitchen"),
+    BATHROOM("Bathroom");
 
     companion object {
         fun of(name: String?): RoomTheme? = entries.firstOrNull { it.name == name }
@@ -91,7 +94,34 @@ enum class Furniture(
     POND("Pond", 10, 3, 2, Place.RUG, theme = RoomTheme.GARDEN),
     LITTLE_TREE("Little tree", 14, 2, theme = RoomTheme.GARDEN),
     BIRDHOUSE("Birdhouse", 12, 1, place = Place.WALL, theme = RoomTheme.GARDEN),
-    WIND_CHIME("Wind chime", 20, 1, place = Place.WALL, theme = RoomTheme.GARDEN);
+    WIND_CHIME("Wind chime", 20, 1, place = Place.WALL, theme = RoomTheme.GARDEN),
+    // ---- bedroom ----
+    BIG_BED("Big bed", 0, 3, 2, use = Use.SLEEP, theme = RoomTheme.BEDROOM),
+    NIGHTSTAND("Nightstand", 3, 1, theme = RoomTheme.BEDROOM),
+    MOON_LAMP("Moon lamp", 5, 1, theme = RoomTheme.BEDROOM),
+    SLIPPERS("Slippers", 2, 1, theme = RoomTheme.BEDROOM),
+    WARDROBE("Wardrobe", 7, 2, theme = RoomTheme.BEDROOM),
+    LAUNDRY_BASKET("Laundry basket", 10, 1, theme = RoomTheme.BEDROOM),
+    STAR_GARLAND("Star garland", 0, 4, place = Place.WALL, theme = RoomTheme.BEDROOM),
+    DREAMCATCHER("Dreamcatcher", 14, 1, place = Place.WALL, theme = RoomTheme.BEDROOM),
+    // ---- kitchen ----
+    COUNTER("Counter", 0, 3, theme = RoomTheme.KITCHEN),
+    BOWL_STAND("Bowl stand", 2, 1, use = Use.EAT, theme = RoomTheme.KITCHEN),
+    KITCHEN_MAT("Kitchen mat", 0, 2, 1, Place.RUG, theme = RoomTheme.KITCHEN),
+    STOVE("Stove", 5, 2, theme = RoomTheme.KITCHEN),
+    FRIDGE("Fridge", 7, 2, theme = RoomTheme.KITCHEN),
+    CAT_GRASS("Cat grass", 14, 1, theme = RoomTheme.KITCHEN),
+    HERB_SHELF("Herb shelf", 3, 2, place = Place.WALL, theme = RoomTheme.KITCHEN),
+    POT_RACK("Pot rack", 10, 2, place = Place.WALL, theme = RoomTheme.KITCHEN),
+    // ---- bathroom ----
+    BATHTUB("Bathtub", 0, 3, theme = RoomTheme.BATHROOM),
+    SINK("Sink", 3, 1, theme = RoomTheme.BATHROOM),
+    BATH_MAT("Bath mat", 0, 2, 1, Place.RUG, theme = RoomTheme.BATHROOM),
+    RUBBER_DUCK("Rubber duck", 5, 1, theme = RoomTheme.BATHROOM),
+    TOWEL_STACK("Towel stack", 7, 1, theme = RoomTheme.BATHROOM),
+    WASHING_MACHINE("Washing machine", 12, 2, theme = RoomTheme.BATHROOM),
+    MIRROR("Mirror", 0, 1, place = Place.WALL, theme = RoomTheme.BATHROOM),
+    TOWEL_RAIL("Towel rail", 2, 2, place = Place.WALL, theme = RoomTheme.BATHROOM);
 
     enum class Place { FLOOR, RUG, WALL }
     enum class Use { NONE, SLEEP, EAT }
@@ -198,6 +228,18 @@ data class RoomLayout(val items: List<Placed>, val theme: RoomTheme = RoomTheme.
                 Placed(Furniture.WINDOW, 1, 3), Placed(Furniture.FRAME, 7, 3),
                 Placed(Furniture.FLOWER_BED, 0, 1), Placed(Furniture.BED, 0, 3), Placed(Furniture.BOWL, 8, 3), Placed(Furniture.PLANT, 9, 1), Placed(Furniture.LAMP, 8, 1),
             ), RoomTheme.GARDEN)
+            RoomTheme.BEDROOM -> RoomLayout(listOf(
+                Placed(Furniture.WINDOW, 1, 3), Placed(Furniture.STAR_GARLAND, 5, 4), Placed(Furniture.FRAME, 8, 2),
+                Placed(Furniture.RUG, 4, 2), Placed(Furniture.BIG_BED, 0, 1), Placed(Furniture.BOWL, 8, 3), Placed(Furniture.LAMP, 9, 1), Placed(Furniture.PLANT, 8, 1),
+            ), RoomTheme.BEDROOM)
+            RoomTheme.KITCHEN -> RoomLayout(listOf(
+                Placed(Furniture.WINDOW, 6, 3), Placed(Furniture.CLOCK, 1, 4), Placed(Furniture.SHELF, 1, 2),
+                Placed(Furniture.COUNTER, 0, 0), Placed(Furniture.KITCHEN_MAT, 4, 2), Placed(Furniture.BED, 7, 3), Placed(Furniture.BOWL, 4, 1), Placed(Furniture.PLANT, 9, 1),
+            ), RoomTheme.KITCHEN)
+            RoomTheme.BATHROOM -> RoomLayout(listOf(
+                Placed(Furniture.MIRROR, 7, 3), Placed(Furniture.WINDOW, 1, 3),
+                Placed(Furniture.BATHTUB, 0, 0), Placed(Furniture.BATH_MAT, 1, 2), Placed(Furniture.BED, 6, 3), Placed(Furniture.BOWL, 4, 3), Placed(Furniture.PLANT, 9, 1),
+            ), RoomTheme.BATHROOM)
         }
 
         /** Reads [encode]'s string; pieces that don't fit or overlap are dropped, so a bad string still gives a room. Null for a different format. */

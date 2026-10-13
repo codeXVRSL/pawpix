@@ -273,7 +273,8 @@ private fun RoomEditor(layout: RoomLayout, selected: Placed?, phase: Sky.Phase, 
     ) {
         val d = drawnFor(cache, layout, phase, size.width.toInt(), size.height.toInt()) ?: return@Canvas
         val px = d.px.toFloat()
-        drawImage(d.base, IntOffset.Zero, IntSize(d.base.width, d.base.height), IntOffset(d.left, d.top), IntSize((d.base.width * px).roundToInt(), (d.base.height * px).roundToInt()), filterQuality = FilterQuality.None)
+        // The bitmaps hold two fine pixels per room pixel (PixelImage.scale2x), as the live room does.
+        drawImage(d.base, IntOffset.Zero, IntSize(d.base.width, d.base.height), IntOffset(d.left, d.top), IntSize((d.base.width * px / 2).roundToInt(), (d.base.height * px / 2).roundToInt()), filterQuality = FilterQuality.None)
         // The grid: tile rows across the floor, columns converging toward the back wall, slot lines on the wall, faint.
         val g = d.geom
         val gridColor = Color(0x3AFFFFFF)
@@ -284,7 +285,7 @@ private fun RoomEditor(layout: RoomLayout, selected: Placed?, phase: Sky.Phase, 
         val cur = drag
         for (p in d.props) {
             val lifted = cur != null && p.placed === cur.piece
-            drawImage(p.image, IntOffset.Zero, IntSize(p.image.width, p.image.height), IntOffset(d.left + (p.x * px).roundToInt(), d.top + (p.y * px).roundToInt()), IntSize((p.image.width * px).roundToInt(), (p.image.height * px).roundToInt()), filterQuality = FilterQuality.None, alpha = if (lifted) 0.35f else 1f)
+            drawImage(p.image, IntOffset.Zero, IntSize(p.image.width, p.image.height), IntOffset(d.left + (p.x * px).roundToInt(), d.top + (p.y * px).roundToInt()), IntSize((p.image.width * px / 2).roundToInt(), (p.image.height * px / 2).roundToInt()), filterQuality = FilterQuality.None, alpha = if (lifted) 0.35f else 1f)
         }
         // The selection outline and the ghost.
         val sel = cur?.piece ?: selected
@@ -293,8 +294,8 @@ private fun RoomEditor(layout: RoomLayout, selected: Placed?, phase: Sky.Phase, 
             val tint = if (cur.valid) Color(0x5560C080) else Color(0x55E04848)
             footprint(this, d, cur.ghost, if (cur.valid) Color(0xFF2E8B5A) else Color(0xFFD9364F), fill = tint)
             d.prop(cur.ghost)?.let { pr ->
-                val img = ghosts.getOrPut(cur.ghost) { pr.image.toImageBitmap() }
-                drawImage(img, IntOffset.Zero, IntSize(img.width, img.height), IntOffset(d.left + (pr.x * px).roundToInt(), d.top + (pr.y * px).roundToInt()), IntSize((img.width * px).roundToInt(), (img.height * px).roundToInt()), filterQuality = FilterQuality.None, alpha = 0.75f)
+                val img = ghosts.getOrPut(cur.ghost) { pr.image.scale2x().toImageBitmap() }
+                drawImage(img, IntOffset.Zero, IntSize(img.width, img.height), IntOffset(d.left + (pr.x * px).roundToInt(), d.top + (pr.y * px).roundToInt()), IntSize((img.width * px / 2).roundToInt(), (img.height * px / 2).roundToInt()), filterQuality = FilterQuality.None, alpha = 0.75f)
             }
         }
     }
@@ -318,14 +319,15 @@ private class Drawn(val px: Int, val left: Int, val top: Int, val geom: Room.Geo
     /** The piece under a screen point: a standing piece by its drawing (front first), else a rug by its tile, else a wall piece by its cell. */
     fun hit(at: Offset): Placed? {
         val (x, y) = room(at)
-        for (p in props.asReversed()) if (x in p.x until p.x + p.image.width && y in p.y until p.y + p.image.height) return p.placed
+        for (p in props.asReversed()) if (x in p.x until p.x + p.w && y in p.y until p.y + p.h) return p.placed
         geom.tileAt(x, y)?.let { (c, r) -> layout.at(c, r, onWall = false)?.let { return it } }
         geom.wallAt(x, y)?.let { (c, s) -> layout.at(c, s, onWall = true)?.let { return it } }
         return null
     }
 }
 
-private class EditorProp(val placed: Placed, val image: ImageBitmap, val x: Int, val y: Int)
+/** A standing piece in the editor: its fine (2x) bitmap, and its place and size in room pixels. */
+private class EditorProp(val placed: Placed, val image: ImageBitmap, val x: Int, val y: Int, val w: Int, val h: Int)
 
 /** The editor's drawing of [layout] at a canvas size, cached per layout and size. */
 private fun drawnFor(cache: HashMap<String, Drawn>, layout: RoomLayout, phase: Sky.Phase, width: Int, height: Int): Drawn? {
@@ -333,13 +335,13 @@ private fun drawnFor(cache: HashMap<String, Drawn>, layout: RoomLayout, phase: S
     val key = "$width:$height:${phase.key}:${layout.encode()}"
     cache[key]?.let { return it }
     // The grid plus a margin must fit across; the floor's rows plus a margin must fit below the wall.
-    val px = floor(width / 100f).toInt().coerceAtLeast(1)
+    val px = (floor(width / 100f).toInt() / 2 * 2).coerceAtLeast(2) // even, so the fine drawing lands on whole pixels
     val roomW = kotlin.math.ceil(width / px.toFloat()).toInt()
     val rows = kotlin.math.ceil(height / px.toFloat()).toInt()
     val floorLine = (rows - RoomLayout.ROWS * Room.TILE_D - 4).coerceAtLeast(20)
     val scene = Room.scene(roomW, rows, floorLine, phase, layout = layout)
-    val props = scene.props.sortedWith(compareBy({ it.baseline }, { it.x })).map { EditorProp(it.placed, it.image.toImageBitmap(), it.x, it.y) }
-    val drawn = Drawn(px, (width - roomW * px) / 2, height - rows * px, scene.geom, scene.base.toImageBitmap(), props, layout, phase)
+    val props = scene.props.sortedWith(compareBy({ it.baseline }, { it.x })).map { EditorProp(it.placed, it.image.scale2x().toImageBitmap(), it.x, it.y, it.image.width, it.image.height) }
+    val drawn = Drawn(px, (width - roomW * px) / 2, height - rows * px, scene.geom, scene.base.scale2x().toImageBitmap(), props, layout, phase)
     if (cache.size > 6) cache.clear()
     cache[key] = drawn
     return drawn
