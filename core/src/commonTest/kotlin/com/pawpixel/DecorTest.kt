@@ -174,6 +174,37 @@ class DecorTest {
         assertTrue(pose.effects.none { it.kind == com.pawpixel.sprite.EffectKind.BOWL })
     }
 
+    @Test fun eachSpeciesPicksTheBedAndToyItLikes() {
+        val room = RoomLayout(listOf(Placed(Furniture.BED, 0, 3), Placed(Furniture.SOFA, 4, 3), Placed(Furniture.DOGHOUSE, 8, 1), Placed(Furniture.SCRATCH_POST, 9, 4), Placed(Furniture.BALL_PIT, 0, 0)), com.pawpixel.sprite.RoomTheme.COZY)
+        assertEquals(Furniture.DOGHOUSE, room.bedFor(com.pawpixel.core.Species.DOG)?.item)
+        assertEquals(Furniture.SOFA, room.bedFor(com.pawpixel.core.Species.CAT)?.item)
+        assertEquals(Furniture.BED, room.bedFor(com.pawpixel.core.Species.RABBIT)?.item, "no tent: the plain bed")
+        assertEquals(Furniture.BED, room.bedFor(com.pawpixel.core.Species.OTHER)?.item)
+        assertEquals(Furniture.BALL_PIT, room.toyFor(com.pawpixel.core.Species.DOG)?.item)
+        assertEquals(Furniture.SCRATCH_POST, room.toyFor(com.pawpixel.core.Species.CAT)?.item)
+        assertEquals(null, RoomLayout.DEFAULT.toyFor(com.pawpixel.core.Species.CAT), "the starter room has no toy")
+        // Every sleeping place and every toy is in every species' list, so the choice never falls to list order by accident.
+        for (sp in com.pawpixel.core.Species.entries) {
+            assertEquals(Furniture.entries.filter { it.use == Furniture.Use.SLEEP }.toSet(), Furniture.sleepPreference(sp).toSet(), "$sp beds")
+            assertEquals(Furniture.entries.filter { it.use == Furniture.Use.PLAY }.toSet(), Furniture.playPreference(sp).toSet(), "$sp toys")
+        }
+    }
+
+    @Test fun afterAWalkThePetZoomsThenHopsOnItsToy() {
+        val places = Places(rows = 5, bed = 10.0 to 3, play = 50.0 to 2)
+        val brain = PetBrain(seed = 3, stageWidth = 120.0, canvasWidth = 51, body = intArrayOf(5, 4, 45, 42), places = places)
+        var t = 0L
+        brain.pose(t, Mood.CONTENT)
+        brain.react(com.pawpixel.sprite.PetEvent.Cared(com.pawpixel.core.TaskKind.WALK), t)
+        var pose = brain.pose(t, Mood.HAPPY)
+        assertEquals(Behavior.ZOOMIES, pose.behavior)
+        val seen = ArrayList<Behavior>()
+        while (t < 40_000 && seen.lastOrNull() != Behavior.HOP) { t += 50; pose = brain.pose(t, Mood.HAPPY); if (seen.lastOrNull() != pose.behavior) seen += pose.behavior }
+        assertEquals(Behavior.HOP, pose.behavior, "zoomies, then a walk to the toy, then hops: $seen")
+        assertEquals(50.0, brain.x, 0.01); assertEquals(2.0, brain.row, 0.01)
+        assertTrue(Behavior.ZOOMIES in seen && Behavior.WALK in seen, "$seen")
+    }
+
     @Test fun aPatOnTheWayToBedDropsTheErrand() {
         val places = Places(rows = 5, bed = 10.0 to 3)
         val brain = PetBrain(seed = 3, stageWidth = 120.0, canvasWidth = 51, body = intArrayOf(5, 4, 45, 42), places = places)

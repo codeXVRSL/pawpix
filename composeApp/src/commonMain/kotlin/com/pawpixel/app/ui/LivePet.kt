@@ -140,7 +140,7 @@ fun LivePet(
     // The pet walks the back wall's width in room units; the box projects it nearer and bigger on the front rows.
     val depthRows = kotlin.math.ceil(floorDepthPx / px).toInt()
     val roomW = kotlin.math.ceil(widthPx / px).toInt().coerceAtLeast(layout.stageWidth / 2)
-    val places = remember(layout, depthRows, room) { placesFor(room, layout, depthRows) }
+    val places = remember(layout, depthRows, room, art?.species) { placesFor(room, layout, depthRows, art?.species ?: com.pawpixel.core.Species.OTHER) }
     val brain = remember(layout, seed, places) { PetBrain(seed, Room.GRID_W, layout.set.width, layout.body, places) }
     /**
      * The pose on screen. The pet thinks every frame, but the stage is redrawn only when what it
@@ -340,21 +340,22 @@ private class DrawnProp(val image: ImageBitmap, val x: Int, val y: Int, val base
  * its bed and bowl as positions across the room (in room units, the back wall [Room.GRID_W] wide),
  * and the tiles furniture takes.
  */
-private fun placesFor(room: RoomLayout, layout: StageLayout, depthRows: Int): Places {
+private fun placesFor(room: RoomLayout, layout: StageLayout, depthRows: Int, species: com.pawpixel.core.Species): Places {
     // Rows in front of the home row that still show above the controls (the home row's feet are [depthRows] above them).
     val front = ((depthRows - 6) / Room.TILE_D).coerceAtLeast(0)
     val rows = (Room.PET_ROW + 1 + front).coerceAtMost(RoomLayout.ROWS)
     val bodyMid = (layout.body[0] + layout.body[2]) / 2.0
     // The bed's front row must be one the pet can walk to; a bed beyond the walkable rows would be drawn over the sleeping pet.
-    val bed = room.items.firstOrNull { it.item.use == Furniture.Use.SLEEP }?.takeIf { it.y + it.item.rows - 1 < rows }?.let { b ->
-        (b.x + b.item.cols / 2.0) * Room.TILE_W - bodyMid to b.y + b.item.rows - 1
-    }
+    // Standing on a piece: centred on it, on its front row (a bed beyond the walkable rows would be drawn over the sleeping pet).
+    fun on(p: com.pawpixel.sprite.Placed?): Pair<Double, Int>? = p?.takeIf { it.y + it.item.rows - 1 < rows }?.let { b -> (b.x + b.item.cols / 2.0) * Room.TILE_W - bodyMid to b.y + b.item.rows - 1 }
+    val bed = on(room.bedFor(species))
+    val play = on(room.toyFor(species))
     val bowl = room.items.firstOrNull { it.item.use == Furniture.Use.EAT }?.let { b ->
         // Standing just left of the bowl, facing it.
         b.x * Room.TILE_W - layout.body[2] - 1.0 to b.y.coerceAtMost(rows - 1)
     }
     val blocked = room.items.filter { !it.item.onWall && !it.item.flat && it.item.use == Furniture.Use.NONE }.flatMap { it.tiles() }.toSet()
-    return Places(rows, bed, bowl) { x, row -> (floor(x / Room.TILE_W).toInt() to row) !in blocked }
+    return Places(rows, bed, bowl, play) { x, row -> (floor(x / Room.TILE_W).toInt() to row) !in blocked }
 }
 
 /** A pet's drawings for one look: its animation frames for every mood, stage and effect icons. */

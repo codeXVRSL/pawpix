@@ -1,5 +1,7 @@
 package com.pawpixel.sprite
 
+import com.pawpixel.core.Species
+
 /**
  * The furniture of the pet's room, and where the owner put it.
  *
@@ -53,9 +55,9 @@ enum class Furniture(
     // ---- floor: earned ----
     TABLE("Side table", 3, 2),
     CHAIR("Armchair", 5, 1),
-    TOY_BOX("Toy box", 7, 1),
+    TOY_BOX("Toy box", 7, 1, use = Use.PLAY),
     BOOKCASE("Bookcase", 10, 2),
-    SCRATCH_POST("Scratch post", 14, 1),
+    SCRATCH_POST("Scratch post", 14, 1, use = Use.PLAY),
     BIG_PLANT("Big plant", 21, 1),
     FISH_TANK("Fish tank", 28, 2),
     RADIO("Radio", 35, 1),
@@ -83,14 +85,14 @@ enum class Furniture(
     // ---- playroom ----
     TOY_CHEST("Toy chest", 0, 2, theme = RoomTheme.PLAYROOM),
     BLOCKS("Building blocks", 3, 1, theme = RoomTheme.PLAYROOM),
-    PLAY_TUNNEL("Play tunnel", 7, 3, theme = RoomTheme.PLAYROOM),
-    BALL_PIT("Ball pit", 10, 2, 2, theme = RoomTheme.PLAYROOM),
-    ROCKING_HORSE("Rocking horse", 14, 2, theme = RoomTheme.PLAYROOM),
+    PLAY_TUNNEL("Play tunnel", 7, 3, use = Use.PLAY, theme = RoomTheme.PLAYROOM),
+    BALL_PIT("Ball pit", 10, 2, 2, use = Use.PLAY, theme = RoomTheme.PLAYROOM),
+    ROCKING_HORSE("Rocking horse", 14, 2, use = Use.PLAY, theme = RoomTheme.PLAYROOM),
     PLAY_TENT("Play tent", 21, 2, use = Use.SLEEP, theme = RoomTheme.PLAYROOM),
     BUNTING("Bunting", 0, 4, place = Place.WALL, theme = RoomTheme.PLAYROOM),
     CHALKBOARD("Chalkboard", 5, 2, place = Place.WALL, theme = RoomTheme.PLAYROOM),
-    SLIDE("Slide", 12, 2, theme = RoomTheme.PLAYROOM),
-    TRAIN_SET("Train set", 17, 2, theme = RoomTheme.PLAYROOM),
+    SLIDE("Slide", 12, 2, use = Use.PLAY, theme = RoomTheme.PLAYROOM),
+    TRAIN_SET("Train set", 17, 2, use = Use.PLAY, theme = RoomTheme.PLAYROOM),
     PLAY_MAT("Play mat", 2, 2, 2, Place.RUG, theme = RoomTheme.PLAYROOM),
     TEDDY("Teddy bear", 1, 1, theme = RoomTheme.PLAYROOM),
     HEIGHT_CHART("Height chart", 3, 1, place = Place.WALL, theme = RoomTheme.PLAYROOM),
@@ -104,10 +106,10 @@ enum class Furniture(
     BIRDHOUSE("Birdhouse", 12, 1, place = Place.WALL, theme = RoomTheme.GARDEN),
     WIND_CHIME("Wind chime", 20, 1, place = Place.WALL, theme = RoomTheme.GARDEN),
     DOGHOUSE("Doghouse", 2, 2, use = Use.SLEEP, theme = RoomTheme.GARDEN),
-    WAGON("Wagon", 9, 1, theme = RoomTheme.GARDEN),
+    WAGON("Wagon", 9, 1, use = Use.PLAY, theme = RoomTheme.GARDEN),
     SCARECROW("Scarecrow", 17, 1, theme = RoomTheme.GARDEN),
     PICKET_FENCE("Picket fence", 4, 3, theme = RoomTheme.GARDEN),
-    SWING("Swing", 6, 2, theme = RoomTheme.GARDEN),
+    SWING("Swing", 6, 2, use = Use.PLAY, theme = RoomTheme.GARDEN),
     SUNFLOWERS("Sunflowers", 2, 1, theme = RoomTheme.GARDEN),
     // ---- bedroom ----
     BIG_BED("Big bed", 0, 3, 2, use = Use.SLEEP, theme = RoomTheme.BEDROOM),
@@ -144,7 +146,7 @@ enum class Furniture(
     SHOWER("Shower", 6, 2, place = Place.WALL, theme = RoomTheme.BATHROOM);
 
     enum class Place { FLOOR, RUG, WALL }
-    enum class Use { NONE, SLEEP, EAT }
+    enum class Use { NONE, SLEEP, EAT, PLAY }
 
     val onWall: Boolean get() = place == Place.WALL
     /** Rugs lie flat under everything else and can share tiles with furniture. */
@@ -152,6 +154,21 @@ enum class Furniture(
 
     companion object {
         fun of(name: String?): Furniture? = entries.firstOrNull { it.name == name }
+
+        /** The sleeping places a [species] likes, best first; a piece not listed comes after them all. */
+        fun sleepPreference(species: Species): List<Furniture> = when (species) {
+            Species.DOG -> listOf(DOGHOUSE, BIG_BED, BED, SOFA, GARDEN_BENCH, FLOOR_CUSHION, PLAY_TENT)
+            Species.CAT -> listOf(SOFA, FLOOR_CUSHION, BIG_BED, BED, PLAY_TENT, GARDEN_BENCH, DOGHOUSE)
+            Species.RABBIT -> listOf(PLAY_TENT, FLOOR_CUSHION, BED, BIG_BED, SOFA, GARDEN_BENCH, DOGHOUSE)
+            Species.OTHER -> listOf(BED, BIG_BED, FLOOR_CUSHION, SOFA, PLAY_TENT, GARDEN_BENCH, DOGHOUSE)
+        }
+        /** The toys a [species] goes for, best first. */
+        fun playPreference(species: Species): List<Furniture> = when (species) {
+            Species.DOG -> listOf(BALL_PIT, SLIDE, WAGON, SWING, TOY_BOX, TRAIN_SET, PLAY_TUNNEL, ROCKING_HORSE, SCRATCH_POST)
+            Species.CAT -> listOf(SCRATCH_POST, PLAY_TUNNEL, TOY_BOX, BALL_PIT, TRAIN_SET, SLIDE, ROCKING_HORSE, SWING, WAGON)
+            Species.RABBIT -> listOf(PLAY_TUNNEL, TOY_BOX, BALL_PIT, TRAIN_SET, WAGON, SLIDE, SCRATCH_POST, ROCKING_HORSE, SWING)
+            Species.OTHER -> listOf(TOY_BOX, BALL_PIT, PLAY_TUNNEL, SCRATCH_POST, SLIDE, TRAIN_SET, WAGON, SWING, ROCKING_HORSE)
+        }
     }
 }
 
@@ -217,6 +234,18 @@ data class RoomLayout(val items: List<Placed>, val theme: RoomTheme = RoomTheme.
 
     /** True when [encode]'s string is short enough to be saved and shared ([MAX_CODE]); the editor stops adding pieces before that. */
     fun fits(): Boolean = encode().length <= MAX_CODE
+
+    /**
+     * Where this pet sleeps: of the room's sleeping places, the one its species likes best (a dog its
+     * doghouse, a cat the sofa, a rabbit the tent it can hide in), the plain bed otherwise.
+     */
+    fun bedFor(species: Species): Placed? = favourite(Furniture.Use.SLEEP, Furniture.sleepPreference(species))
+
+    /** Where this pet plays after a walk or a game: its favourite toy in the room, if it has one. */
+    fun toyFor(species: Species): Placed? = favourite(Furniture.Use.PLAY, Furniture.playPreference(species))
+
+    private fun favourite(use: Furniture.Use, liking: List<Furniture>): Placed? =
+        items.filter { it.item.use == use }.minByOrNull { liking.indexOf(it.item).let { i -> if (i < 0) liking.size else i } }
 
     companion object {
         const val COLS = 10

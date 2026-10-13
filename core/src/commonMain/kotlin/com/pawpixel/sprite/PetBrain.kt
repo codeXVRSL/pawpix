@@ -25,6 +25,8 @@ class Places(
     val rows: Int = 1,
     val bed: Pair<Double, Int>? = null,
     val bowl: Pair<Double, Int>? = null,
+    /** The pet's favourite toy, where it goes to play after a walk or a game. */
+    val play: Pair<Double, Int>? = null,
     /** True when a pet whose feet are centred on stage pixel [x] can stand on [row]. */
     val free: (x: Double, row: Int) -> Boolean = { _, _ -> true },
 ) {
@@ -104,6 +106,8 @@ class PetBrain(
     private var speed = 14.0
     private var hops = 1
     private var zoomLegs = 0
+    /** After the zoomies, straight to the favourite toy for a few hops. */
+    private var playAfter = false
     private var reaction = false
     private var currentMood: Mood? = null
     private var lastMs = -1L
@@ -124,7 +128,7 @@ class PetBrain(
             PetEvent.Petted -> start(Behavior.PETTED, nowMs, 1600)
             is PetEvent.Cared -> when (event.kind) {
                 TaskKind.FEED, TaskKind.WATER -> goTo(places.bowl, nowMs, Behavior.EAT, 2800, speed = 20.0)
-                TaskKind.WALK, TaskKind.PLAY -> { zoomLegs = 2; startZoom(nowMs) }
+                TaskKind.WALK, TaskKind.PLAY -> { zoomLegs = 2; playAfter = places.play != null; startZoom(nowMs) }
                 TaskKind.GROOM -> start(Behavior.SHAKE, nowMs, 1100)
                 TaskKind.MEDS, TaskKind.LITTER, TaskKind.VACCINE, TaskKind.DEWORM, TaskKind.FLEA_TICK, TaskKind.VET ->
                     start(Behavior.PETTED, nowMs, 1600)
@@ -148,6 +152,7 @@ class PetBrain(
             val next = then
             when {
                 behavior == Behavior.ZOOMIES && zoomLegs > 0 -> startZoom(nowMs)
+                behavior == Behavior.ZOOMIES && playAfter -> { playAfter = false; hops = 3; goTo(places.play, nowMs, Behavior.HOP, 520L * 3, speed = 18.0) }
                 next != null -> { then = null; start(next, nowMs, if (next == Behavior.SLEEP) 12_000 else 2800) }
                 else -> { reaction = false; pickNext(nowMs, mood) }
             }
@@ -290,7 +295,12 @@ class PetBrain(
                 start(next, nowMs, 20_000) // ends early on arrival
             }
             Behavior.LOOK -> start(next, nowMs, 1900)
-            Behavior.HOP -> { hops = rnd.nextInt(1, 4); start(next, nowMs, 520L * hops) }
+            Behavior.HOP -> {
+                hops = rnd.nextInt(1, 4)
+                // A happy pet often hops over to its toy to do it there.
+                if (places.play != null && mood == Mood.HAPPY && rnd.nextInt(3) == 0) goTo(places.play, nowMs, Behavior.HOP, 520L * hops, speed = 18.0)
+                else start(next, nowMs, 520L * hops)
+            }
             Behavior.SHAKE -> start(next, nowMs, 800)
             Behavior.BEG -> start(next, nowMs, 2600)
             Behavior.SLEEP -> goTo(places.bed, nowMs, Behavior.SLEEP, 12_000, speed = 9.0)
